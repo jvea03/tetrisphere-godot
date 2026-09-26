@@ -22,7 +22,7 @@ extends RefCounted
 
 const COLS := 20          # longitude cells; wraps around
 const ROWS := 8           # latitude cells; hard edges (the band rim)
-const SHELL_DEPTH := 3    # every cell starts this many blocks deep
+const SHELL_DEPTH := 3    # every cell starts this many blocks deep, unless the level says otherwise
 const MAX_STACK := 9      # pile any cell this high and the shell overloads
 const MIN_MATCH := 3      # connected same-type pieces that explode
 const TILE_BUDGET := 1200   # search steps per attempt at tiling one layer
@@ -67,6 +67,7 @@ const PLUS := 9
 # depth with something still above it; stacks never end in a HOLE, so a
 # stack's size is the depth just above its topmost block.
 var cells: Array = []
+var shell_depth := SHELL_DEPTH   # how deep this ball started (level 1's is a single layer)
 var plate_kind := {}      # piece id -> kind (index into SHAPES)
 var plate_cols := {}      # piece id -> Array[Vector2i], the columns it occupies
 var initial_blocks := 0
@@ -87,6 +88,7 @@ func generate(seed_value: int, level: Dictionary) -> void:
 	_mix = float(level.get("mix", 1.0))
 	_seed_group_max = int(level.get("seed_group_max", 2))
 	_blocker_cap = float(level.get("blocker_cap", 1.0))
+	shell_depth = int(level.get("shell_depth", SHELL_DEPTH))
 	_rng.seed = seed_value
 	cells.clear()
 	plate_kind.clear()
@@ -101,12 +103,15 @@ func generate(seed_value: int, level: Dictionary) -> void:
 	# A smooth, even shell, as every level in the reference footage opens,
 	# tiled layer by layer with whole pieces. The pattern generator lays out the
 	# surface and the bottom layer; the search fills whatever is left between
-	# them, fitting around both, so its extra grey stays out of sight.
+	# them, fitting around both, so its extra grey stays out of sight. A
+	# one-layer ball is all surface. Two pattern layers must not touch, so a
+	# two-layer ball gets the pattern on top only.
 	var searched: Array = []
-	for d in SHELL_DEPTH:
+	for d in shell_depth:
 		searched.append(d)
 	if level.get("generator", "search") == "pattern" and _pattern_fits():
-		for d in [0, SHELL_DEPTH - 1]:
+		var patterned: Array = [0, shell_depth - 1] if shell_depth >= 3 else [shell_depth - 1]
+		for d in patterned:
 			_pattern_layer(d)
 			searched.erase(d)
 	for d in searched:
@@ -155,7 +160,7 @@ const PLAIN_UNIT := [true, true, false, true, true, false, true, true]   # flat 
 
 
 func _pattern_fits() -> bool:
-	return COLS % 5 == 0 and ROWS == 8 and SHELL_DEPTH >= 3
+	return COLS % 5 == 0 and ROWS == 8
 
 
 func _pattern_layer(d: int) -> void:
@@ -1037,6 +1042,11 @@ func load_dict(data: Dictionary) -> void:
 					plate_cols[id].append(Vector2i(c, r))
 			column.append(stack)
 		cells.append(column)
+	# A saved ball is a fresh one, so its deepest stack is how deep it started.
+	shell_depth = 1
+	for column in cells:
+		for stack in column:
+			shell_depth = maxi(shell_depth, (stack as Array).size())
 	initial_blocks = count_blocks()
 	cleared_blocks = 0
 
@@ -1046,6 +1056,7 @@ func clone() -> TSBoard:
 	b.initial_blocks = initial_blocks
 	b.cleared_blocks = cleared_blocks
 	b._next_id = _next_id
+	b.shell_depth = shell_depth
 	b.plate_kind = plate_kind.duplicate()
 	b.plate_cols = plate_cols.duplicate(true)
 	b.cells = []

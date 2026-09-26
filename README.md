@@ -182,7 +182,11 @@ A cute, hand-drawn style, all in `scripts/toon.gd` (`TSToon`):
 - **Level 1 (`RESCUE 1:1`)** uses only three pieces: **flat lines** (yellow),
   **upright lines** (green) and small grey **blocker squares** (about a quarter of the
   surface you see — see "The pattern generator" below). You are only ever
-  dealt pieces; blockers exist only in the shell.
+  dealt pieces; blockers exist only in the shell. Level 1's egg is also a
+  **single layer** deep (every other egg is three), so each match digs
+  straight down to the critter -- the gentlest first ball (the casual sim
+  bot wins it every time, up from 67% on a three-layer egg). The level
+  rules carry the depth as `shell_depth`, and the pole caps follow it.
 - **New pieces join by tier.** Beginner levels are the two lines.
   **Intermediate adds the 2x2 O square** (sky blue), and Hard keeps it.
   **Expert adds a five-block plus sign** (strawberry pink) on top, and
@@ -472,7 +476,7 @@ projects cells through the rendered camera:
 Godot.exe --path . res://tests/tap_test.tscn
 ```
 
-The menus' systems (69 checks) and the game screen's flow through them (21
+The menus' systems (70 checks) and the game screen's flow through them (21
 checks), all passing. Neither touches the real save:
 
 ```
@@ -521,7 +525,7 @@ an easy breather after each.
 
 | Tier | Levels | Average casual win rate |
 | --- | --- | --- |
-| Beginner | 11 | 93% |
+| Beginner | 11 | 94% |
 | Intermediate | 28 | 72% |
 | Hard | 19 | 53% |
 | Expert | 6 | 25% |

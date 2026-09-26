@@ -30,7 +30,8 @@ const EGG_TAPER := 0.13
 # top of a fresh shell, a trim ring where it meets the band, and a wall under
 # the trim down to the core, so digging the last row never opens a gap under
 # the cap.
-const CAP_RADIUS := CORE_RADIUS + TSBoard.SHELL_DEPTH * LAYER_H + 0.04
+# The caps stand level with a fresh shell, however deep this ball is (see
+# _cap_radius); they are rebuilt when a ball of another depth is loaded.
 const CAP_TRIM := 0.07      # latitude the trim ring covers, in radians
 
 # One colour per piece, in TSBoard.SHAPES order: soft pastels, kept far enough
@@ -58,6 +59,8 @@ var max_radius := CORE_RADIUS   # outermost occupied layer, used to frame the ca
 var _tile_sets := {}   # tile shape key -> MultiMeshInstance3D
 var _fx_root: Node3D
 var _fx_rng := RandomNumberGenerator.new()
+var _caps: Array = []      # the cap meshes, rebuilt for a ball of another depth
+var _caps_depth := -1
 
 
 func setup(b: TSBoard) -> void:
@@ -67,8 +70,18 @@ func setup(b: TSBoard) -> void:
 	_build_caps()
 
 
-## The caps take the colours of the shell equipped in the Collection.
+func _cap_radius() -> float:
+	return CORE_RADIUS + board.shell_depth * LAYER_H + 0.04
+
+
+## The caps take the colours of the shell equipped in the Collection, and
+## stand level with the top of a fresh shell of this ball's depth.
 func _build_caps() -> void:
+	for mi in _caps:
+		(mi as Node).queue_free()
+	_caps.clear()
+	_caps_depth = board.shell_depth
+	var cap_r := _cap_radius()
 	var shell: Dictionary = TSProfile.SHELLS[clampi(TSProfile.equipped_shell, 0, TSProfile.SHELL_COUNT - 1)]
 	var cap: Color = shell["cap"]
 	var dome_mat := make_material(cap, 1.0)
@@ -80,16 +93,16 @@ func _build_caps() -> void:
 		var edge := LAT_SPAN * s
 		# Dome: from just inside the trim up to the pole.
 		var dome := func(u: float, v: float) -> Vector3:
-			return _sphere_dir(u * TAU, lerpf(edge + CAP_TRIM * 0.5 * s, PI * 0.5 * s, v)) * CAP_RADIUS
+			return _sphere_dir(u * TAU, lerpf(edge + CAP_TRIM * 0.5 * s, PI * 0.5 * s, v)) * cap_r
 		_add_cap_part(dome, outward, 64, 14, dome_mat)
 		# Trim: a ring standing a little proud of the dome, over the band's edge.
 		var trim := func(u: float, v: float) -> Vector3:
-			return _sphere_dir(u * TAU, lerpf(edge - 0.01 * s, edge + CAP_TRIM * s, v)) * (CAP_RADIUS + 0.06)
+			return _sphere_dir(u * TAU, lerpf(edge - 0.01 * s, edge + CAP_TRIM * s, v)) * (cap_r + 0.06)
 		_add_cap_part(trim, outward, 64, 2, trim_mat)
 		# Wall: the band's end face, from the core out to the trim, facing the
 		# equator (where you look from when you dig the last row out).
 		var wall := func(u: float, v: float) -> Vector3:
-			return _sphere_dir(u * TAU, edge) * lerpf(CORE_RADIUS * 0.98, CAP_RADIUS + 0.06, v)
+			return _sphere_dir(u * TAU, edge) * lerpf(CORE_RADIUS * 0.98, cap_r + 0.06, v)
 		var toward_equator := func(p: Vector3) -> Vector3:
 			var theta := atan2(p.x, p.z)
 			return -s * Vector3(-sin(edge) * sin(theta), cos(edge), -sin(edge) * cos(theta))
@@ -152,6 +165,7 @@ func _add_cap_part(point: Callable, facing: Callable, nu: int, nv: int, material
 	mi.mesh = mesh
 	mi.material_override = material
 	add_child(mi)
+	_caps.append(mi)
 
 
 # A hand-drawn material (see TSToon): `glow` makes it shine, and a solid one
@@ -246,12 +260,17 @@ static func _key_sides(key: int) -> Array:
 
 
 # How far down the shell depth `d` is, for the darkening of deeper tiles:
-# 0 at a fresh ball's surface, 1 at the bottom layer.
-static func depth_shade(d: int) -> float:
-	return clampf(float(TSBoard.SHELL_DEPTH - 1 - d) / float(TSBoard.SHELL_DEPTH - 1), 0.0, 1.0)
+# 0 at a fresh ball's surface, 1 at the bottom layer. A one-layer ball is all
+# surface.
+static func depth_shade(d: int, depth: int) -> float:
+	if depth <= 1:
+		return 0.0
+	return clampf(float(depth - 1 - d) / float(depth - 1), 0.0, 1.0)
 
 
 func rebuild() -> void:
+	if board.shell_depth != _caps_depth:
+		_build_caps()
 	var tallest := 1
 	var sets := {}   # tile key -> [[colour, custom], ...]
 
@@ -267,7 +286,7 @@ func rebuild() -> void:
 				var key := tile_key(_same_sides(c, r, d, p))
 				if not sets.has(key):
 					sets[key] = []
-				sets[key].append([TYPE_COLORS[kind], Color(c, r, d, depth_shade(d))])
+				sets[key].append([TYPE_COLORS[kind], Color(c, r, d, depth_shade(d, board.shell_depth))])
 
 	for key in _tile_sets:
 		if not sets.has(key):
