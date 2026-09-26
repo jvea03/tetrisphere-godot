@@ -131,15 +131,23 @@ func _test_collection() -> void:
 	var lvl := TSProfile.collection_level()
 	_check("buying a critter", TSProfile.unlock_critter(5) and TSProfile.is_critter_unlocked(5))
 	_check("levelling it", TSProfile.level_up_critter(5) and TSProfile.critter_level_of(5) == 2)
-	# Ship parts: every one starts broken; coins fix it, then upgrade it.
+	# The camp and the ship: every spot starts broken; the camp comes first.
 	var all_broken := true
 	for p in TSProfile.PART_COUNT:
 		all_broken = all_broken and not TSProfile.is_part_fixed(p)
-	_check("every ship part starts broken", all_broken and TSProfile.parts_fixed() == 0)
+	_check("every camp spot and ship part starts broken", all_broken and TSProfile.parts_fixed() == 0 and TSProfile.PART_COUNT == 15 and TSProfile.camp_spot_count() == 6)
+	_check("the ship waits for the camp: no fixing the engine yet", not TSProfile.is_ship_open() and not TSProfile.improve_part(TSProfile.PART_ENGINE))
 	var coins := TSProfile.coin_count
+	var build_cost := TSProfile.part_next_cost(TSProfile.CAMP_FIRE)
+	_check("building the campfire costs %s" % TSProfile.fmt_coins(build_cost), TSProfile.improve_part(TSProfile.CAMP_FIRE) and TSProfile.part_stage(TSProfile.CAMP_FIRE, 1) == "Little Fire" and TSProfile.coin_count == coins - build_cost)
+	_check("each upgrade costs one more multiple of the first step", TSProfile.part_next_cost(TSProfile.CAMP_FIRE) == build_cost * 2)
+	for p in TSProfile.PART_COUNT:
+		if TSProfile.is_camp(p):
+			while TSProfile.improve_part(p):
+				pass
+	_check("finishing every camp spot (Lv %d) opens the ship" % TSProfile.CAMP_LEVEL_FOR_SHIP, TSProfile.camp_spots_done() == 6 and TSProfile.is_ship_open())
 	var fix_cost := TSProfile.part_next_cost(TSProfile.PART_ENGINE)
-	_check("fixing the engine costs %s and fixes it" % TSProfile.fmt_coins(fix_cost), TSProfile.improve_part(TSProfile.PART_ENGINE) and TSProfile.is_part_fixed(TSProfile.PART_ENGINE) and TSProfile.coin_count == coins - fix_cost and TSProfile.part_stage(TSProfile.PART_ENGINE, 1) == "Running")
-	_check("each upgrade costs one more multiple of the fix", TSProfile.part_next_cost(TSProfile.PART_ENGINE) == fix_cost * 2)
+	_check("then the engine can be fixed, for %s" % TSProfile.fmt_coins(fix_cost), TSProfile.improve_part(TSProfile.PART_ENGINE) and TSProfile.part_stage(TSProfile.PART_ENGINE, 1) == "Running")
 	while TSProfile.improve_part(TSProfile.PART_ENGINE):
 		pass
 	_check("a part tops out at level %d (%s)" % [TSProfile.PART_MAX_LEVEL, TSProfile.part_stage(TSProfile.PART_ENGINE, TSProfile.PART_MAX_LEVEL)], TSProfile.part_level_of(TSProfile.PART_ENGINE) == TSProfile.PART_MAX_LEVEL and TSProfile.is_part_max_level(TSProfile.PART_ENGINE))

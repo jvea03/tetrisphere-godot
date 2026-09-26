@@ -73,7 +73,7 @@ art drawn in code (`scripts/ui/icon.gd`) -- none of Duckdoku's art is copied.
 | Duckdoku | Tetrisphere |
 | --- | --- |
 | Ducks (the collection) | **Critters** -- the little creatures sealed in the egg. The one you pick is the one in the egg, in its colour |
-| Ships | **Ship parts** -- the crashed spaceship's six parts, broken until you fix them, then upgraded; every step shows on the ship at Home |
+| Ships | **The crash site** -- a camp to build (6 spots) and then the crashed spaceship to fix (9 parts); each is upgraded after, and every step shows at Home |
 | Anchors (1 per life left) | **Stars** (1 per heart left, +2 for a first try) |
 | Crews / Teams | **Clubs** (Leader, Officer, Member) |
 | 7 Day Quest Voyage | **7-Day Egg Hunt** |
@@ -87,7 +87,7 @@ Egg Hunt and any running sale, the chest tray, the level plate and PLAY) with
 its pop-ups -- Settings, Profile, chest opening, finish-a-chest-now, pop-up sales, leaderboard results, and
 the Home and Daily Egg walkthroughs; **Battle Pass** (30 tiers of free and
 premium rewards, buy a tier for coins, Daily/Weekly quests, buy-pass pop-up);
-**Collection** (critters to buy and upgrade to Lv 10, ship parts to fix and upgrade to Lv 4, titles
+**Collection** (critters to buy and upgrade to Lv 10; the camp to build and the ship to fix, each up to Lv 4, the ship once the camp is done; titles
 and stars, rarity, collection level, the first-visit walkthrough with its
 coin gift); **Shop** (weekly featured sale, No Ads pass, bundles, bomb, Swap and Rocks packs,
 coin packs with a free daily pack); **Leaderboard** (Daily / Weekly /
@@ -102,15 +102,26 @@ Ranks, Clubs) slides between the tab screens.
 
 **The crash site.** Behind all of Home is a little planet in three-quarter
 view, a world about 3.6 screens wide (`scripts/ui/ship_scene.gd`). A
-spaceship has crash-landed nose-first in a heap of dirt. Its six parts -- engine, hull, cockpit, antenna, fins and
-portholes -- look however far you have got with them in the Collection:
-broken (a smoking engine, a scorched and plastered hull, cracked glass, a
-bent antenna and fin, smashed and boarded portholes), fixed, or upgraded
-through three stages each up to rainbow thrusters, gold trim, a headlamp,
-a glowing orb, golden fins and lit, curtained windows with gold rims (see
-`TSProfile.PARTS` for every stage). Drag any empty part of Home to look
-around (it glides after a
-flick); the menus stay put and keep their own touches. Every critter you own
+spaceship has crash-landed nose-first in a heap of dirt, and the critters
+have made camp around it. Everything there looks however far you have got
+with it in the Collection, where **the camp comes first**: its six spots --
+campfire, tent, workbench, garden, well and lookout -- start as makings
+(cold ashes, a torn tarp, loose planks, bare dirt, a pile of stones, a pile
+of logs), are built, then upgraded three times, up to a bonfire with a
+cooking pot, a cabin tent with string lights, a workbench under a striped
+awning, a garden of pumpkins with a sunflower, a roofed well with flower
+boxes and a flagged lookout tower. Once every camp spot is fully upgraded
+(`TSProfile.CAMP_LEVEL_FOR_SHIP`), the ship's nine parts open -- engine,
+hull, cockpit, antenna, fins, portholes, nose cone, landing legs and solar
+panels -- broken until fixed (a smoking engine, a scorched hull, cracked
+glass, a bent antenna and fin, boarded portholes, the nose buried in dirt,
+a snapped leg, shattered panels), then upgraded three times, up to rainbow
+thrusters, gold trim, a headlamp, a glowing orb, golden fins, curtained
+windows with gold rims, a golden nose tip, sprung golden legs and
+sun-tracking golden solar panels (see `TSProfile.PARTS` for every stage).
+Camp spots are cheaper than ship parts. Drag any empty part of Home to look
+around (it glides after a flick); the menus stay put and keep their own
+touches. Every critter you own
 is out there at work, the avatar first, each taking the next of 24 jobs,
 spread over little neighbourhoods round the crash -- the ship itself, a pond
 to the west, a camp and a stargazer to the east, a crater field to the south:
@@ -509,7 +520,7 @@ projects cells through the rendered camera:
 Godot.exe --path . res://tests/tap_test.tscn
 ```
 
-The menus' systems (72 checks) and the game screen's flow through them (28
+The menus' systems (79 checks) and the game screen's flow through them (28
 checks), all passing. Neither touches the real save:
 
 ```

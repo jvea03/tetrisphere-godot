@@ -313,30 +313,56 @@ static var critter_level: Array = [] # 0 while locked, 1..CRITTER_MAX_LEVEL once
 ## Collection: their tiles wear a "NEW" badge.
 static var new_critters: Array = []
 
-# -- ship parts (Collection's second tab) ---------------------------------------
-# The crashed spaceship on Home is made of these parts. Each starts broken
-# (level 0); coins fix it (level 1), then upgrade it up to PART_MAX_LEVEL.
-# Every stage shows on the ship (TSShipScene) -- a smoking engine, a bent
-# antenna, cracked glass -- and every level counts toward the collection
-# level. `stages` names what each level looks like, broken first.
+# -- the camp and the ship (Collection's Camp and Ship tabs) ----------------------
+# The crash site on Home: a camp the critters live in, and the crashed
+# spaceship. Every spot starts broken (level 0); coins build or fix it (level
+# 1), then upgrade it up to PART_MAX_LEVEL, and every stage shows at the crash
+# site (TSShipScene) -- cold ashes to a bonfire, a smoking engine to rainbow
+# thrusters. The camp comes first: the ship can't be touched until every camp
+# spot reaches CAMP_LEVEL_FOR_SHIP. Every level counts toward the collection
+# level. `stages` names what each level looks like, broken first; `fix` is the
+# price of the first step, and each upgrade after costs one more multiple of
+# it. Camp spots are cheaper than ship parts.
 const PARTS := [
-	{"name": "Engine", "fix": 1500, "stages": ["Smoking Wreck", "Running", "Chrome Nozzle", "Twin Boosters", "Rainbow Thrusters"]},
-	{"name": "Hull", "fix": 2000, "stages": ["Dented & Scorched", "Patched Up", "Racing Stripe", "Star Decals", "Gold Trim"]},
-	{"name": "Cockpit", "fix": 2500, "stages": ["Cracked Glass", "New Glass", "Tinted Glass", "Headlamp", "Golden Frame"]},
-	{"name": "Antenna", "fix": 1000, "stages": ["Bent", "Straightened", "Satellite Dish", "Twin Antennas", "Glowing Orb"]},
-	{"name": "Fins", "fix": 3000, "stages": ["Bent", "Straightened", "Striped Fins", "Fin Lights", "Golden Fins"]},
-	{"name": "Portholes", "fix": 3500, "stages": ["Smashed", "New Glass", "Lit Windows", "Curtains", "Golden Rims"]},
+	# the camp
+	{"name": "Campfire", "group": "camp", "fix": 250, "stages": ["Cold Ashes", "Little Fire", "Stone Ring", "Cooking Pot", "Bonfire"]},
+	{"name": "Tent", "group": "camp", "fix": 350, "stages": ["Torn Tarp", "Pitched", "Flag", "String Lights", "Cabin Tent"]},
+	{"name": "Workbench", "group": "camp", "fix": 450, "stages": ["Loose Planks", "Workbench", "Tool Rack", "Lamp", "Striped Awning"]},
+	{"name": "Garden", "group": "camp", "fix": 550, "stages": ["Bare Dirt", "Sprouts", "Flowers", "Carrots", "Pumpkins"]},
+	{"name": "Well", "group": "camp", "fix": 650, "stages": ["Pile of Stones", "Stone Well", "Roof & Bucket", "Working Crank", "Flower Boxes"]},
+	{"name": "Lookout", "group": "camp", "fix": 750, "stages": ["Pile of Logs", "Platform", "Ladder & Rail", "Roof", "Flag"]},
+	# the ship
+	{"name": "Engine", "group": "ship", "fix": 1500, "stages": ["Smoking Wreck", "Running", "Chrome Nozzle", "Twin Boosters", "Rainbow Thrusters"]},
+	{"name": "Hull", "group": "ship", "fix": 2000, "stages": ["Dented & Scorched", "Patched Up", "Racing Stripe", "Star Decals", "Gold Trim"]},
+	{"name": "Cockpit", "group": "ship", "fix": 2500, "stages": ["Cracked Glass", "New Glass", "Tinted Glass", "Headlamp", "Golden Frame"]},
+	{"name": "Antenna", "group": "ship", "fix": 1000, "stages": ["Bent", "Straightened", "Satellite Dish", "Twin Antennas", "Glowing Orb"]},
+	{"name": "Fins", "group": "ship", "fix": 3000, "stages": ["Bent", "Straightened", "Striped Fins", "Fin Lights", "Golden Fins"]},
+	{"name": "Portholes", "group": "ship", "fix": 3500, "stages": ["Smashed", "New Glass", "Lit Windows", "Curtains", "Golden Rims"]},
+	{"name": "Nose Cone", "group": "ship", "fix": 2000, "stages": ["Buried", "Dug Out", "Racing Tip", "Nose Light", "Golden Tip"]},
+	{"name": "Landing Legs", "group": "ship", "fix": 2500, "stages": ["Snapped", "Standing", "Springs", "Foot Lights", "Golden Legs"]},
+	{"name": "Solar Panels", "group": "ship", "fix": 3000, "stages": ["Shattered", "One Panel", "Two Panels", "Sun Tracking", "Golden Frames"]},
 ]
-const PART_COUNT := 6
-const PART_ENGINE := 0
-const PART_HULL := 1
-const PART_COCKPIT := 2
-const PART_ANTENNA := 3
-const PART_FINS := 4
-const PART_PORTHOLES := 5
-const PART_MAX_LEVEL := 4        # fixed (1), then three upgrades
+const PART_COUNT := 15
+const CAMP_FIRE := 0
+const CAMP_TENT := 1
+const CAMP_BENCH := 2
+const CAMP_GARDEN := 3
+const CAMP_WELL := 4
+const CAMP_LOOKOUT := 5
+const PART_ENGINE := 6
+const PART_HULL := 7
+const PART_COCKPIT := 8
+const PART_ANTENNA := 9
+const PART_FINS := 10
+const PART_PORTHOLES := 11
+const PART_NOSE := 12
+const PART_LEGS := 13
+const PART_SOLAR := 14
+const PART_MAX_LEVEL := 4        # built / fixed (1), then three upgrades
+## How far every camp spot must be upgraded before the ship can be worked on.
+const CAMP_LEVEL_FOR_SHIP := PART_MAX_LEVEL
 
-static var part_level: Array = []   # per part: 0 broken, 1 fixed, 2+ upgraded
+static var part_level: Array = []   # per part: 0 broken, 1 built / fixed, 2+ upgraded
 
 ## The egg's colours in play, and a palette of egg paints the menus draw for
 ## decoration (a golden egg on a sale, one per Egg Hunt day). Not collectible.
@@ -491,9 +517,42 @@ static func part_next_cost(i: int) -> int:
 	return int(PARTS[i]["fix"]) * (part_level_of(i) + 1)
 
 
-## Fixes a broken part, or upgrades a fixed one, for coins.
+## A camp spot, or a part of the ship.
+static func is_camp(i: int) -> bool:
+	return str(PARTS[i]["group"]) == "camp"
+
+
+## How many camp spots have reached CAMP_LEVEL_FOR_SHIP.
+static func camp_spots_done() -> int:
+	var n := 0
+	for i in PART_COUNT:
+		if is_camp(i) and part_level_of(i) >= CAMP_LEVEL_FOR_SHIP:
+			n += 1
+	return n
+
+
+static func camp_spot_count() -> int:
+	var n := 0
+	for i in PART_COUNT:
+		if is_camp(i):
+			n += 1
+	return n
+
+
+## The camp comes first: the ship opens once every camp spot is done.
+static func is_ship_open() -> bool:
+	return camp_spots_done() == camp_spot_count()
+
+
+## Whether a part can be worked on yet: camp spots always, ship parts once
+## the camp is done.
+static func is_part_available(i: int) -> bool:
+	return is_camp(i) or is_ship_open()
+
+
+## Builds or fixes a broken part, or upgrades one, for coins.
 static func improve_part(i: int) -> bool:
-	if i < 0 or i >= PART_COUNT or is_part_max_level(i):
+	if i < 0 or i >= PART_COUNT or is_part_max_level(i) or not is_part_available(i):
 		return false
 	var cost := part_next_cost(i)
 	if coin_count < cost:
@@ -506,7 +565,8 @@ static func improve_part(i: int) -> bool:
 	return true
 
 
-## Fixes or upgrades a part for free (a pass reward). False if it is maxed.
+## Builds, fixes or upgrades a part for free (a pass reward) -- a gift, even
+## before the ship opens. False if it is maxed.
 static func grant_part_level(i: int) -> bool:
 	if i < 0 or i >= PART_COUNT or is_part_max_level(i):
 		return false
@@ -1758,7 +1818,7 @@ static func ensure_loaded() -> void:
 	haptics_enabled = bool(g.call("haptics_enabled", true))
 	var cu: Array = g.call("critter_unlocked", [])
 	var cl: Array = g.call("critter_level", [])
-	var pl: Array = g.call("part_level", [])
+	var pl: Array = g.call("camp_and_ship", [])   # the camp-first list (an older ship-only one is ignored)
 	_blank_collection()
 	for i in CRITTER_COUNT:
 		if i < cu.size():
@@ -1851,7 +1911,7 @@ static func save() -> void:
 	s.call("critter_unlocked", critter_unlocked)
 	s.call("critter_level", critter_level)
 	s.call("new_critters", new_critters)
-	s.call("part_level", part_level)
+	s.call("camp_and_ship", part_level)
 	s.call("has_club", has_club)
 	s.call("club_name", club_name)
 	s.call("club_is_owner", club_is_owner)

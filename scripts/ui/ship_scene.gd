@@ -66,6 +66,13 @@ const POND := Vector2(560.0, 1000.0)
 const MOUND := SHIP_AT + Vector2(195.0, 62.0)
 const FIRE := Vector2(2060.0, 1060.0)
 const CRATER := Vector2(1250.0, 1500.0)
+# The camp spots (TSProfile.PARTS) round the crash, and the solar panels' stand.
+const TENT := Vector2(2260.0, 960.0)
+const BENCH := Vector2(1860.0, 1120.0)
+const GARDEN := Vector2(2340.0, 1300.0)
+const WELL := Vector2(300.0, 1010.0)
+const LOOKOUT := Vector2(2480.0, 640.0)
+const SOLAR := Vector2(470.0, 700.0)
 
 ## The jobs, in the order critters take them.
 const JOBS := [
@@ -98,7 +105,6 @@ var _painters: Array = []       # layers that redraw every frame
 var _ship_layer: Control
 var _props_layer: Control       # over the ship: the heap, ladder and flag
 var _glass_layer: Control       # the dome glass and porthole rims, over the crew inside
-var _fire_layer: Control
 var _lip_layer: Control         # the crater's front lip
 var _overlay: Control           # tools, lines, smoke: over everything
 var _crew: Array = []           # {icon, job, size, phase, centre, feet}
@@ -147,12 +153,25 @@ func _ready() -> void:
 		var entry := {"icon": icon, "job": job, "size": s, "phase": float(i) * 1.7, "centre": Vector2.ZERO, "feet": feet}
 		_crew.append(entry)
 		_jobs[job] = entry
-	if _jobs.has("campfire"):
-		_fire_layer = _layer(_draw_fire, FIRE.y)
+	# The camp spots and the solar panels, each sorted in where it stands.
+	for spot in [[_draw_campfire, FIRE], [_draw_tent, TENT], [_draw_bench, BENCH], [_draw_garden, GARDEN], [_draw_well, WELL], [_draw_lookout, LOOKOUT], [_draw_solar, SOLAR]]:
+		_spot_layer(spot[0], (spot[1] as Vector2).y)
 	if _jobs.has("crater"):
 		_lip_layer = _layer(_draw_crater_lip, CRATER.y + 1.0)
 	_home_view()
 	_process(0.0)
+
+
+## A layer whose painter draws on it (it is passed the layer).
+func _spot_layer(painter: Callable, depth: float) -> Control:
+	var c := Control.new()
+	c.size = Vector2(W, H)
+	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	c.draw.connect(painter.bind(c))
+	c.set_meta("depth", depth)
+	_world.add_child(c)
+	_painters.append(c)
+	return c
 
 
 func _layer(painter: Callable, depth: float) -> Control:
@@ -173,7 +192,7 @@ func _make_scenery() -> void:
 		var p := Vector2(rng.randf_range(10.0, W - 10.0), rng.randf_range(10.0, 300.0))
 		if p.y < _horizon(p.x) - 24.0 and p.distance_to(PLANET) > 110.0 and p.distance_to(MOON) > 60.0:
 			_stars.append([p, rng.randf_range(3.0, 8.0), rng.randf() * TAU])
-	var keep_clear := [SHIP_AT, POND, MOUND, FIRE, CRATER, Vector2(1250, 930), CHASE]
+	var keep_clear := [SHIP_AT, POND, MOUND, FIRE, CRATER, Vector2(1250, 930), CHASE, TENT, BENCH, GARDEN, WELL, LOOKOUT, SOLAR]
 	while _scatter.size() < 110:
 		var p := Vector2(rng.randf_range(20.0, W - 20.0), rng.randf_range(_horizon(W * 0.5) + 30.0, H - 20.0))
 		if p.y < _horizon(p.x) + 20.0:
@@ -486,6 +505,27 @@ func _draw_ground() -> void:
 
 func _draw_ship() -> void:
 	var ci := _ship_layer
+	# Landing legs, behind the hull: standing once fixed, with springs, foot
+	# lights and gold as they are upgraded. (Snapped, one lies in the dirt;
+	# see _draw_ship_props.)
+	var legs := _lv(TSProfile.PART_LEGS)
+	if legs >= 1:
+		var leg_col := GOLD if legs >= 4 else CHROME
+		for hip in [Vector2(210.0, 250.0), Vector2(330.0, 254.0)]:
+			var top: Vector2 = _xf * (hip as Vector2)
+			var foot := Vector2(top.x - 14.0, SHIP_DEPTH + 26.0)
+			ci.draw_line(top, foot, INK, 12.0, true)
+			ci.draw_line(top, foot, leg_col, 7.0, true)
+			if legs >= 2:
+				var coil := PackedVector2Array()
+				for n in 9:
+					var u := 0.25 + 0.3 * float(n) / 8.0
+					coil.append(top.lerp(foot, u) + Vector2(9.0 if n % 2 == 0 else -9.0, 0.0))
+				ci.draw_polyline(coil, INK, 3.0, true)
+			_ellipse(ci, foot, 22.0, 7.0, leg_col)
+			if legs >= 3:
+				var on := fposmod(_t + hip.x * 0.01, 1.0) < 0.5
+				ci.draw_circle(foot + Vector2(0, -6), 5.0, Color(0.6, 1.0, 0.6) if on else Color(0.4, 0.5, 0.4), true, -1.0, true)
 	ci.draw_set_transform_matrix(_xf)
 	var engine := _lv(TSProfile.PART_ENGINE)
 	var fins := _lv(TSProfile.PART_FINS)
@@ -583,6 +623,18 @@ func _draw_ship() -> void:
 			ci.draw_colored_polygon(band, Color(1.0, 0.86, 0.72))
 			band.append(band[0])
 			ci.draw_polyline(band, INK, 3.0, true)
+	# The nose cone, once dug out: painted, then a racing stripe, a blinking
+	# nose light and a gold tip.
+	var nose := _lv(TSProfile.PART_NOSE)
+	if nose >= 1:
+		var cone := [Vector2(438, 150), Vector2(466, 166), Vector2(486, 200), Vector2(466, 234), Vector2(438, 250)]
+		_blob(ci, cone, GOLD if nose >= 4 else _trim)
+		if nose >= 2:
+			ci.draw_line(Vector2(452, 158), Vector2(452, 242), ACCENT, 7.0, true)
+		if nose >= 3:
+			var on := fposmod(_t, 1.0) < 0.5
+			ci.draw_circle(Vector2(482, 200), 8.0, INK, true, -1.0, true)
+			ci.draw_circle(Vector2(482, 200), 5.5, Color(1.0, 0.45, 0.55) if on else Color(0.6, 0.4, 0.45), true, -1.0, true)
 	# Deck hatch, open.
 	ci.draw_rect(Rect2(HATCH + Vector2(-16, -6), Vector2(32, 8)), INK)
 	ci.draw_line(HATCH + Vector2(16, -2), HATCH + Vector2(30, -20), _trim, 7.0, true)
@@ -598,14 +650,25 @@ func _draw_ship() -> void:
 # claimed flag.
 func _draw_ship_props() -> void:
 	var ci := _props_layer
+	# The heap the nose ploughed into: half of it dug away once the nose cone
+	# is fixed.
+	var dug := 0.55 if _lv(TSProfile.PART_NOSE) >= 1 else 1.0
 	var heap := PackedVector2Array()
 	for k in 19:
 		var a := PI + PI * float(k) / 18.0
-		heap.append(MOUND + Vector2(cos(a) * 80.0, sin(a) * 36.0 + 10.0))
+		heap.append(MOUND + Vector2(20.0 * (1.0 - dug), 0.0) + Vector2(cos(a) * 80.0, sin(a) * 36.0 * dug + 10.0))
 	ci.draw_colored_polygon(heap, DIRT)
 	ci.draw_polyline(heap, INK, 5.0, true)
 	for clod in [Vector2(-40, -6), Vector2(16, -20), Vector2(46, 0)]:
-		ci.draw_circle(MOUND + clod, 6.0, DIRT.darkened(0.2), true, -1.0, true)
+		ci.draw_circle(MOUND + Vector2(clod.x, clod.y * dug), 6.0, DIRT.darkened(0.2), true, -1.0, true)
+	if _lv(TSProfile.PART_LEGS) == 0:
+		# A snapped landing leg in the dirt beside the ship.
+		var leg := SHIP_AT + Vector2(-120.0, 100.0)
+		ci.draw_line(leg, leg + Vector2(-70, -10), INK, 11.0, true)
+		ci.draw_line(leg, leg + Vector2(-70, -10), Color(0.7, 0.7, 0.76), 6.0, true)
+		ci.draw_line(leg + Vector2(12, 4), leg + Vector2(60, 16), INK, 11.0, true)
+		ci.draw_line(leg + Vector2(12, 4), leg + Vector2(60, 16), Color(0.7, 0.7, 0.76), 6.0, true)
+		_ellipse(ci, leg + Vector2(66, 18), 18.0, 6.0, Color(0.7, 0.7, 0.76))
 	if _jobs.has("mechanic"):
 		var top := _mechanic_spot() + Vector2(0.0, 28.0)
 		var foot := Vector2(top.x - 18.0, SHIP_DEPTH + 45.0)
@@ -678,17 +741,275 @@ func _draw_ship_glass() -> void:
 	ci.draw_set_transform_matrix(Transform2D())
 
 
-func _draw_fire() -> void:
-	var ci := _fire_layer
-	_ellipse(ci, FIRE + Vector2(0, 8), 44.0, 10.0, SHADOW, false)
+# -- the camp (TSProfile.PARTS' camp spots) and the ground-side ship parts ----------
+# Each spot is drawn at its level: 0 is a wreck or a heap of makings, 1 built,
+# and each upgrade adds something. `ci` is the spot's own layer, sorted into
+# the scene by how far back it stands.
+
+func _draw_campfire(ci: Control) -> void:
+	var lv := _lv(TSProfile.CAMP_FIRE)
+	var k := _depth_scale(FIRE.y)
+	_ellipse(ci, FIRE + Vector2(0, 8) * k, 50.0 * k, 12.0 * k, SHADOW, false)
+	if lv >= 2:
+		for n in 8:
+			var a := TAU * float(n) / 8.0
+			_ellipse(ci, FIRE + Vector2(cos(a) * 44.0, sin(a) * 12.0 + 6.0) * k, 11.0 * k, 7.0 * k, Color(0.74, 0.72, 0.78))
 	for turn in [0.4, -0.4]:
-		ci.draw_line(FIRE + Vector2(-26, 6).rotated(turn), FIRE + Vector2(26, 6).rotated(turn), WOOD, 10.0, true)
-	var flick := 1.0 + 0.15 * sin(_t * 17.0)
-	_blob(ci, [FIRE + Vector2(-20, 0), FIRE + Vector2(0, -50.0 * flick), FIRE + Vector2(20, 0)], Color(1.0, 0.55, 0.3))
-	_blob(ci, [FIRE + Vector2(-10, 0), FIRE + Vector2(0, -26.0 * flick), FIRE + Vector2(10, 0)], BUTTER, false)
+		ci.draw_line(FIRE + Vector2(-26, 6).rotated(turn) * k, FIRE + Vector2(26, 6).rotated(turn) * k, WOOD.darkened(0.45) if lv == 0 else WOOD, 10.0 * k, true)
+	if lv == 0:
+		_ellipse(ci, FIRE + Vector2(0, 4) * k, 24.0 * k, 7.0 * k, Color(0.7, 0.68, 0.72), false)
+		var age := fposmod(_t * 0.25, 1.0)
+		ci.draw_circle(FIRE + Vector2(sin(age * 6.0) * 8.0, -20.0 - age * 70.0) * k, (6.0 + age * 12.0) * k, Color(0.66, 0.64, 0.7, (1.0 - age) * 0.5), true, -1.0, true)
+		return
+	var big := 1.6 if lv >= 4 else 1.0
+	var flick := (1.0 + 0.15 * sin(_t * 17.0)) * big
+	_blob(ci, [FIRE + Vector2(-20 * big, 0) * k, FIRE + Vector2(0, -50.0 * flick) * k, FIRE + Vector2(20 * big, 0) * k], Color(1.0, 0.55, 0.3))
+	_blob(ci, [FIRE + Vector2(-10 * big, 0) * k, FIRE + Vector2(0, -26.0 * flick) * k, FIRE + Vector2(10 * big, 0) * k], BUTTER, false)
+	if lv >= 3:
+		# A pot on a tripod, bubbling.
+		for leg in [-1.0, 1.0]:
+			ci.draw_line(FIRE + Vector2(leg * 40.0, 8.0) * k, FIRE + Vector2(0, -70.0) * k, INK, 4.0 * k, true)
+		var pot := FIRE + Vector2(0, -44.0) * k
+		ci.draw_line(FIRE + Vector2(0, -70.0) * k, pot + Vector2(0, -12.0) * k, INK, 2.0 * k, true)
+		_blob(ci, [pot + Vector2(-18, -10) * k, pot + Vector2(18, -10) * k, pot + Vector2(14, 12) * k, pot + Vector2(-14, 12) * k], Color(0.42, 0.4, 0.5))
+		for n in 3:
+			var age := fposmod(_t * 0.6 + float(n) / 3.0, 1.0)
+			ci.draw_arc(pot + Vector2(-8.0 + n * 8.0, -16.0 - age * 30.0) * k, (3.0 + age * 4.0) * k, 0.0, TAU, 10, Color(1, 1, 1, 1.0 - age), 2.0, true)
+	if lv >= 4:
+		for n in 4:
+			var age := fposmod(_t * 0.7 + float(n) / 4.0, 1.0)
+			_sparkle(ci, FIRE + Vector2(sin(age * 9.0 + n) * 20.0, -60.0 - age * 90.0) * k, 5.0 * k * (1.0 - age), Color(1.0, 0.7, 0.3))
 
 
-# The crater's front lip, over the critter popping out of it.
+func _draw_tent(ci: Control) -> void:
+	var lv := _lv(TSProfile.CAMP_TENT)
+	var k := _depth_scale(TENT.y)
+	var w := (100.0 if lv >= 4 else 80.0) * k
+	var h := (130.0 if lv >= 4 else 110.0) * k
+	_ellipse(ci, TENT + Vector2(0, 6) * k, w * 1.15, 16.0 * k, SHADOW, false)
+	if lv == 0:
+		ci.draw_line(TENT + Vector2(-50, 0) * k, TENT + Vector2(-40, -44) * k, WOOD, 5.0 * k, true)
+		_blob(ci, [TENT + Vector2(-90, 4) * k, TENT + Vector2(-40, -40) * k, TENT + Vector2(30, -14) * k, TENT + Vector2(90, 6) * k], Color(0.84, 0.72, 0.76))
+		ci.draw_line(TENT + Vector2(-20, -20) * k, TENT + Vector2(10, -4) * k, INK, 2.0, true)
+		return
+	var canvas := Color(1.0, 0.62, 0.74)
+	_blob(ci, [TENT + Vector2(-w, 0), TENT + Vector2(0, -h), TENT + Vector2(w, 0)], canvas)
+	_blob(ci, [TENT + Vector2(-22, 0) * k, TENT + Vector2(0, -h * 0.55), TENT + Vector2(22, 0) * k], Color(0.5, 0.3, 0.34) if lv < 4 else Color(1.0, 0.86, 0.5))
+	if lv >= 2:
+		var top := TENT + Vector2(0, -h)
+		ci.draw_line(top, top + Vector2(0, -44) * k, INK, 4.0 * k, true)
+		var cloth := PackedVector2Array()
+		for n in 5:
+			var u := float(n) / 4.0
+			cloth.append(top + Vector2(u * 34.0, -44.0 + sin(u * 5.0 - _t * 6.0) * 3.0 * u) * k)
+		for n in range(4, -1, -1):
+			var u := float(n) / 4.0
+			cloth.append(top + Vector2(u * 34.0, -26.0 + sin(u * 5.0 - _t * 6.0) * 3.0 * u) * k)
+		ci.draw_colored_polygon(cloth, ACCENT)
+		ci.draw_polyline(cloth, INK, 2.5, true)
+	if lv >= 3:
+		var bulbs := [Color(1.0, 0.86, 0.4), Color(0.62, 0.8, 1.0), Color(1.0, 0.62, 0.74), Color(0.62, 0.9, 0.66)]
+		for side in [-1.0, 1.0]:
+			for n in 5:
+				var u := (float(n) + 0.5) / 5.0
+				var p := TENT + Vector2(side * w * (1.0 - u), -h * u)
+				var on := fposmod(_t * 2.0 + n + side, 2.0) < 1.4
+				ci.draw_circle(p, 5.0 * k, bulbs[n % 4] if on else bulbs[n % 4].darkened(0.4), true, -1.0, true)
+	if lv >= 4:
+		# A lantern by the door, glowing.
+		var lamp := TENT + Vector2(-w - 16.0 * k, -40.0 * k)
+		ci.draw_line(lamp + Vector2(0, 40) * k, lamp, WOOD, 4.0 * k, true)
+		ci.draw_circle(lamp, 16.0 * k, Color(1.0, 0.9, 0.5, 0.3 + 0.1 * sin(_t * 3.0)), true, -1.0, true)
+		ci.draw_circle(lamp, 7.0 * k, BUTTER, true, -1.0, true)
+
+
+func _draw_bench(ci: Control) -> void:
+	var lv := _lv(TSProfile.CAMP_BENCH)
+	var k := _depth_scale(BENCH.y)
+	var plank := Color(0.78, 0.56, 0.38)
+	_ellipse(ci, BENCH + Vector2(0, 6) * k, 90.0 * k, 14.0 * k, SHADOW, false)
+	if lv == 0:
+		for n in 3:
+			var at := BENCH + Vector2(-60.0 + n * 30.0, -4.0 - n * 6.0) * k
+			var pts: Array = []
+			for c in [Vector2(-40, -6), Vector2(40, -6), Vector2(40, 6), Vector2(-40, 6)]:
+				pts.append(at + (c as Vector2).rotated(-0.3 + n * 0.3) * k)
+			_blob(ci, pts, plank.darkened(0.15))
+		return
+	if lv >= 4:
+		# A striped awning over it all.
+		for x in [-80.0, 80.0]:
+			ci.draw_line(BENCH + Vector2(x, 0) * k, BENCH + Vector2(x, -130) * k, WOOD, 5.0 * k, true)
+		for n in 6:
+			var x0 := -90.0 + n * 30.0
+			_blob(ci, [BENCH + Vector2(x0, -140) * k, BENCH + Vector2(x0 + 30, -140) * k, BENCH + Vector2(x0 + 30, -118) * k, BENCH + Vector2(x0 + 15, -110) * k, BENCH + Vector2(x0, -118) * k], Color(1.0, 0.62, 0.74) if n % 2 == 0 else Color.WHITE)
+	if lv >= 2:
+		# A tool rack behind: a wrench and a hammer.
+		_blob(ci, [BENCH + Vector2(-60, -110) * k, BENCH + Vector2(60, -110) * k, BENCH + Vector2(60, -62) * k, BENCH + Vector2(-60, -62) * k], plank.darkened(0.2))
+		ci.draw_line(BENCH + Vector2(-30, -100) * k, BENCH + Vector2(-30, -70) * k, CHROME, 6.0 * k, true)
+		ci.draw_line(BENCH + Vector2(20, -100) * k, BENCH + Vector2(20, -72) * k, WOOD, 5.0 * k, true)
+		ci.draw_line(BENCH + Vector2(8, -100) * k, BENCH + Vector2(32, -100) * k, Color(0.5, 0.5, 0.56), 8.0 * k, true)
+	for x in [-56.0, 56.0]:
+		ci.draw_line(BENCH + Vector2(x, 0) * k, BENCH + Vector2(x, -48) * k, INK, 9.0 * k, true)
+		ci.draw_line(BENCH + Vector2(x, 0) * k, BENCH + Vector2(x, -48) * k, plank, 5.0 * k, true)
+	_blob(ci, [BENCH + Vector2(-72, -60) * k, BENCH + Vector2(72, -60) * k, BENCH + Vector2(72, -46) * k, BENCH + Vector2(-72, -46) * k], plank)
+	if lv >= 3:
+		var lamp := BENCH + Vector2(46, -76) * k
+		ci.draw_circle(lamp, 22.0 * k, Color(1.0, 0.9, 0.5, 0.25 + 0.1 * sin(_t * 2.5)), true, -1.0, true)
+		ci.draw_line(BENCH + Vector2(46, -60) * k, lamp, INK, 3.0 * k, true)
+		ci.draw_circle(lamp, 8.0 * k, BUTTER, true, -1.0, true)
+
+
+func _draw_garden(ci: Control) -> void:
+	var lv := _lv(TSProfile.CAMP_GARDEN)
+	var k := _depth_scale(GARDEN.y)
+	_ellipse(ci, GARDEN, 110.0 * k, 36.0 * k, Color(0.66, 0.5, 0.38))
+	if lv == 0:
+		return
+	for row in 3:
+		for n in 5:
+			var p := GARDEN + Vector2(-72.0 + n * 36.0 + row * 6.0, -18.0 + row * 16.0) * k
+			var sway := sin(_t * 1.5 + n + row) * 2.0
+			ci.draw_line(p, p + Vector2(sway, -16) * k, Color(0.36, 0.62, 0.44), 3.0 * k, true)
+			_ellipse(ci, p + Vector2(sway - 5, -16) * k, 6.0 * k, 3.0 * k, Color(0.56, 0.86, 0.5), false)
+			_ellipse(ci, p + Vector2(sway + 5, -16) * k, 6.0 * k, 3.0 * k, Color(0.56, 0.86, 0.5), false)
+			var kind := (n + row) % 3
+			if lv >= 2 and kind == 0:
+				ci.draw_circle(p + Vector2(sway, -22) * k, 6.0 * k, [Color(1.0, 0.62, 0.74), BUTTER][n % 2], true, -1.0, true)
+			if lv >= 3 and kind == 1:
+				_blob(ci, [p + Vector2(-5, -2) * k, p + Vector2(5, -2) * k, p + Vector2(0, 10) * k], Color(1.0, 0.6, 0.3), false)
+	if lv >= 4:
+		for p in [GARDEN + Vector2(-100, 20) * k, GARDEN + Vector2(96, 16) * k]:
+			_ellipse(ci, p, 22.0 * k, 16.0 * k, Color(1.0, 0.6, 0.3))
+			ci.draw_line(p + Vector2(0, -16) * k, p + Vector2(4, -24) * k, Color(0.36, 0.62, 0.44), 4.0 * k, true)
+		var stem := GARDEN + Vector2(0, -20) * k
+		ci.draw_line(stem, stem + Vector2(0, -90) * k, Color(0.36, 0.62, 0.44), 5.0 * k, true)
+		for n in 10:
+			var a := TAU * float(n) / 10.0 + _t * 0.2
+			ci.draw_circle(stem + Vector2(0, -90) * k + Vector2(cos(a), sin(a)) * 16.0 * k, 8.0 * k, BUTTER, true, -1.0, true)
+		ci.draw_circle(stem + Vector2(0, -90) * k, 10.0 * k, Color(0.5, 0.34, 0.24), true, -1.0, true)
+
+
+func _draw_well(ci: Control) -> void:
+	var lv := _lv(TSProfile.CAMP_WELL)
+	var k := _depth_scale(WELL.y)
+	var stone := Color(0.74, 0.72, 0.78)
+	_ellipse(ci, WELL + Vector2(0, 6) * k, 70.0 * k, 14.0 * k, SHADOW, false)
+	if lv == 0:
+		for p in [Vector2(-30, -4), Vector2(0, 0), Vector2(30, -6), Vector2(-14, -24), Vector2(16, -26), Vector2(0, -46)]:
+			_ellipse(ci, WELL + p * k, 18.0 * k, 12.0 * k, stone)
+		return
+	# The stone ring: its back rim, the water, then the front wall.
+	_ellipse(ci, WELL + Vector2(0, -60) * k, 52.0 * k, 16.0 * k, stone)
+	_ellipse(ci, WELL + Vector2(0, -60) * k, 40.0 * k, 10.0 * k, Color(0.36, 0.5, 0.8), false)
+	_blob(ci, [WELL + Vector2(-52, -60) * k, WELL + Vector2(52, -60) * k, WELL + Vector2(52, 0) * k, WELL + Vector2(-52, 0) * k], stone)
+	for row in 2:
+		for n in 3:
+			ci.draw_line(WELL + Vector2(-52 + n * 35 + row * 16, -40 + row * 20) * k, WELL + Vector2(-52 + n * 35 + row * 16, -20 + row * 20) * k, Color(INK, 0.35), 2.0, true)
+	if lv >= 2:
+		for x in [-44.0, 44.0]:
+			ci.draw_line(WELL + Vector2(x, -60) * k, WELL + Vector2(x, -150) * k, WOOD, 6.0 * k, true)
+		_blob(ci, [WELL + Vector2(-66, -140) * k, WELL + Vector2(0, -180) * k, WELL + Vector2(66, -140) * k], Color(1.0, 0.62, 0.58))
+		var crank := _t * 1.5 if lv >= 3 else 0.0
+		var drop := 30.0 + (sin(crank) * 18.0 if lv >= 3 else 0.0)
+		ci.draw_line(WELL + Vector2(-44, -120) * k, WELL + Vector2(44, -120) * k, WOOD, 5.0 * k, true)
+		ci.draw_line(WELL + Vector2(0, -120) * k, WELL + Vector2(0, -120 + drop) * k, INK, 2.0, true)
+		var bucket := WELL + Vector2(0, -120 + drop) * k
+		_blob(ci, [bucket + Vector2(-10, 0) * k, bucket + Vector2(10, 0) * k, bucket + Vector2(8, 16) * k, bucket + Vector2(-8, 16) * k], GOLD if lv >= 4 else CHROME)
+		if lv >= 3:
+			var handle := WELL + Vector2(52, -120) * k
+			ci.draw_line(handle, handle + Vector2(cos(crank), sin(crank)) * 16.0 * k, INK, 4.0 * k, true)
+	if lv >= 4:
+		for side in [-1.0, 1.0]:
+			var box := WELL + Vector2(side * 70.0, -8.0) * k
+			_blob(ci, [box + Vector2(-16, -6) * k, box + Vector2(16, -6) * k, box + Vector2(16, 8) * k, box + Vector2(-16, 8) * k], WOOD)
+			for n in 3:
+				ci.draw_circle(box + Vector2(-10 + n * 10, -12) * k, 5.0 * k, [Color(1.0, 0.62, 0.74), BUTTER, Color(0.8, 0.7, 0.98)][n], true, -1.0, true)
+
+
+func _draw_lookout(ci: Control) -> void:
+	var lv := _lv(TSProfile.CAMP_LOOKOUT)
+	var k := _depth_scale(LOOKOUT.y)
+	_ellipse(ci, LOOKOUT + Vector2(0, 6) * k, 70.0 * k, 14.0 * k, SHADOW, false)
+	if lv == 0:
+		for n in 3:
+			var y := -8.0 - n * 16.0
+			_blob(ci, [LOOKOUT + Vector2(-60 + n * 8, y - 8) * k, LOOKOUT + Vector2(60 - n * 8, y - 8) * k, LOOKOUT + Vector2(60 - n * 8, y + 8) * k, LOOKOUT + Vector2(-60 + n * 8, y + 8) * k], WOOD)
+		return
+	var deck := -150.0
+	for x in [-44.0, 44.0]:
+		ci.draw_line(LOOKOUT + Vector2(x, 0) * k, LOOKOUT + Vector2(x * 0.8, deck) * k, INK, 10.0 * k, true)
+		ci.draw_line(LOOKOUT + Vector2(x, 0) * k, LOOKOUT + Vector2(x * 0.8, deck) * k, WOOD, 6.0 * k, true)
+	ci.draw_line(LOOKOUT + Vector2(-40, -50) * k, LOOKOUT + Vector2(38, -100) * k, WOOD, 4.0 * k, true)
+	if lv >= 2:
+		# A ladder up the front, and a rail round the deck.
+		for x in [-12.0, 12.0]:
+			ci.draw_line(LOOKOUT + Vector2(x - 20, 4) * k, LOOKOUT + Vector2(x, deck) * k, WOOD.lightened(0.15), 4.0 * k, true)
+		for n in 6:
+			var u := (float(n) + 0.5) / 6.0
+			var p := (LOOKOUT + Vector2(-20, 4) * k).lerp(LOOKOUT + Vector2(0, deck) * k, u)
+			ci.draw_line(p + Vector2(-12, 0) * k, p + Vector2(12, 0) * k, WOOD.lightened(0.15), 3.0 * k, true)
+		for x in [-40.0, 0.0, 40.0]:
+			ci.draw_line(LOOKOUT + Vector2(x, deck) * k, LOOKOUT + Vector2(x, deck - 30) * k, WOOD, 4.0 * k, true)
+		ci.draw_line(LOOKOUT + Vector2(-44, deck - 30) * k, LOOKOUT + Vector2(44, deck - 30) * k, WOOD, 4.0 * k, true)
+	_blob(ci, [LOOKOUT + Vector2(-50, deck - 8) * k, LOOKOUT + Vector2(50, deck - 8) * k, LOOKOUT + Vector2(50, deck + 8) * k, LOOKOUT + Vector2(-50, deck + 8) * k], WOOD)
+	if lv >= 3:
+		for x in [-40.0, 40.0]:
+			ci.draw_line(LOOKOUT + Vector2(x, deck) * k, LOOKOUT + Vector2(x, deck - 70) * k, WOOD, 4.0 * k, true)
+		_blob(ci, [LOOKOUT + Vector2(-62, deck - 66) * k, LOOKOUT + Vector2(0, deck - 110) * k, LOOKOUT + Vector2(62, deck - 66) * k], ACCENT)
+	if lv >= 4:
+		var top := LOOKOUT + Vector2(0, deck - 110) * k
+		ci.draw_line(top, top + Vector2(0, -40) * k, INK, 3.0 * k, true)
+		_blob(ci, [top + Vector2(0, -40) * k, top + Vector2(30, -32 + sin(_t * 5.0) * 3.0) * k, top + Vector2(0, -24) * k], Color(1.0, 0.62, 0.74))
+		for n in 7:
+			var u := float(n) / 6.0
+			var p := (LOOKOUT + Vector2(-62, deck - 66) * k).lerp(LOOKOUT + Vector2(62, deck - 66) * k, u) + Vector2(0, sin(u * PI) * 10.0 * k)
+			ci.draw_circle(p, 5.0 * k, [Color(1.0, 0.62, 0.74), BUTTER, ACCENT][n % 3], true, -1.0, true)
+
+
+## The solar panels stand on the ground by the tail, wired to the ship --
+## shards until fixed, then one panel, two, tracking the sun, gold frames.
+func _draw_solar(ci: Control) -> void:
+	var lv := _lv(TSProfile.PART_SOLAR)
+	var k := _depth_scale(SOLAR.y)
+	var panel := Color(0.36, 0.5, 0.9)
+	_ellipse(ci, SOLAR + Vector2(20, 6) * k, 110.0 * k, 14.0 * k, SHADOW, false)
+	if lv == 0:
+		for n in 4:
+			var at := SOLAR + Vector2(-60.0 + n * 40.0, -4.0 + (n % 2) * 8.0) * k
+			var pts: Array = []
+			for c in [Vector2(-18, -8), Vector2(14, -10), Vector2(18, 6), Vector2(-14, 10)]:
+				pts.append(at + (c as Vector2).rotated(n * 0.9) * k)
+			_blob(ci, pts, panel.darkened(0.3))
+		return
+	# A cable from the panels to the tail.
+	var tail := _xf * Vector2(100.0, 250.0)
+	var cable := PackedVector2Array()
+	for n in 9:
+		var u := float(n) / 8.0
+		cable.append(SOLAR.lerp(tail, u) + Vector2(0, sin(u * PI) * 30.0))
+	ci.draw_polyline(cable, INK, 3.0, true)
+	for n in (2 if lv >= 2 else 1):
+		var base := SOLAR + Vector2(-50.0 + n * 100.0, 0.0) * k
+		var tilt := sin(_t * 0.4 + n) * 0.25 if lv >= 3 else 0.0
+		ci.draw_line(base, base + Vector2(0, -60) * k, INK, 5.0 * k, true)
+		var c := base + Vector2(0, -74) * k
+		var pts: Array = []
+		for p in [Vector2(-46, -18), Vector2(46, -18), Vector2(40, 18), Vector2(-40, 18)]:
+			pts.append(c + (p as Vector2).rotated(tilt) * k)
+		_blob(ci, pts, panel)
+		if lv >= 4:
+			var ring := PackedVector2Array(pts)
+			ring.append(pts[0])
+			ci.draw_polyline(ring, GOLD, 5.0, true)
+		for x in [-15.0, 15.0]:
+			ci.draw_line(c + Vector2(x, -18).rotated(tilt) * k, c + Vector2(x * 0.9, 18).rotated(tilt) * k, Color(0.7, 0.8, 1.0), 1.5, true)
+		ci.draw_line(c + Vector2(-44, 0).rotated(tilt) * k, c + Vector2(44, 0).rotated(tilt) * k, Color(0.7, 0.8, 1.0), 1.5, true)
+		if lv >= 3:
+			var glint := fposmod(_t * 0.5 + n * 0.5, 1.0)
+			_sparkle(ci, c + Vector2(lerpf(-40.0, 40.0, glint), -8).rotated(tilt) * k, 7.0 * k, Color(1, 1, 1, 0.9))
+
+
 func _draw_crater_lip() -> void:
 	var ci := _lip_layer
 	var lip := PackedVector2Array()
