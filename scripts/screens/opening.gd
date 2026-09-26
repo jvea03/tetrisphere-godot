@@ -22,7 +22,7 @@ func _ready() -> void:
 	center.add_child(v)
 	v.add_child(Logo.make(96))
 	v.add_child(TSUI.spacer(24.0))   # room for the critter's ears under the tagline
-	var egg := TSIcon.make("egg", 300, TSProfile.equipped_shell)
+	var egg := TSIcon.make("egg", 300, 0)
 	egg.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	v.add_child(egg)
 	var critter := TSIcon.make("critter", 150, TSProfile.avatar())

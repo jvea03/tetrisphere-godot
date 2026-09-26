@@ -2,11 +2,11 @@ class_name TSProfile
 extends RefCounted
 
 ## The player, persisted to user://profile.cfg: identity, coins, boosters, the
-## critter and shell collection, clubs, streaks, the simulated leaderboards,
+## critter collection and ship parts, clubs, streaks, the simulated leaderboards,
 ## the Battle Pass and its quests. Everything the menus show and spend comes
 ## from here. Ported from Duckdoku's PlayerProfile and re-themed: ducks are
-## critters (the little creatures sealed in the egg), ships are shells (egg
-## skins), anchors are stars, crews are clubs, and Duckdoku's three boosters
+## critters (the little creatures sealed in the egg), ships are the crashed
+## spaceship's parts, anchors are stars, crews are clubs, and Duckdoku's three boosters
 ## are Tetrisphere's three: the bomb, the Swap and Rocks.
 ##
 ## No backend: the leaderboards, clubs and club chat are simulated locally,
@@ -301,7 +301,7 @@ const CRITTER_COUNT := 24
 
 ## Once bought, a critter can be levelled up to CRITTER_MAX_LEVEL.
 const CRITTER_MAX_LEVEL := 10
-## Four tiers across a critter's (or shell's) levels, each with a title in
+## Four tiers across a critter's levels, each with a title in
 ## front of the name ("Veteran Minty"), plus star pips on the tile.
 const PROGRESS_TITLES := ["", "Seasoned", "Veteran", "Master"]
 const CRITTER_LEVEL_UP_BASE := [5000, 7500, 10000, 12500] # by rarity, for level 1 -> 2
@@ -313,30 +313,48 @@ static var critter_level: Array = [] # 0 while locked, 1..CRITTER_MAX_LEVEL once
 ## Collection: their tiles wear a "NEW" badge.
 static var new_critters: Array = []
 
-# -- shells (Collection's second tab) -------------------------------------------
-# Egg skins: the equipped one colours the egg's caps in play. Purely cosmetic,
-# but every level counts toward the collection level.
-const SHELLS := [
-	{"name": "Strawberry Milk", "cap": Color(1.00, 0.74, 0.82), "trim": Color(1.00, 0.97, 0.90), "rarity": Rarity.COMMON, "cost": 0},
-	{"name": "Vanilla Cream", "cap": Color(1.00, 0.95, 0.80), "trim": Color(1.00, 0.72, 0.80), "rarity": Rarity.COMMON, "cost": 10000},
-	{"name": "Mint Chip", "cap": Color(0.66, 0.92, 0.78), "trim": Color(0.52, 0.38, 0.30), "rarity": Rarity.COMMON, "cost": 20000},
-	{"name": "Blueberry Swirl", "cap": Color(0.62, 0.74, 0.98), "trim": Color(1.00, 0.97, 0.90), "rarity": Rarity.RARE, "cost": 35000},
-	{"name": "Lemon Drop", "cap": Color(1.00, 0.90, 0.50), "trim": Color(1.00, 1.00, 1.00), "rarity": Rarity.COMMON, "cost": 15000},
-	{"name": "Lavender Dream", "cap": Color(0.80, 0.70, 0.98), "trim": Color(1.00, 0.90, 0.96), "rarity": Rarity.RARE, "cost": 50000},
-	{"name": "Peach Fuzz", "cap": Color(1.00, 0.78, 0.64), "trim": Color(1.00, 0.97, 0.90), "rarity": Rarity.COMMON, "cost": 20000},
-	{"name": "Chocolate Dip", "cap": Color(0.62, 0.44, 0.34), "trim": Color(1.00, 0.84, 0.88), "rarity": Rarity.EPIC, "cost": 75000},
-	{"name": "Robin Egg", "cap": Color(0.62, 0.88, 0.88), "trim": Color(0.36, 0.28, 0.26), "rarity": Rarity.RARE, "cost": 40000},
-	{"name": "Galaxy", "cap": Color(0.30, 0.26, 0.52), "trim": Color(1.00, 0.86, 0.40), "rarity": Rarity.LEGENDARY, "cost": 200000},
-	{"name": "Golden Yolk", "cap": Color(1.00, 0.80, 0.30), "trim": Color(1.00, 1.00, 0.95), "rarity": Rarity.LEGENDARY, "cost": 150000},
-	{"name": "Rainbow Sherbet", "cap": Color(1.00, 0.62, 0.72), "trim": Color(1.00, 0.92, 0.50), "rarity": Rarity.EPIC, "cost": 100000},
+# -- ship parts (Collection's second tab) ---------------------------------------
+# The crashed spaceship on Home is made of these parts. Each starts broken
+# (level 0); coins fix it (level 1), then upgrade it up to PART_MAX_LEVEL.
+# Every stage shows on the ship (TSShipScene) -- a smoking engine, a bent
+# antenna, cracked glass -- and every level counts toward the collection
+# level. `stages` names what each level looks like, broken first.
+const PARTS := [
+	{"name": "Engine", "fix": 1500, "stages": ["Smoking Wreck", "Running", "Chrome Nozzle", "Twin Boosters", "Rainbow Thrusters"]},
+	{"name": "Hull", "fix": 2000, "stages": ["Dented & Scorched", "Patched Up", "Racing Stripe", "Star Decals", "Gold Trim"]},
+	{"name": "Cockpit", "fix": 2500, "stages": ["Cracked Glass", "New Glass", "Tinted Glass", "Headlamp", "Golden Frame"]},
+	{"name": "Antenna", "fix": 1000, "stages": ["Bent", "Straightened", "Satellite Dish", "Twin Antennas", "Glowing Orb"]},
+	{"name": "Fins", "fix": 3000, "stages": ["Bent", "Straightened", "Striped Fins", "Fin Lights", "Golden Fins"]},
+	{"name": "Portholes", "fix": 3500, "stages": ["Smashed", "New Glass", "Lit Windows", "Curtains", "Golden Rims"]},
 ]
-const SHELL_COUNT := 12
-const SHELL_MAX_LEVEL := 6
-const SHELL_LEVEL_UP_STEP := 5000
+const PART_COUNT := 6
+const PART_ENGINE := 0
+const PART_HULL := 1
+const PART_COCKPIT := 2
+const PART_ANTENNA := 3
+const PART_FINS := 4
+const PART_PORTHOLES := 5
+const PART_MAX_LEVEL := 4        # fixed (1), then three upgrades
 
-static var shell_unlocked: Array = []
-static var shell_level: Array = []
-static var equipped_shell: int = 0
+static var part_level: Array = []   # per part: 0 broken, 1 fixed, 2+ upgraded
+
+## The egg's colours in play, and a palette of egg paints the menus draw for
+## decoration (a golden egg on a sale, one per Egg Hunt day). Not collectible.
+const EGG_PAINTS := [
+	{"cap": Color(1.00, 0.74, 0.82), "trim": Color(1.00, 0.97, 0.90)},   # strawberry: the egg in play
+	{"cap": Color(1.00, 0.95, 0.80), "trim": Color(1.00, 0.72, 0.80)},
+	{"cap": Color(0.66, 0.92, 0.78), "trim": Color(0.52, 0.38, 0.30)},
+	{"cap": Color(0.62, 0.74, 0.98), "trim": Color(1.00, 0.97, 0.90)},
+	{"cap": Color(1.00, 0.90, 0.50), "trim": Color(1.00, 1.00, 1.00)},
+	{"cap": Color(0.80, 0.70, 0.98), "trim": Color(1.00, 0.90, 0.96)},
+	{"cap": Color(1.00, 0.78, 0.64), "trim": Color(1.00, 0.97, 0.90)},
+	{"cap": Color(0.62, 0.44, 0.34), "trim": Color(1.00, 0.84, 0.88)},
+	{"cap": Color(0.62, 0.88, 0.88), "trim": Color(0.36, 0.28, 0.26)},
+	{"cap": Color(0.30, 0.26, 0.52), "trim": Color(1.00, 0.86, 0.40)},
+	{"cap": Color(1.00, 0.80, 0.30), "trim": Color(1.00, 1.00, 0.95)},   # golden
+	{"cap": Color(1.00, 0.62, 0.72), "trim": Color(1.00, 0.92, 0.50)},
+]
+const EGG_PAINT_COUNT := 12
 
 
 static func _blank_collection() -> void:
@@ -345,11 +363,9 @@ static func _blank_collection() -> void:
 	for i in CRITTER_COUNT:
 		critter_unlocked.append(i == 0)
 		critter_level.append(1 if i == 0 else 0)
-	shell_unlocked = []
-	shell_level = []
-	for i in SHELL_COUNT:
-		shell_unlocked.append(i == 0)
-		shell_level.append(1 if i == 0 else 0)
+	part_level = []
+	for i in PART_COUNT:
+		part_level.append(0)
 
 
 static func _static_init() -> void:
@@ -386,40 +402,16 @@ static func critter_rarity(i: int) -> int:
 	return int(CRITTERS[i]["rarity"])
 
 
-static func shell_name(i: int) -> String:
-	return str(SHELLS[i]["name"])
-
-
-static func shell_rarity(i: int) -> int:
-	return int(SHELLS[i]["rarity"])
-
-
-static func shell_cost(i: int) -> int:
-	return int(SHELLS[i]["cost"])
-
-
 static func is_critter_unlocked(i: int) -> bool:
 	return i >= 0 and i < critter_unlocked.size() and bool(critter_unlocked[i])
-
-
-static func is_shell_unlocked(i: int) -> bool:
-	return i >= 0 and i < shell_unlocked.size() and bool(shell_unlocked[i])
 
 
 static func critter_level_of(i: int) -> int:
 	return int(critter_level[i]) if i >= 0 and i < critter_level.size() else 0
 
 
-static func shell_level_of(i: int) -> int:
-	return int(shell_level[i]) if i >= 0 and i < shell_level.size() else 0
-
-
 static func is_critter_max_level(i: int) -> bool:
 	return critter_level_of(i) >= CRITTER_MAX_LEVEL
-
-
-static func is_shell_max_level(i: int) -> bool:
-	return shell_level_of(i) >= SHELL_MAX_LEVEL
 
 
 static func critter_unlock_cost(i: int) -> int:
@@ -428,11 +420,6 @@ static func critter_unlock_cost(i: int) -> int:
 
 static func critter_level_up_cost(i: int) -> int:
 	return int(CRITTER_LEVEL_UP_BASE[critter_rarity(i)]) + CRITTER_LEVEL_UP_STEP * (critter_level_of(i) - 1)
-
-
-static func shell_level_up_cost(i: int) -> int:
-	var base_cost: int = maxi(shell_cost(i), CRITTER_UNLOCK_COST)
-	return base_cost + SHELL_LEVEL_UP_STEP * (shell_level_of(i) - 1)
 
 
 static func unlock_critter(i: int) -> bool:
@@ -476,48 +463,65 @@ static func level_up_critter(i: int) -> bool:
 	return true
 
 
-static func unlock_shell(i: int) -> bool:
-	if is_shell_unlocked(i) or coin_count < shell_cost(i):
+static func part_name(i: int) -> String:
+	return str(PARTS[i]["name"])
+
+
+static func part_level_of(i: int) -> int:
+	return int(part_level[i]) if i >= 0 and i < part_level.size() else 0
+
+
+static func is_part_fixed(i: int) -> bool:
+	return part_level_of(i) >= 1
+
+
+static func is_part_max_level(i: int) -> bool:
+	return part_level_of(i) >= PART_MAX_LEVEL
+
+
+## What a part looks like at a level: "Smoking Wreck", "Chrome Nozzle"...
+static func part_stage(i: int, level: int) -> String:
+	var stages: Array = PARTS[i]["stages"]
+	return str(stages[clampi(level, 0, stages.size() - 1)])
+
+
+## The price of the part's next step: fixing it, then each upgrade costing
+## one more multiple of the fix.
+static func part_next_cost(i: int) -> int:
+	return int(PARTS[i]["fix"]) * (part_level_of(i) + 1)
+
+
+## Fixes a broken part, or upgrades a fixed one, for coins.
+static func improve_part(i: int) -> bool:
+	if i < 0 or i >= PART_COUNT or is_part_max_level(i):
 		return false
-	coin_count -= shell_cost(i)
-	var level_before := collection_level()
-	shell_unlocked[i] = true
-	shell_level[i] = 1
-	save()
-	_note_collection_level(level_before)
-	return true
-
-
-static func grant_shell(i: int) -> bool:
-	if i < 0 or i >= SHELL_COUNT or is_shell_unlocked(i):
-		return false
-	var level_before := collection_level()
-	shell_unlocked[i] = true
-	shell_level[i] = 1
-	_note_collection_level(level_before)
-	return true
-
-
-static func level_up_shell(i: int) -> bool:
-	if not is_shell_unlocked(i) or is_shell_max_level(i):
-		return false
-	var cost := shell_level_up_cost(i)
+	var cost := part_next_cost(i)
 	if coin_count < cost:
 		return false
 	coin_count -= cost
 	var level_before := collection_level()
-	shell_level[i] += 1
+	part_level[i] += 1
 	save()
 	_note_collection_level(level_before)
 	return true
 
 
-static func equip_shell(i: int) -> bool:
-	if not is_shell_unlocked(i) or i == equipped_shell:
+## Fixes or upgrades a part for free (a pass reward). False if it is maxed.
+static func grant_part_level(i: int) -> bool:
+	if i < 0 or i >= PART_COUNT or is_part_max_level(i):
 		return false
-	equipped_shell = i
-	save()
+	var level_before := collection_level()
+	part_level[i] += 1
+	_note_collection_level(level_before)
 	return true
+
+
+static func parts_fixed() -> int:
+	var n := 0
+	for i in PART_COUNT:
+		if is_part_fixed(i):
+			n += 1
+	return n
 
 
 static func is_critter_new(i: int) -> bool:
@@ -569,10 +573,10 @@ static func claim_collection_gift() -> int:
 	return COLLECTION_GIFT_COINS
 
 
-## Collection level: every level across every owned critter and shell counts
-## (a shell level is worth 10 points, a critter level 5-20 by rarity); each
+## Collection level: every level across every owned critter and ship part counts
+## (a part level is worth 10 points, a critter level 5-20 by rarity); each
 ## collection level past the first adds 1% to the coins a win pays.
-const COLLECTION_POINTS_PER_SHELL_LEVEL := 10
+const COLLECTION_POINTS_PER_PART_LEVEL := 10
 const COLLECTION_POINTS_FIRST_LEVEL := 50
 const COLLECTION_POINTS_LEVEL_STEP := 5
 const COLLECTION_COIN_BONUS_PERCENT := 1
@@ -582,8 +586,8 @@ static func collection_points() -> int:
 	var total := 0
 	for i in CRITTER_COUNT:
 		total += critter_level_of(i) * int(CRITTER_RARITY_POINTS[critter_rarity(i)])
-	for lvl in shell_level:
-		total += int(lvl) * COLLECTION_POINTS_PER_SHELL_LEVEL
+	for lvl in part_level:
+		total += int(lvl) * COLLECTION_POINTS_PER_PART_LEVEL
 	return total
 
 
@@ -1423,13 +1427,14 @@ static func purchase_battle_pass() -> bool:
 	return true
 
 
-## Collectibles per season -- {tier: critter} and {tier: shell} per track;
+## Collectibles per season -- {tier: critter} per track, and {tier: part} on
+## the premium one (a free fix or upgrade of that ship part);
 ## coins and bombs are the same every season. Later seasons walk the list
 ## and wrap. Each season's paid tier-1 critter is pass-only.
 const BATTLE_PASS_SEASON_ONE := 739 # epoch_day / BATTLE_PASS_DAYS for the first season
 const BATTLE_PASS_SEASON_REWARDS := [
-	{"free_critters": {15: 16, 30: 11}, "paid_critters": {1: 19}, "paid_shells": {30: 9}}, # Party, Buzzy; Starry; Galaxy
-	{"free_critters": {15: 21, 30: 22}, "paid_critters": {1: 23}, "paid_shells": {30: 10}}, # Pumpkin, Snowy; Rainbow; Golden Yolk
+	{"free_critters": {15: 16, 30: 11}, "paid_critters": {1: 19}, "paid_parts": {30: PART_ENGINE}}, # Party, Buzzy; Starry; the engine
+	{"free_critters": {15: 21, 30: 22}, "paid_critters": {1: 23}, "paid_parts": {30: PART_COCKPIT}}, # Pumpkin, Snowy; Rainbow; the cockpit
 ]
 const BATTLE_PASS_EXCLUSIVE_CRITTERS := [19, 23]
 
@@ -1466,14 +1471,14 @@ static func battle_pass_free_reward(tier: int) -> Dictionary:
 
 ## Premium track: 1000 coins at tier 1, +100 a tier, and bombs every tier --
 ## 1 a tier, 3 on every 5th, 5 on the 10th and 20th -- unless the tier hands
-## out a critter or shell.
+## out a critter or a ship part.
 static func battle_pass_paid_reward(tier: int) -> Dictionary:
 	var r := {"coins": BATTLE_PASS_PAID_COINS_BASE + BATTLE_PASS_COINS_STEP * (tier - 1)}
 	var season := season_rewards()
 	if season["paid_critters"].has(tier):
 		r["critter"] = season["paid_critters"][tier]
-	elif season["paid_shells"].has(tier):
-		r["shell"] = season["paid_shells"][tier]
+	elif season["paid_parts"].has(tier):
+		r["part"] = season["paid_parts"][tier]
 	elif tier % 10 == 0:
 		r["bomb"] = 5
 	elif tier % 5 == 0:
@@ -1487,8 +1492,11 @@ static func _apply_reward(reward: Dictionary) -> void:
 	coin_count += boost_earned_coins(int(reward.get("coins", 0)))
 	if reward.has("critter"):
 		grant_critter(int(reward["critter"]))
-	if reward.has("shell"):
-		grant_shell(int(reward["shell"]))
+	if reward.has("part"):
+		# A part already at its best pays out its top upgrade's price instead.
+		var p := int(reward["part"])
+		if not grant_part_level(p):
+			coin_count += int(PARTS[p]["fix"]) * PART_MAX_LEVEL
 	if int(reward.get("bomb", 0)) > 0:
 		bomb_count += int(reward["bomb"])
 		bombs_unlocked = true
@@ -1750,24 +1758,20 @@ static func ensure_loaded() -> void:
 	haptics_enabled = bool(g.call("haptics_enabled", true))
 	var cu: Array = g.call("critter_unlocked", [])
 	var cl: Array = g.call("critter_level", [])
-	var su: Array = g.call("shell_unlocked", [])
-	var sl: Array = g.call("shell_level", [])
+	var pl: Array = g.call("part_level", [])
 	_blank_collection()
 	for i in CRITTER_COUNT:
 		if i < cu.size():
 			critter_unlocked[i] = cu[i] == true or i == 0
 		if i < cl.size() and cl[i] != null:
 			critter_level[i] = maxi(int(cl[i]), 1 if critter_unlocked[i] else 0)
-	for i in SHELL_COUNT:
-		if i < su.size():
-			shell_unlocked[i] = su[i] == true or i == 0
-		if i < sl.size() and sl[i] != null:
-			shell_level[i] = maxi(int(sl[i]), 1 if shell_unlocked[i] else 0)
+	for i in PART_COUNT:
+		if i < pl.size() and pl[i] != null:
+			part_level[i] = clampi(int(pl[i]), 0, PART_MAX_LEVEL)
 	new_critters = []
 	for i in g.call("new_critters", []):
 		if int(i) >= 0 and int(i) < CRITTER_COUNT:
 			new_critters.append(int(i))
-	equipped_shell = clampi(int(g.call("equipped_shell", 0)), 0, SHELL_COUNT - 1)
 	has_club = bool(g.call("has_club", false))
 	club_name = str(g.call("club_name", ""))
 	club_is_owner = bool(g.call("club_is_owner", false))
@@ -1847,9 +1851,7 @@ static func save() -> void:
 	s.call("critter_unlocked", critter_unlocked)
 	s.call("critter_level", critter_level)
 	s.call("new_critters", new_critters)
-	s.call("shell_unlocked", shell_unlocked)
-	s.call("shell_level", shell_level)
-	s.call("equipped_shell", equipped_shell)
+	s.call("part_level", part_level)
 	s.call("has_club", has_club)
 	s.call("club_name", club_name)
 	s.call("club_is_owner", club_is_owner)

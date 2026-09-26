@@ -4,7 +4,7 @@
 # save. Run with:
 #   Godot.exe --path . res://tests/menu_capture.tscn -- home
 # or `-- game 22` for the game screen on a given level, or `-- home all` for
-# Home with every critter owned.
+# Home with every critter owned (add `max` or `broken` for the ship's parts).
 extends Node
 
 
@@ -20,10 +20,14 @@ func _ready() -> void:
 		TSProfile.critter_unlocked[i] = true
 		TSProfile.critter_level[i] = 1 + i % 6
 	TSProfile.avatar_critter = 8
-	for i in [3, 9]:
-		TSProfile.shell_unlocked[i] = true
-		TSProfile.shell_level[i] = 2
-	TSProfile.equipped_shell = 3
+	# A ship part by part: broken, fixed, upgraded -- `-- home all max` (or
+	# `broken`) as the last argument sets every part to its best (or worst).
+	TSProfile.part_level = [2, 1, 0, 3, 0, 1]
+	var last_arg: String = OS.get_cmdline_user_args()[-1] if OS.get_cmdline_user_args().size() > 0 else ""
+	if last_arg == "max":
+		TSProfile.part_level = [4, 4, 4, 4, 4, 4]
+	elif last_arg == "broken":
+		TSProfile.part_level = [0, 0, 0, 0, 0, 0]
 	TSProfile.record_login()
 	TSProfile.battle_pass_xp = 140
 	TSProfile.add_stars(3, 2, 1)

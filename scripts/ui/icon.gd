@@ -3,12 +3,13 @@ extends Control
 
 ## Every picture in the menus, drawn in code in the hand-drawn style: pastel
 ## fills with a round-capped ink outline. No image files. Also draws the
-## critters (a round blob with big eyes, cheeks and an accessory), the shells
-## (little eggs in their colours) and the club badges.
+## critters (a round blob with big eyes, cheeks and an accessory), little
+## eggs, the ship parts (broken or fixed) and the club badges.
 ##
 ##   TSIcon.make("coin", 40)
 ##   TSIcon.make("critter", 120, 5)       # Blueberry
 ##   TSIcon.make("chest", 80, 0, "rare")
+##   TSIcon.make("part", 90, TSProfile.PART_ENGINE, "broken")
 
 var icon: String = "coin"
 var index: int = 0 # critter / shell / badge index
@@ -190,6 +191,7 @@ func _draw() -> void:
 		"help": _draw_help()
 		"plus": _draw_plus()
 		"egg": _draw_shell(index, Vector2(0.5, 0.52), 0.44)
+		"part": _draw_part(index, variant == "broken")
 		"critter": _draw_critter(index, Vector2(0.5, 0.56), 0.4)
 		"badge": _draw_badge(index)
 		_: _circle(Vector2(0.5, 0.5), 0.4, _col(GOLD))
@@ -253,6 +255,64 @@ func _draw_rocks() -> void:
 		for side in [-1.0, 1.0]:
 			draw_circle(_u(Vector2(0.65 + side * 0.07, 0.64)), 0.028 * _s, INK, true, -1.0, true)
 		draw_arc(_u(Vector2(0.65, 0.7)), 0.04 * _s, 0.2, PI - 0.2, 10, INK, _w() * 0.7, true)
+
+
+## A ship part (TSProfile.PARTS), in the ship's pink and cream -- or, broken,
+## in dull grey with its damage: cracks, a bend, smoke.
+func _draw_part(i: int, broken: bool) -> void:
+	var hull := Color(0.62, 0.6, 0.66) if broken else _col(Color(1.0, 0.74, 0.82))
+	var trim := Color(0.8, 0.78, 0.82) if broken else Color(1.0, 0.97, 0.9)
+	var glass := Color(0.36, 0.38, 0.5) if broken else Color(0.62, 0.84, 1.0)
+	match i:
+		TSProfile.PART_ENGINE:
+			if broken:
+				for k in 3:
+					_circle(Vector2(0.3 - k * 0.08, 0.34 - k * 0.1), 0.08 + k * 0.03, Color(0.7, 0.68, 0.74, 0.8), false)
+			else:
+				_poly([Vector2(0.34, 0.38), Vector2(0.08, 0.5), Vector2(0.34, 0.62)], Color(1.0, 0.62, 0.3))
+				_poly([Vector2(0.34, 0.44), Vector2(0.2, 0.5), Vector2(0.34, 0.56)], Color(1.0, 0.9, 0.45), false)
+			_poly([Vector2(0.34, 0.3), Vector2(0.62, 0.36), Vector2(0.62, 0.64), Vector2(0.34, 0.7)], trim)
+			_rrect(Rect2(0.6, 0.28, 0.3, 0.44), 0.08, hull)
+		TSProfile.PART_HULL:
+			_rrect(Rect2(0.1, 0.3, 0.8, 0.4), 0.2, hull)
+			_rrect(Rect2(0.14, 0.52, 0.72, 0.07), 0.03, trim, false)
+			if broken:
+				_circle(Vector2(0.34, 0.44), 0.07, Color(INK, 0.3), false)
+				for turn in [0.6, -0.6]:
+					var pts: Array = []
+					for corner in [Vector2(-0.12, -0.04), Vector2(0.12, -0.04), Vector2(0.12, 0.04), Vector2(-0.12, 0.04)]:
+						pts.append(Vector2(0.62, 0.42) + (corner as Vector2).rotated(turn))
+					_poly(pts, Color(1.0, 0.86, 0.72))
+		TSProfile.PART_COCKPIT:
+			var dome: Array = []
+			for k in 17:
+				var a := PI + PI * float(k) / 16.0
+				dome.append(Vector2(0.5, 0.62) + Vector2(cos(a), sin(a)) * 0.34)
+			_poly(dome, glass)
+			_rrect(Rect2(0.1, 0.6, 0.8, 0.1), 0.04, trim)
+			if broken:
+				_line([Vector2(0.56, 0.3), Vector2(0.5, 0.42), Vector2(0.6, 0.48), Vector2(0.52, 0.58)], WHITE, 0.8)
+			else:
+				draw_arc(_u(Vector2(0.5, 0.62)), 0.24 * _s, PI * 1.2, PI * 1.45, 8, Color(1, 1, 1, 0.8), _w() * 0.9, true)
+		TSProfile.PART_ANTENNA:
+			var tip := Vector2(0.72, 0.28) if broken else Vector2(0.5, 0.18)
+			_line([Vector2(0.5, 0.78), Vector2(0.5, 0.46), tip], INK, 1.3)
+			_circle(tip, 0.08, Color(0.7, 0.66, 0.72) if broken else Color(1.0, 0.45, 0.55))
+			_rrect(Rect2(0.34, 0.76, 0.32, 0.1), 0.04, hull)
+		TSProfile.PART_FINS:
+			if broken:
+				_poly([Vector2(0.2, 0.8), Vector2(0.3, 0.3), Vector2(0.52, 0.18), Vector2(0.46, 0.4), Vector2(0.8, 0.8)], hull)
+			else:
+				_poly([Vector2(0.2, 0.8), Vector2(0.34, 0.16), Vector2(0.52, 0.16), Vector2(0.8, 0.8)], trim)
+				_line([Vector2(0.36, 0.5), Vector2(0.62, 0.5)], _col(Color(1.0, 0.74, 0.82)), 1.4)
+		TSProfile.PART_PORTHOLES:
+			_circle(Vector2(0.5, 0.5), 0.34, trim)
+			_circle(Vector2(0.5, 0.5), 0.24, glass)
+			if broken:
+				_line([Vector2(0.4, 0.34), Vector2(0.5, 0.46), Vector2(0.42, 0.56), Vector2(0.56, 0.66)], WHITE, 0.8)
+				_rrect(Rect2(0.18, 0.44, 0.64, 0.1), 0.02, Color(0.64, 0.44, 0.3))
+			else:
+				draw_arc(_u(Vector2(0.5, 0.5)), 0.16 * _s, PI * 1.15, PI * 1.45, 8, Color(1, 1, 1, 0.8), _w() * 0.9, true)
 
 
 const CHEST_COLORS := {
@@ -582,9 +642,9 @@ func _draw_critter(i: int, c: Vector2, r: float) -> void:
 			pass
 
 
-## A shell: a little egg in its cap colour with a band of pastel pieces.
+## An egg: a little egg in one of the egg paints, with a band of pastel pieces.
 func _draw_shell(i: int, c: Vector2, r: float) -> void:
-	var data: Dictionary = TSProfile.SHELLS[clampi(i, 0, TSProfile.SHELL_COUNT - 1)]
+	var data: Dictionary = TSProfile.EGG_PAINTS[clampi(i, 0, TSProfile.EGG_PAINT_COUNT - 1)]
 	var cap: Color = data["cap"]
 	var trim: Color = data["trim"]
 	var outline: Array = []

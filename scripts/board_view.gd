@@ -74,7 +74,7 @@ func _cap_radius() -> float:
 	return CORE_RADIUS + board.shell_depth * LAYER_H + 0.04
 
 
-## The caps take the colours of the shell equipped in the Collection, and
+## The caps take the egg's colours (TSProfile.EGG_PAINTS), and
 ## stand level with the top of a fresh shell of this ball's depth.
 func _build_caps() -> void:
 	for mi in _caps:
@@ -82,7 +82,7 @@ func _build_caps() -> void:
 	_caps.clear()
 	_caps_depth = board.shell_depth
 	var cap_r := _cap_radius()
-	var shell: Dictionary = TSProfile.SHELLS[clampi(TSProfile.equipped_shell, 0, TSProfile.SHELL_COUNT - 1)]
+	var shell: Dictionary = TSProfile.EGG_PAINTS[0]
 	var cap: Color = shell["cap"]
 	var dome_mat := make_material(cap, 1.0)
 	var trim_mat := make_material(shell["trim"], 1.0, 0.0, false)

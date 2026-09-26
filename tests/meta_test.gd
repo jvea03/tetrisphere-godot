@@ -131,7 +131,20 @@ func _test_collection() -> void:
 	var lvl := TSProfile.collection_level()
 	_check("buying a critter", TSProfile.unlock_critter(5) and TSProfile.is_critter_unlocked(5))
 	_check("levelling it", TSProfile.level_up_critter(5) and TSProfile.critter_level_of(5) == 2)
-	_check("buying and equipping a shell", TSProfile.unlock_shell(4) and TSProfile.equip_shell(4) and TSProfile.equipped_shell == 4)
+	# Ship parts: every one starts broken; coins fix it, then upgrade it.
+	var all_broken := true
+	for p in TSProfile.PART_COUNT:
+		all_broken = all_broken and not TSProfile.is_part_fixed(p)
+	_check("every ship part starts broken", all_broken and TSProfile.parts_fixed() == 0)
+	var coins := TSProfile.coin_count
+	var fix_cost := TSProfile.part_next_cost(TSProfile.PART_ENGINE)
+	_check("fixing the engine costs %s and fixes it" % TSProfile.fmt_coins(fix_cost), TSProfile.improve_part(TSProfile.PART_ENGINE) and TSProfile.is_part_fixed(TSProfile.PART_ENGINE) and TSProfile.coin_count == coins - fix_cost and TSProfile.part_stage(TSProfile.PART_ENGINE, 1) == "Running")
+	_check("each upgrade costs one more multiple of the fix", TSProfile.part_next_cost(TSProfile.PART_ENGINE) == fix_cost * 2)
+	while TSProfile.improve_part(TSProfile.PART_ENGINE):
+		pass
+	_check("a part tops out at level %d (%s)" % [TSProfile.PART_MAX_LEVEL, TSProfile.part_stage(TSProfile.PART_ENGINE, TSProfile.PART_MAX_LEVEL)], TSProfile.part_level_of(TSProfile.PART_ENGINE) == TSProfile.PART_MAX_LEVEL and TSProfile.is_part_max_level(TSProfile.PART_ENGINE))
+	var pass_part := TSProfile.battle_pass_paid_reward(30)
+	_check("the Battle Pass's tier 30 is a free ship-part fix or upgrade", pass_part.has("part") and TSProfile.grant_part_level(TSProfile.PART_HULL) and TSProfile.part_level_of(TSProfile.PART_HULL) == 1)
 	for i in 8:
 		TSProfile.level_up_critter(5)
 	_check("the collection level rises with it (%d -> %d)" % [lvl, TSProfile.collection_level()], TSProfile.collection_level() > lvl)

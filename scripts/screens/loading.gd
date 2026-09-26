@@ -27,7 +27,7 @@ func _ready() -> void:
 	var logo := preload("res://scripts/screens/opening.gd").Logo.make(80)
 	v.add_child(logo)
 	v.add_child(TSUI.spacer(12.0))
-	_egg = TSIcon.make("egg", 220, TSProfile.equipped_shell)
+	_egg = TSIcon.make("egg", 220, 0)
 	_egg.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	v.add_child(_egg)
 	_bar = TSUI.bar(TSUI.PINK, 34)

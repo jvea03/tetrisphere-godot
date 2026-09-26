@@ -34,7 +34,7 @@ func build() -> void:
 	timer_pill.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_timer = timer_pill.get_meta("label")
 	content.add_child(timer_pill)
-	# hero: the season's premium critter and shell
+	# hero: the season's premium critter and ship-part upgrade
 	var season := TSProfile.season_rewards()
 	var hero := TSUI.card(Color(0.84, 0.76, 1.0), 30, 12, 4)
 	var hero_row := TSUI.hbox(10)
@@ -44,10 +44,10 @@ func build() -> void:
 		hero_row.add_child(TSIcon.make("critter", 150, int(season["paid_critters"][t])))
 	var hero_text := TSUI.vbox(2)
 	hero_text.add_child(TSUI.outlined(TSUI.label("Season %d" % TSProfile.battle_pass_season_number(), 40, Color.WHITE), TSUI.INK, 10))
-	hero_text.add_child(TSUI.label("Exclusive critter + shell", 22, TSUI.INK))
+	hero_text.add_child(TSUI.label("Exclusive critter + ship upgrade", 22, TSUI.INK))
 	hero_row.add_child(hero_text)
-	for t in season["paid_shells"]:
-		hero_row.add_child(TSIcon.make("egg", 110, int(season["paid_shells"][t])))
+	for t in season["paid_parts"]:
+		hero_row.add_child(TSIcon.make("part", 110, int(season["paid_parts"][t])))
 	content.add_child(hero)
 	_progress_label = TSUI.label("", 24, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER)
 	content.add_child(_progress_label)
@@ -193,8 +193,8 @@ func _reward_card(tier: int, current: int, reward: Dictionary, premium: bool) ->
 	stack.add_child(h)
 	if reward.has("critter"):
 		h.add_child(_item("critter", int(reward["critter"]), TSProfile.critter_name(int(reward["critter"]))))
-	if reward.has("shell"):
-		h.add_child(_item("egg", int(reward["shell"]), TSProfile.shell_name(int(reward["shell"]))))
+	if reward.has("part"):
+		h.add_child(_item("part", int(reward["part"]), TSProfile.part_name(int(reward["part"]))))
 	if int(reward.get("coins", 0)) > 0:
 		h.add_child(_item("coin", 0, "x%s" % TSProfile.fmt_coins(int(reward["coins"]))))
 	if int(reward.get("bomb", 0)) > 0:
@@ -325,8 +325,8 @@ func _open_buy() -> void:
 	for t in season["paid_critters"]:
 		var c := int(season["paid_critters"][t])
 		lines.append("%s at tier %d%s." % [TSProfile.critter_name(c), t, " -- only here" if TSProfile.is_critter_pass_exclusive(c) else ""])
-	for t in season["paid_shells"]:
-		lines.append("%s shell at tier %d." % [TSProfile.shell_name(int(season["paid_shells"][t])), t])
+	for t in season["paid_parts"]:
+		lines.append("A free %s fix or upgrade at tier %d." % [TSProfile.part_name(int(season["paid_parts"][t])).to_lower(), t])
 	lines.append("A 4th chest slot, with two chests unlocking at once.")
 	lines.append("Chests unlock %d%% faster." % TSChests.TIMER_DISCOUNT_PERCENT)
 	lines.append("+%d%% on every coin you earn, all season." % TSProfile.BATTLE_PASS_COIN_BONUS_PERCENT)

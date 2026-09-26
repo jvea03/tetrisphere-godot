@@ -73,7 +73,7 @@ art drawn in code (`scripts/ui/icon.gd`) -- none of Duckdoku's art is copied.
 | Duckdoku | Tetrisphere |
 | --- | --- |
 | Ducks (the collection) | **Critters** -- the little creatures sealed in the egg. The one you pick is the one in the egg, in its colour |
-| Ships | **Shells** -- egg skins; the one you pick colours the egg's caps in play |
+| Ships | **Ship parts** -- the crashed spaceship's six parts, broken until you fix them, then upgraded; every step shows on the ship at Home |
 | Anchors (1 per life left) | **Stars** (1 per heart left, +2 for a first try) |
 | Crews / Teams | **Clubs** (Leader, Officer, Member) |
 | 7 Day Quest Voyage | **7-Day Egg Hunt** |
@@ -87,7 +87,7 @@ Egg Hunt and any running sale, the chest tray, the level plate and PLAY) with
 its pop-ups -- Settings, Profile, chest opening, finish-a-chest-now, pop-up sales, leaderboard results, and
 the Home and Daily Egg walkthroughs; **Battle Pass** (30 tiers of free and
 premium rewards, buy a tier for coins, Daily/Weekly quests, buy-pass pop-up);
-**Collection** (critters and shells: buy, upgrade to Lv 10 / Lv 6, titles
+**Collection** (critters to buy and upgrade to Lv 10, ship parts to fix and upgrade to Lv 4, titles
 and stars, rarity, collection level, the first-visit walkthrough with its
 coin gift); **Shop** (weekly featured sale, No Ads pass, bundles, bomb, Swap and Rocks packs,
 coin packs with a free daily pack); **Leaderboard** (Daily / Weekly /
@@ -102,9 +102,14 @@ Ranks, Clubs) slides between the tab screens.
 
 **The crash site.** Behind all of Home is a little planet in three-quarter
 view, a world about 3.6 screens wide (`scripts/ui/ship_scene.gd`). A
-spaceship in the equipped shell's colours has crash-landed nose-first in a
-heap of dirt, its engine puffing smoke, its antenna bent and its dome glass
-cracked. Drag any empty part of Home to look around (it glides after a
+spaceship has crash-landed nose-first in a heap of dirt. Its six parts -- engine, hull, cockpit, antenna, fins and
+portholes -- look however far you have got with them in the Collection:
+broken (a smoking engine, a scorched and plastered hull, cracked glass, a
+bent antenna and fin, smashed and boarded portholes), fixed, or upgraded
+through three stages each up to rainbow thrusters, gold trim, a headlamp,
+a glowing orb, golden fins and lit, curtained windows with gold rims (see
+`TSProfile.PARTS` for every stage). Drag any empty part of Home to look
+around (it glides after a
 flick); the menus stay put and keep their own touches. Every critter you own
 is out there at work, the avatar first, each taking the next of 24 jobs,
 spread over little neighbourhoods round the crash -- the ship itself, a pond
@@ -467,7 +472,7 @@ stepped through frame by frame.
 | `scripts/toon.gd` | The hand-drawn look: cel-shading, ink-outline and paper shaders, the rounded tile meshes (and the shader that bends them onto the egg), and the font. |
 | `scripts/board_view.gd` | Maps the grid onto the egg, draws each piece as one rounded bar and the pole caps, and plays the clear effects. |
 | `scripts/game.gd` | The game screen: builds the scene in code, drives input, camera and HUD, levels, and the pause, win, lose and ad cards. |
-| `scripts/meta/profile.gd` | `TSProfile`: the saved player -- coins, boosters, critters and shells, clubs, streaks, simulated leaderboards, Battle Pass and quests. |
+| `scripts/meta/profile.gd` | `TSProfile`: the saved player -- coins, boosters, critters and ship parts, clubs, streaks, simulated leaderboards, Battle Pass and quests. |
 | `scripts/meta/chests.gd`, `hunt.gd`, `sales.gd` | The chest tray, the Egg Hunt, and pop-up sales. |
 | `scripts/meta/nav.gd`, `tunables.gd`, `session.gd`, `filter.gd`, `haptics.gd`, `sfx.gd` | Unlock levels, live-tunable numbers, the parked ball, the name/chat filter, vibration, and synthesized sounds. |
 | `scripts/meta/scene_flow.gd`, `ads.gd`, `billing.gd` | Autoloads: fade and slide transitions (and the Android back button), the ad service, the purchase service. |

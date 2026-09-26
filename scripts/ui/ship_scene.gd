@@ -2,18 +2,21 @@ class_name TSShipScene
 extends Control
 
 ## Home's backdrop: a little planet, seen in three-quarter view, where a
-## cartoon spaceship has crash-landed nose-first in a heap of dirt, puffing
-## smoke, with the critters the player owns busy all over the crash site. It
-## is a world bigger than the screen: drag any empty part of Home to look
-## around, and tap a critter to make it hop. The menus stay put on top.
+## cartoon spaceship has crash-landed nose-first in a heap of dirt (its
+## engine smoking until it is fixed), with the critters the player owns busy
+## all over the crash site. It is a world bigger than the screen: drag any
+## empty part of Home to look around, and tap a critter to make it hop. The
+## menus stay put on top.
 ##
 ## The avatar critter comes first; each critter takes the next job in JOBS --
 ## flying it (dizzily), fixing the engine up a ladder, digging the nose out,
 ## fishing in a crater pond, toasting a marshmallow, and so on down to the
 ## silly ones. A lone critter just strolls about. Nearer things are drawn
-## bigger and in front, each on its own soft shadow. The hull is painted in
-## the equipped shell's colours. Everything is drawn in code, in the menus'
-## hand-drawn style, and animated from one clock in _process.
+## bigger and in front, each on its own soft shadow. The ship's six parts
+## (TSProfile.PARTS) look as they are in the Collection -- broken, fixed or
+## upgraded, from a smoking engine to rainbow thrusters. Everything is drawn
+## in code, in the menus' hand-drawn style, and animated from one clock in
+## _process.
 
 const W := 2600.0                # the world, in the menus' 720-wide units
 const H := 2300.0                # deep enough to scroll the far south up into view
@@ -28,6 +31,9 @@ const WATER := Color(0.60, 0.82, 1.0)
 const WOOD := Color(0.64, 0.44, 0.30)
 const BUTTER := Color(1.0, 0.86, 0.45)
 const SHADOW := Color(0.27, 0.16, 0.19, 0.16)
+const GOLD := Color(1.0, 0.8, 0.3)
+const CHROME := Color(0.88, 0.9, 0.96)
+const ACCENT := Color(0.62, 0.8, 1.0)     # the hull's racing stripe, the fins' stripes
 
 # The ship is drawn in its own coordinates (the flying pose, nose right) and
 # placed by _xf: tipped nose-down and dropped so the nose is in the ground and
@@ -43,7 +49,8 @@ const HATCH := Vector2(232.0, 145.0)
 const PORTHOLES := [Vector2(196.0, 204.0), Vector2(256.0, 204.0), Vector2(316.0, 204.0)]
 const PORTHOLE_R := 19.0
 const NOZZLE := Vector2(66.0, 200.0)
-const ANTENNA_TIP := Vector2(154.0, 106.0)
+const ANTENNA_TIP := Vector2(154.0, 106.0)    # bent; ANTENNA_UP once fixed
+const ANTENNA_UP := Vector2(176.0, 96.0)
 const FIN_TIP := Vector2(109.0, 96.0)
 const PATCH := Vector2(290.0, 176.0)        # the sticking plaster over a dent
 
@@ -96,9 +103,10 @@ var _lip_layer: Control         # the crater's front lip
 var _overlay: Control           # tools, lines, smoke: over everything
 var _crew: Array = []           # {icon, job, size, phase, centre, feet}
 var _jobs := {}                 # job -> its crew entry, for the props
-var _hull := Color(1.0, 0.74, 0.82)
+var _hull := Color(1.0, 0.74, 0.82)   # the ship's pink and cream
 var _trim := Color(1.0, 0.97, 0.9)
 var _stars: Array = []          # [position, size, phase]
+var _levels: Array = []         # each ship part's level (TSProfile.PARTS): 0 broken
 var _scatter: Array = []        # ground decoration: [kind, position, size]
 
 var _offset := Vector2.ZERO     # where the world sits on screen
@@ -112,9 +120,8 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	clip_contents = true
-	var shell: Dictionary = TSProfile.SHELLS[clampi(TSProfile.equipped_shell, 0, TSProfile.SHELL_COUNT - 1)]
-	_hull = shell["cap"]
-	_trim = shell["trim"]
+	for i in TSProfile.PART_COUNT:
+		_levels.append(TSProfile.part_level_of(i))
 	_xf = Transform2D(SHIP_TILT, Vector2.ONE, 0.0, Vector2.ZERO)
 	_xf.origin = SHIP_AT - _xf.basis_xform(SHIP_PIN)
 	_make_scenery()
@@ -330,7 +337,7 @@ func _place(c: Dictionary) -> void:
 			icon.scale = Vector2(1.0, 1.0 + sin(t * 1.5) * 0.04)
 			depth = SHIP_DEPTH + 4.0
 		"swing":
-			centre = _xf * ANTENNA_TIP + Vector2(0.0, 30.0 + stand).rotated(sin(t * 1.8) * 0.5)
+			centre = _xf * _antenna_tip() + Vector2(0.0, 30.0 + stand).rotated(sin(t * 1.8) * 0.5)
 			icon.rotation = sin(t * 1.8) * 0.5
 			depth = SHIP_DEPTH + 4.0
 		"perch":
@@ -387,6 +394,15 @@ func _place(c: Dictionary) -> void:
 	icon.set_meta("depth", depth)
 	c["centre"] = centre
 	c["feet"] = feet
+
+
+## A ship part's level (TSProfile.PARTS), as it was when Home opened.
+func _lv(part: int) -> int:
+	return int(_levels[part]) if part < _levels.size() else 0
+
+
+func _antenna_tip() -> Vector2:
+	return ANTENNA_TIP if _lv(TSProfile.PART_ANTENNA) == 0 else ANTENNA_UP
 
 
 func _ship_up() -> Vector2:
@@ -471,16 +487,69 @@ func _draw_ground() -> void:
 func _draw_ship() -> void:
 	var ci := _ship_layer
 	ci.draw_set_transform_matrix(_xf)
-	# Nozzle, cold and sooty.
-	_blob(ci, [Vector2(92, 176), Vector2(66, 166), Vector2(66, 234), Vector2(92, 224)], Color(0.62, 0.6, 0.68))
-	# Fins, behind the hull; the top one bent.
-	_blob(ci, [Vector2(118, 152), Vector2(88, 108), FIN_TIP, Vector2(128, 104), Vector2(196, 150)], _trim)
-	_blob(ci, [Vector2(118, 248), Vector2(90, 306), Vector2(128, 306), Vector2(196, 250)], _trim)
-	# The bent antenna, its light flickering.
-	ci.draw_polyline(PackedVector2Array([Vector2(176, DECK_Y), Vector2(176, 122), ANTENNA_TIP]), INK, 5.0, true)
-	var blink := 0.5 + 0.5 * sin(_t * 7.0) if fposmod(_t, 3.0) < 1.2 else 0.0
-	ci.draw_circle(ANTENNA_TIP, 9.0, INK, true, -1.0, true)
-	ci.draw_circle(ANTENNA_TIP, 6.5, Color(0.7, 0.66, 0.72).lerp(Color(1.0, 0.45, 0.55), blink), true, -1.0, true)
+	var engine := _lv(TSProfile.PART_ENGINE)
+	var fins := _lv(TSProfile.PART_FINS)
+	var antenna := _lv(TSProfile.PART_ANTENNA)
+	var hull_lv := _lv(TSProfile.PART_HULL)
+	var ports := _lv(TSProfile.PART_PORTHOLES)
+	# Engine: a flame once it runs (rainbow at the top), twin boosters, and a
+	# nozzle that goes from sooty to clean to chrome.
+	if engine >= 1:
+		var flick := 1.0 + 0.2 * sin(_t * 23.0) + 0.1 * sin(_t * 37.0)
+		var reach := (22.0 if engine < 4 else 44.0) * flick
+		var outer := Color.from_hsv(fposmod(_t * 0.3, 1.0), 0.55, 1.0) if engine >= 4 else Color(1.0, 0.6, 0.3, 0.9)
+		_blob(ci, [NOZZLE + Vector2(0, -16), NOZZLE + Vector2(-reach, 0), NOZZLE + Vector2(0, 16)], outer, false)
+		_blob(ci, [NOZZLE + Vector2(0, -8), NOZZLE + Vector2(-reach * 0.55, 0), NOZZLE + Vector2(0, 8)], BUTTER, false)
+	var nozzle_col := Color(0.62, 0.6, 0.68) if engine == 0 else (Color(0.8, 0.78, 0.86) if engine == 1 else CHROME)
+	if engine >= 3:
+		for y in [-46.0, 46.0]:
+			var b := Vector2(0.0, y)
+			_blob(ci, [Vector2(98, 188) + b, Vector2(80, 184) + b, Vector2(80, 216) + b, Vector2(98, 212) + b], nozzle_col)
+			var r := 12.0 * (1.0 + 0.2 * sin(_t * 29.0 + y))
+			_blob(ci, [Vector2(80, 192) + b, Vector2(80 - r, 200) + b, Vector2(80, 208) + b], Color(1.0, 0.7, 0.4, 0.9), false)
+	_blob(ci, [Vector2(92, 176), Vector2(66, 166), Vector2(66, 234), Vector2(92, 224)], nozzle_col)
+	if engine >= 2:
+		ci.draw_line(Vector2(72, 174), Vector2(72, 196), Color(1, 1, 1, 0.8), 3.0, true)
+	# Fins, behind the hull: the top one bent until fixed; stripes, tip lights
+	# and gold as they are upgraded.
+	var fin_col := GOLD if fins >= 4 else _trim
+	var top_fin := [Vector2(118, 152), Vector2(88, 108), FIN_TIP, Vector2(128, 104), Vector2(196, 150)] if fins == 0 \
+		else [Vector2(118, 152), Vector2(90, 96), Vector2(128, 96), Vector2(196, 150)]
+	_blob(ci, top_fin, fin_col)
+	_blob(ci, [Vector2(118, 248), Vector2(90, 306), Vector2(128, 306), Vector2(196, 250)], fin_col)
+	if fins >= 2:
+		ci.draw_line(Vector2(108, 128), Vector2(150, 128), ACCENT, 6.0, true)
+		ci.draw_line(Vector2(108, 272), Vector2(150, 272), ACCENT, 6.0, true)
+	if fins >= 3:
+		var on := fposmod(_t, 1.2) < 0.6
+		for tip in [Vector2(109, 96), Vector2(109, 304)]:
+			ci.draw_circle(tip, 7.0, INK, true, -1.0, true)
+			ci.draw_circle(tip, 5.0, Color(0.6, 1.0, 0.6) if on else Color(0.5, 0.6, 0.5), true, -1.0, true)
+	# Antenna: bent and flickering until fixed; then a steady blink, a dish, a
+	# second mast, and a glowing orb.
+	var tip := _antenna_tip()
+	if antenna == 0:
+		ci.draw_polyline(PackedVector2Array([Vector2(176, DECK_Y), Vector2(176, 122), tip]), INK, 5.0, true)
+		var flicker := 0.5 + 0.5 * sin(_t * 7.0) if fposmod(_t, 3.0) < 1.2 else 0.0
+		ci.draw_circle(tip, 9.0, INK, true, -1.0, true)
+		ci.draw_circle(tip, 6.5, Color(0.7, 0.66, 0.72).lerp(Color(1.0, 0.45, 0.55), flicker), true, -1.0, true)
+	else:
+		if antenna >= 3:
+			ci.draw_line(Vector2(198, DECK_Y), Vector2(198, 112), INK, 4.0, true)
+			ci.draw_circle(Vector2(198, 110), 6.0, Color(0.62, 0.8, 1.0), true, -1.0, true)
+		if antenna >= 2:
+			ci.draw_line(Vector2(150, DECK_Y), Vector2(150, 128), INK, 4.0, true)
+			ci.draw_arc(Vector2(150, 122), 13.0, PI * 0.8, PI * 2.2, 14, INK, 7.0, true)
+			ci.draw_arc(Vector2(150, 122), 13.0, PI * 0.8, PI * 2.2, 14, CHROME, 4.0, true)
+		ci.draw_line(Vector2(176, DECK_Y), tip, INK, 5.0, true)
+		var glow := 0.5 + 0.5 * sin(_t * 2.0)
+		if antenna >= 4:
+			ci.draw_circle(tip, 20.0, Color(1.0, 0.9, 0.5, 0.25 + 0.2 * glow), true, -1.0, true)
+			ci.draw_circle(tip, 12.0, INK, true, -1.0, true)
+			ci.draw_circle(tip, 9.5, BUTTER.lerp(Color.WHITE, glow * 0.5), true, -1.0, true)
+		else:
+			ci.draw_circle(tip, 9.0, INK, true, -1.0, true)
+			ci.draw_circle(tip, 6.5, Color(1.0, 0.45, 0.55).lerp(Color(1.0, 0.8, 0.85), glow), true, -1.0, true)
 	# The hull: a rounded tail, a flat deck on top and a rounded nose.
 	var hull := PackedVector2Array()
 	for k in 17:
@@ -493,25 +562,34 @@ func _draw_ship() -> void:
 		var u := float(k) / 16.0
 		hull.append(Vector2(470.0, 200.0).lerp(Vector2(380.0, 255.0), u) + Vector2(sin(u * PI) * 16.0, sin(u * PI) * 6.0))
 	ci.draw_colored_polygon(hull, _hull)
-	ci.draw_colored_polygon(PackedVector2Array([Vector2(104, 226), Vector2(452, 226), Vector2(446, 238), Vector2(112, 238)]), _trim)
-	ci.draw_line(Vector2(150, 158), Vector2(330, 158), Color(1, 1, 1, 0.55), 5.0, true)
-	for spot in [[Vector2(118, 186), 12.0], [Vector2(132, 214), 8.0]]:
-		ci.draw_circle(spot[0], spot[1], Color(INK, 0.22), true, -1.0, true)
+	ci.draw_colored_polygon(PackedVector2Array([Vector2(104, 226), Vector2(452, 226), Vector2(446, 238), Vector2(112, 238)]), GOLD if hull_lv >= 4 else _trim)
+	if hull_lv >= 2:
+		ci.draw_colored_polygon(PackedVector2Array([Vector2(108, 212), Vector2(456, 212), Vector2(454, 218), Vector2(110, 218)]), ACCENT)
+	ci.draw_line(Vector2(150, 158), Vector2(330, 158), Color(1, 1, 1, 0.55 if hull_lv < 4 else 0.9), 5.0, true)
+	if hull_lv == 0:
+		for spot in [[Vector2(118, 186), 12.0], [Vector2(132, 214), 8.0]]:
+			ci.draw_circle(spot[0], spot[1], Color(INK, 0.22), true, -1.0, true)
+	if hull_lv >= 3:
+		for decal in [Vector2(150, 180), Vector2(400, 176), Vector2(428, 202)]:
+			_sparkle(ci, decal, 11.0, BUTTER)
 	hull.append(hull[0])
 	ci.draw_polyline(hull, INK, 5.0, true)
-	# A dent with a sticking plaster over it.
-	for turn in [0.6, -0.6]:
-		var band := PackedVector2Array()
-		for corner in [Vector2(-22, -7), Vector2(22, -7), Vector2(22, 7), Vector2(-22, 7)]:
-			band.append(PATCH + (corner as Vector2).rotated(turn))
-		ci.draw_colored_polygon(band, Color(1.0, 0.86, 0.72))
-		band.append(band[0])
-		ci.draw_polyline(band, INK, 3.0, true)
+	if hull_lv == 0:
+		# A dent with a sticking plaster over it.
+		for turn in [0.6, -0.6]:
+			var band := PackedVector2Array()
+			for corner in [Vector2(-22, -7), Vector2(22, -7), Vector2(22, 7), Vector2(-22, 7)]:
+				band.append(PATCH + (corner as Vector2).rotated(turn))
+			ci.draw_colored_polygon(band, Color(1.0, 0.86, 0.72))
+			band.append(band[0])
+			ci.draw_polyline(band, INK, 3.0, true)
 	# Deck hatch, open.
 	ci.draw_rect(Rect2(HATCH + Vector2(-16, -6), Vector2(32, 8)), INK)
 	ci.draw_line(HATCH + Vector2(16, -2), HATCH + Vector2(30, -20), _trim, 7.0, true)
+	# Portholes: dark (cracked) glass, then clean, then lit warm from inside.
 	for hole in PORTHOLES:
-		ci.draw_circle(hole, PORTHOLE_R, Color(0.26, 0.3, 0.5), true, -1.0, true)
+		ci.draw_circle(hole, PORTHOLE_R, Color(1.0, 0.86, 0.5) if ports >= 2 else Color(0.26, 0.3, 0.5), true, -1.0, true)
+	# The back of the cockpit dome, behind the pilot.
 	ci.draw_colored_polygon(_half_circle(DOME, DOME_R), Color(0.42, 0.56, 0.82))
 	ci.draw_set_transform_matrix(Transform2D())
 
@@ -552,19 +630,49 @@ func _draw_ship_props() -> void:
 		ci.draw_circle(top + Vector2(22.0, 16.0), 6.0, Color.WHITE, true, -1.0, true)
 
 
-# The dome's glass (cracked) and the porthole rims, over the critters inside.
+# The dome's glass and the porthole rims, over the critters inside: cracked
+# until fixed, then clear, tinted, a headlamp and gold; porthole cracks and a
+# boarded-up window until fixed, then curtains and gold rims.
 func _draw_ship_glass() -> void:
 	var ci := _glass_layer
+	var cockpit := _lv(TSProfile.PART_COCKPIT)
+	var ports := _lv(TSProfile.PART_PORTHOLES)
 	ci.draw_set_transform_matrix(_xf)
 	var glass := _half_circle(DOME, DOME_R)
-	ci.draw_colored_polygon(glass, Color(GLASS, 0.35))
+	ci.draw_colored_polygon(glass, Color(GLASS.darkened(0.15), 0.5) if cockpit >= 2 else Color(GLASS, 0.35))
+	var frame := GOLD if cockpit >= 4 else _trim
 	ci.draw_polyline(glass, INK, 5.0, true)
+	if cockpit >= 4:
+		ci.draw_polyline(glass, GOLD, 2.5, true)
 	ci.draw_arc(DOME, DOME_R - 10.0, PI * 1.2, PI * 1.45, 8, Color(1, 1, 1, 0.8), 4.0, true)
-	ci.draw_polyline(PackedVector2Array([DOME + Vector2(14, -40), DOME + Vector2(8, -28), DOME + Vector2(18, -20), DOME + Vector2(10, -10)]), Color.WHITE, 2.5, true)
-	ci.draw_line(DOME + Vector2(-DOME_R - 6.0, 0), DOME + Vector2(DOME_R + 6.0, 0), _trim, 8.0, true)
+	if cockpit >= 2:
+		ci.draw_arc(DOME, DOME_R - 18.0, PI * 1.25, PI * 1.4, 6, Color(1, 1, 1, 0.7), 3.0, true)
+	if cockpit == 0:
+		ci.draw_polyline(PackedVector2Array([DOME + Vector2(14, -40), DOME + Vector2(8, -28), DOME + Vector2(18, -20), DOME + Vector2(10, -10)]), Color.WHITE, 2.5, true)
+	if cockpit >= 3:
+		# A headlamp on top, its beam sweeping ahead.
+		var lamp := DOME + Vector2(0.0, -DOME_R - 4.0)
+		var sweep := sin(_t * 0.8) * 0.25
+		var beam := PackedVector2Array([lamp, lamp + Vector2(160, -40).rotated(sweep), lamp + Vector2(160, 30).rotated(sweep)])
+		ci.draw_colored_polygon(beam, Color(1.0, 0.95, 0.6, 0.22))
+		ci.draw_circle(lamp, 9.0, INK, true, -1.0, true)
+		ci.draw_circle(lamp, 6.5, BUTTER, true, -1.0, true)
+	ci.draw_line(DOME + Vector2(-DOME_R - 6.0, 0), DOME + Vector2(DOME_R + 6.0, 0), frame, 8.0, true)
 	ci.draw_line(DOME + Vector2(-DOME_R - 6.0, 4), DOME + Vector2(DOME_R + 6.0, 4), INK, 3.0, true)
-	for hole in PORTHOLES:
-		ci.draw_arc(hole, PORTHOLE_R, 0.0, TAU, 28, _trim, 7.0, true)
+	var rim := GOLD if ports >= 4 else _trim
+	for k in PORTHOLES.size():
+		var hole: Vector2 = PORTHOLES[k]
+		if ports == 0:
+			ci.draw_polyline(PackedVector2Array([hole + Vector2(-8, -12), hole + Vector2(0, -2), hole + Vector2(-6, 6), hole + Vector2(4, 14)]), Color(1, 1, 1, 0.8), 2.0, true)
+			if k == 2:
+				# Boarded up.
+				ci.draw_rect(Rect2(hole + Vector2(-PORTHOLE_R - 4, -5), Vector2(PORTHOLE_R * 2 + 8, 10)), WOOD)
+				ci.draw_rect(Rect2(hole + Vector2(-PORTHOLE_R - 4, -5), Vector2(PORTHOLE_R * 2 + 8, 10)), INK, false, 2.5)
+		if ports >= 3:
+			# Little pink curtains, tied back.
+			for side in [-1.0, 1.0]:
+				_blob(ci, [hole + Vector2(side * PORTHOLE_R * 0.95, -PORTHOLE_R * 0.7), hole + Vector2(side * 4.0, -PORTHOLE_R * 0.8), hole + Vector2(side * PORTHOLE_R * 0.7, PORTHOLE_R * 0.5)], Color(1.0, 0.62, 0.74), false)
+		ci.draw_arc(hole, PORTHOLE_R, 0.0, TAU, 28, rim, 7.0, true)
 		ci.draw_arc(hole, PORTHOLE_R + 4.0, 0.0, TAU, 28, INK, 3.0, true)
 		ci.draw_arc(hole, PORTHOLE_R - 6.0, PI * 1.15, PI * 1.45, 6, Color(1, 1, 1, 0.7), 3.0, true)
 	ci.draw_set_transform_matrix(Transform2D())
@@ -598,7 +706,8 @@ func _draw_crater_lip() -> void:
 func _draw_overlay() -> void:
 	var ci := _overlay
 	var nozzle := _xf * NOZZLE
-	for k in 6:
+	# Smoke puffs from the engine while it is broken.
+	for k in (6 if _lv(TSProfile.PART_ENGINE) == 0 else 0):
 		var age := fposmod(_t * 0.35 + float(k) / 6.0, 1.0)
 		var p := nozzle + Vector2(-age * 70.0 + sin(age * 7.0 + k) * 10.0, -age * 190.0)
 		ci.draw_circle(p, 12.0 + age * 26.0, Color(0.62, 0.6, 0.66, (1.0 - age) * 0.55), true, -1.0, true)
@@ -651,7 +760,7 @@ func _draw_overlay() -> void:
 					var age := fposmod(t * 0.4 + float(i) / 3.0, 1.0)
 					_text(ci, centre + Vector2(14.0 + age * 34.0, -24.0 - age * 60.0), "z", 20.0 + age * 16.0, Color(INK, 1.0 - age))
 			"swing":
-				ci.draw_line(_xf * ANTENNA_TIP, centre + Vector2(0.0, -s * 0.4).rotated(sin(t * 1.8) * 0.5), INK, 3.0, true)
+				ci.draw_line(_xf * _antenna_tip(), centre + Vector2(0.0, -s * 0.4).rotated(sin(t * 1.8) * 0.5), INK, 3.0, true)
 			"bubbles":
 				for i in 4:
 					var age := fposmod(t * 0.35 + float(i) / 4.0, 1.0)

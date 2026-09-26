@@ -118,7 +118,7 @@ func _day_card(day: int) -> Control:
 	b.add_child(v)
 	v.add_child(TSUI.label("Day %d" % day, 18, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER))
 	var icon := "lock" if not unlocked else ("check" if done else ("egg" if today else "star"))
-	var ic := TSIcon.make(icon, 46, (day - 1) % TSProfile.SHELL_COUNT)
+	var ic := TSIcon.make(icon, 46, (day - 1) % TSProfile.EGG_PAINT_COUNT)
 	ic.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	v.add_child(ic)
 	if today and not done:
