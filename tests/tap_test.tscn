@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://tests/tap_test.gd" id="1_tap"]
+
+[node name="Game" type="Node3D"]
+script = ExtResource("1_tap")
