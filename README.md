@@ -9,16 +9,34 @@ art, audio, or data from the ROM is used or required** — see "Provenance" belo
 ## Running it
 
 Open `project.godot` in Godot 4.7 and press F5. On desktop it opens as a
-450Ã—800 portrait window, and the mouse stands in for touch. It opens on a
+450×800 portrait window, and the mouse stands in for touch. It opens on a
 splash and a loading screen; a brand-new player goes straight into Level 1
 with its walkthrough, and everyone after that lands on Home. Progress is
 saved (encrypted) to `user://profile.cfg`; delete it to start over.
 
-The project is set up for phones: a 720Ã—1280 portrait viewport locked to
+The project is set up for phones: a 720×1280 portrait viewport locked to
 portrait, UI that stretches to taller screens, and the Compatibility renderer
 (OpenGL ES 3), which runs on the widest range of Android and iOS devices and
-looks the same on desktop. Exporting needs Godot's Android or iOS export
-templates and the usual signing setup; that is not configured here.
+looks the same on desktop.
+
+**Android.** `export_presets.cfg` has an **Android** preset: package
+`com.jvea03.tetrisphere`, version 0.2.0 (code 1), portrait, immersive, for
+64- and 32-bit ARM phones, with the app icon and Android's adaptive icon from
+`icons/` (drawn by `tools/make_icons.gd` from the game's own art). It needs
+Godot 4.7.1's export templates, the Android SDK and JDK 17, with their paths
+set in Godot's Editor Settings (Export > Android). A debug build, signed with
+Godot's debug key, comes out of:
+
+```
+Godot.exe --headless --path . --export-debug "Android" build/tetrisphere-debug.apk
+```
+
+Copy it to a phone and open it (allow installs from unknown sources), or
+with the phone plugged in and USB debugging on, `adb install -r
+build/tetrisphere-debug.apk`. `build/` is left out of git. A Play Store
+release needs your own upload key (set under the preset's release keystore)
+and, for Google Play, an App Bundle (AAB) -- a Gradle build, which needs the
+Android build template installed from the editor's Project menu.
 
 **Touch controls** — everything is a gesture, apart from the three booster buttons and pause:
 
