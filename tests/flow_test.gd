@@ -1,7 +1,8 @@
 # Checks the game screen's side of the menus on a throwaway profile: a win
 # pays and advances the level, a ball parked on the way Home comes back
-# exactly as it was, the lose card's refill and the out-of-bombs buy work, and
-# the Daily Egg leaves level progress alone. Run with:
+# exactly as it was, the lose card's refill and the out-of-bombs buy work,
+# the Daily Egg leaves level progress alone, and the level 2 sliding and
+# level 3 bomb lessons wait for the real thing. Run with:
 #   Godot.exe --path . res://tests/flow_test.tscn
 extends "res://scripts/game.gd"
 
@@ -124,6 +125,43 @@ func _run() -> void:
 	_check("the Daily Egg is today's level, marked as such", is_daily and current_level == TSLevels.daily_level() and _lbl_level.text == "DAILY EGG")
 	_debug_win()
 	_check("winning it completes the day and leaves progress alone", TSProfile.is_daily_completed_today() and TSProfile.last_level == last)
+
+	# Level 2's sliding lesson: it waits for a real slide.
+	TSProfile.slide_tutorial_seen = false
+	_close_cards()
+	_start_level(2)
+	for _i in 4:
+		await get_tree().process_frame
+	_check("level 2 opens the sliding lesson, with a flat line to slide", _tutorial.on_step("slide") and cur_type == TSBoard.I_FLAT)
+	selected = _slide_example(TSBoard.I_FLAT)
+	for dir in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+		if board.slide_preview(selected, dir) >= 0:
+			_slide(dir)
+			break
+	for _i in 3:
+		await get_tree().process_frame
+	_check("sliding the piece moves the lesson on", _tutorial.visible and not _tutorial.on_step("slide"))
+	_tutorial._finish()
+	_check("and it is marked seen", TSProfile.slide_tutorial_seen)
+
+	# Level 3's bomb lesson: bombs arrive, then arm one, then blast.
+	TSProfile.bomb_tutorial_seen = false
+	TSProfile.bombs_unlocked = false
+	TSProfile.bomb_count = 0
+	_start_level(3)
+	for _i in 4:
+		await get_tree().process_frame
+	_check("level 3 brings %d bombs and opens the bomb lesson" % TSProfile.BOMB_UNLOCK_GRANT, _tutorial.on_step("arm_bomb") and TSProfile.bomb_count == TSProfile.BOMB_UNLOCK_GRANT)
+	_toggle_bomb()
+	for _i in 3:
+		await get_tree().process_frame
+	_check("arming a bomb moves the lesson on to the blast", bomb_armed and _tutorial.on_step("blast"))
+	_drop()
+	for _i in 3:
+		await get_tree().process_frame
+	_check("the blast moves it on to the last card", _tutorial.visible and not _tutorial.on_step("blast") and TSProfile.bomb_count == TSProfile.BOMB_UNLOCK_GRANT - 1)
+	_tutorial._finish()
+	_check("and it is marked seen", TSProfile.bomb_tutorial_seen)
 
 	print("")
 	print("ALL PASSED" if _failures == 0 else "%d FAILED" % _failures)

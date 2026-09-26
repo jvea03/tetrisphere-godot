@@ -46,7 +46,7 @@ Android build template installed from the editor's Project menu.
 | Tap the ball | aim your piece so it covers the spot you tapped |
 | Double-tap | drop the piece where it is aimed |
 | Tap and hold, then drag | slide the held piece, one cell per ~56 px of drag, if it is legal (see Sliding); let go to put it down |
-| Bomb button (bottom centre) | arm / stow a bomb: the next double-tap blasts instead of dropping. The badge counts your bombs (kept between levels); the button lights up yellow while armed and pops when you earn one. Empty, it offers an ad for one bomb or a coin buy. It appears once bombs arrive, at level 2 |
+| Bomb button (bottom centre) | arm / stow a bomb: the next double-tap blasts instead of dropping. The badge counts your bombs (kept between levels); the button lights up yellow while armed and pops when you earn one. Empty, it offers an ad for one bomb or a coin buy. It appears once bombs arrive, at level 3, where a hands-on walkthrough has you arm one and set it off |
 | Swap button (bottom left) | trade the piece you hold for the one with the biggest match anywhere on the egg, aimed right at it. Only a different piece counts: if no other piece can match anywhere, it says so and the Swap is kept. It appears at level 4, with 3 |
 | Rocks button (bottom right) | fire two rocks at the egg: each lands on one of the biggest same-type groups showing (a pair is a match one piece short) and finishes it, as if a matching piece had joined -- grey touching it shatters, and gravity and chains follow. Ties go to the group nearest your aim. It appears at level 8, with 2 shots |
 | Pause button (top right) | the pause menu: Resume, Restart Level, How to Play, Replay Walkthrough, sound and haptics toggles, Home (the ball is kept for CONTINUE) |
@@ -97,7 +97,7 @@ leaderboard); **Daily Streaks** (login and Daily Egg streaks, a coin claim
 a day, bombs every 7th day); **Egg Hunt**; and in the game: pause, the win
 card (coins, stars, chest progress, bonuses, Next Level), the lose card (+3
 hearts for coins, an ad for +1 heart, Quit), the out-of-booster cards, and the
-Level 1, bomb, Swap and Rocks walkthroughs. The bottom nav (Collection, Shop, Home,
+Level 1, sliding (level 2), bomb (level 3), Swap and Rocks walkthroughs. The bottom nav (Collection, Shop, Home,
 Ranks, Clubs) slides between the tab screens.
 
 **The crash site.** Behind all of Home is a little planet in three-quarter
@@ -129,7 +129,7 @@ stretch every 20 levels (`TSLevels.LEVEL_PLAN`, `LEVEL_LOOP_TEMPLATE`).
 Either way a level is the same ball every time it is played. Duckdoku's
 board size and starting-hint columns have no Tetrisphere equivalent (the
 egg is one size, and there are no hints), so only the tier carries over.
-Features unlock as in Duckdoku -- bombs at level 2, the Swap at 4, Rocks at 8,
+Features unlock as in Duckdoku -- bombs at level 3, the Swap at 4, Rocks at 8,
 the Collection at
 5, chests, the Battle Pass and the Egg Hunt at 7, the Daily Egg at 10, Clubs
 at 25 -- each with its walkthrough the first time. Leaving a level mid-ball
@@ -211,7 +211,16 @@ A cute, hand-drawn style, all in `scripts/toon.gd` (`TSToon`):
   **Expert adds a five-block plus sign** (strawberry pink) on top, and
   Extreme keeps both. Every piece a tier deals is also tiled into its shell,
   so each has somewhere to match from the first drop. The plus is not a
-  Tetris piece; like every piece here it never rotates.
+  Tetris piece; like every piece here it never rotates. Two early levels
+  preview the new shapes with their own pairs (`TSLevels.LEVEL_PIECES`):
+  **level 3 is only squares and upright lines**, and **level 4 only flat
+  lines and pluses** (the casual sim bot wins them 100% and 75%).
+- **The early lessons.** Level 1 walks through the egg, the gestures and the
+  hearts. **Level 2 teaches sliding** hands-on: the egg turns to a flat line
+  that can slide, and the walkthrough waits until you hold it and drag it.
+  **Level 3 teaches the bomb** the same way: bombs arrive there (three to
+  start, and none can be earned before), and the walkthrough waits for you
+  to arm one and then double-tap the egg to set it off.
 - Every piece lies **flat in one depth layer**. Your piece is aimed as a
   translucent **footprint on the shell** and **drops straight in**, resting on
   the highest block beneath it and bridging any lower holes.
@@ -495,7 +504,7 @@ projects cells through the rendered camera:
 Godot.exe --path . res://tests/tap_test.tscn
 ```
 
-The menus' systems (70 checks) and the game screen's flow through them (21
+The menus' systems (72 checks) and the game screen's flow through them (28
 checks), all passing. Neither touches the real save:
 
 ```

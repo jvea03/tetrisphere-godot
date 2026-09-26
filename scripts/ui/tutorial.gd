@@ -6,8 +6,9 @@ extends Control
 ## card beside it. start(steps) with [{"rect", "text"}, ...]; a tap anywhere,
 ## or Next, advances; Skip ends it. A step with "gate": true has no buttons
 ## and lets taps through only inside the hole -- the screen calls
-## gate_passed() once the player has done the thing. "rect" may be a
-## Callable, re-read when its step shows.
+## gate_passed() once the player has done the thing (a step's optional "id"
+## lets it check which, with on_step). "rect" may be a Callable, re-read when
+## its step shows.
 
 signal finished
 
@@ -71,6 +72,12 @@ func gate_passed() -> void:
 		_advance()
 
 
+## Whether the walkthrough is showing the step with this "id" -- so the screen
+## can tell which action a gated step is waiting for.
+func on_step(id: String) -> bool:
+	return visible and step_index < steps.size() and steps[step_index].get("id", "") == id
+
+
 func _advance() -> void:
 	step_index += 1
 	if step_index >= steps.size():
@@ -91,6 +98,8 @@ func _show_step() -> void:
 	var step: Dictionary = steps[step_index]
 	var target: Rect2 = step["rect"].call() if step["rect"] is Callable else step["rect"]
 	var hole := target.grow(PAD)
+	# Whole pixels, so the four dark panels meet without a hairline gap.
+	hole = Rect2(hole.position.floor(), (hole.end.ceil() - hole.position.floor()))
 	var vp := size
 	_masks[0].position = Vector2.ZERO
 	_masks[0].size = Vector2(vp.x, maxf(hole.position.y, 0.0))

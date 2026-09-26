@@ -252,7 +252,8 @@ func _test_levels() -> void:
 			own_pieces = own_pieces and (want.has(kind) or kind == TSBoard.BLOCKER)
 		for kind in want:
 			own_pieces = own_pieces and found.has(int(kind))
-	_check("every baked ball is built from exactly its tier's pieces", own_pieces)
+	_check("every baked ball is built from exactly its level's pieces", own_pieces)
+	_check("level 3 is only squares and upright lines; level 4 only flat lines and pluses", TSLevels.rules_for_level(3)["pieces"] == [TSBoard.O, TSBoard.I_UPRIGHT] and TSLevels.rules_for_level(4)["pieces"] == [TSBoard.I_FLAT, TSBoard.PLUS] and TSLevels.rules_for_level(5)["pieces"] == TSLevels.LINES)
 	var first := TSBoard.new()
 	first.load_dict(TSLevels.baked_board(1))
 	var two_deep := first.shell_depth == 2 and first.largest_group() <= 2
@@ -270,6 +271,12 @@ func _test_levels() -> void:
 # The three boosters: each arrives at its level with a starting stock, and the
 # mid-game buy is the Shop's five-pack pro rata.
 func _test_boosters() -> void:
+	TSProfile.bombs_unlocked = false
+	TSProfile.bomb_count = 0
+	TSProfile.note_level_started(2)
+	var none_yet := not TSProfile.bombs_unlocked
+	TSProfile.note_level_started(TSProfile.BOMB_UNLOCK_LEVEL)
+	_check("bombs arrive at level %d (where they are taught), not level 2" % TSProfile.BOMB_UNLOCK_LEVEL, none_yet and TSProfile.BOMB_UNLOCK_LEVEL == 3 and TSProfile.bombs_unlocked and TSProfile.bomb_count == TSProfile.BOMB_UNLOCK_GRANT)
 	TSProfile.swaps_unlocked = false
 	TSProfile.swap_count = 0
 	TSProfile.rocks_unlocked = false

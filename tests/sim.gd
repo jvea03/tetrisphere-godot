@@ -66,7 +66,7 @@ func _level(lvl: int, candidates: int, trials: int) -> float:
 			board.load_dict(baked)
 		var rng := RandomNumberGenerator.new()
 		rng.seed = lvl * 7919 + i
-		if bool(_play(board, TSLevels.difficulty_for_level(lvl), rng, candidates)["win"]):
+		if bool(_play(board, TSLevels.difficulty_for_level(lvl), TSLevels.rules_for_level(lvl), rng, candidates)["win"]):
 			wins += 1
 	return float(wins) / float(trials)
 
@@ -80,7 +80,7 @@ func _batch(tier: int, candidates: int, trials: int, seed_base: int) -> Dictiona
 		board.generate(seed_base + i, TSLevels.rules_for_tier(tier))
 		var rng := RandomNumberGenerator.new()
 		rng.seed = 7777 + i
-		var r := _play(board, tier, rng, candidates)
+		var r := _play(board, tier, TSLevels.rules_for_tier(tier), rng, candidates)
 		if r["win"]:
 			wins += 1
 			drops += int(r["drops"])
@@ -90,11 +90,10 @@ func _batch(tier: int, candidates: int, trials: int, seed_base: int) -> Dictiona
 
 ## One ball, played to a win or three misses, with the game's deal, fair deal
 ## and rules.
-func _play(board: TSBoard, tier: int, rng: RandomNumberGenerator, candidates: int) -> Dictionary:
+func _play(board: TSBoard, tier: int, rules: Dictionary, rng: RandomNumberGenerator, candidates: int) -> Dictionary:
 	var d: Dictionary = TSLevels.DIFFICULTIES[tier]
 	var escape := int(d["escape_size"])
 	var bias := float(d["common_bias"])
-	var rules := TSLevels.rules_for_tier(tier)
 	var pieces: Array = rules["pieces"]
 	var next := board.deal_piece(pieces, bias, rng)
 	var misses := 0

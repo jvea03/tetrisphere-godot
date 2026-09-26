@@ -30,6 +30,7 @@ static func use_test_profile(level := 1) -> void:
 	ensure_loaded()
 	tutorial_seen = true
 	bomb_tutorial_seen = true
+	slide_tutorial_seen = true
 	bombs_unlocked = true
 	bomb_count = 5
 	swap_tutorial_seen = true
@@ -108,7 +109,7 @@ static func buy_no_ads_pass() -> void:
 # button offers an ad or a coin buy.
 
 const BOMB_PACK_AMOUNT := 5
-const BOMB_UNLOCK_LEVEL := 2
+const BOMB_UNLOCK_LEVEL := 3        # taught there, after sliding at level 2
 const BOMB_UNLOCK_GRANT := 3
 
 static var bomb_count: int = 0
@@ -225,6 +226,7 @@ static func booster_buy_cost(id: String) -> int:
 
 static var tutorial_seen: bool = false # the Level 1 walkthrough, once ever
 static var bomb_tutorial_seen: bool = false # the bomb walkthrough, once, when bombs arrive
+static var slide_tutorial_seen: bool = false # the sliding walkthrough, once, at level 2
 static var club_intro_seen: bool = false
 static var collection_tutorial_seen: bool = false
 static var daily_callout_seen: bool = false
@@ -1737,6 +1739,7 @@ static func ensure_loaded() -> void:
 	rocks_tutorial_seen = bool(g.call("rocks_tutorial_seen", false))
 	tutorial_seen = bool(g.call("tutorial_seen", false))
 	bomb_tutorial_seen = bool(g.call("bomb_tutorial_seen", false))
+	slide_tutorial_seen = bool(g.call("slide_tutorial_seen", false))
 	club_intro_seen = bool(g.call("club_intro_seen", false))
 	collection_tutorial_seen = bool(g.call("collection_tutorial_seen", false))
 	daily_callout_seen = bool(g.call("daily_callout_seen", false))
@@ -1832,6 +1835,7 @@ static func save() -> void:
 	s.call("rocks_tutorial_seen", rocks_tutorial_seen)
 	s.call("tutorial_seen", tutorial_seen)
 	s.call("bomb_tutorial_seen", bomb_tutorial_seen)
+	s.call("slide_tutorial_seen", slide_tutorial_seen)
 	s.call("club_intro_seen", club_intro_seen)
 	s.call("collection_tutorial_seen", collection_tutorial_seen)
 	s.call("daily_callout_seen", daily_callout_seen)

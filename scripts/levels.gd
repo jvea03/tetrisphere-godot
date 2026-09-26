@@ -118,22 +118,39 @@ static func daily_level() -> int:
 ## still never pass seed_group_max): three or four pieces spread the match
 ## spots thin, and a ball kept fully apart left too few to aim at.
 static func rules_for_tier(tier: int) -> Dictionary:
-	var rules: Dictionary = LEVELS[0].duplicate(true)
-	var pieces: Array = DIFFICULTIES[tier]["pieces"]
+	return _with_pieces(LEVELS[0].duplicate(true), DIFFICULTIES[tier]["pieces"])
+
+
+static func _with_pieces(rules: Dictionary, pieces: Array) -> Dictionary:
 	rules["pieces"] = pieces.duplicate()
 	if pieces != LINES:
 		rules["generator"] = "search"
 		rules["mix"] = SEARCH_MIX
+	else:
+		rules["generator"] = LEVELS[0]["generator"]
+		rules["mix"] = LEVELS[0]["mix"]
 	return rules
 
 
-## A level's full rules: its tier's, except that level 1's egg is only two
-## layers deep (every other egg is three), so the critter is never far
-## below -- a gentle first ball.
+## Early levels that break from their tier's pieces, each a little lesson in
+## shapes: level 3 is only the square and the upright line, level 4 only the
+## flat line and the plus. Dealt and tiled into the shell alike.
+const LEVEL_PIECES := {
+	3: [TSBoard.O, TSBoard.I_UPRIGHT],
+	4: [TSBoard.I_FLAT, TSBoard.PLUS],
+}
+
+
+## A level's full rules: its tier's, except where noted. Level 1's egg is
+## only two layers deep (every other egg is three), so the critter is never
+## far below -- a gentle first ball -- and levels 3 and 4 have their own
+## pieces (LEVEL_PIECES).
 static func rules_for_level(level: int) -> Dictionary:
 	var rules := rules_for_tier(difficulty_for_level(level))
 	if level == 1:
 		rules["shell_depth"] = 2
+	if LEVEL_PIECES.has(level):
+		rules = _with_pieces(rules, LEVEL_PIECES[level])
 	return rules
 
 

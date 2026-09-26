@@ -45,7 +45,7 @@ const SLIDE_STEP := 56.0        # pixels of drag per cell a held piece slides
 
 
 var board: TSBoard
-var level: Dictionary = TSLevels.rules_for_tier(TSLevels.DEFAULT_DIFFICULTY)   # the tier's pieces and shell rules
+var level: Dictionary = TSLevels.rules_for_tier(TSLevels.DEFAULT_DIFFICULTY)   # the level's pieces and shell rules
 var difficulty := TSLevels.DEFAULT_DIFFICULTY   # index into TSLevels.DIFFICULTIES
 var view: TSBoardView
 var state: State = State.PLAYING
@@ -495,7 +495,7 @@ func _start_daily() -> void:
 ## A fresh ball: the baked one when the level has one (levels 1-50), else
 ## generated from the seed.
 func _start(seed_value: int, baked: Dictionary = {}) -> void:
-	level = TSLevels.rules_for_tier(difficulty)
+	level = TSLevels.rules_for_level(current_level)
 	if baked.is_empty():
 		board.generate(seed_value, level)
 	else:
@@ -542,7 +542,7 @@ func _resume() -> void:
 	is_daily = bool(s["daily"])
 	current_level = int(s["level"])
 	difficulty = int(s["difficulty"])
-	level = TSLevels.rules_for_tier(difficulty)
+	level = TSLevels.rules_for_level(current_level)
 	cur_type = int(s["cur_type"])
 	next_type = int(s["next_type"])
 	cursor = s["cursor"]
@@ -655,6 +655,8 @@ func _slide(dir: Vector2i) -> void:
 	else:
 		last_event = "Slid."
 	view.rebuild()
+	if _tutorial.on_step("slide"):
+		_tutorial.gate_passed()
 	if board.has_escape(_escape_size()):
 		_win()
 	_refresh_piece()
@@ -670,6 +672,8 @@ func _toggle_bomb() -> void:
 	else:
 		bomb_armed = not bomb_armed
 		last_event = "Bomb armed: your next drop blasts." if bomb_armed else "Bomb stowed."
+		if bomb_armed and _tutorial.on_step("arm_bomb"):
+			_tutorial.gate_passed()
 	_refresh_piece()
 	_refresh_hud()
 
@@ -818,6 +822,8 @@ func _drop() -> void:
 		last_event = ""
 		TSSfx.play("bomb")
 		TSHaptics.heavy()
+		if _tutorial.on_step("blast"):
+			_tutorial.gate_passed()
 	else:
 		res = board.place_and_resolve(offsets, landing, cur_type, _current_depth())
 		if int(res["chain"]) == 0:
@@ -846,9 +852,10 @@ func _drop() -> void:
 	view.spawn_clear_fx(res["fx"])
 	if points > 0:
 		view.spawn_popup("+%d" % points if chain < 2 else "+%d  CHAIN x%d" % [points, chain], res["fx"])
-	if not bomb_was_armed and (chain >= 2 or pieces >= BOMB_PIECES):
+	# Bombs are earned only once they have arrived (and been taught), at
+	# TSProfile.BOMB_UNLOCK_LEVEL.
+	if not bomb_was_armed and TSProfile.bombs_unlocked and (chain >= 2 or pieces >= BOMB_PIECES):
 		TSProfile.bomb_count += 1
-		TSProfile.bombs_unlocked = true
 		_pulse_bomb_button()
 	TSProfile.save()
 
@@ -1901,7 +1908,9 @@ func _close_ad() -> void:
 func _maybe_start_tutorials() -> void:
 	if not TSProfile.tutorial_seen and current_level == 1:
 		_start_tutorial()
-	elif TSProfile.bombs_unlocked and not TSProfile.bomb_tutorial_seen:
+	elif current_level == 2 and not TSProfile.slide_tutorial_seen:
+		_start_slide_tutorial()
+	elif TSProfile.bombs_unlocked and not TSProfile.bomb_tutorial_seen and current_level >= TSProfile.BOMB_UNLOCK_LEVEL:
 		_start_bomb_tutorial()
 	elif TSProfile.swaps_unlocked and not TSProfile.swap_tutorial_seen:
 		_start_booster_tutorial(_btn_swap, "swap", "The Swap! Tap it to trade the piece you're holding for the one with the biggest match on the egg -- it aims it there for you. Here are %d to start." % TSProfile.SWAP_UNLOCK_GRANT)
@@ -1929,6 +1938,89 @@ func _start_tutorial() -> void:
 	])
 
 
+## Level 2's lesson, hands-on: the egg turns to a flat line that can slide
+## (smashing grey if it can), the spotlight waits until the player holds it
+## and drags it, and then a card says what sliding does and does not do.
+## The player is handed a flat line for it, since only pieces like the one
+## you hold will slide.
+func _start_slide_tutorial() -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if not is_inside_tree():
+		return
+	var id := _slide_example(TSBoard.I_FLAT)
+	if id == TSBoard.HOLE:
+		return   # nothing can slide on this ball; the lesson waits for another
+	cur_type = TSBoard.I_FLAT
+	var cols: Array = board.plate_cols[id]
+	var mid := Vector2.ZERO
+	for col in cols:
+		mid += Vector2(col)
+	_face(mid / float(cols.size()))
+	_snap_camera()
+	_refresh_piece()
+	_refresh_hud()
+	_tutorial.finished.connect(func():
+		TSProfile.slide_tutorial_seen = true
+		TSProfile.save(), CONNECT_ONE_SHOT)
+	_tutorial.start([
+		{"id": "slide", "gate": true, "rect": func() -> Rect2: return _piece_rect(id),
+			"text": "Sliding! Press and hold this line for a moment, then drag it sideways. You can slide any piece like the one you're holding."},
+		{"rect": _ball_rect(), "text": "A slide smashes grey blocks in its way, but never makes a match by itself -- slide pieces together, then drop one on them. Slides never cost a heart."},
+	])
+
+
+## A piece of `kind` showing on the surface that can slide, preferring one
+## that smashes grey on the way, near the middle rows -- or HOLE if none can.
+func _slide_example(kind: int) -> int:
+	var best := TSBoard.HOLE
+	var best_score := -1
+	for c in TSBoard.COLS:
+		for r in TSBoard.ROWS:
+			var id := board.top_piece(c, r)
+			if not board.can_slide(id, kind):
+				continue
+			for dir in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+				var smash := board.slide_preview(id, dir)
+				if smash < 0:
+					continue
+				var score := smash * 10 + 8 - absi(r * 2 + 1 - TSBoard.ROWS)
+				if score > best_score:
+					best_score = score
+					best = id
+	return best
+
+
+## Where a piece is on screen: round its showing blocks, with some margin.
+func _piece_rect(id: int) -> Rect2:
+	if not board.plate_cols.has(id):
+		return _ball_rect()
+	var rect := Rect2()
+	var first := true
+	for col in board.plate_cols[id]:
+		var v: Vector2i = col
+		var at := _camera.unproject_position(TSBoardView.cell_transform(v.x, v.y, float((board.cells[v.x][v.y] as Array).size())).origin)
+		rect = Rect2(at, Vector2.ZERO) if first else rect.expand(at)
+		first = false
+	return rect.grow(34.0)
+
+
+func _ball_rect() -> Rect2:
+	var vp := get_viewport().get_visible_rect().size
+	return Rect2(Vector2(60.0, vp.y * 0.28), Vector2(vp.x - 120.0, vp.y * 0.42))
+
+
+# Put the camera where it is heading at once, so the walkthrough can point at
+# something on the egg straight away.
+func _snap_camera() -> void:
+	_cam_theta = _cam_target_theta
+	_cam_phi = _cam_target_phi
+	_process(0.0)
+
+
+## Level 3's lesson, hands-on: bombs arrive here. The spotlight waits for the
+## player to arm one, then for them to double-tap the egg, then says how to
+## get more.
 func _start_bomb_tutorial() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -1938,7 +2030,11 @@ func _start_bomb_tutorial() -> void:
 		TSProfile.bomb_tutorial_seen = true
 		TSProfile.save(), CONNECT_ONE_SHOT)
 	_tutorial.start([
-		{"rect": _btn_bomb.get_global_rect(), "text": "Bombs! Tap to arm one, then double-tap the egg to blast every piece around the spot. Here are %d to start." % TSProfile.BOMB_UNLOCK_GRANT},
+		{"id": "arm_bomb", "gate": true, "rect": _btn_bomb.get_global_rect(),
+			"text": "Bombs! Here are %d to start. Tap the bomb to arm one." % TSProfile.BOMB_UNLOCK_GRANT},
+		{"id": "blast", "gate": true, "rect": _ball_rect(),
+			"text": "Armed! Now double-tap the egg: the bomb blasts every piece around the spot."},
+		{"rect": _btn_bomb.get_global_rect(), "text": "Boom! Bombs never cost a heart. A chain reaction or a big clear earns another, and an empty button offers more."},
 	])
 
 
