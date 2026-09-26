@@ -127,13 +127,13 @@ static func rules_for_tier(tier: int) -> Dictionary:
 	return rules
 
 
-## A level's full rules: its tier's, except that level 1's egg is a single
-## layer deep, so every match digs straight down to the critter -- the
-## gentlest possible first ball.
+## A level's full rules: its tier's, except that level 1's egg is only two
+## layers deep (every other egg is three), so the critter is never far
+## below -- a gentle first ball.
 static func rules_for_level(level: int) -> Dictionary:
 	var rules := rules_for_tier(difficulty_for_level(level))
 	if level == 1:
-		rules["shell_depth"] = 1
+		rules["shell_depth"] = 2
 	return rules
 
 
