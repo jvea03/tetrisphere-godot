@@ -1290,7 +1290,7 @@ func _touch_input(event: InputEvent) -> void:
 		if touch.index != 0:
 			return
 		if touch.pressed:
-			if state != State.PLAYING or _any_card_open() or _tutorial.visible:
+			if state != State.PLAYING or _any_card_open() or (_tutorial.visible and not _lesson_wants_board()):
 				return
 			# The on-screen buttons handle their own touches; they are not gestures.
 			if _on_booster_button(touch.position) \
@@ -2018,6 +2018,14 @@ func _start_slide_tutorial() -> void:
 			"text": "Sliding! Press and hold this line for a moment, then drag it sideways. You can slide any piece like the one you're holding."},
 		{"rect": _ball_rect(), "text": "A slide smashes grey blocks in its way, but never makes a match by itself -- slide pieces together, then drop one on them. Slides never cost a heart."},
 	])
+
+
+## Whether the walkthrough is waiting for something done on the egg itself --
+## the slide lesson's hold-and-drag, the bomb lesson's double-tap -- so
+## touches must reach the board. Its dark panels still block everything
+## outside the spotlight.
+func _lesson_wants_board() -> bool:
+	return _tutorial.on_step("slide") or _tutorial.on_step("blast")
 
 
 ## A piece of `kind` showing on the surface that can slide, preferring one

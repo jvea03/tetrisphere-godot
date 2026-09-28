@@ -144,11 +144,33 @@ func _run() -> void:
 	for _i in 4:
 		await get_tree().process_frame
 	_check("level 2 opens the sliding lesson, with a flat line to slide", _tutorial.on_step("slide") and cur_type == TSBoard.I_FLAT)
-	selected = _slide_example(TSBoard.I_FLAT)
-	for dir in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
-		if board.slide_preview(selected, dir) >= 0:
-			_slide(dir)
+	# Done the way a player does it -- real touches, through the spotlight --
+	# so a lesson that swallows touches can't pass here.
+	var lesson_id := _slide_example(TSBoard.I_FLAT)
+	var grip := Vector2i(-1, -1)
+	var slide_dir := Vector2i.ZERO
+	for col in board.plate_cols[lesson_id]:
+		var cell: Vector2i = col
+		if not _touchable(cell):
+			continue
+		for dir in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var d: Vector2i = dir
+			var next := Vector2i(board.wrap_col(cell.x + d.x), cell.y + d.y)
+			if board.slide_preview(lesson_id, d) >= 0 and board.in_rows(next.y) and _touchable(next):
+				grip = cell
+				slide_dir = d
+				break
+		if grip.x >= 0:
 			break
+	_check("the lesson's line can be touched and slid on screen", grip.x >= 0)
+	if grip.x >= 0:
+		var from := _screen_of(grip)
+		_touch(from, true)
+		_touch_ms -= 1000   # as if held for a second
+		_process(0.0)
+		var towards := _screen_of(Vector2i(board.wrap_col(grip.x + slide_dir.x), grip.y + slide_dir.y)) - from
+		_drag_to(from, from + towards.normalized() * (SLIDE_STEP + 4.0), 4)
+		_touch(from + towards.normalized() * (SLIDE_STEP + 4.0), false)
 	for _i in 3:
 		await get_tree().process_frame
 	_check("sliding the piece moves the lesson on", _tutorial.visible and not _tutorial.on_step("slide"))
@@ -167,7 +189,11 @@ func _run() -> void:
 	for _i in 3:
 		await get_tree().process_frame
 	_check("arming a bomb moves the lesson on to the blast", bomb_armed and _tutorial.on_step("blast"))
-	_drop()
+	var blast_at := _screen_of(cursor)
+	_touch(blast_at, true)
+	_touch(blast_at, false)
+	_touch(blast_at, true)
+	_touch(blast_at, false)   # a double tap on the egg, through the spotlight
 	for _i in 3:
 		await get_tree().process_frame
 	_check("the blast moves it on to the last card", _tutorial.visible and not _tutorial.on_step("blast") and TSProfile.bomb_count == TSProfile.BOMB_UNLOCK_GRANT - 1)
@@ -189,3 +215,38 @@ func _revive_after_refill() -> void:
 		if b is Button and (b as Button).text.begins_with("+%d hearts" % LIVES):
 			(b as Button).pressed.emit()
 			return
+
+
+# Touch helpers, as the tap test has them: events straight into the game's
+# touch handling, the way the phone delivers them.
+func _touch(pos: Vector2, pressed: bool) -> void:
+	var ev := InputEventScreenTouch.new()
+	ev.index = 0
+	ev.position = pos
+	ev.pressed = pressed
+	_touch_input(ev)
+
+
+func _drag_to(from: Vector2, to: Vector2, steps: int) -> void:
+	var last := from
+	for i in steps:
+		var p := from.lerp(to, float(i + 1) / float(steps))
+		var ev := InputEventScreenDrag.new()
+		ev.index = 0
+		ev.position = p
+		ev.relative = p - last
+		_touch_input(ev)
+		last = p
+
+
+func _screen_of(cell: Vector2i) -> Vector2:
+	var top := float(board.height(cell.x, cell.y)) - 0.5
+	return _camera.unproject_position(TSBoardView.cell_transform(cell.x, cell.y, top).origin)
+
+
+# A cell showing on screen, clear of the buttons, that a finger could press.
+func _touchable(cell: Vector2i) -> bool:
+	var at := _screen_of(cell)
+	if _on_booster_button(at) or _pause_btn.get_global_rect().has_point(at):
+		return false
+	return _cell_at(at) == cell
