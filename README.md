@@ -58,7 +58,7 @@ turns the ball instead. The second tap of a double-tap must land within
 
 The desktop keyboard still works: `A`/`D`/`W`/`S` or the arrow keys to aim
 (the ball turns to follow), `Space` to drop, `F` to arm / stow a bomb, `G` to
-Any Piece, `T` to fire Rocks, `R`
+use an Any Piece, `T` to fire Rocks, `R`
 to restart the level, `Esc` or `P` to pause. In a debug build `F2` wins the
 ball and `F3` loses it, to try the win and lose cards. With the mouse, click
 is a tap, double-click drops, click-drag turns, and press-and-hold then drag
