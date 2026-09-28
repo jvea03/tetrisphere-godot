@@ -278,10 +278,11 @@ A cute, hand-drawn style, all in `scripts/toon.gd` (`TSToon`):
   beside one, a bomb, a rock -- knocks the armour off and leaves a plain grey
   blocker, which the next hit breaks. Sliding into armour does nothing: it
   stops the slide like any other piece. Armour is also the main difficulty
-  lever: none in Beginner, then 50% of the blockers in Intermediate, 35% in
-  Hard, 30% in Expert and 22% in Extreme (`TSLevels.ARMOR_SHARE`), tuned so
+  lever: none in Beginner, then 50% of the blockers in Intermediate, 30% in
+  Hard, 45% in Expert and 12% in Extreme (`TSLevels.ARMOR_SHARE`; Expert also
+  needs a 3x3 hole), tuned so
   the casual sim bot's journey averages come out Beginner 95%, Intermediate
-  52%, Hard 33%, Expert 19% and Extreme 10%.
+  52%, Hard 28%, Expert 15% and Extreme 7% (targets 50/30/20/10).
 - Destroying pieces **exposes the layer underneath**.
 - **Gravity:** a piece with nothing beneath any of its blocks **falls to the
   next lower depth layer**, as one rigid piece, until something holds it. A
@@ -353,8 +354,8 @@ A cute, hand-drawn style, all in `scripts/toon.gd` (`TSToon`):
   | `BEGINNER` | flat, upright | 2x2 | 80% |
   | `INTERMEDIATE` | + O square | 3x3 | 65% |
   | `HARD` | any 3 of lines, square, plus, L, T | 4x4 | 50% |
-  | `EXPERT` | any 4 of lines, square, plus, L, T | 2x2 | 85% |
-  | `EXTREME` | any 4 of lines, square, plus, L, T | 4x4 | 85% |
+  | `EXPERT` | any 4 of lines, square, plus, L, T | 3x3 | 70% |
+  | `EXTREME` | any 4 of lines, square, plus, L, T | 4x4 | 95% |
 
   The plus costs so much that Expert and Extreme give some back through the
   other two levers -- a smaller critter and a kinder deal than before it
