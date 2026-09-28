@@ -29,8 +29,10 @@ extends RefCounted
 #
 # The plus is hard to place, and four pieces share out the match spots, so
 # Expert and Extreme give some of it back: a smaller critter than their
-# pieces-only step would suggest (3x3 and 4x4) and a deal that leans hard on
-# the common piece. Tuned with tests/sim.gd to keep Duckdoku's win-rate curve.
+# pieces alone would suggest (2x2 and 4x4) and a deal that leans hard on
+# the common piece. Armour (ARMOR_SHARE) then sets the pace: the win rates
+# are tuned with tests/sim.gd to about 95 / 50 / 30 / 20 / 10% for the
+# casual sim bot, Beginner to Extreme.
 const LINES := [TSBoard.I_FLAT, TSBoard.I_UPRIGHT]
 const WITH_O := [TSBoard.I_FLAT, TSBoard.I_UPRIGHT, TSBoard.O]
 const WITH_PLUS := [TSBoard.I_FLAT, TSBoard.I_UPRIGHT, TSBoard.O, TSBoard.PLUS]
@@ -38,7 +40,7 @@ const DIFFICULTIES := [
 	{"name": "BEGINNER", "pieces": LINES, "escape_size": 2, "scale": 0.55, "common_bias": 0.8},
 	{"name": "INTERMEDIATE", "pieces": WITH_O, "escape_size": 3, "scale": 0.7, "common_bias": 0.65},
 	{"name": "HARD", "pieces": WITH_O, "escape_size": 4, "scale": 0.85, "common_bias": 0.5},
-	{"name": "EXPERT", "pieces": WITH_PLUS, "escape_size": 3, "scale": 0.7, "common_bias": 0.85},
+	{"name": "EXPERT", "pieces": WITH_PLUS, "escape_size": 2, "scale": 0.55, "common_bias": 0.85},
 	{"name": "EXTREME", "pieces": WITH_PLUS, "escape_size": 4, "scale": 0.85, "common_bias": 0.85},
 ]
 const DEFAULT_DIFFICULTY := 1   # INTERMEDIATE
@@ -71,7 +73,7 @@ const SEARCH_MIX := -1.0   # see rules_for_tier; below -1 changes nothing
 ## The share of each tier's blockers that wear armour (TSBoard.armored): a hit
 ## knocks it off, and only then can the blocker be broken -- sliding into it
 ## does nothing. None in Beginner, more as the tiers climb.
-const ARMOR_SHARE := [0.0, 0.1, 0.1, 0.1, 0.15]
+const ARMOR_SHARE := [0.0, 0.5, 0.35, 0.3, 0.22]
 
 static var _bank: Dictionary = {}
 static var _bank_loaded := false

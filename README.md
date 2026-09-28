@@ -275,11 +275,11 @@ A cute, hand-drawn style, all in `scripts/toon.gd` (`TSToon`):
 - **Armoured blockers** (dark steel) have a second layer. A hit -- a match
   beside one, a bomb, a rock -- knocks the armour off and leaves a plain grey
   blocker, which the next hit breaks. Sliding into armour does nothing: it
-  stops the slide like any other piece. None in Beginner; 10% of the
-  blockers from Intermediate to Expert and 15% in Extreme are armoured
-  (`TSLevels.ARMOR_SHARE`). The casual sim bot's journey averages with
-  armour: Intermediate 71%, Hard 50%, Expert 15%, Extreme 13% (72 / 56 / 21
-  / 18% without).
+  stops the slide like any other piece. Armour is also the main difficulty
+  lever: none in Beginner, then 50% of the blockers in Intermediate, 35% in
+  Hard, 30% in Expert and 22% in Extreme (`TSLevels.ARMOR_SHARE`), tuned so
+  the casual sim bot's journey averages come out Beginner 95%, Intermediate
+  52%, Hard 33%, Expert 19% and Extreme 10%.
 - Destroying pieces **exposes the layer underneath**.
 - **Gravity:** a piece with nothing beneath any of its blocks **falls to the
   next lower depth layer**, as one rigid piece, until something holds it. A
@@ -344,7 +344,7 @@ A cute, hand-drawn style, all in `scripts/toon.gd` (`TSToon`):
   | `BEGINNER` | flat, upright | 2x2 | 80% |
   | `INTERMEDIATE` | + O square | 3x3 | 65% |
   | `HARD` | any 3 of lines, square, plus, L | 4x4 | 50% |
-  | `EXPERT` | any 4 of lines, square, plus, L | 3x3 | 85% |
+  | `EXPERT` | any 4 of lines, square, plus, L | 2x2 | 85% |
   | `EXTREME` | any 4 of lines, square, plus, L | 4x4 | 85% |
 
   The plus costs so much that Expert and Extreme give some back through the
