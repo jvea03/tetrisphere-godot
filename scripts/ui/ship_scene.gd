@@ -557,7 +557,7 @@ func _draw_pad(ci: Control) -> void:
 			ci.draw_line(_ship_at + Vector2(-250, y), _ship_at + Vector2(270, y), WOOD.lightened(0.1), 10.0, true)
 		for x in [-230.0, 110.0]:
 			ci.draw_line(_ship_at + Vector2(x, -100), _ship_at + Vector2(x + 170, 10), WOOD.darkened(0.1), 5.0, true)
-		_sign(ci, _ship_at + Vector2(-440.0, 130.0), "LAUNCH PREP", ACCENT)
+		_sign(ci, _ship_at + Vector2(-60.0, -100.0), "LAUNCH PREP", ACCENT)   # up on the scaffold, clear of the crew
 		return
 	if _stage != 2:
 		return

@@ -14,7 +14,7 @@ extends Control
 var icon: String = "coin"
 var index: int = 0 # critter / shell / badge index
 var variant: String = "" # chest rarity, etc.
-var silhouette: bool = false # a locked collectible: a flat ink shape
+var silhouette: bool = false # a locked collectible: a soft grey shape with a lock
 var tint: Color = Color(0, 0, 0, 0) # overrides an icon's main colour when set
 
 const INK := Color(0.27, 0.16, 0.19)
@@ -59,8 +59,11 @@ func _w() -> float:
 	return clampf(_s * 0.05, 1.6, 5.5)
 
 
+const SILHOUETTE := Color(0.70, 0.64, 0.68) # locked shapes: readable, not a black hole
+
+
 func _fill(c: Color) -> Color:
-	return INK if silhouette else c
+	return SILHOUETTE if silhouette else c
 
 
 func _pts(unit: Array) -> PackedVector2Array:
@@ -195,6 +198,8 @@ func _draw() -> void:
 		"critter": _draw_critter(index, Vector2(0.5, 0.56), 0.4)
 		"badge": _draw_badge(index)
 		_: _circle(Vector2(0.5, 0.5), 0.4, _col(GOLD))
+	if silhouette and icon != "lock":
+		_draw_lock_at(Vector2(0.76, 0.8), 0.62)
 
 
 # -- icons ----------------------------------------------------------------------

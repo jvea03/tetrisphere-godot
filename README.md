@@ -318,7 +318,14 @@ A cute, hand-drawn style, all in `scripts/toon.gd` (`TSToon`):
   sits above the piece you hold, which rests in a tray. After each drop the
   next piece falls into the tray, lands with a squash and a little hop (the
   tray dips under it), and the new next piece drops into its slot from above.
-  A Swap pops its new piece into the tray.
+  A Swap pops its new piece into the tray. The next piece waits on a
+  slimmer tray of its own. Tips and events ("Chain x2!", "Bomb armed")
+  show as a short toast beside the pieces and then fade, so there is no
+  standing line of text over the egg.
+- Readability pass: muted text is darker for contrast, and locked
+  collectibles show as soft grey shapes with a small lock instead of black
+  silhouettes. The chest band reads UNLOCK, and the LAUNCH PREP sign hangs
+  on the scaffold where the Home buttons can't cover it.
 - **Win when the creature can escape:** dig one hole big enough for it — a
   square of cells dug all the way down to the core, with nothing left in
   them. A long thin trench is not wide enough, and a piece lying across the

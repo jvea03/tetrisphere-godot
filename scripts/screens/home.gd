@@ -330,7 +330,7 @@ func _refresh_chest_tray() -> void:
 				band = "OPENING"
 			else:
 				pill_text = TSChests.format_unlock_time(variant)
-				band = "TAP TO START"
+				band = "UNLOCK"   # tap to start its timer
 		art.set_icon("chest", 0, variant)
 		(s["plate"] as Panel).add_theme_stylebox_override("panel", TSUI.sb(TSUI.GOLD if gold else TSUI.CARD, 22, 3, 3, 0))
 		(s["pill"] as Control).visible = pill_text != ""

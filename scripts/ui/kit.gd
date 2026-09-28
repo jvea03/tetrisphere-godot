@@ -9,7 +9,7 @@ extends RefCounted
 ## viewport and set in the device's handwriting font (TSToon.hand_font).
 
 const INK := Color(0.27, 0.16, 0.19)
-const MUTED := Color(0.55, 0.45, 0.47)
+const MUTED := Color(0.45, 0.35, 0.38)   # secondary text: about 6:1 on paper (was 4.3:1)
 const PAPER := Color(1.0, 0.96, 0.88)
 const CARD := Color(1.0, 0.985, 0.95)
 const PINK := Color(1.0, 0.62, 0.74)

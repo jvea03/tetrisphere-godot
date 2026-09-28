@@ -10,6 +10,9 @@ const CAM_DIST_MIN := 17.0
 const CAM_DIST_MAX := 28.0
 const CAM_LAG := 5.0
 const BOARD_ZOOM := 0.93   # camera distance scale: under 1 draws the egg bigger
+const TOAST_FONT := 26
+const TOAST_MAX_WIDTH := 430.0   # clear of the piece column on the left
+const NEXT_TRAY_H := 86.0        # the next piece's tray: room for any piece at NEXT_PX
 # A bomb is earned by a chain reaction, or by destroying this many pieces at once.
 const BOMB_PIECES := 5
 const HOLD_PX := 24.0      # cell size of the held-piece preview
@@ -99,7 +102,10 @@ var _last_tap_pos := Vector2.ZERO
 
 var _lbl_level: Label
 var _lbl_score: Label
-var _lbl_event: Label
+var _lbl_event: Label       # the toast's text
+var _toast: PanelContainer  # news, fading out (see _show_toast)
+var _toast_text := ""
+var _toast_tween: Tween
 var _btn_bomb: Button       # the bomb booster, bottom centre
 var _bomb_badge: Label      # how many bombs you have, on the button's corner
 var _btn_swap: Button       # the Swap booster, left of the bomb
@@ -282,13 +288,40 @@ func _build_hud() -> void:
 	_pause_btn.pressed.connect(_open_pause)
 	pause_at.add_child(_pause_btn)
 
-	_lbl_event = _make_label(root, Vector2(24.0, _top + 100.0), 22)
-	_lbl_event.size = Vector2(672.0, 60.0)
+	# News -- a hint, "Smashed 3 blockers", "No match: lost a life" -- as a
+	# toast: a pill under the hearts that fades out after a few seconds, so the
+	# screen stays clear and each message stands out when it arrives.
+	var toast_row := CenterContainer.new()
+	toast_row.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	toast_row.offset_left = PIECE_COLUMN_X + TRAY_SIZE + 12.0   # beside the piece column, never over it
+	toast_row.offset_right = -12.0
+	toast_row.offset_top = _top + 92.0
+	toast_row.offset_bottom = _top + 92.0
+	toast_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(toast_row)
+	_toast = PanelContainer.new()
+	var toast_style := TSUI.sb(TSUI.CARD, 24, 3, 3, 18)
+	_toast.add_theme_stylebox_override("panel", toast_style)
+	_toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_toast.visible = false
+	toast_row.add_child(_toast)
+	_lbl_event = TSUI.label("", TOAST_FONT, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER)
 	_lbl_event.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_toast.add_child(_lbl_event)
 
 	# Held and next pieces drawn flat, as in the footage, stacked down the left:
 	# the next piece on top, and the piece you hold below it, sitting in its
 	# tray. Pieces never rotate, so what you see is exactly what drops.
+	# The next piece waits on a slimmer tray of its own above, so the two read
+	# as a pair: what you hold, and what comes after.
+	var next_tray := Panel.new()
+	next_tray.position = Vector2(PIECE_COLUMN_X + 14.0, _next_mid_y - NEXT_TRAY_H * 0.5)
+	next_tray.size = Vector2(TRAY_SIZE - 28.0, NEXT_TRAY_H)
+	var next_style := _tray_style()
+	next_style.bg_color = next_style.bg_color.lightened(0.35)
+	next_tray.add_theme_stylebox_override("panel", next_style)
+	next_tray.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(next_tray)
 	_next_box = Control.new()
 	_next_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(_next_box)
@@ -1086,7 +1119,9 @@ func _draw_piece(box: Control, kind: int, offsets: Array, px: float) -> Vector2:
 
 func _refresh_hud() -> void:
 	_lbl_score.text = "SCORE %d" % score
-	_lbl_event.text = last_event.strip_edges()
+	var news := last_event.strip_edges()
+	if news != _toast_text:
+		_show_toast(news)
 	_refresh_bomb_button()
 	for i in _hearts.size():
 		_hearts[i].color = HEART_ALIVE if i < lives else HEART_LOST
@@ -2089,3 +2124,29 @@ func _start_booster_tutorial(btn: Button, id: String, text: String) -> void:
 			TSProfile.rocks_tutorial_seen = true
 		TSProfile.save(), CONNECT_ONE_SHOT)
 	_tutorial.start([{"rect": btn.get_global_rect(), "text": text}])
+
+
+## Shows a piece of news in the toast and fades it out after a moment --
+## longer for longer messages. Empty news hides it.
+func _show_toast(text: String) -> void:
+	_toast_text = text
+	if _toast_tween != null:
+		_toast_tween.kill()
+	if text == "":
+		_toast.visible = false
+		return
+	var width := TSToon.hand_font().get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, TOAST_FONT).x
+	_lbl_event.custom_minimum_size.x = minf(width + 4.0, TOAST_MAX_WIDTH)
+	_lbl_event.text = text
+	_toast.visible = true
+	_toast.modulate.a = 1.0
+	_toast.reset_size()
+	_toast_tween = _toast.create_tween()
+	_toast_tween.tween_interval(2.2 + text.length() * 0.035)
+	_toast_tween.tween_property(_toast, "modulate:a", 0.0, 0.45)
+	_toast_tween.tween_callback(func() -> void:
+		_toast.visible = false
+		# Read: clear it, so the same news again (a second miss) shows again.
+		if last_event.strip_edges() == _toast_text:
+			last_event = ""
+		_toast_text = "")
