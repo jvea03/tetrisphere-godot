@@ -303,7 +303,7 @@ func _test_levels() -> void:
 		last_pair = pair
 	_check("Beginner levels from %d are two pieces each, never the same pair twice running" % TSLevels.BEGINNER_MIX_FROM, pairs_ok and TSLevels.rules_for_level(9)["pieces"] != TSLevels.LINES)
 	var l_cells: Array = TSBoard.SHAPES[TSBoard.L]["offsets"]
-	_check("the L is a capital L: a stem of three with a foot to the right at the bottom", l_cells.size() == 4 and l_cells.has(Vector2i(0, 0)) and l_cells.has(Vector2i(1, 0)) and l_cells.has(Vector2i(0, 1)) and l_cells.has(Vector2i(0, 2)))
+	_check("the L is a capital L: a stem of three with a foot of three along the bottom", l_cells.size() == 5 and l_cells.has(Vector2i(0, 0)) and l_cells.has(Vector2i(1, 0)) and l_cells.has(Vector2i(2, 0)) and l_cells.has(Vector2i(0, 1)) and l_cells.has(Vector2i(0, 2)))
 	var mixes_ok := true
 	var last_mix := {}
 	var seen_l := false
