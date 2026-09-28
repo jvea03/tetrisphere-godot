@@ -56,11 +56,16 @@ const TYPE_COLORS := [
 ## An armoured blocker (TSBoard.armored): dark steel until a hit knocks the
 ## armour off and leaves it pebble grey.
 const ARMOR_COLOR := Color(0.42, 0.45, 0.58)
+## ...and a mini square of that pebble grey sits raised in its middle, so the
+## two layers read at a glance: steel outside, the plain blocker within.
+const ARMOR_STUD_GAP := 0.27    # inset of the mini square on each side of its cell
+const ARMOR_STUD_RISE := 0.12   # how far it stands proud of the steel, in layers
 
 var board: TSBoard
 var max_radius := CORE_RADIUS   # outermost occupied layer, used to frame the camera
 
 var _tile_sets := {}   # tile shape key -> MultiMeshInstance3D
+var _studs: MultiMeshInstance3D   # the mini squares on armoured blockers
 var _fx_root: Node3D
 var _fx_rng := RandomNumberGenerator.new()
 var _caps: Array = []      # the cap meshes, rebuilt for a ball of another depth
@@ -272,11 +277,21 @@ static func depth_shade(d: int, depth: int) -> float:
 	return clampf(float(depth - 1 - d) / float(depth - 1), 0.0, 1.0)
 
 
+# True when nothing sits on depth `d` of this cell's stack, so a raised mini
+# square there has room and never pokes into the tile above.
+static func _open_above(stack: Array, d: int) -> bool:
+	for above in range(d + 1, stack.size()):
+		if int(stack[above]) != TSBoard.HOLE:
+			return false
+	return true
+
+
 func rebuild() -> void:
 	if board.shell_depth != _caps_depth:
 		_build_caps()
 	var tallest := 1
 	var sets := {}   # tile key -> [[colour, custom], ...]
+	var studs: Array = []
 
 	for c in TSBoard.COLS:
 		for r in TSBoard.ROWS:
@@ -290,8 +305,11 @@ func rebuild() -> void:
 				var key := tile_key(_same_sides(c, r, d, p))
 				if not sets.has(key):
 					sets[key] = []
+				var shade := depth_shade(d, board.shell_depth)
 				var colour: Color = ARMOR_COLOR if board.armored.has(p) else TYPE_COLORS[kind]
-				sets[key].append([colour, Color(c, r, d, depth_shade(d, board.shell_depth))])
+				sets[key].append([colour, Color(c, r, d, shade)])
+				if board.armored.has(p) and _open_above(stack, d):
+					studs.append([TYPE_COLORS[TSBoard.BLOCKER], Color(c, r, d + ARMOR_STUD_RISE, shade)])
 
 	for key in _tile_sets:
 		if not sets.has(key):
@@ -300,6 +318,9 @@ func rebuild() -> void:
 		if not _tile_sets.has(key):
 			_tile_sets[key] = _bent_tiles(key, make_material(Color.WHITE, 1.0, 0.0, true, true))
 		_fill_multi((_tile_sets[key] as MultiMeshInstance3D).multimesh, sets[key])
+	if _studs == null:
+		_studs = _bent_tiles(0, make_material(Color.WHITE, 1.0, 0.0, true, true), ARMOR_STUD_GAP)
+	_fill_multi(_studs.multimesh, studs)
 
 	max_radius = CORE_RADIUS + float(tallest) * LAYER_H
 
@@ -307,12 +328,12 @@ func rebuild() -> void:
 # A MultiMesh of tiles of one shape, which the shader bends onto the shell:
 # each instance carries its cell (column, row, depth) and depth shade in its
 # custom data, and its colour. Instance transforms stay at the identity.
-func _bent_tiles(key: int, material: Material) -> MultiMeshInstance3D:
+func _bent_tiles(key: int, material: Material, gap: float = RIM_GAP) -> MultiMeshInstance3D:
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.use_colors = true
 	mm.use_custom_data = true
-	mm.mesh = TSToon.tile(_key_sides(key), RIM_GAP)
+	mm.mesh = TSToon.tile(_key_sides(key), gap)
 	var mmi := MultiMeshInstance3D.new()
 	mmi.multimesh = mm
 	mmi.material_override = material

@@ -272,7 +272,8 @@ A cute, hand-drawn style, all in `scripts/toon.gd` (`TSToon`):
   "Orthogonally connected" means sharing a face: side by side in a layer, or
   stacked directly above or below, which is how a piece dropped onto its own
   kind joins it. **Blockers touching a destroyed piece shatter too.**
-- **Armoured blockers** (dark steel) have a second layer. A hit -- a match
+- **Armoured blockers** (dark steel, with a raised mini square of blocker grey
+  in the middle to show the two layers) have a second layer. A hit -- a match
   beside one, a bomb, a rock -- knocks the armour off and leaves a plain grey
   blocker, which the next hit breaks. Sliding into armour does nothing: it
   stops the slide like any other piece. Armour is also the main difficulty
