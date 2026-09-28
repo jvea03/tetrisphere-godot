@@ -136,6 +136,7 @@ var _pad_layer: Control         # behind the ship: scaffolding, launch pad, gant
 var _scatter: Array = []        # ground decoration: [kind, position, size]
 
 var _offset := Vector2.ZERO     # where the world sits on screen
+const ZOOM := 0.85              # the world drawn a little small, so more of the camp shows
 var _velocity := Vector2.ZERO   # a flick's glide
 var _dragging := false
 var _drag_moved := 0.0
@@ -154,6 +155,7 @@ func _ready() -> void:
 
 	_world = Control.new()
 	_world.size = Vector2(W, H)
+	_world.scale = Vector2.ONE * ZOOM
 	_world.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_world)
 	_ground = _layer(_draw_ground, -1.0)
@@ -255,7 +257,7 @@ func _depth_scale(y: float) -> float:
 func _home_view() -> void:
 	var view := _view_size()
 	# Centred on the ship as it stands (tall when it is upright on the pad).
-	_offset = Vector2(view.x * 0.56, view.y * (0.39 if _stage < 2 else 0.33)) - (_ship_at + Vector2(-10.0, -10.0))
+	_offset = Vector2(view.x * 0.56, view.y * (0.39 if _stage < 2 else 0.33)) - (_ship_at + Vector2(-10.0, -10.0)) * ZOOM
 	_clamp_offset()
 
 
@@ -265,8 +267,8 @@ func _view_size() -> Vector2:
 
 func _clamp_offset() -> void:
 	var view := _view_size()
-	_offset.x = clampf(_offset.x, view.x - W, 0.0)
-	_offset.y = clampf(_offset.y, view.y - H, 0.0)
+	_offset.x = clampf(_offset.x, view.x - W * ZOOM, 0.0)
+	_offset.y = clampf(_offset.y, view.y - H * ZOOM, 0.0)
 
 
 # Drags on any part of Home the menus leave uncovered (the buttons and cards
