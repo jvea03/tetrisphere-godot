@@ -22,7 +22,7 @@ const TRAY_SIZE := 124.0       # the holding tray: room for any piece at HOLD_PX
 const CAMERA_MARGIN := 48.0    # the least room left at the top for a phone's camera
 const NEXT_MID_Y := 192.0       # below the top margin: the next piece, centred here over the tray
 const TRAY_TOP := 256.0         # below the top margin: the holding tray
-const BOOSTER_SPACING := 150.0  # the Swap and Rocks buttons, either side of the bomb
+const BOOSTER_SPACING := 150.0  # the Any Piece and Rocks buttons, either side of the bomb
 const ROCKS_PER_SHOT := 2       # rocks fired per use of the Rocks booster
 # A drop that makes no combo costs a life. The reference HUD shows three slots.
 const LIVES := 3
@@ -108,7 +108,7 @@ var _toast_text := ""
 var _toast_tween: Tween
 var _btn_bomb: Button       # the bomb booster, bottom centre
 var _bomb_badge: Label      # how many bombs you have, on the button's corner
-var _btn_swap: Button       # the Swap booster, left of the bomb
+var _btn_swap: Button       # the Any Piece booster, left of the bomb
 var _btn_rocks: Button      # the Rocks booster, right of the bomb
 var _booster_badges := {}   # "swap" / "rocks" -> its count badge
 var _rocks_flying := false  # rocks in the air: no drops until they land
@@ -337,7 +337,7 @@ func _build_hud() -> void:
 
 	var boosters_at := _pin(root, Control.PRESET_CENTER_BOTTOM, Vector2(0.0, 0.0))
 	_build_bomb_button(boosters_at)
-	_btn_swap = _build_booster_button(boosters_at, "swap", -BOOSTER_SPACING, _use_swap)
+	_btn_swap = _build_booster_button(boosters_at, "swap", -BOOSTER_SPACING, _use_any_piece)
 	_btn_rocks = _build_booster_button(boosters_at, "rocks", BOOSTER_SPACING, _fire_rocks)
 	_build_dialogs(root)
 	_tutorial = TSTutorial.new()
@@ -408,7 +408,7 @@ func _build_bomb_button(anchor: Control) -> void:
 	_btn_bomb.add_child(_bomb_badge)
 
 
-# The Swap and Rocks boosters: round buttons like the bomb's, either side of
+# The Any Piece and Rocks boosters: round buttons like the bomb's, either side of
 # it, each with its drawn icon and a count badge. Unlike the bomb they act at
 # once when tapped -- nothing to arm.
 func _build_booster_button(anchor: Control, id: String, x: float, action: Callable) -> Button:
@@ -651,6 +651,9 @@ func _select_at(cell: Vector2i) -> void:
 		return
 	selected = TSBoard.HOLE
 	var holding: String = TSBoard.SHAPES[cur_type]["name"]
+	if cur_type == TSBoard.WILD:
+		last_event = "The Any Piece doesn't slide pieces -- drop it by a pair to match."
+		return
 	if id == TSBoard.HOLE:
 		last_event = "Nothing there. Hold a piece like yours (%s) to slide it." % holding
 	elif int(board.plate_kind[id]) == TSBoard.BLOCKER:
@@ -711,36 +714,38 @@ func _toggle_bomb() -> void:
 	_refresh_hud()
 
 
-## The Swap: trades the piece you hold for the level piece with the biggest
-## match on the ball, and aims it there. Only a different piece counts as a
-## swap; if no other piece can match anywhere, nothing is spent. Empty, it
-## offers an ad or a coin buy, like the bomb.
-func _use_swap() -> void:
+## The Any Piece (saved under the booster's old id, "swap"): turns the piece
+## you hold into a one-cell wild block (TSBoard.WILD) that becomes whichever
+## piece makes the biggest match where it lands -- so any pair on the ball is
+## a match waiting for it. It is aimed at the best spot to start. With nothing
+## to match anywhere, or already in hand, nothing is spent. Empty, it offers
+## an ad or a coin buy, like the bomb.
+func _use_any_piece() -> void:
 	if _rocks_flying:
 		return
 	if TSProfile.swap_count <= 0:
 		_refresh_hud()
 		_open_ad("swap")
 		return
-	var others: Array = []
-	for k in level["pieces"]:
-		if int(k) != cur_type:
-			others.append(int(k))
-	var pick := board.best_piece(others)
+	if cur_type == TSBoard.WILD:
+		last_event = "You're already holding an Any Piece -- drop it by a pair."
+		_refresh_hud()
+		return
+	var pick := board.best_piece([TSBoard.WILD])
 	if int(pick["kind"]) == TSBoard.HOLE:
-		last_event = "No other piece can match right now -- your Swap is saved."
+		last_event = "Nothing to match right now -- your Any Piece is saved."
 		_refresh_hud()
 		return
 	TSProfile.add_boosters("swap", -1)
 	TSProfile.record_quest_event("booster")
 	TSProfile.save()
-	cur_type = int(pick["kind"])
+	cur_type = TSBoard.WILD
 	cursor = pick["at"]
 	selected = TSBoard.HOLE
 	_gesture = Gesture.NONE
 	_clamp_cursor()
 	_face(_piece_centre())
-	last_event = "Swapped for %s -- aimed at a %d-piece match." % [TSBoard.SHAPES[cur_type]["name"], int(pick["pieces"])]
+	last_event = "Any Piece! It turns into whatever it touches -- aimed at a %d-piece match." % int(pick["pieces"])
 	_animate_swap_in()
 	TSSfx.play("upgrade")
 	TSHaptics.light()
@@ -1012,7 +1017,7 @@ func _animate_deal() -> void:
 	_deal_tweens.append(drop_in)
 
 
-# The Swap put a new piece in the tray: it pops in where it sits.
+# The Any Piece put a wild block in the tray: it pops in where it sits.
 func _animate_swap_in() -> void:
 	_stop_deal_animation()
 	_draw_piece_boxes()
@@ -1032,10 +1037,12 @@ func _show_aim() -> void:
 	for _c in cols:
 		depths.append(float(_current_depth()))
 	aim_combo = board.combo_preview(current_offsets(), cursor, cur_type, _current_depth())
+	# The Any Piece's footprint wears the colour it will turn into there.
+	var shown := board.wild_kind(current_offsets(), cursor, _current_depth()) if cur_type == TSBoard.WILD else cur_type
 	if aim_combo > 0:
-		_ghost_root.add_child(view.make_plate(cur_type, cols, depths, 0.75, 0.45))
+		_ghost_root.add_child(view.make_plate(shown, cols, depths, 0.75, 0.45))
 	else:
-		_ghost_root.add_child(view.make_plate(cur_type, cols, depths, 0.32, 0.0))
+		_ghost_root.add_child(view.make_plate(shown, cols, depths, 0.32, 0.0))
 
 
 # While a piece is held your own piece is put away, and the held piece glows
@@ -1066,6 +1073,13 @@ func _tray_style() -> StyleBoxFlat:
 func _draw_piece(box: Control, kind: int, offsets: Array, px: float) -> Vector2:
 	for child in box.get_children():
 		child.queue_free()
+	# The Any Piece is one cell; drawn at one cell it would be a speck, so the
+	# tray shows its booster art, big enough to read as the wild block.
+	if kind == TSBoard.WILD:
+		var art := TSIcon.make("swap", px * 3.0)
+		art.size = Vector2.ONE * px * 3.0
+		box.add_child(art)
+		return art.size
 	var min_x := 99
 	var max_x := -99
 	var min_y := 99
@@ -1261,7 +1275,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				_toggle_bomb()
 		KEY_G:
 			if not key.echo:
-				_use_swap()
+				_use_any_piece()
 		KEY_T:
 			if not key.echo:
 				_fire_rocks()
@@ -1448,7 +1462,8 @@ func _deal() -> int:
 # combo but another of the level's pieces does, hand over that one instead.
 # Otherwise a miss -- and a lost life -- would be forced, however well you play.
 func _fair(kind: int) -> int:
-	if not level.get("fair_deal", false) or board.has_combo_spot(kind):
+	# A paid-for Any Piece is never dealt away.
+	if kind == TSBoard.WILD or not level.get("fair_deal", false) or board.has_combo_spot(kind):
 		return kind
 	for other in level["pieces"]:
 		var alt := int(other)
@@ -1948,7 +1963,7 @@ func _maybe_start_tutorials() -> void:
 	elif TSProfile.bombs_unlocked and not TSProfile.bomb_tutorial_seen and current_level >= TSProfile.BOMB_UNLOCK_LEVEL:
 		_start_bomb_tutorial()
 	elif TSProfile.swaps_unlocked and not TSProfile.swap_tutorial_seen:
-		_start_booster_tutorial(_btn_swap, "swap", "The Swap! Tap it to trade the piece you're holding for the one with the biggest match on the egg -- it aims it there for you. Here are %d to start." % TSProfile.SWAP_UNLOCK_GRANT)
+		_start_booster_tutorial(_btn_swap, "swap", "The Any Piece! Tap it to turn your piece into a wild block that becomes whatever it touches -- drop it by any pair to make a match. Here are %d to start." % TSProfile.SWAP_UNLOCK_GRANT)
 	elif TSProfile.rocks_unlocked and not TSProfile.rocks_tutorial_seen:
 		_start_booster_tutorial(_btn_rocks, "rocks", "Rocks! Tap to fire two rocks: each one lands on a pair and finishes the match. Here are %d shots to start." % TSProfile.ROCKS_UNLOCK_GRANT)
 
@@ -2111,7 +2126,7 @@ func _on_booster_button(at: Vector2) -> bool:
 	return false
 
 
-## The Swap's or Rocks' walkthrough, once, the first level it is there.
+## The Any Piece's or Rocks' walkthrough, once, the first level it is there.
 func _start_booster_tutorial(btn: Button, id: String, text: String) -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame

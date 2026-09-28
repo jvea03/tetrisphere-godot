@@ -7,7 +7,7 @@ extends RefCounted
 ## from here. Ported from Duckdoku's PlayerProfile and re-themed: ducks are
 ## critters (the little creatures sealed in the egg), ships are the crashed
 ## spaceship's parts, anchors are stars, crews are clubs, and Duckdoku's three boosters
-## are Tetrisphere's three: the bomb, the Swap and Rocks.
+## are the bomb, the Any Piece and Rocks.
 ##
 ## No backend: the leaderboards, clubs and club chat are simulated locally,
 ## the same deterministic way Duckdoku does it -- see those sections.
@@ -130,7 +130,7 @@ static func bomb_buy_cost() -> int:
 
 
 ## Grants each booster's starting stock once the level that brings it is
-## reached: bombs, then the Swap, then Rocks.
+## reached: bombs, then the Any Piece, then Rocks.
 static func note_level_started(level: int) -> void:
 	var changed := false
 	for id in BOOSTERS:
@@ -141,18 +141,18 @@ static func note_level_started(level: int) -> void:
 		save()
 
 
-# -- the Swap and Rocks ----------------------------------------------------
-# Two more boosters, kept, earned and bought like bombs. The Swap trades the
-# piece you hold for the one with the biggest match on the ball, aimed at it;
+# -- the Any Piece and Rocks ----------------------------------------------
+# Two more boosters, kept, earned and bought like bombs. The Any Piece turns
+# the piece you hold into a wild block that matches whatever it touches;
 # Rocks fire two rocks, each finishing a match on the biggest near-match
-# showing (see TSBoard.best_piece and rock_targets). Each has its own count,
+# showing (see TSBoard.wild_kind and rock_targets). Each has its own count,
 # unlock level and walkthrough. BOOSTERS lists all three by id, for the code
 # that treats them alike (the empty-booster card, unlocks, the Shop).
 
 const BOOSTERS := ["bomb", "swap", "rocks"]
 const BOOSTER_NAMES := {   # title, one, many
 	"bomb": ["Bomb", "bomb", "bombs"],
-	"swap": ["Swap", "swap", "swaps"],
+	"swap": ["Any Piece", "Any Piece", "Any Pieces"],   # id kept from when it was the Swap, so saves carry over
 	"rocks": ["Rocks", "rock shot", "rock shots"],
 }
 const SWAP_UNLOCK_LEVEL := 4
@@ -1702,7 +1702,7 @@ static func claim_battle_pass_paid(tier: int) -> Dictionary:
 ##   "clear"        pieces destroyed in play (by the count)
 ##   "match"        a fresh ball started
 ##   "daily_puzzle" the day's Daily Egg won
-##   "booster"      a booster used: a bomb, Swap or Rocks
+##   "booster"      a booster used: a bomb, Any Piece or Rocks
 ##   "chest"        a chest opened
 ##   "login", "collection_level", "critter_spend"
 const DAILY_QUESTS := [

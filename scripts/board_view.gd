@@ -52,6 +52,7 @@ const TYPE_COLORS := [
 	Color(0.74, 0.60, 0.95),   # L: lilac
 	Color(0.74, 0.72, 0.78),   # blocker: pebble grey
 	Color(1.00, 0.56, 0.72),   # plus: strawberry
+	Color(1.00, 0.97, 0.88),   # Any Piece: cream (only ever in your hand)
 ]
 ## An armoured blocker (TSBoard.armored): dark steel until a hit knocks the
 ## armour off and leaves it pebble grey.

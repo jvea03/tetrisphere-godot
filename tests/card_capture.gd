@@ -1,6 +1,6 @@
 # Visual QA for the in-game cards: plays a level with a throwaway profile and
 # opens the card named on the command line (pause, win, lose, or an empty
-# booster: bomb, swap, rocks). Run with:
+# booster: bomb, swap, rocks; or `any` to hold the Any Piece). Run with:
 #   Godot.exe --path . res://tests/card_capture.tscn -- win
 extends "res://scripts/game.gd"
 
@@ -36,7 +36,10 @@ func _process(delta: float) -> void:
 			_toggle_bomb()
 		"swap":
 			TSProfile.swap_count = 0
-			_use_swap()
+			_use_any_piece()
+		"any":
+			TSProfile.swap_count = 2
+			_use_any_piece()
 		"rocks":
 			TSProfile.rock_count = 0
 			_fire_rocks()

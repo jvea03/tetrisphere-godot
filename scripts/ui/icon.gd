@@ -162,7 +162,7 @@ func _draw() -> void:
 		"heart": _poly(_heart_pts(Vector2(0.5, 0.52), 0.4), _col(PINK))
 		"heart_empty": _poly(_heart_pts(Vector2(0.5, 0.52), 0.4), Color(0.88, 0.84, 0.84))
 		"bomb": _draw_bomb()
-		"swap": _draw_swap()
+		"swap": _draw_any_piece()   # the Any Piece booster (saved under its old id, "swap")
 		"rocks": _draw_rocks()
 		"chest": _draw_chest()
 		"gift": _draw_gift()
@@ -225,25 +225,16 @@ func _draw_bomb() -> void:
 		draw_arc(_u(c + Vector2(0, 0.08)), 0.05 * _s, 0.2, PI - 0.2, 10, INK, _w() * 0.7, true)
 
 
-# The Swap: the piece you hold (a butter bar, top left) trading places with a
-# better one (a sky O, bottom right), round two curved arrows.
-func _draw_swap() -> void:
-	_rrect(Rect2(0.1, 0.16, 0.44, 0.13), 0.06, _col(Color(1.0, 0.83, 0.36)))
-	_rrect(Rect2(0.56, 0.54, 0.3, 0.3), 0.07, Color(0.52, 0.80, 0.98))
-	for arrow in [[Vector2(0.5, 0.5), PI * 1.05, PI * 1.6], [Vector2(0.5, 0.5), PI * 0.05, PI * 0.6]]:
-		var c: Vector2 = arrow[0]
-		var a0: float = arrow[1]
-		var a1: float = arrow[2]
-		var pts: Array = []
-		for i in 9:
-			var a := lerpf(a1, a0, float(i) / 8.0)
-			pts.append(c + Vector2(cos(a), sin(a)) * 0.3)
-		_line(pts, INK, 1.4)
-		var tip: Vector2 = pts[pts.size() - 1]
-		var back := Vector2(cos(a0 + 0.35), sin(a0 + 0.35)) * 0.3 + c
-		var dir := (tip - back).normalized()
-		var side := Vector2(-dir.y, dir.x)
-		_poly([tip + dir * 0.07, tip - dir * 0.03 + side * 0.08, tip - dir * 0.03 - side * 0.08], PINK)
+# The Any Piece: a wild block -- a cream tile holding a little square of each
+# piece colour, with a gold sparkle on its corner. It becomes whatever it
+# matches.
+func _draw_any_piece() -> void:
+	_rrect(Rect2(0.14, 0.2, 0.66, 0.66), 0.14, _col(Color(1.0, 0.97, 0.88)))
+	var colours := [Color(1.0, 0.83, 0.36), Color(0.50, 0.86, 0.56), Color(0.52, 0.80, 0.98), Color(1.0, 0.56, 0.72)]
+	for i in 4:
+		var cell := Vector2(0.23 + float(i % 2) * 0.25, 0.29 + float(i >> 1) * 0.25)
+		_rrect(Rect2(cell, Vector2(0.23, 0.23)), 0.06, colours[i], false)
+	_poly(_star_pts(Vector2(0.78, 0.22), 0.17, 0.07, 4), GOLD)
 
 
 # Rocks: two round pebbles flying in from the top left, speed lines behind,

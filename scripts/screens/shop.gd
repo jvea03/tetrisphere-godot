@@ -191,7 +191,7 @@ func _bundle_card(b: Dictionary) -> Control:
 	return card
 
 
-## A five-pack of one booster ("bomb", "swap" or "rocks") for coins. Buying
+## A five-pack of one booster ("bomb", "swap" -- the Any Piece -- or "rocks") for coins. Buying
 ## one before its unlock level unlocks it early.
 func _booster_card(id: String) -> Control:
 	var card := TSUI.card(TSUI.CARD, 26, 14, 3)

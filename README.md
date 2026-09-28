@@ -47,7 +47,7 @@ Android build template installed from the editor's Project menu.
 | Double-tap | drop the piece where it is aimed |
 | Tap and hold, then drag | slide the held piece, one cell per ~56 px of drag, if it is legal (see Sliding); let go to put it down |
 | Bomb button (bottom centre) | arm / stow a bomb: the next double-tap blasts instead of dropping. The badge counts your bombs (kept between levels); the button lights up yellow while armed and pops when you earn one. Empty, it offers an ad for one bomb or a coin buy. It appears once bombs arrive, at level 3, where a hands-on walkthrough has you arm one and set it off |
-| Swap button (bottom left) | trade the piece you hold for the one with the biggest match anywhere on the egg, aimed right at it. Only a different piece counts: if no other piece can match anywhere, it says so and the Swap is kept. It appears at level 4, with 3 |
+| Any Piece button (bottom left) | turns the piece you hold into a one-cell **wild block** that becomes whichever piece makes the biggest match where it lands -- drop it beside any pair to finish a match of three. It is aimed at the best spot for you, and its footprint shows the colour it will turn into. With nothing to match anywhere it says so and is kept. It appears at level 4, with 3 (saved under its old id, `swap`) |
 | Rocks button (bottom right) | fire two rocks at the egg: each lands on one of the biggest same-type groups showing (a pair is a match one piece short) and finishes it, as if a matching piece had joined -- grey touching it shatters, and gravity and chains follow. Ties go to the group nearest your aim. It appears at level 8, with 2 shots |
 | Pause button (top right) | the pause menu: Resume, Restart Level, How to Play, Replay Walkthrough, sound and haptics toggles, Home (the ball is kept for CONTINUE) |
 
@@ -58,7 +58,7 @@ turns the ball instead. The second tap of a double-tap must land within
 
 The desktop keyboard still works: `A`/`D`/`W`/`S` or the arrow keys to aim
 (the ball turns to follow), `Space` to drop, `F` to arm / stow a bomb, `G` to
-Swap, `T` to fire Rocks, `R`
+Any Piece, `T` to fire Rocks, `R`
 to restart the level, `Esc` or `P` to pause. In a debug build `F2` wins the
 ball and `F3` loses it, to try the win and lose cards. With the mouse, click
 is a tap, double-click drops, click-drag turns, and press-and-hold then drag
@@ -77,7 +77,7 @@ art drawn in code (`scripts/ui/icon.gd`) -- none of Duckdoku's art is copied.
 | Anchors (1 per life left) | **Stars** (1 per heart left, +2 for a first try) |
 | Crews / Teams | **Clubs** (Leader, Officer, Member) |
 | 7 Day Quest Voyage | **7-Day Egg Hunt** |
-| Sonar, Bomb, Tidal Wave boosters | the **bomb**, the **Swap** and **Rocks** -- the bundle, streak and Battle Pass rewards pay bombs |
+| Sonar, Bomb, Tidal Wave boosters | the **bomb**, the **Any Piece** and **Rocks** -- the bundle, streak and Battle Pass rewards pay bombs |
 | Daily Puzzle | **Daily Egg** -- a level picked from the date |
 | Sinking ships (quests) | **Clearing pieces** |
 
@@ -89,7 +89,7 @@ the Home and Daily Egg walkthroughs; **Battle Pass** (30 tiers of free and
 premium rewards, buy a tier for coins, Daily/Weekly quests, buy-pass pop-up);
 **Collection** (critters to buy and upgrade to Lv 10; the camp to build and the ship to fix, each up to Lv 4, the ship once the camp is done; titles
 and stars, rarity, collection level, the first-visit walkthrough with its
-coin gift); **Shop** (weekly featured sale, No Ads pass, bundles, bomb, Swap and Rocks packs,
+coin gift); **Shop** (weekly featured sale, No Ads pass, bundles, bomb, Any Piece and Rocks packs,
 coin packs with a free daily pack); **Leaderboard** (Daily / Weekly /
 Season, pinned own row, podium prizes); **Clubs** (join, search, create with
 a badge; club page with the Leader's note, chat, members and a weekly club
@@ -97,7 +97,7 @@ leaderboard); **Daily Streaks** (login and Daily Egg streaks, a coin claim
 a day, bombs every 7th day); **Egg Hunt**; and in the game: pause, the win
 card (coins, stars, chest progress, bonuses, Next Level), the lose card (+3
 hearts for coins, an ad for +1 heart, Quit), the out-of-booster cards, and the
-Level 1, sliding (level 2), bomb (level 3), Swap and Rocks walkthroughs. The bottom nav (Collection, Shop, Home,
+Level 1, sliding (level 2), bomb (level 3), Any Piece and Rocks walkthroughs. The bottom nav (Collection, Shop, Home,
 Ranks, Clubs) slides between the tab screens.
 
 **The crash site.** Behind all of Home is a little planet in three-quarter
@@ -161,7 +161,7 @@ stretch every 20 levels (`TSLevels.LEVEL_PLAN`, `LEVEL_LOOP_TEMPLATE`).
 Either way a level is the same ball every time it is played. Duckdoku's
 board size and starting-hint columns have no Tetrisphere equivalent (the
 egg is one size, and there are no hints), so only the tier carries over.
-Features unlock as in Duckdoku -- bombs at level 3, the Swap at 4, Rocks at 8,
+Features unlock as in Duckdoku -- bombs at level 3, the Any Piece at 4, Rocks at 8,
 the Collection at
 5, chests, the Battle Pass and the Egg Hunt at 7, the Daily Egg at 10, Clubs
 at 25 -- each with its walkthrough the first time. Leaving a level mid-ball
@@ -208,7 +208,7 @@ A cute, hand-drawn style, all in `scripts/toon.gd` (`TSToon`):
   punch-hole camera.
   It includes ink-outlined hearts, rounded piece previews (the next piece
   above the held one, which sits in a sunken tray) and three round booster
-  buttons: the Swap, a bomb with a face, and a pair of smiling Rocks.
+  buttons: the Any Piece (a wild tile of every colour), a bomb with a face, and a pair of smiling Rocks.
 - **The creature** is a milky blob with big sparkly eyes and pink cheeks.
 
 ## The rules as implemented
@@ -319,7 +319,7 @@ A cute, hand-drawn style, all in `scripts/toon.gd` (`TSToon`):
   sits above the piece you hold, which rests in a tray. After each drop the
   next piece falls into the tray, lands with a squash and a little hop (the
   tray dips under it), and the new next piece drops into its slot from above.
-  A Swap pops its new piece into the tray. The next piece waits on a
+  An Any Piece pops its wild block into the tray. The next piece waits on a
   slimmer tray of its own. Tips and events ("Chain x2!", "Bomb armed")
   show as a short toast beside the pieces and then fade, so there is no
   standing line of text over the egg.
@@ -537,7 +537,7 @@ stepped through frame by frame.
 | `tests/tap_test.tscn` | Taps projected cells on the real rendered ball and checks the piece lands over them; then plays the gestures (swipe, tap, double-tap, hold and drag) through the touch handler, and checks the egg mapping and the bomb button. |
 | `tests/demo.tscn` | Visual QA — boots the real game and plays a greedy opening. |
 | `tests/meta_test.gd` | The menus' systems on a throwaway profile: stars and coins, chests, the Battle Pass, quests, streaks, the collection, clubs, the Egg Hunt, purchases, sales, level progression. |
-| `tests/flow_test.tscn` | The game screen's side of them: level start, parking and resuming a ball, the Swap and Rocks, booster buys, the lose card's refill, a win's payout, the Daily Egg. |
+| `tests/flow_test.tscn` | The game screen's side of them: level start, parking and resuming a ball, the Any Piece and Rocks, booster buys, the lose card's refill, a win's payout, the Daily Egg. |
 | `tests/menu_capture.tscn`, `tests/card_capture.tscn` | Visual QA -- open any menu screen, or the pause / win / lose / out-of-booster card, on a throwaway profile with everything unlocked. |
 
 ## Checking it
@@ -574,7 +574,7 @@ To look at a menu screen without playing up to it (`home`, `battle_pass`,
 `collection`, `shop`, `leaderboard`, `clubs`, `clubs_in`, `streak`, `hunt`,
 `game`, optionally with a level: `game 22`; `home all` owns every critter),
 or at an in-game card (`pause`,
-`win`, `lose`, or an empty booster: `bomb`, `swap`, `rocks`):
+`win`, `lose`, or an empty booster: `bomb`, `swap`, `rocks`; or `any` to hold the Any Piece):
 
 ```
 Godot.exe --path . res://tests/menu_capture.tscn -- collection

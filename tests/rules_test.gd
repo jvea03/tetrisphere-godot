@@ -430,6 +430,19 @@ func _test_swap_and_rocks() -> void:
 	_check("and a spot where the flat line really makes that match", b.combo_preview(flat_offsets, at, FLAT, b.landing_depth(flat_offsets, at)) == int(pick["pieces"]))
 	_check("with nothing that can match, the Swap has no pick", int(b.best_piece([UP])["kind"]) == TSBoard.HOLE)
 
+	# The Any Piece's wild block: dropped between the two Os it becomes an O
+	# and makes a match of three; it also finds that spot by itself.
+	var one: Array = TSBoard.SHAPES[TSBoard.WILD]["offsets"]
+	_check("a wild block next to a pair of Os becomes an O", b.wild_kind(one, Vector2i(12, 3), 0) == TSBoard.O)
+	_check("and previews a 3-piece match there", b.combo_preview(one, Vector2i(12, 3), TSBoard.WILD, 0) == 3)
+	_check("next to the lone upright it takes that kind but makes no match", b.wild_kind(one, Vector2i(17, 3), 0) == UP and b.combo_preview(one, Vector2i(17, 3), TSBoard.WILD, 0) == 0)
+	var wild_pick := b.best_piece([TSBoard.WILD])
+	_check("the wild block finds a match to aim at", int(wild_pick["pieces"]) >= 3)
+	var trial := b.clone()
+	var wild_res := trial.place_and_resolve(one, Vector2i(12, 3), TSBoard.WILD, 0)
+	_check("dropped, it clears the pair with it", int(wild_res["pieces"]) == 3 and not trial.plate_kind.has(o1) and not trial.plate_kind.has(o2))
+	_check("and never stays wild", not trial.plate_kind.values().has(TSBoard.WILD))
+
 	var targets := b.rock_targets(2, Vector2i(2, 5))
 	var hit := {}
 	for g in targets:

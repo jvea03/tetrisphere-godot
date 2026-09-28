@@ -57,14 +57,19 @@ const SHAPES := [
 	{"name": "L", "offsets": [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(0, 2)]},
 	{"name": "Blocker", "offsets": [Vector2i(0, 0)]},
 	{"name": "Plus", "offsets": [Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1), Vector2i(2, 1), Vector2i(1, 2)]},
+	# The Any Piece booster's wild block: one cell that turns into whichever
+	# piece gives the biggest match where it lands (see wild_kind). It is only
+	# ever in the player's hand -- on the ball it is always a real kind.
+	{"name": "Any Piece", "offsets": [Vector2i(0, 0)]},
 ]
-const TYPE_COUNT := 10
+const TYPE_COUNT := 11
 const I_FLAT := 0
 const I_UPRIGHT := 1
 const O := 2
 const L := 7
 const BLOCKER := 8
 const PLUS := 9
+const WILD := 10
 
 # cells[col][row] -> Array of piece ids, deepest first. A HOLE marks an empty
 # depth with something still above it; stacks never end in a HOLE, so a
@@ -635,6 +640,8 @@ func landing_depth(offsets: Array, at: Vector2i) -> int:
 # it touches. Drives the aim cue and the lives rule's warning. Chain reactions
 # that follow are not predicted.
 func combo_preview(offsets: Array, at: Vector2i, kind: int, depth: int) -> int:
+	if kind == WILD:
+		kind = wild_kind(offsets, at, depth)
 	var total := 1
 	var seen := {}
 	for p in _contacts(kind, footprint_cells(offsets, at), depth):
@@ -644,6 +651,38 @@ func combo_preview(offsets: Array, at: Vector2i, kind: int, depth: int) -> int:
 			seen[g] = true
 			total += 1
 	return total if total >= MIN_MATCH else 0
+
+
+# What the Any Piece (WILD) becomes when it lands on `at` in layer `depth`:
+# of the kinds it would touch, the one making the biggest match (ties go to
+# the one it touches most). With no match to make it takes the kind it
+# touches most -- the piece beneath it first -- so it still blends in. On bare
+# core with nothing beside it, it lands as an I flat.
+func wild_kind(offsets: Array, at: Vector2i, depth: int) -> int:
+	var cols := footprint_cells(offsets, at)
+	var touching := {}   # kind -> contact count
+	for col in cols:
+		var v: Vector2i = col
+		var near: Array = [_occupant(v.x, v.y, depth - 1), _occupant(v.x, v.y, depth + 1)]
+		for dir in DIRS:
+			var dv: Vector2i = dir
+			var n := Vector2i(wrap_col(v.x + dv.x), v.y + dv.y)
+			if in_rows(n.y) and not cols.has(n):
+				near.append(_occupant(n.x, n.y, depth))
+		for i in near.size():
+			var p: int = near[i]
+			if p == HOLE or int(plate_kind[p]) == BLOCKER:
+				continue
+			# The piece underneath counts double, so it wins a tie.
+			touching[int(plate_kind[p])] = int(touching.get(int(plate_kind[p]), 0)) + (2 if i == 0 else 1)
+	var best := I_FLAT
+	var best_score := -1
+	for k in touching:
+		var score := combo_preview(offsets, at, int(k), depth) * 100 + int(touching[k])
+		if score > best_score:
+			best = int(k)
+			best_score = score
+	return best
 
 
 # Is there anywhere on the ball a straight drop of `kind` would make a match?
@@ -807,6 +846,8 @@ func slide(id: int, dir: Vector2i) -> Dictionary:
 func place_and_resolve(offsets: Array, at: Vector2i, kind: int, depth: int = -1) -> Dictionary:
 	if depth < 0:
 		depth = landing_depth(offsets, at)
+	if kind == WILD:
+		kind = wild_kind(offsets, at, depth)
 	var id := _add_plate(kind, footprint_cells(offsets, at), depth)
 	var fx: Array = []
 	var res := _chain([id], fx, 1)
@@ -850,8 +891,8 @@ func detonate(at: Vector2i, radius: int) -> Dictionary:
 
 # --- boosters ----------------------------------------------------------------
 
-# The Swap booster's pick: of `kinds`, the piece with the biggest match
-# anywhere on the ball, and where -- {"kind", "at", "pieces"}, with kind HOLE
+# The best drop of any of `kinds` (the Any Piece aims with [WILD]): the piece
+# with the biggest match anywhere on the ball, and where -- {"kind", "at", "pieces"}, with kind HOLE
 # if none of them can match at all. Ties go to the earlier kind in `kinds`.
 func best_piece(kinds: Array) -> Dictionary:
 	var best := {"kind": HOLE, "at": Vector2i(0, 0), "pieces": 0}

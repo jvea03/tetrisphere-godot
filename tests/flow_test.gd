@@ -56,14 +56,19 @@ func _run() -> void:
 	_on_ad_buy()
 	_check("buying bombs mid-level", TSProfile.bomb_count == TSProfile.bomb_buy_count() and TSProfile.coin_count == coins - TSProfile.bomb_buy_cost())
 
-	# the Swap: a different piece, aimed at its biggest match
+	# the Any Piece: a wild block, aimed at its biggest match
 	TSProfile.swap_count = 2
-	var held := cur_type
-	var others: Array = level["pieces"].filter(func(k): return int(k) != held)
-	var best := board.best_piece(others)
-	_use_swap()
-	_check("the Swap trades the held piece for the best other one (%s)" % TSBoard.SHAPES[cur_type]["name"], cur_type == int(best["kind"]) and cur_type != held and cursor == best["at"])
+	var best := board.best_piece([TSBoard.WILD])
+	_use_any_piece()
+	_check("the Any Piece turns the held piece into the wild block", cur_type == TSBoard.WILD and cursor == best["at"])
 	_check("and aims it at a match, spending one", aim_combo == int(best["pieces"]) and aim_combo >= 3 and TSProfile.swap_count == 1)
+	_use_any_piece()
+	_check("a second tap while holding one spends nothing", TSProfile.swap_count == 1 and cur_type == TSBoard.WILD)
+	var wild_pieces := board.plate_kind.size()
+	var lives_before := lives
+	_drop()
+	_check("dropped by a pair, it matches like that piece (no life lost)", lives == lives_before and board.plate_kind.size() < wild_pieces and cur_type != TSBoard.WILD)
+	_check("and nothing wild is left on the ball", not board.plate_kind.values().has(TSBoard.WILD))
 
 	# Rocks: two rocks fly, and each finishes a match when it lands
 	TSProfile.rock_count = 1
@@ -90,7 +95,7 @@ func _run() -> void:
 	for id in ["swap", "rocks"]:
 		if id == "swap":
 			TSProfile.swap_count = 0
-			_use_swap()
+			_use_any_piece()
 		else:
 			TSProfile.rock_count = 0
 			_fire_rocks()
