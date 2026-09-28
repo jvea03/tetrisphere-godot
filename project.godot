@@ -10,8 +10,8 @@ config_version=5
 
 [application]
 
-config/name="EggBlok - Puzzle Break"
-config/description="EggBlok - Puzzle Break: a Tetrisphere-style egg-digging puzzle for phones in portrait. Original code and geometry only."
+config/name="Egg Escape: Puzzle Break"
+config/description="Egg Escape: Puzzle Break: a Tetrisphere-style egg-digging puzzle for phones in portrait. Original code and geometry only."
 config/version="0.2.0"
 config/icon="res://icons/icon.png"
 run/main_scene="res://scenes/opening.tscn"

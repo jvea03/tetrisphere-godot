@@ -1,8 +1,8 @@
-# EggBlok - Puzzle Break
+# Egg Escape: Puzzle Break
 
 <img src="screenshot.png" alt="Level 1 in portrait: hand-drawn pastel egg of yellow and green lines, gesture hints below" width="300"> <img src="screenshot_home.png" alt="The Home screen: the crash-landed spaceship on its planet with the critters at work, under the avatar card, coins, side tiles, chest tray, PLAY and the bottom nav" width="300">
 
-**EggBlok - Puzzle Break** is a playable recreation of the *Tetrisphere* (N64,
+**Egg Escape: Puzzle Break** is a playable recreation of the *Tetrisphere* (N64,
 1997) gameplay loop, written from scratch in Godot 4.7 / GDScript, as a
 **portrait mobile game**. **No code, art, audio, or data from the ROM is used or required** — see "Provenance" below.
 
@@ -28,12 +28,12 @@ set in Godot's Editor Settings (Export > Android). A debug build, signed with
 Godot's debug key, comes out of:
 
 ```
-Godot.exe --headless --path . --export-debug "Android" build/eggblok-debug.apk
+Godot.exe --headless --path . --export-debug "Android" build/egg-escape-debug.apk
 ```
 
 Copy it to a phone and open it (allow installs from unknown sources), or
 with the phone plugged in and USB debugging on, `adb install -r
-build/eggblok-debug.apk`. `build/` is left out of git. A Play Store
+build/egg-escape-debug.apk`. `build/` is left out of git. A Play Store
 release needs your own upload key (set under the preset's release keystore)
 and, for Google Play, an App Bundle (AAB) -- a Gradle build, which needs the
 Android build template installed from the editor's Project menu.

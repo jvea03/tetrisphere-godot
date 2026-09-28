@@ -46,11 +46,11 @@ func _advance() -> void:
 	SceneFlow.go("res://scenes/loading.tscn")
 
 
-## The game's name, EggBlok - Puzzle Break: "EggBlok" hand-lettered, each
+## The game's name, Egg Escape: Puzzle Break: "Egg Escape" hand-lettered, each
 ## letter in its own pastel with a thick ink outline and tipped a little so it
 ## reads as drawn, not typeset; "Puzzle Break" under it, smaller.
 class Logo extends VBoxContainer:
-	const WORD := "EggBlok"
+	const WORD := "Egg Escape"
 	const TAGLINE := "Puzzle Break"
 
 	static func make(px: int) -> Logo:
@@ -63,6 +63,11 @@ class Logo extends VBoxContainer:
 		logo.add_child(row)
 		var colors := [TSUI.PINK, TSUI.BUTTER, TSUI.MINT, TSUI.SKY, TSUI.LILAC, TSUI.PEACH]
 		for i in WORD.length():
+			if WORD[i] == " ":   # the gap between the words, not an outlined blank
+				var gap := Control.new()
+				gap.custom_minimum_size = Vector2(px * 0.28, 0)
+				row.add_child(gap)
+				continue
 			var l := TSUI.outlined(TSUI.label(WORD[i], px, colors[i % colors.size()], HORIZONTAL_ALIGNMENT_CENTER), TSUI.INK, int(px * 0.16))
 			l.rotation = deg_to_rad(-6.0 if i % 2 == 0 else 5.0)
 			l.pivot_offset = Vector2(px * 0.3, px * 0.6)
