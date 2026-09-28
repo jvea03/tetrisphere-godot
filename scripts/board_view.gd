@@ -33,6 +33,11 @@ const EGG_TAPER := 0.13
 # The caps stand level with a fresh shell, however deep this ball is (see
 # _cap_radius); they are rebuilt when a ball of another depth is loaded.
 const CAP_TRIM := 0.07      # latitude the trim ring covers, in radians
+## The caps are shell, not play: a dark dusky plum, darker and greyer than any
+## piece (and a warmer hue than the blue-grey armour), so they never read as
+## something to tap. The trim ring is a lighter shade of the same.
+const CAP_COLOR := Color(0.42, 0.31, 0.40)
+const CAP_TRIM_COLOR := Color(0.55, 0.43, 0.52)
 
 # One colour per piece, in TSBoard.SHAPES order: soft pastels, kept far enough
 # apart in hue to tell at a glance. The two lines keep the footage's pairing --
@@ -84,7 +89,7 @@ func _cap_radius() -> float:
 	return CORE_RADIUS + board.shell_depth * LAYER_H + 0.04
 
 
-## The caps take the egg's colours (TSProfile.EGG_PAINTS), and
+## The caps are plain dark shell (CAP_COLOR), and
 ## stand level with the top of a fresh shell of this ball's depth.
 func _build_caps() -> void:
 	for mi in _caps:
@@ -92,10 +97,9 @@ func _build_caps() -> void:
 	_caps.clear()
 	_caps_depth = board.shell_depth
 	var cap_r := _cap_radius()
-	var shell: Dictionary = TSProfile.EGG_PAINTS[0]
-	var cap: Color = shell["cap"]
+	var cap := CAP_COLOR
 	var dome_mat := make_material(cap, 1.0)
-	var trim_mat := make_material(shell["trim"], 1.0, 0.0, false)
+	var trim_mat := make_material(CAP_TRIM_COLOR, 1.0, 0.0, false)
 	var wall_mat := make_material(cap.darkened(0.25), 1.0, 0.0, false)
 	var outward := func(p: Vector3) -> Vector3: return p
 	for side in [1.0, -1.0]:

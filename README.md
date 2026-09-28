@@ -246,7 +246,8 @@ A cute, hand-drawn style, all in `scripts/toon.gd` (`TSToon`):
   and a searched layer under it, so the critter is never far below -- a
   gentle first ball (the casual sim bot wins it every time, up from 67% on
   a three-layer egg). The level rules carry the depth as `shell_depth`, and
-  the pole caps follow it.
+  the pole caps follow it. The caps are a dark dusky plum (`TSBoardView.CAP_COLOR`),
+  darker than any piece, so they read as the egg's shell, not something to tap.
 - **New pieces join by tier.** Beginner levels are the two lines.
   **Intermediate adds the 2x2 O square** (sky blue). **Hard mixes any three**
   of six pieces -- the two lines, the square, the **plus** (strawberry pink,
