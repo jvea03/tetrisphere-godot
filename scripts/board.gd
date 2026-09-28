@@ -52,7 +52,9 @@ const SHAPES := [
 	{"name": "S", "offsets": [Vector2i(0, 0), Vector2i(1, 0), Vector2i(1, 1), Vector2i(2, 1)]},
 	{"name": "Z", "offsets": [Vector2i(1, 0), Vector2i(2, 0), Vector2i(0, 1), Vector2i(1, 1)]},
 	{"name": "J", "offsets": [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(0, 1)]},
-	{"name": "L", "offsets": [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(2, 1)]},
+	# A capital L: an upright stem of three with a foot out to the right at
+	# the bottom (+y is up the ball).
+	{"name": "L", "offsets": [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(0, 2)]},
 	{"name": "Blocker", "offsets": [Vector2i(0, 0)]},
 	{"name": "Plus", "offsets": [Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1), Vector2i(2, 1), Vector2i(1, 2)]},
 ]
@@ -60,6 +62,7 @@ const TYPE_COUNT := 10
 const I_FLAT := 0
 const I_UPRIGHT := 1
 const O := 2
+const L := 7
 const BLOCKER := 8
 const PLUS := 9
 

@@ -302,6 +302,24 @@ func _test_levels() -> void:
 		pairs_ok = pairs_ok and pair.size() == 2 and pair != last_pair
 		last_pair = pair
 	_check("Beginner levels from %d are two pieces each, never the same pair twice running" % TSLevels.BEGINNER_MIX_FROM, pairs_ok and TSLevels.rules_for_level(9)["pieces"] != TSLevels.LINES)
+	var l_cells: Array = TSBoard.SHAPES[TSBoard.L]["offsets"]
+	_check("the L is a capital L: a stem of three with a foot to the right at the bottom", l_cells.size() == 4 and l_cells.has(Vector2i(0, 0)) and l_cells.has(Vector2i(1, 0)) and l_cells.has(Vector2i(0, 1)) and l_cells.has(Vector2i(0, 2)))
+	var mixes_ok := true
+	var last_mix := {}
+	var seen_l := false
+	for lvl in range(1, 71):
+		var tier := TSLevels.difficulty_for_level(lvl)
+		if not TSLevels.TIER_MIX.has(tier):
+			continue
+		var mix: Array = TSLevels.rules_for_level(lvl)["pieces"]
+		var distinct := {}
+		for k in mix:
+			distinct[k] = true
+			mixes_ok = mixes_ok and TSLevels.PIECE_POOL.has(k)
+		mixes_ok = mixes_ok and distinct.size() == int(TSLevels.TIER_MIX[tier]) and mix != last_mix.get(tier, [])
+		last_mix[tier] = mix
+		seen_l = seen_l or mix.has(TSBoard.L)
+	_check("Hard levels mix 3 of the 5 pieces, Expert and Extreme 4, never the same mix twice running", mixes_ok and seen_l)
 	var first := TSBoard.new()
 	first.load_dict(TSLevels.baked_board(1))
 	var two_deep := first.shell_depth == 2 and first.largest_group() <= 2

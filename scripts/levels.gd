@@ -8,10 +8,12 @@ extends RefCounted
 # The five difficulty tiers, Duckdoku's: Beginner, Intermediate, Hard, Expert,
 # Extreme. Each sets Tetrisphere's three levers.
 #
-# The pieces. Beginner is the two lines, flat and upright. Intermediate adds
-# the 2x2 O square, and Hard keeps it; Expert adds the five-block plus on top,
-# and Extreme keeps both. Every piece a tier deals is also tiled into its
-# shell, so each one has somewhere to match from the first drop.
+# The pieces. Beginner is the two lines, flat and upright (and, from level 9,
+# any two pieces). Intermediate adds the 2x2 O square. Hard mixes any three
+# of the five pieces -- the lines, the square, the plus and the capital L --
+# and Expert and Extreme any four (see tier_mix); the lists below are each
+# tier's first mix. Every piece a level deals is also tiled into its shell,
+# so each one has somewhere to match from the first drop.
 #
 # The size of the creature in the core. A level is won when the creature can
 # escape: through a square hole `escape_size` cells across, dug all the way
@@ -155,6 +157,38 @@ const BEGINNER_PAIRS := [
 ]
 
 
+## The five pieces the harder tiers mix from: the two lines, the square, the
+## plus and the capital L.
+const PIECE_POOL := [TSBoard.I_FLAT, TSBoard.I_UPRIGHT, TSBoard.O, TSBoard.PLUS, TSBoard.L]
+## How many of PIECE_POOL each mixing tier uses: Hard any three, Expert and
+## Extreme any four. Each level of the tier takes the next combination in turn
+## (by how many levels of that tier came before it), so every combination
+## comes round and no two in a row match. Each tier keeps its own turn.
+const TIER_MIX := {2: 3, 3: 4, 4: 4}
+
+
+## Every way to pick k of PIECE_POOL, in a fixed order.
+static func _combos(k: int, from := 0) -> Array:
+	if k == 0:
+		return [[]]
+	var out: Array = []
+	for i in range(from, PIECE_POOL.size() - k + 1):
+		for rest in _combos(k - 1, i + 1):
+			out.append([PIECE_POOL[i]] + rest)
+	return out
+
+
+## The pieces a Hard, Expert or Extreme level is built from.
+static func tier_mix(level: int) -> Array:
+	var tier := difficulty_for_level(level)
+	var combos := _combos(int(TIER_MIX[tier]))
+	var before := 0
+	for l in range(1, level):
+		if difficulty_for_level(l) == tier:
+			before += 1
+	return combos[before % combos.size()]
+
+
 ## The two pieces a Beginner level from BEGINNER_MIX_FROM on is built from.
 static func beginner_pair(level: int) -> Array:
 	var before := 0
@@ -167,14 +201,17 @@ static func beginner_pair(level: int) -> Array:
 ## A level's full rules: its tier's, except where noted. Level 1's egg is
 ## only two layers deep (every other egg is three), so the critter is never
 ## far below -- a gentle first ball; levels 3 and 4 have their own pieces
-## (LEVEL_PIECES); and Beginner levels from BEGINNER_MIX_FROM on are any two
-## pieces (beginner_pair).
+## (LEVEL_PIECES); Beginner levels from BEGINNER_MIX_FROM on are any two
+## pieces (beginner_pair); and Hard, Expert and Extreme levels mix three or
+## four of the five pieces (tier_mix).
 static func rules_for_level(level: int) -> Dictionary:
 	var rules := rules_for_tier(difficulty_for_level(level))
 	if level == 1:
 		rules["shell_depth"] = 2
 	if LEVEL_PIECES.has(level):
 		rules = _with_pieces(rules, LEVEL_PIECES[level])
+	elif TIER_MIX.has(difficulty_for_level(level)):
+		rules = _with_pieces(rules, tier_mix(level))
 	elif level >= BEGINNER_MIX_FROM and difficulty_for_level(level) == 0:
 		rules = _with_pieces(rules, beginner_pair(level))
 	return rules

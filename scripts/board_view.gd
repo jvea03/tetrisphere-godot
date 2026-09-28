@@ -38,19 +38,20 @@ const CAP_TRIM := 0.07      # latitude the trim ring covers, in radians
 # apart in hue to tell at a glance. The two lines keep the footage's pairing --
 # yellow flat bars, green upright bars -- and blockers are pebble grey. The
 # other pieces take the rest of the sweet-shop palette: the O square (from
-# Intermediate) is sky blue and the plus (from Expert) strawberry pink.
+# Intermediate) is sky blue, the plus (from Expert) strawberry pink and the
+# capital-L piece lilac.
 # I flat, I upright, O, T, S, Z, J, L, blocker, plus.
 const TYPE_COLORS := [
-	Color(1.00, 0.83, 0.36),
-	Color(0.50, 0.86, 0.56),
-	Color(0.52, 0.80, 0.98),
-	Color(0.74, 0.60, 0.95),
-	Color(1.00, 0.66, 0.82),
-	Color(0.98, 0.52, 0.52),
-	Color(0.56, 0.64, 0.98),
-	Color(1.00, 0.68, 0.44),
-	Color(0.74, 0.72, 0.78),
-	Color(1.00, 0.56, 0.72),
+	Color(1.00, 0.83, 0.36),   # I flat: butter
+	Color(0.50, 0.86, 0.56),   # I upright: mint
+	Color(0.52, 0.80, 0.98),   # O: sky
+	Color(1.00, 0.68, 0.44),   # T: peach (unused)
+	Color(1.00, 0.66, 0.82),   # S (unused)
+	Color(0.98, 0.52, 0.52),   # Z (unused)
+	Color(0.56, 0.64, 0.98),   # J (unused)
+	Color(0.74, 0.60, 0.95),   # L: lilac
+	Color(0.74, 0.72, 0.78),   # blocker: pebble grey
+	Color(1.00, 0.56, 0.72),   # plus: strawberry
 ]
 
 var board: TSBoard
