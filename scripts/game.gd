@@ -641,7 +641,7 @@ func _slide(dir: Vector2i) -> void:
 		return
 	var res := board.slide(selected, dir)
 	if not bool(res["moved"]):
-		last_event = "Blocked. Only grey blockers can be pushed through."
+		last_event = "Blocked. Only plain grey blockers can be pushed through -- armoured ones need a hit first."
 		_refresh_hud()
 		return
 

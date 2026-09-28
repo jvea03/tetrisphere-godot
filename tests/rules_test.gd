@@ -25,6 +25,7 @@ func _initialize() -> void:
 	_test_deal()
 	_test_bomb()
 	_test_swap_and_rocks()
+	_test_armor()
 	_test_pieces_stay_whole()
 	print("")
 	print("ALL PASSED" if _failures == 0 else "%d FAILED" % _failures)
@@ -439,6 +440,53 @@ func _test_swap_and_rocks() -> void:
 	_check("the rocks finish both matches: 4 pieces gone", int(res["pieces"]) == 4 and not b.plate_kind.has(f1) and not b.plate_kind.has(o2))
 	_check("grey touching a struck group shatters; the rest stays", not b.plate_kind.has(grey) and b.plate_kind.has(lone))
 	_check("with fewer groups than rocks, the rocks take what there is", b.rock_targets(2, Vector2i(0, 0)).size() == 1)
+
+
+# Armoured blockers: a hit knocks the armour off, a second hit breaks the
+# blocker, and a slide can't get through armour at all.
+func _test_armor() -> void:
+	var b := _empty_board()
+	var a := _flat(b, 0, 5)
+	var c := _flat(b, 4, 5)
+	var armour := b._add_plate(TSBoard.BLOCKER, [Vector2i(8, 5)])
+	b.armored[armour] = true
+	var shape: Array = TSBoard.SHAPES[FLAT]["offsets"]
+	b.place_and_resolve(shape, Vector2i(2, 5), FLAT)
+	_check("a match beside an armoured blocker knocks the armour off but leaves the blocker", not b.plate_kind.has(a) and not b.plate_kind.has(c) and b.plate_kind.has(armour) and not b.armored.has(armour))
+	var d := _flat(b, 9, 5)
+	var e := _flat(b, 13, 5)
+	b.place_and_resolve(shape, Vector2i(11, 5), FLAT)
+	_check("a second hit breaks it", not b.plate_kind.has(armour) and not b.plate_kind.has(d) and not b.plate_kind.has(e))
+
+	var s := _empty_board()
+	var mover := _flat(s, 0, 3)
+	var steel := s._add_plate(TSBoard.BLOCKER, [Vector2i(4, 3)])
+	s.armored[steel] = true
+	_check("sliding into an armoured blocker is blocked", s.slide_preview(mover, Vector2i(1, 0)) < 0 and not bool(s.slide(mover, Vector2i(1, 0))["moved"]) and s.plate_kind.has(steel))
+	s.armored.erase(steel)
+	_check("once its armour is off, a slide smashes it like any blocker", s.slide_preview(mover, Vector2i(1, 0)) == 1 and bool(s.slide(mover, Vector2i(1, 0))["moved"]) and not s.plate_kind.has(steel))
+
+	var bomb := _empty_board()
+	var shell := bomb._add_plate(TSBoard.BLOCKER, [Vector2i(5, 4)])
+	bomb.armored[shell] = true
+	bomb.detonate(Vector2i(5, 4), 2)
+	_check("a bomb counts as a hit: armour off, blocker still there", bomb.plate_kind.has(shell) and not bomb.armored.has(shell))
+
+	var ball := TSBoard.new()
+	ball.generate(4242, TSLevels.rules_for_tier(2))
+	var blockers := 0
+	for id in ball.plate_kind:
+		if int(ball.plate_kind[id]) == TSBoard.BLOCKER:
+			blockers += 1
+	var share := float(ball.armored.size()) / maxf(blockers, 1.0)
+	var back := TSBoard.new()
+	back.load_dict(ball.to_dict())
+	var want: float = TSLevels.ARMOR_SHARE[2]
+	_check("a Hard ball armours about %d%% of its blockers (%d%%)" % [roundi(want * 100.0), roundi(share * 100.0)], share > want * 0.4 and share < want * 2.0)
+	_check("armour survives saving and copying", back.armored.size() == ball.armored.size() and ball.clone().armored.size() == ball.armored.size())
+	var easy := TSBoard.new()
+	easy.generate(4242, TSLevels.rules_for_tier(0))
+	_check("Beginner balls have no armour", easy.armored.is_empty())
 
 
 func _test_pieces_stay_whole() -> void:

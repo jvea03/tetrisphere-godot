@@ -73,6 +73,10 @@ var cells: Array = []
 var shell_depth := SHELL_DEPTH   # how deep this ball started (level 1's is a single layer)
 var plate_kind := {}      # piece id -> kind (index into SHAPES)
 var plate_cols := {}      # piece id -> Array[Vector2i], the columns it occupies
+## Armoured blockers: a second layer over the grey. A hit -- a match beside
+## it, a bomb, a rock -- knocks the armour off and leaves a plain blocker; a
+## second hit breaks that. Sliding can't break armour: it stops a slide.
+var armored := {}         # blocker id -> true while its armour is on
 var initial_blocks := 0
 var cleared_blocks := 0
 
@@ -119,6 +123,15 @@ func generate(seed_value: int, level: Dictionary) -> void:
 			searched.erase(d)
 	for d in searched:
 		_tile_layer(d)
+
+	# Armour, last, so the tiling (and every baked ball without armour) is
+	# unchanged: each blocker is armoured with the level's armor_share chance.
+	armored.clear()
+	var armor_share := float(level.get("armor_share", 0.0))
+	if armor_share > 0.0:
+		for id in plate_kind:
+			if int(plate_kind[id]) == BLOCKER and _rng.randf() < armor_share:
+				armored[id] = true
 
 	initial_blocks = count_blocks()
 	cleared_blocks = 0
@@ -379,6 +392,7 @@ func _remove_plate(id: int) -> void:
 		_trim(stack)
 	plate_kind.erase(id)
 	plate_cols.erase(id)
+	armored.erase(id)
 
 
 # A hole with nothing above it is just open space; drop it from the stack.
@@ -523,6 +537,15 @@ func _matches(seeds: Array) -> Dictionary:
 # chain step it went at) so the view can play the clear in place.
 func _destroy(doomed: Dictionary, step: int, fx: Array) -> int:
 	var removed := 0
+	# An armoured blocker takes the hit instead: its armour chips off (a
+	# puff of grey in the fx) and it stays as a plain blocker.
+	for p in doomed.keys():
+		if armored.has(p):
+			armored.erase(p)
+			doomed.erase(p)
+			for col in plate_cols[p]:
+				var v: Vector2i = col
+				fx.append([v.x, v.y, (cells[v.x][v.y] as Array).find(p), BLOCKER, step])
 	for p in doomed:
 		var kind: int = plate_kind[p]
 		for col in plate_cols[p]:
@@ -734,7 +757,7 @@ func slide_preview(id: int, dir: Vector2i) -> int:
 		var p := _occupant(n.x, n.y, d)
 		if p == HOLE or p == id:
 			continue
-		if int(plate_kind[p]) != BLOCKER:
+		if int(plate_kind[p]) != BLOCKER or armored.has(p):   # pieces and armour stop a slide
 			return -1
 		smash += 1
 	return smash
@@ -1019,7 +1042,7 @@ func to_dict() -> Dictionary:
 		for r in ROWS:
 			column.append((cells[c][r] as Array).duplicate())
 		stacks.append(column)
-	return {"cells": stacks, "kinds": kinds}
+	return {"cells": stacks, "kinds": kinds, "armor": armored.keys()}
 
 
 ## Loads a ball saved by to_dict (numbers come back from JSON as floats).
@@ -1027,6 +1050,7 @@ func load_dict(data: Dictionary) -> void:
 	cells.clear()
 	plate_kind.clear()
 	plate_cols.clear()
+	armored.clear()
 	_next_id = 0
 	for id_str in data["kinds"]:
 		var id := int(id_str)
@@ -1050,6 +1074,9 @@ func load_dict(data: Dictionary) -> void:
 	for column in cells:
 		for stack in column:
 			shell_depth = maxi(shell_depth, (stack as Array).size())
+	for id in data.get("armor", []):
+		if plate_kind.has(int(id)):
+			armored[int(id)] = true
 	initial_blocks = count_blocks()
 	cleared_blocks = 0
 
@@ -1062,6 +1089,7 @@ func clone() -> TSBoard:
 	b.shell_depth = shell_depth
 	b.plate_kind = plate_kind.duplicate()
 	b.plate_cols = plate_cols.duplicate(true)
+	b.armored = armored.duplicate()
 	b.cells = []
 	for c in COLS:
 		var column: Array = []

@@ -53,6 +53,9 @@ const TYPE_COLORS := [
 	Color(0.74, 0.72, 0.78),   # blocker: pebble grey
 	Color(1.00, 0.56, 0.72),   # plus: strawberry
 ]
+## An armoured blocker (TSBoard.armored): dark steel until a hit knocks the
+## armour off and leaves it pebble grey.
+const ARMOR_COLOR := Color(0.42, 0.45, 0.58)
 
 var board: TSBoard
 var max_radius := CORE_RADIUS   # outermost occupied layer, used to frame the camera
@@ -287,7 +290,8 @@ func rebuild() -> void:
 				var key := tile_key(_same_sides(c, r, d, p))
 				if not sets.has(key):
 					sets[key] = []
-				sets[key].append([TYPE_COLORS[kind], Color(c, r, d, depth_shade(d, board.shell_depth))])
+				var colour: Color = ARMOR_COLOR if board.armored.has(p) else TYPE_COLORS[kind]
+				sets[key].append([colour, Color(c, r, d, depth_shade(d, board.shell_depth))])
 
 	for key in _tile_sets:
 		if not sets.has(key):

@@ -68,6 +68,10 @@ const LEVEL_LOOP_TEMPLATE := [
 const LEVEL_LOOP_START := 51
 const LEVEL_BANK := "res://levels/levels.json"
 const SEARCH_MIX := -1.0   # see rules_for_tier; below -1 changes nothing
+## The share of each tier's blockers that wear armour (TSBoard.armored): a hit
+## knocks it off, and only then can the blocker be broken -- sliding into it
+## does nothing. None in Beginner, more as the tiers climb.
+const ARMOR_SHARE := [0.0, 0.1, 0.1, 0.1, 0.15]
 
 static var _bank: Dictionary = {}
 static var _bank_loaded := false
@@ -120,7 +124,9 @@ static func daily_level() -> int:
 ## still never pass seed_group_max): three or four pieces spread the match
 ## spots thin, and a ball kept fully apart left too few to aim at.
 static func rules_for_tier(tier: int) -> Dictionary:
-	return _with_pieces(LEVELS[0].duplicate(true), DIFFICULTIES[tier]["pieces"])
+	var rules := _with_pieces(LEVELS[0].duplicate(true), DIFFICULTIES[tier]["pieces"])
+	rules["armor_share"] = float(ARMOR_SHARE[tier])
+	return rules
 
 
 static func _with_pieces(rules: Dictionary, pieces: Array) -> Dictionary:

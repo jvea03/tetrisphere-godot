@@ -272,6 +272,14 @@ A cute, hand-drawn style, all in `scripts/toon.gd` (`TSToon`):
   "Orthogonally connected" means sharing a face: side by side in a layer, or
   stacked directly above or below, which is how a piece dropped onto its own
   kind joins it. **Blockers touching a destroyed piece shatter too.**
+- **Armoured blockers** (dark steel) have a second layer. A hit -- a match
+  beside one, a bomb, a rock -- knocks the armour off and leaves a plain grey
+  blocker, which the next hit breaks. Sliding into armour does nothing: it
+  stops the slide like any other piece. None in Beginner; 10% of the
+  blockers from Intermediate to Expert and 15% in Extreme are armoured
+  (`TSLevels.ARMOR_SHARE`). The casual sim bot's journey averages with
+  armour: Intermediate 71%, Hard 50%, Expert 15%, Extreme 13% (72 / 56 / 21
+  / 18% without).
 - Destroying pieces **exposes the layer underneath**.
 - **Gravity:** a piece with nothing beneath any of its blocks **falls to the
   next lower depth layer**, as one rigid piece, until something holds it. A
@@ -532,7 +540,7 @@ Plays the five tiers and the level journey headless and reports win rates:
 Godot.exe --headless --path . --script res://tests/sim.gd
 ```
 
-And the rules test, which exits non-zero on any failure (81 checks, all
+And the rules test, which exits non-zero on any failure (89 checks, all
 passing):
 
 ```
