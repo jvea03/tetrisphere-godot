@@ -15,6 +15,7 @@ const LEVEL_MUSIC := [
 	"res://audio/level_song_1.mp3",
 	"res://audio/level_song_2.mp3",
 	"res://audio/level_song_3.mp3",
+	"res://audio/level_song_4.mp3",
 ]
 const MUSIC_VOLUME_DB := {"menu": -8.0, "level": -10.0}   # under the sound effects, which carry the feedback
 const MUSIC_SILENT_DB := -40.0
@@ -50,7 +51,7 @@ static func music(mode: String) -> void:
 		_fade_music(mode, true)
 
 
-## The next level song from the shuffle bag: the three songs in a random order,
+## The next level song from the shuffle bag: every level song in a random order,
 ## each played once, then a fresh shuffle -- which never opens with the song
 ## that just finished, so no song plays twice in a row.
 static func next_level_song() -> String:

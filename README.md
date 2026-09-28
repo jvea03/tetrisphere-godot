@@ -182,7 +182,7 @@ parks it, and Home's PLAY becomes CONTINUE.
   replies are simulated locally and deterministically, as in Duckdoku.
 - **Music**: the main menu song (`audio/main_menu.mp3`) loops on Home and every
   menu screen, carrying on unbroken between them. In a level it fades out for
-  the three level songs (`audio/level_song_1-3.mp3`), played one after another
+  the four level songs (`audio/level_song_1-4.mp3`), played one after another
   in a shuffled order -- every song once before any repeats, and never the
   same song twice in a row -- carrying on from one level into the next
   (`TSSfx.music` and `next_level_song`, driven by SceneFlow). Music plays on the "Music"
