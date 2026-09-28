@@ -202,6 +202,9 @@ func _build_part_feature(i: int) -> void:
 	else:
 		tags.add_child(TSUI.pill("UNBUILT" if camp else "BROKEN", TSUI.RED_DOT, 18, Color.WHITE))
 	info.add_child(tags)
+	if not camp and TSProfile.is_ship_ready():
+		var when := "Launch it now from Home!" if TSProfile.can_launch() else ("Launched this season." if TSProfile.has_launched_this_season() else "It can launch at the season's end, in %d days." % TSProfile.days_to_launch_window())
+		info.add_child(TSUI.wrap(TSUI.label("Ship ready! " + when, 20, TSFX.COL_GAIN)))
 	if fixed:
 		info.add_child(TSUI.label("Lv %d/%d" % [level, TSProfile.PART_MAX_LEVEL], 22, TSFX.COL_GAIN))
 		info.add_child(_stars(level, TSProfile.PART_MAX_LEVEL, 26.0))

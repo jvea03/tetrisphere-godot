@@ -29,6 +29,8 @@ var sale_btn: Button
 var sale_timer: Label
 var tray: PanelContainer
 var tutorial: TSTutorial
+var _world: TSShipScene      # the crash site behind everything
+var _launch_btn: Button      # shown at a season's end when the ship is ready
 
 var _chest_slots: Array = [] # per slot: {btn, plate, art, pill, pill_label, band}
 var _settings: Dictionary
@@ -216,14 +218,54 @@ func _on_daily_pressed() -> void:
 # drag on any empty part of the screen pans the world; buttons and cards
 # still take their own.
 func _build_showcase() -> void:
-	var gap := TSUI.spacer(340.0)
+	var gap := TSUI.vbox(0)
+	gap.custom_minimum_size = Vector2(0, 340)
+	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	content.add_child(gap)
-	var world := TSShipScene.new()
-	add_child(world)
-	move_child(world, 1)   # just over the paper, under everything else
+	_world = TSShipScene.new()
+	add_child(_world)
+	move_child(_world, 1)   # just over the paper, under everything else
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	content.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	(content.get_parent() as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# At the end of a season, a readied ship can launch (TSProfile.can_launch).
+	if TSProfile.can_launch():
+		gap.add_child(TSUI.spacer(0, true))
+		_launch_btn = TSUI.button("LAUNCH!  ·  +%s coins" % TSProfile.fmt_coins(TSProfile.launch_reward()), TSUI.GOLD, 32, Vector2(420, 84))
+		_launch_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		_launch_btn.pressed.connect(_on_launch_pressed)
+		gap.add_child(_launch_btn)
+		_launch_btn.pivot_offset = _launch_btn.custom_minimum_size * 0.5
+		var beat := _launch_btn.create_tween().set_loops()
+		beat.tween_property(_launch_btn, "scale", Vector2.ONE * 1.06, 0.5).set_trans(Tween.TRANS_SINE)
+		beat.tween_property(_launch_btn, "scale", Vector2.ONE, 0.5).set_trans(Tween.TRANS_SINE)
+
+
+## Lift-off: the ship roars away with its crew aboard; then the reward and the
+## news -- a new planet, a new camp to build -- and Home reopens there.
+func _on_launch_pressed() -> void:
+	_launch_btn.disabled = true
+	_launch_btn.visible = false
+	TSSfx.play("win")
+	TSHaptics.heavy()
+	_world.launched.connect(_on_launched, CONNECT_ONE_SHOT)
+	_world.launch()
+
+
+func _on_launched() -> void:
+	var before := TSProfile.coin_count
+	var coins := TSProfile.launch_ship()
+	var card := TSUI.dialog(self, 600)
+	var box: VBoxContainer = card["box"]
+	box.add_child(TSUI.title("Lift-off!", 48))
+	box.add_child(TSUI.wrap(TSUI.label("Your critters flew to Planet %d! A new crash site means a new camp to build and a new ship to fix -- everything you levelled up still counts toward your Collection." % TSProfile.planet_number, 24, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER), 540))
+	box.add_child(TSUI.label("+%s coins" % TSProfile.fmt_coins(coins), 36, TSFX.COL_GAIN, HORIZONTAL_ALIGNMENT_CENTER))
+	var go := TSUI.button("Explore Planet %d" % TSProfile.planet_number, TSUI.GREEN, 28, Vector2(0, 76))
+	go.pressed.connect(func(): SceneFlow.go(SceneFlow.HOME))
+	box.add_child(go)
+	TSUI.reveal(card["root"], card["panel"])
+	coin_pill.receive(card["panel"].get_global_rect(), before, TSProfile.coin_count)
+	TSFX.confetti(self)
 
 
 func _build_chest_tray() -> void:

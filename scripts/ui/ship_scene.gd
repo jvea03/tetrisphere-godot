@@ -1,6 +1,9 @@
 class_name TSShipScene
 extends Control
 
+## The lift-off animation (launch) has finished: the ship is out of sight.
+signal launched
+
 ## Home's backdrop: a little planet, seen in three-quarter view, where a
 ## cartoon spaceship has crash-landed nose-first in a heap of dirt (its
 ## engine smoking until it is fixed), with the critters the player owns busy
@@ -22,15 +25,18 @@ const W := 2600.0                # the world, in the menus' 720-wide units
 const H := 2300.0                # deep enough to scroll the far south up into view
 const INK := Color(0.27, 0.16, 0.19)
 const GLASS := Color(0.62, 0.84, 1.0)
-const GROUND := Color(0.72, 0.88, 0.70)
-const GROUND_DARK := Color(0.60, 0.79, 0.61)
-const SKY_TOP := Color(0.90, 0.86, 1.0)
-const SKY_LOW := Color(1.0, 0.95, 0.88)
 const DIRT := Color(0.74, 0.58, 0.44)
 const WATER := Color(0.60, 0.82, 1.0)
 const WOOD := Color(0.64, 0.44, 0.30)
 const BUTTER := Color(1.0, 0.86, 0.45)
 const SHADOW := Color(0.27, 0.16, 0.19, 0.16)
+## A new planet's colours after every launch (TSProfile.planet_number), in turn.
+const PLANETS := [
+	{"ground": Color(0.72, 0.88, 0.70), "ground_dark": Color(0.60, 0.79, 0.61), "sky_top": Color(0.90, 0.86, 1.0), "sky_low": Color(1.0, 0.95, 0.88)},
+	{"ground": Color(0.96, 0.80, 0.70), "ground_dark": Color(0.88, 0.68, 0.60), "sky_top": Color(0.80, 0.88, 1.0), "sky_low": Color(1.0, 0.94, 0.90)},
+	{"ground": Color(0.80, 0.76, 0.96), "ground_dark": Color(0.68, 0.64, 0.88), "sky_top": Color(1.0, 0.86, 0.92), "sky_low": Color(1.0, 0.96, 0.90)},
+	{"ground": Color(0.98, 0.90, 0.64), "ground_dark": Color(0.90, 0.80, 0.52), "sky_top": Color(0.78, 0.92, 0.94), "sky_low": Color(1.0, 0.97, 0.88)},
+]
 const GOLD := Color(1.0, 0.8, 0.3)
 const CHROME := Color(0.88, 0.9, 0.96)
 const ACCENT := Color(0.62, 0.8, 1.0)     # the hull's racing stripe, the fins' stripes
@@ -38,10 +44,14 @@ const ACCENT := Color(0.62, 0.8, 1.0)     # the hull's racing stripe, the fins' 
 # The ship is drawn in its own coordinates (the flying pose, nose right) and
 # placed by _xf: tipped nose-down and dropped so the nose is in the ground and
 # the bottom fin rests on it.
-const SHIP_TILT := 0.3
+const SHIP_TILT := 0.3                        # the crashed pose (see _set_pose)
 const SHIP_PIN := Vector2(270.0, 200.0)     # ship point that lands at SHIP_AT
 const SHIP_AT := Vector2(1300.0, 720.0)
-const SHIP_DEPTH := SHIP_AT.y + 55.0         # where it meets the ground, for draw order
+const SHIP_DEPTH := SHIP_AT.y + 55.0         # where the crashed ship meets the ground
+const PAD := SHIP_AT + Vector2(0.0, 40.0)    # the launch pad's middle, once the ship is readied
+const LAUNCH_RUMBLE := 1.0                    # seconds of rumble on the pad before lift-off
+const LAUNCH_ACCEL := 700.0                   # how hard the ship climbs, world units / s²
+const LAUNCH_SECONDS := 4.2                   # from the button to `launched`
 const DECK_Y := 145.0
 const DOME := Vector2(360.0, 145.0)
 const DOME_R := 44.0
@@ -113,6 +123,16 @@ var _hull := Color(1.0, 0.74, 0.82)   # the ship's pink and cream
 var _trim := Color(1.0, 0.97, 0.9)
 var _stars: Array = []          # [position, size, phase]
 var _levels: Array = []         # each ship part's level (TSProfile.PARTS): 0 broken
+var _planet: Dictionary = PLANETS[0]   # this planet's colours
+## How far launch prep has come: 0 crashed, 1 righted on its legs amid
+## scaffolding, 2 upright on the launch pad (every part fixed).
+var _stage := 0
+var _tilt := SHIP_TILT          # the ship's pose for the stage
+var _ship_at := SHIP_AT
+var _ship_depth := SHIP_DEPTH   # where the ship meets the ground, for draw order
+var _pose := Transform2D()      # _xf before any lift-off
+var _launch_start := -1.0       # when lift-off began (see launch), or -1
+var _pad_layer: Control         # behind the ship: scaffolding, launch pad, gantry
 var _scatter: Array = []        # ground decoration: [kind, position, size]
 
 var _offset := Vector2.ZERO     # where the world sits on screen
@@ -128,8 +148,8 @@ func _ready() -> void:
 	clip_contents = true
 	for i in TSProfile.PART_COUNT:
 		_levels.append(TSProfile.part_level_of(i))
-	_xf = Transform2D(SHIP_TILT, Vector2.ONE, 0.0, Vector2.ZERO)
-	_xf.origin = SHIP_AT - _xf.basis_xform(SHIP_PIN)
+	_planet = PLANETS[(TSProfile.planet_number - 1) % PLANETS.size()]
+	_set_pose()
 	_make_scenery()
 
 	_world = Control.new()
@@ -137,9 +157,10 @@ func _ready() -> void:
 	_world.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_world)
 	_ground = _layer(_draw_ground, -1.0)
-	_ship_layer = _layer(_draw_ship, SHIP_DEPTH)
-	_props_layer = _layer(_draw_ship_props, SHIP_DEPTH + 1.0)
-	_glass_layer = _layer(_draw_ship_glass, SHIP_DEPTH + 3.0)
+	_pad_layer = _spot_layer(_draw_pad, _ship_depth - 2.0)
+	_ship_layer = _layer(_draw_ship, _ship_depth)
+	_props_layer = _layer(_draw_ship_props, _ship_depth + 1.0)
+	_glass_layer = _layer(_draw_ship_glass, _ship_depth + 3.0)
 	_overlay = _layer(_draw_overlay, 99999.0)
 	var owned := _owned_critters()
 	for i in mini(owned.size(), JOBS.size()):
@@ -233,7 +254,8 @@ func _depth_scale(y: float) -> float:
 ## the chest tray.
 func _home_view() -> void:
 	var view := _view_size()
-	_offset = Vector2(view.x * 0.56, view.y * 0.39) - (SHIP_AT + Vector2(-10.0, -10.0))
+	# Centred on the ship as it stands (tall when it is upright on the pad).
+	_offset = Vector2(view.x * 0.56, view.y * (0.39 if _stage < 2 else 0.33)) - (_ship_at + Vector2(-10.0, -10.0))
 	_clamp_offset()
 
 
@@ -296,6 +318,18 @@ func _process(delta: float) -> void:
 		_velocity = _velocity.lerp(Vector2.ZERO, minf(1.0, delta * 5.0))
 		_clamp_offset()
 	_world.position = _offset.round()
+	# Lift-off: a rumble on the pad, then the climb, crew and all.
+	_xf = _pose
+	if _launch_start >= 0.0:
+		var since := _t - _launch_start
+		if since < LAUNCH_RUMBLE:
+			_xf.origin.x += sin(_t * 70.0) * 3.0
+		_xf.origin.y -= _launch_lift()
+		if since >= LAUNCH_SECONDS:
+			_launch_start = -2.0   # done: the ship stays gone
+			launched.emit()
+	elif _launch_start < -1.0:
+		_xf.origin.y -= 100000.0
 	for c in _crew:
 		_place(c)
 	_sort()
@@ -338,39 +372,39 @@ func _place(c: Dictionary) -> void:
 	match job:
 		"pilot":
 			centre = _xf * (DOME + Vector2(sin(t * 0.9) * 8.0, -22.0))
-			icon.rotation = SHIP_TILT + sin(t * 1.3) * 0.2
-			depth = SHIP_DEPTH + 2.0
+			icon.rotation = _tilt + sin(t * 1.3) * 0.2
+			depth = _ship_depth + 2.0
 		"peek":
 			centre = _xf * (PORTHOLES[1] + Vector2(sin(t * 0.8) * 5.0, 3.0 + sin(t * 1.4) * 6.0))
-			icon.rotation = SHIP_TILT
-			depth = SHIP_DEPTH + 2.0
+			icon.rotation = _tilt
+			depth = _ship_depth + 2.0
 		"bounce":
 			var h := absf(sin(t * 2.6))
 			centre = _xf * (DOME + Vector2(0.0, -DOME_R)) + Vector2(0.0, -stand - h * 60.0)
 			var squash := maxf(0.0, 1.0 - h * 5.0)
 			icon.scale = Vector2(1.0 + 0.18 * squash, 1.0 - 0.18 * squash)
-			depth = SHIP_DEPTH + 4.0
+			depth = _ship_depth + 4.0
 		"nap":
 			centre = _xf * Vector2(284.0, DECK_Y) + _ship_up() * (s * 0.36)
-			icon.rotation = SHIP_TILT - PI * 0.5
+			icon.rotation = _tilt - PI * 0.5
 			icon.scale = Vector2(1.0, 1.0 + sin(t * 1.5) * 0.04)
-			depth = SHIP_DEPTH + 4.0
+			depth = _ship_depth + 4.0
 		"swing":
 			centre = _xf * _antenna_tip() + Vector2(0.0, 30.0 + stand).rotated(sin(t * 1.8) * 0.5)
 			icon.rotation = sin(t * 1.8) * 0.5
-			depth = SHIP_DEPTH + 4.0
+			depth = _ship_depth + 4.0
 		"perch":
 			centre = _xf * FIN_TIP + Vector2(0.0, -stand + 2.0)
 			icon.rotation = sin(t * 0.7) * 0.08
-			depth = SHIP_DEPTH + 4.0
+			depth = _ship_depth + 4.0
 		"bubbles":
 			centre = _xf * HATCH + _ship_up() * (stand + 2.0)
-			icon.rotation = SHIP_TILT * 0.5
-			depth = SHIP_DEPTH + 4.0
+			icon.rotation = _tilt * 0.5
+			depth = _ship_depth + 4.0
 		"mechanic":
 			centre = _mechanic_spot() + Vector2(0.0, sin(t * 1.6) * 2.0)
 			icon.rotation = -0.15 + sin(t * 6.0) * 0.05
-			depth = SHIP_DEPTH + 4.0
+			depth = _ship_depth + 4.0
 		"walk", "stroll", "carry":
 			var path: Array = PATHS[job]
 			var right := fposmod(t * float(path[3]), 2.0) < 1.0
@@ -400,6 +434,26 @@ func _place(c: Dictionary) -> void:
 			centre.y -= absf(sin(t * 3.0)) * 10.0
 		"read":
 			icon.rotation = sin(t * 0.6) * 0.06
+	# Upright on the pad, the deck and dome face sideways, so the critters that
+	# lounged on them move to the gantry and the pad. They stay behind at
+	# lift-off; the pilot, the peeker and the antenna swinger ride along.
+	if _stage == 2:
+		match job:
+			"bounce":
+				var h := absf(sin(t * 2.6))
+				centre = PAD + Vector2(120.0, -stand - h * 60.0)
+				depth = PAD.y + 1.0
+			"nap":
+				centre = Vector2(PAD.x + 160.0, PAD.y - 150.0 - s * 0.36)
+				icon.rotation = -PI * 0.5
+				depth = PAD.y + 1.0
+			"bubbles":
+				centre = Vector2(PAD.x + 160.0, PAD.y - 330.0 - stand)
+				icon.rotation = 0.0
+				depth = PAD.y + 1.0
+			"perch":
+				centre = Vector2(PAD.x + 180.0, PAD.y - 520.0 - stand)
+				depth = PAD.y + 1.0
 	# A tapped critter hops and spins.
 	if c.has("hop"):
 		var since := _t - float(c["hop"])
@@ -425,11 +479,156 @@ func _antenna_tip() -> Vector2:
 
 
 func _ship_up() -> Vector2:
-	return Vector2(0.0, -1.0).rotated(SHIP_TILT)
+	return Vector2(0.0, -1.0).rotated(_tilt)
 
 
 func _mechanic_spot() -> Vector2:
+	# On the pad the engine is at the bottom, so the mechanic stands beside it.
+	if _stage == 2:
+		return _xf * NOZZLE + Vector2(80.0, 10.0)
 	return _xf * NOZZLE + Vector2(16.0, 70.0)
+
+
+# -- launch prep ------------------------------------------------------------------
+
+## The stage of launch prep: crashed until half the ship's parts are fixed,
+## then righted on its legs amid scaffolding, then -- every part fixed --
+## upright on the launch pad.
+static func launch_stage() -> int:
+	if TSProfile.is_ship_ready():
+		return 2
+	var fixed := 0
+	var parts := 0
+	for i in TSProfile.PART_COUNT:
+		if not TSProfile.is_camp(i):
+			parts += 1
+			if TSProfile.is_part_fixed(i):
+				fixed += 1
+	return 1 if fixed * 2 >= parts else 0
+
+
+# Where the ship sits for the stage: tipped nose-down in the dirt, level on
+# its legs, or standing nose-up on the pad (the ship is drawn flying right, so
+# upright is a quarter turn back).
+func _set_pose() -> void:
+	_stage = launch_stage()
+	match _stage:
+		0:
+			_tilt = SHIP_TILT
+			_ship_at = SHIP_AT
+			_ship_depth = SHIP_DEPTH
+		1:
+			_tilt = 0.0
+			_ship_at = SHIP_AT + Vector2(0.0, -24.0)
+			_ship_depth = SHIP_AT.y + 70.0
+		_:
+			_tilt = -PI * 0.5
+			_ship_at = PAD + Vector2(0.0, -250.0)
+			_ship_depth = PAD.y
+	_pose = Transform2D(_tilt, Vector2.ONE, 0.0, Vector2.ZERO)
+	_pose.origin = _ship_at - _pose.basis_xform(SHIP_PIN)
+	_xf = _pose
+
+
+## Lift-off: the ship roars up out of sight with its crew aboard, then
+## `launched` fires. Only once it is on the pad.
+func launch() -> void:
+	if _stage == 2 and _launch_start < 0.0:
+		_launch_start = _t
+
+
+func _launch_lift() -> float:
+	if _launch_start < 0.0:
+		return 0.0
+	var since := _t - _launch_start
+	var burn := maxf(since - LAUNCH_RUMBLE, 0.0)
+	return 0.5 * LAUNCH_ACCEL * burn * burn
+
+
+# Behind the ship: the scaffolding while it is righted, and the launch pad,
+# gantry, fuel hose and countdown board once it is on the pad -- with bunting
+# when it is nearly done and sweeping searchlights when it is fully upgraded.
+func _draw_pad(ci: Control) -> void:
+	var readiness := TSProfile.ship_readiness()
+	if _stage == 1:
+		for x in [-230.0, -60.0, 110.0, 250.0]:
+			ci.draw_line(_ship_at + Vector2(x, 100), _ship_at + Vector2(x, -120), WOOD, 8.0, true)
+		for y in [-100.0, 10.0]:
+			ci.draw_line(_ship_at + Vector2(-250, y), _ship_at + Vector2(270, y), WOOD.lightened(0.1), 10.0, true)
+		for x in [-230.0, 110.0]:
+			ci.draw_line(_ship_at + Vector2(x, -100), _ship_at + Vector2(x + 170, 10), WOOD.darkened(0.1), 5.0, true)
+		_sign(ci, _ship_at + Vector2(-440.0, 130.0), "LAUNCH PREP", ACCENT)
+		return
+	if _stage != 2:
+		return
+	if readiness >= 1.0 and _launch_start < 0.0:
+		for side in [-1.0, 1.0]:
+			var sweep := sin(_t * 0.6 + side) * 0.35
+			var foot := PAD + Vector2(side * 150.0, 0.0)
+			var dir := Vector2(0.0, -1.0).rotated(sweep + side * 0.25)
+			var beam := PackedVector2Array([foot, foot + dir.rotated(-0.08) * 900.0, foot + dir.rotated(0.08) * 900.0])
+			ci.draw_colored_polygon(beam, Color(1.0, 0.97, 0.7, 0.18))
+	# The gantry: a lattice tower with arms reaching to the ship.
+	var gx := PAD.x + 180.0
+	var top := PAD.y - 520.0
+	for x in [gx - 30.0, gx + 30.0]:
+		ci.draw_line(Vector2(x, PAD.y), Vector2(x, top), INK, 9.0, true)
+		ci.draw_line(Vector2(x, PAD.y), Vector2(x, top), Color(1.0, 0.6, 0.4), 5.0, true)
+	for n in 8:
+		var y0 := PAD.y - n * 65.0
+		ci.draw_line(Vector2(gx - 30, y0), Vector2(gx + 30, y0 - 65), Color(1.0, 0.6, 0.4), 3.0, true)
+	for y in [PAD.y - 150.0, PAD.y - 330.0]:
+		ci.draw_line(Vector2(gx - 30, y), Vector2(PAD.x + 80.0, y), INK, 8.0, true)
+		ci.draw_line(Vector2(gx - 30, y), Vector2(PAD.x + 80.0, y), CHROME, 4.0, true)
+	if readiness >= 0.75:
+		var colours := [Color(1.0, 0.62, 0.74), BUTTER, ACCENT, Color(0.62, 0.9, 0.66)]
+		for side in [-1.0, 1.0]:
+			var from := Vector2(gx, top)
+			var to := PAD + Vector2(side * 260.0 + (80.0 if side > 0 else 0.0), 20.0)
+			for n in 10:
+				var u := (float(n) + 0.5) / 10.0
+				var p := from.lerp(to, u) + Vector2(0.0, sin(u * PI) * 40.0)
+				_blob(ci, [p + Vector2(-8, 0), p + Vector2(8, 0), p + Vector2(0, 14)], colours[n % 4], false)
+	# The pad, with a fuel tank and hose.
+	_ellipse(ci, PAD + Vector2(0, 14), 220.0, 44.0, SHADOW, false)
+	_ellipse(ci, PAD, 200.0, 40.0, Color(0.8, 0.8, 0.86))
+	_ellipse(ci, PAD, 130.0, 24.0, Color(0.9, 0.9, 0.94), false)
+	for n in 6:
+		var a := TAU * float(n) / 6.0 + 0.3
+		ci.draw_line(PAD + Vector2(cos(a) * 140.0, sin(a) * 28.0), PAD + Vector2(cos(a) * 190.0, sin(a) * 38.0), BUTTER, 6.0, true)
+	var tank := PAD + Vector2(-260.0, 30.0)
+	_blob(ci, [tank + Vector2(-34, -80), tank + Vector2(34, -80), tank + Vector2(34, 0), tank + Vector2(-34, 0)], Color(0.94, 0.94, 0.98))
+	ci.draw_line(tank + Vector2(-34, -40), tank + Vector2(34, -40), Color(1.0, 0.45, 0.5), 8.0, true)
+	var hose := PackedVector2Array()
+	for n in 9:
+		var u := float(n) / 8.0
+		hose.append((tank + Vector2(30.0, -20.0)).lerp(_ship_at + Vector2(-70.0, 120.0), u) + Vector2(0.0, sin(u * PI) * 30.0))
+	if _launch_start < 0.0:
+		ci.draw_polyline(hose, INK, 7.0, true)
+		ci.draw_polyline(hose, Color(0.5, 0.52, 0.6), 4.0, true)
+	# The countdown board.
+	var text := ""
+	var colour := ACCENT
+	if TSProfile.can_launch():
+		text = "LAUNCH!"
+		colour = Color(1.0, 0.45, 0.5) if fposmod(_t, 1.0) < 0.6 else BUTTER
+	elif TSProfile.has_launched_this_season():
+		text = "NEXT SEASON"
+	else:
+		var days := TSProfile.days_to_launch_window()
+		text = "LAUNCH IN %d DAY%s" % [days, "" if days == 1 else "S"]
+	_sign(ci, PAD + Vector2(340.0, 150.0), text, colour)
+
+
+# A signboard on a post.
+func _sign(ci: Control, foot: Vector2, text: String, colour: Color) -> void:
+	var font := TSToon.hand_font()
+	var width := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 30).x + 36.0
+	ci.draw_line(foot, foot + Vector2(0, -80), WOOD, 8.0, true)
+	var board := Rect2(foot + Vector2(-width * 0.5, -140), Vector2(width, 64))
+	ci.draw_rect(board, colour)
+	ci.draw_rect(board, INK, false, 4.0)
+	ci.draw_string(font, board.position + Vector2(18.0, 43.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 30, INK)
 
 
 # -- the world ------------------------------------------------------------------
@@ -438,7 +637,7 @@ func _draw_ground() -> void:
 	var ci := _ground
 	# The sky, lilac high up, fading to cream at the horizon.
 	ci.draw_polygon(PackedVector2Array([Vector2(0, 0), Vector2(W, 0), Vector2(W, 420), Vector2(0, 420)]),
-		PackedColorArray([SKY_TOP, SKY_TOP, SKY_LOW, SKY_LOW]))
+		PackedColorArray([_planet["sky_top"], _planet["sky_top"], _planet["sky_low"], _planet["sky_low"]]))
 	for st in _stars:
 		var r: float = float(st[1]) * (0.7 + 0.3 * sin(_t * 2.2 + float(st[2])))
 		_sparkle(ci, st[0], r, Color(1.0, 0.8, 0.4, 0.85))
@@ -465,20 +664,20 @@ func _draw_ground() -> void:
 	var rim := ground.duplicate()
 	ground.append(Vector2(W, H))
 	ground.append(Vector2(0.0, H))
-	ci.draw_colored_polygon(ground, GROUND)
+	ci.draw_colored_polygon(ground, _planet["ground"])
 	# A darker band along the horizon, for depth.
 	var band := rim.duplicate()
 	for k in range(40, -1, -1):
 		var x := W * float(k) / 40.0
 		band.append(Vector2(x, _horizon(x) + 26.0))
-	ci.draw_colored_polygon(band, GROUND_DARK)
+	ci.draw_colored_polygon(band, _planet["ground_dark"])
 	ci.draw_polyline(rim, INK, 5.0, true)
 	for item in _scatter:
 		var p: Vector2 = item[1]
 		var k: float = float(item[2]) * _depth_scale(p.y)
 		match item[0]:
 			"crater":
-				_ellipse(ci, p, 46.0 * k, 12.0 * k, GROUND_DARK, false)
+				_ellipse(ci, p, 46.0 * k, 12.0 * k, _planet["ground_dark"], false)
 				ci.draw_arc(p + Vector2(0, 2.0 * k), 40.0 * k, PI * 1.1, PI * 1.9, 12, Color(INK, 0.25), 3.0, true)
 			"pebble":
 				_ellipse(ci, p, 12.0 * k, 7.0 * k, Color(0.78, 0.76, 0.82))
@@ -493,7 +692,8 @@ func _draw_ground() -> void:
 	if _jobs.has("crater"):
 		_ellipse(ci, CRATER, 50.0, 15.0, INK.lightened(0.25), false)
 	# Soft shadows: under the ship, and under everyone standing on the ground.
-	_ellipse(ci, SHIP_AT + Vector2(-20.0, 68.0), 250.0, 30.0, SHADOW, false)
+	if _stage < 2:
+		_ellipse(ci, Vector2(_ship_at.x - 20.0, _ship_depth + 13.0), 250.0, 30.0, SHADOW, false)
 	for c in _crew:
 		if ON_SHIP.has(c["job"]) or c["job"] == "crater":
 			continue
@@ -511,9 +711,11 @@ func _draw_ship() -> void:
 	var legs := _lv(TSProfile.PART_LEGS)
 	if legs >= 1:
 		var leg_col := GOLD if legs >= 4 else CHROME
-		for hip in [Vector2(210.0, 250.0), Vector2(330.0, 254.0)]:
-			var top: Vector2 = _xf * (hip as Vector2)
-			var foot := Vector2(top.x - 14.0, SHIP_DEPTH + 26.0)
+		var hips := [Vector2(96.0, 150.0), Vector2(96.0, 250.0)] if _stage == 2 else [Vector2(210.0, 250.0), Vector2(330.0, 254.0)]
+		for leg_i in hips.size():
+			var hip: Vector2 = hips[leg_i]
+			var top: Vector2 = _xf * hip
+			var foot := top + Vector2(-50.0 if leg_i == 0 else 50.0, 60.0) if _stage == 2 else Vector2(top.x - 14.0, _ship_depth + (26.0 if _stage == 0 else 10.0))
 			ci.draw_line(top, foot, INK, 12.0, true)
 			ci.draw_line(top, foot, leg_col, 7.0, true)
 			if legs >= 2:
@@ -537,6 +739,8 @@ func _draw_ship() -> void:
 	if engine >= 1:
 		var flick := 1.0 + 0.2 * sin(_t * 23.0) + 0.1 * sin(_t * 37.0)
 		var reach := (22.0 if engine < 4 else 44.0) * flick
+		if _launch_start >= 0.0:
+			reach = (70.0 if _t - _launch_start < LAUNCH_RUMBLE else 190.0) * flick   # lift-off!
 		var outer := Color.from_hsv(fposmod(_t * 0.3, 1.0), 0.55, 1.0) if engine >= 4 else Color(1.0, 0.6, 0.3, 0.9)
 		_blob(ci, [NOZZLE + Vector2(0, -16), NOZZLE + Vector2(-reach, 0), NOZZLE + Vector2(0, 16)], outer, false)
 		_blob(ci, [NOZZLE + Vector2(0, -8), NOZZLE + Vector2(-reach * 0.55, 0), NOZZLE + Vector2(0, 8)], BUTTER, false)
@@ -652,7 +856,7 @@ func _draw_ship_props() -> void:
 	var ci := _props_layer
 	# The heap the nose ploughed into: half of it dug away once the nose cone
 	# is fixed.
-	var dug := 0.55 if _lv(TSProfile.PART_NOSE) >= 1 else 1.0
+	var dug: float = [1.0 if _lv(TSProfile.PART_NOSE) == 0 else 0.55, 0.45, 0.3][_stage]
 	var heap := PackedVector2Array()
 	for k in 19:
 		var a := PI + PI * float(k) / 18.0
@@ -669,9 +873,9 @@ func _draw_ship_props() -> void:
 		ci.draw_line(leg + Vector2(12, 4), leg + Vector2(60, 16), INK, 11.0, true)
 		ci.draw_line(leg + Vector2(12, 4), leg + Vector2(60, 16), Color(0.7, 0.7, 0.76), 6.0, true)
 		_ellipse(ci, leg + Vector2(66, 18), 18.0, 6.0, Color(0.7, 0.7, 0.76))
-	if _jobs.has("mechanic"):
+	if _jobs.has("mechanic") and _stage < 2:
 		var top := _mechanic_spot() + Vector2(0.0, 28.0)
-		var foot := Vector2(top.x - 18.0, SHIP_DEPTH + 45.0)
+		var foot := Vector2(top.x - 18.0, _ship_depth + 45.0)
 		for side in [-13.0, 13.0]:
 			ci.draw_line(foot + Vector2(side, 0), top + Vector2(side, 0), WOOD, 6.0, true)
 		for k in 5:
@@ -982,13 +1186,14 @@ func _draw_solar(ci: Control) -> void:
 				pts.append(at + (c as Vector2).rotated(n * 0.9) * k)
 			_blob(ci, pts, panel.darkened(0.3))
 		return
-	# A cable from the panels to the tail.
-	var tail := _xf * Vector2(100.0, 250.0)
+	# A cable from the panels to the tail -- unplugged once the ship lifts off.
+	var tail := _pose * Vector2(100.0, 250.0)
 	var cable := PackedVector2Array()
 	for n in 9:
 		var u := float(n) / 8.0
 		cable.append(SOLAR.lerp(tail, u) + Vector2(0, sin(u * PI) * 30.0))
-	ci.draw_polyline(cable, INK, 3.0, true)
+	if _launch_start == -1.0:
+		ci.draw_polyline(cable, INK, 3.0, true)
 	for n in (2 if lv >= 2 else 1):
 		var base := SOLAR + Vector2(-50.0 + n * 100.0, 0.0) * k
 		var tilt := sin(_t * 0.4 + n) * 0.25 if lv >= 3 else 0.0
@@ -1019,7 +1224,7 @@ func _draw_crater_lip() -> void:
 	for k in range(16, -1, -1):
 		var a := PI * float(k) / 16.0
 		lip.append(CRATER + Vector2(cos(a) * 60.0, sin(a) * 15.0 + 14.0))
-	ci.draw_colored_polygon(lip, GROUND)
+	ci.draw_colored_polygon(lip, _planet["ground"])
 	ci.draw_arc(CRATER, 50.0, 0.0, PI, 16, INK, 4.0, true)
 
 
@@ -1032,10 +1237,24 @@ func _draw_overlay() -> void:
 		var age := fposmod(_t * 0.35 + float(k) / 6.0, 1.0)
 		var p := nozzle + Vector2(-age * 70.0 + sin(age * 7.0 + k) * 10.0, -age * 190.0)
 		ci.draw_circle(p, 12.0 + age * 26.0, Color(0.62, 0.6, 0.66, (1.0 - age) * 0.55), true, -1.0, true)
+	# Lift-off: smoke billowing across the pad, and a trail behind the climb.
+	if _launch_start >= 0.0:
+		var since := _t - _launch_start
+		for n in 14:
+			var spread := minf(since * 1.2, 1.0)
+			var side := -1.0 if n % 2 == 0 else 1.0
+			var p := PAD + Vector2(side * (40.0 + float(n) * 26.0) * spread, -20.0 - float(n % 3) * 18.0)
+			ci.draw_circle(p, 40.0 + float(n % 4) * 14.0, Color(0.94, 0.93, 0.96, 0.85), true, -1.0, true)
+		var tail := _xf * NOZZLE
+		for n in 10:
+			var u := float(n) / 10.0
+			ci.draw_circle(tail.lerp(PAD, u) + Vector2(sin(u * 12.0 + _t * 6.0) * 14.0, 0.0), 26.0 + u * 30.0, Color(0.9, 0.9, 0.94, 0.7 - u * 0.4), true, -1.0, true)
 	for c in _crew:
 		var centre: Vector2 = c["centre"]
 		var s: float = c["size"]
 		var k := s / 44.0              # tools scale with their critter
+		if _launch_start >= 0.0 and (c["job"] == "mechanic" or c["job"] == "paint"):
+			continue   # the ship has gone: no wrench or brush to reach it
 		var t: float = _t + float(c["phase"])
 		match c["job"]:
 			"pilot":

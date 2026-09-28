@@ -153,6 +153,24 @@ func _test_collection() -> void:
 	_check("a part tops out at level %d (%s)" % [TSProfile.PART_MAX_LEVEL, TSProfile.part_stage(TSProfile.PART_ENGINE, TSProfile.PART_MAX_LEVEL)], TSProfile.part_level_of(TSProfile.PART_ENGINE) == TSProfile.PART_MAX_LEVEL and TSProfile.is_part_max_level(TSProfile.PART_ENGINE))
 	var pass_part := TSProfile.battle_pass_paid_reward(30)
 	_check("the Battle Pass's tier 30 is a free ship-part fix or upgrade", pass_part.has("part") and TSProfile.grant_part_level(TSProfile.PART_HULL) and TSProfile.part_level_of(TSProfile.PART_HULL) == 1)
+	# The launch: every ship part fixed, at the season's end, once a season.
+	_check("the ship isn't ready to launch with parts still broken", not TSProfile.is_ship_ready() and not TSProfile.can_launch())
+	for p in TSProfile.PART_COUNT:
+		if not TSProfile.is_camp(p) and not TSProfile.is_part_fixed(p):
+			TSProfile.improve_part(p)
+	TSProfile.launch_window_forced = false
+	var window := TSProfile.is_launch_window()
+	_check("every ship part fixed: ready, launching at the season's end (window open now: %s)" % window, TSProfile.is_ship_ready() and TSProfile.can_launch() == window)
+	TSProfile.launch_window_forced = true
+	var points := TSProfile.collection_points()
+	var planet := TSProfile.planet_number
+	var reward := TSProfile.launch_reward()
+	var paid := TSProfile.launch_ship()
+	_check("launching pays %s (more for upgrades)" % TSProfile.fmt_coins(reward), paid >= reward and reward > TSProfile.LAUNCH_REWARD_BASE)
+	_check("and lands the critters on a new planet with a fresh camp and ship", TSProfile.planet_number == planet + 1 and TSProfile.parts_fixed() == 0 and not TSProfile.is_ship_open())
+	_check("without the collection level dropping", TSProfile.collection_points() == points)
+	_check("once a season", TSProfile.has_launched_this_season() and not TSProfile.can_launch())
+	TSProfile.launch_window_forced = false
 	for i in 8:
 		TSProfile.level_up_critter(5)
 	_check("the collection level rises with it (%d -> %d)" % [lvl, TSProfile.collection_level()], TSProfile.collection_level() > lvl)

@@ -135,6 +135,22 @@ perching on a fin, blowing bubbles and strolling about. A lone critter just
 strolls. Nearer things are drawn bigger and in front, each on a soft shadow;
 tap a critter and it hops.
 
+**Launch prep and the launch.** As the ship is fixed, the crash site turns
+into a launch site. Until half its parts are fixed it lies crashed; then it
+is righted, level on its legs amid wooden scaffolding and a LAUNCH PREP
+sign; once every part is fixed it stands upright on a launch pad beside an
+orange gantry, with a fuel tank and hose and a countdown board -- bunting
+strung from the gantry when it is nearly fully upgraded, searchlights
+sweeping the sky when it is. The critters that lounged on the deck move to
+the gantry and the pad. In the last 3 days of each season
+(`TSProfile.LAUNCH_WINDOW_DAYS`) the board flashes LAUNCH! and Home shows a
+**LAUNCH!** button: the ship rumbles, then roars off on a column of smoke
+with its pilot, peeker and antenna swinger aboard, and pays 5,000 coins plus
+500 per ship part level (up to 23,000 fully upgraded). The critters land on
+a new planet, in new colours, with a fresh camp and ship to build for the
+new season; the part levels left behind are banked, so the Collection
+level never drops. One launch per season.
+
 **Progression** is Duckdoku's difficulty curve, level for level: the same
 five tiers (Beginner, Intermediate, Hard, Expert, Extreme) in the same order
 as its level design sheet. Levels 1-50 are fixed -- baked into
@@ -520,7 +536,7 @@ projects cells through the rendered camera:
 Godot.exe --path . res://tests/tap_test.tscn
 ```
 
-The menus' systems (79 checks) and the game screen's flow through them (28
+The menus' systems (85 checks) and the game screen's flow through them (28
 checks), all passing. Neither touches the real save:
 
 ```

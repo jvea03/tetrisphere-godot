@@ -25,6 +25,7 @@ func _ready() -> void:
 	TSProfile.part_level = [4, 3, 2, 1, 1, 0, 2, 1, 0, 3, 0, 1, 1, 2, 1]
 	var last_arg: String = OS.get_cmdline_user_args()[-1] if OS.get_cmdline_user_args().size() > 0 else ""
 	if last_arg == "max":
+		TSProfile.launch_window_forced = true   # the ship on its pad, LAUNCH! showing
 		TSProfile.part_level = []
 		for i in TSProfile.PART_COUNT:
 			TSProfile.part_level.append(TSProfile.PART_MAX_LEVEL)

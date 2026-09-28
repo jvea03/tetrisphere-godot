@@ -584,6 +584,93 @@ static func parts_fixed() -> int:
 	return n
 
 
+# -- the launch -------------------------------------------------------------------
+# As the ship is fixed it is readied for launch, and at the end of each season
+# (its last LAUNCH_WINDOW_DAYS) a ship with every part fixed can take off. The
+# launch pays LAUNCH_REWARD_BASE plus LAUNCH_REWARD_PER_LEVEL for every ship
+# part level -- so upgrades make it pay more -- and carries the critters to a
+# new planet, where the camp and the ship start again from scratch. The part
+# levels left behind are banked, so the collection level never drops. One
+# launch per season.
+const LAUNCH_WINDOW_DAYS := 3
+const LAUNCH_REWARD_BASE := 5000
+const LAUNCH_REWARD_PER_LEVEL := 500
+
+static var planet_number: int = 1          # which planet the critters are on (1, 2, ...)
+static var launched_season: int = 0        # the season of the last launch
+static var banked_part_points: int = 0     # collection points from planets left behind
+static var launch_window_forced := false   # tests and captures only: the window is open
+
+
+static func _is_ship_part(i: int) -> bool:
+	return not is_camp(i)
+
+
+## How far the ship is readied, 0..1: its parts' levels out of the most.
+static func ship_readiness() -> float:
+	var levels := 0
+	var most := 0
+	for i in PART_COUNT:
+		if _is_ship_part(i):
+			levels += part_level_of(i)
+			most += PART_MAX_LEVEL
+	return float(levels) / float(most) if most > 0 else 0.0
+
+
+## Every ship part fixed: the ship could fly.
+static func is_ship_ready() -> bool:
+	for i in PART_COUNT:
+		if _is_ship_part(i) and not is_part_fixed(i):
+			return false
+	return true
+
+
+static func is_launch_window() -> bool:
+	return launch_window_forced or battle_pass_seconds_remaining() <= LAUNCH_WINDOW_DAYS * 86400
+
+
+## Days until the launch window opens (0 while it is open).
+static func days_to_launch_window() -> int:
+	if is_launch_window():
+		return 0
+	@warning_ignore("integer_division")
+	return (battle_pass_seconds_remaining() - LAUNCH_WINDOW_DAYS * 86400 + 86399) / 86400
+
+
+static func has_launched_this_season() -> bool:
+	return launched_season == battle_pass_season_number()
+
+
+static func can_launch() -> bool:
+	return is_ship_ready() and is_launch_window() and not has_launched_this_season()
+
+
+static func launch_reward() -> int:
+	var levels := 0
+	for i in PART_COUNT:
+		if _is_ship_part(i):
+			levels += part_level_of(i)
+	return LAUNCH_REWARD_BASE + LAUNCH_REWARD_PER_LEVEL * levels
+
+
+## Launches the ship: pays the reward, banks the part levels, and moves the
+## critters to the next planet with a fresh camp and ship. Returns the coins
+## paid, or 0 if it can't launch now.
+static func launch_ship() -> int:
+	if not can_launch():
+		return 0
+	var reward := boost_earned_coins(launch_reward())
+	coin_count += reward
+	for lvl in part_level:
+		banked_part_points += int(lvl) * COLLECTION_POINTS_PER_PART_LEVEL
+	for i in PART_COUNT:
+		part_level[i] = 0
+	planet_number += 1
+	launched_season = battle_pass_season_number()
+	save()
+	return reward
+
+
 static func is_critter_new(i: int) -> bool:
 	return new_critters.has(i)
 
@@ -648,7 +735,7 @@ static func collection_points() -> int:
 		total += critter_level_of(i) * int(CRITTER_RARITY_POINTS[critter_rarity(i)])
 	for lvl in part_level:
 		total += int(lvl) * COLLECTION_POINTS_PER_PART_LEVEL
-	return total
+	return total + banked_part_points   # plus the planets left behind (see launch_ship)
 
 
 static func collection_coin_bonus_percent() -> int:
@@ -1819,6 +1906,9 @@ static func ensure_loaded() -> void:
 	var cu: Array = g.call("critter_unlocked", [])
 	var cl: Array = g.call("critter_level", [])
 	var pl: Array = g.call("camp_and_ship", [])   # the camp-first list (an older ship-only one is ignored)
+	planet_number = maxi(1, int(g.call("planet_number", 1)))
+	launched_season = int(g.call("launched_season", 0))
+	banked_part_points = maxi(0, int(g.call("banked_part_points", 0)))
 	_blank_collection()
 	for i in CRITTER_COUNT:
 		if i < cu.size():
@@ -1912,6 +2002,9 @@ static func save() -> void:
 	s.call("critter_level", critter_level)
 	s.call("new_critters", new_critters)
 	s.call("camp_and_ship", part_level)
+	s.call("planet_number", planet_number)
+	s.call("launched_season", launched_season)
+	s.call("banked_part_points", banked_part_points)
 	s.call("has_club", has_club)
 	s.call("club_name", club_name)
 	s.call("club_is_owner", club_is_owner)
