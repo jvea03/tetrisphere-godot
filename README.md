@@ -180,8 +180,10 @@ parks it, and Home's PLAY becomes CONTINUE.
   deliberately not reused.
 - **Leaderboards and Clubs** have no backend: rivals, clubs, members and chat
   replies are simulated locally and deterministically, as in Duckdoku.
-- **Music**: the Settings toggle drives a "Music" audio bus, but Tetrisphere
-  has no menu track yet. Sound effects are synthesized in code
+- **Music**: the main menu song (`audio/main_menu.mp3`) loops on Home and every
+  menu screen, carrying on unbroken between them, and fades out when a level
+  starts (`TSSfx.menu_music`, driven by SceneFlow). It plays on the "Music"
+  bus, which the Settings toggle mutes. Sound effects are synthesized in code
   (`scripts/meta/sfx.gd`).
 
 ## The look

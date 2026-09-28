@@ -4,15 +4,63 @@ extends RefCounted
 ## Short sound effects, synthesized in code -- no audio files (ported from
 ## Duckdoku's Sfx). TSSfx.play("click") from anywhere: players live under the
 ## tree root, so a sound survives the scene change it may trigger. Everything
-## goes through the "SFX" bus, which the Settings toggle mutes; "Music" is
-## ready for a menu track (Tetrisphere has none yet).
+## goes through the "SFX" bus, which the Settings toggle mutes. The menu song
+## (menu_music) plays on the "Music" bus, muted by its own toggle.
 
 const SAMPLE_RATE := 22050
 const MUSIC_BUS := "Music"
 const SFX_BUS := "SFX"
+const MENU_MUSIC := "res://audio/main_menu.mp3"
+const MUSIC_VOLUME_DB := -8.0   # under the sound effects, which carry the feedback
+const MUSIC_SILENT_DB := -40.0
+const MUSIC_FADE_IN := 1.2
+const MUSIC_FADE_OUT := 0.6
 
 static var _streams := {}
 static var _players := {}
+static var _music: AudioStreamPlayer
+static var _music_tween: Tween
+static var _music_on := false
+
+
+## The menu song: on, it loops (fading in if it was stopped); off, it fades
+## out and stops. SceneFlow calls this as screens change -- on for every menu
+## screen, off for a level -- so it carries on unbroken from menu to menu.
+static func menu_music(on: bool) -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree == null or on == _music_on:
+		return
+	_music_on = on
+	ensure_buses()
+	if not is_instance_valid(_music):
+		if not on:
+			return
+		var stream := load(MENU_MUSIC) as AudioStreamMP3
+		if stream == null:
+			return
+		stream.loop = true
+		_music = AudioStreamPlayer.new()
+		_music.bus = MUSIC_BUS
+		_music.stream = stream
+		_music.volume_db = MUSIC_SILENT_DB
+		_music.process_mode = Node.PROCESS_MODE_ALWAYS
+		tree.root.add_child.call_deferred(_music)
+		_music.ready.connect(func(): _fade_music(_music_on), CONNECT_ONE_SHOT)
+		return
+	if _music.is_inside_tree():
+		_fade_music(on)
+
+
+static func _fade_music(on: bool) -> void:
+	if _music_tween != null and _music_tween.is_valid():
+		_music_tween.kill()
+	if on and not _music.playing:
+		_music.volume_db = MUSIC_SILENT_DB
+		_music.play()
+	_music_tween = _music.create_tween()
+	_music_tween.tween_property(_music, "volume_db", MUSIC_VOLUME_DB if on else MUSIC_SILENT_DB, MUSIC_FADE_IN if on else MUSIC_FADE_OUT)
+	if not on:
+		_music_tween.tween_callback(_music.stop)
 
 
 static func play(name: String, pitch: float = 1.0) -> void:

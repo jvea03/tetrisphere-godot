@@ -13,6 +13,17 @@ const GAME := "res://main.tscn"
 
 var fade_rect: ColorRect
 var in_flight := false
+var _music_scene: Node   # the screen the menu song was last set for
+
+
+## The menu song plays on every menu screen and fades out for a level: the
+## game screen is the only 3D one.
+func _process(_delta: float) -> void:
+	var scene := get_tree().current_scene
+	if scene != _music_scene:
+		_music_scene = scene
+		if scene != null:
+			TSSfx.menu_music(not (scene is Node3D))
 
 
 ## Android back button: the current screen gets first refusal through an
