@@ -294,6 +294,18 @@ A cute, hand-drawn style, all in `scripts/toon.gd` (`TSToon`):
   needs a 3x3 hole), tuned so
   the casual sim bot's journey averages come out Beginner 95%, Intermediate
   52%, Hard 28%, Expert 15% and Extreme 7% (targets 50/30/20/10).
+- **Tie-downs** (`TSBoard.TIE`: stake brown, with a raised cream dot per layer
+  left) are 1x1 stakes of one to three layers that hold the critter in: **every
+  one must be broken before it can escape**, however big the hole
+  (`TSBoard.has_escape`). Like the armour's second layer, a layer comes off
+  only when pieces around it are broken -- a match beside it, a bomb, a
+  rock -- and a slide can neither move nor smash one. They arrive at level 10
+  (`TSLevels.TIE_FROM_LEVEL`) and are on every even level from there: 2 in
+  Beginner and Intermediate (up to 2 and 3 layers), 3 above. Generation turns
+  surface blockers into them after tiling, spread round the middle rows, so the
+  eggs are otherwise unchanged. A counter sits beside the hearts, a toast marks
+  each one broken (and a dug hole with some still standing), and the first egg
+  with them has a short lesson.
 - Destroying pieces **exposes the layer underneath**.
 - **Gravity:** a piece with nothing beneath any of its blocks **falls to the
   next lower depth layer**, as one rigid piece, until something holds it. A
