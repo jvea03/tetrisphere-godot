@@ -257,10 +257,11 @@ A cute, hand-drawn style, all in `scripts/toon.gd` (`TSToon`):
   so no two in a row match.
   Every piece a level deals is also tiled into its shell,
   so each has somewhere to match from the first drop. The plus is not a
-  Tetris piece; like every piece here it never rotates. Two early levels
+  Tetris piece; like every piece here it never rotates. Three early levels
   preview the new shapes with their own pairs (`TSLevels.LEVEL_PIECES`):
-  **level 3 is only squares and upright lines**, and **level 4 only flat
-  lines and pluses** (the casual sim bot wins them 100% and 75%). From level
+  **level 3 is only squares and upright lines**, **level 4 only flat
+  lines and pluses** and **level 6 upright lines and pluses** -- so it never
+  looks like level 5, the two lines (the casual sim bot wins 3 and 4 100% and 75%). From level
   9 on, a Beginner level is **any two of the four pieces**, taking the next
   of the six pairs in turn (`TSLevels.BEGINNER_PAIRS`) so no two in a row
   match: level 9 flat + square, 10 upright + plus, 12 the two lines, 13

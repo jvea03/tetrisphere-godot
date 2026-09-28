@@ -144,10 +144,13 @@ static func _with_pieces(rules: Dictionary, pieces: Array) -> Dictionary:
 
 ## Early levels that break from their tier's pieces, each a little lesson in
 ## shapes: level 3 is only the square and the upright line, level 4 only the
-## flat line and the plus. Dealt and tiled into the shell alike.
+## flat line and the plus, and level 6 the upright line and the plus -- so it
+## never looks like level 5, which is the two lines. Dealt and tiled into the
+## shell alike.
 const LEVEL_PIECES := {
 	3: [TSBoard.O, TSBoard.I_UPRIGHT],
 	4: [TSBoard.I_FLAT, TSBoard.PLUS],
+	6: [TSBoard.I_UPRIGHT, TSBoard.PLUS],
 }
 
 ## After level BEGINNER_MIX_FROM, a Beginner level is any two of the four
@@ -208,7 +211,7 @@ static func beginner_pair(level: int) -> Array:
 
 ## A level's full rules: its tier's, except where noted. Level 1's egg is
 ## only two layers deep (every other egg is three), so the critter is never
-## far below -- a gentle first ball; levels 3 and 4 have their own pieces
+## far below -- a gentle first ball; levels 3, 4 and 6 have their own pieces
 ## (LEVEL_PIECES); Beginner levels from BEGINNER_MIX_FROM on are any two
 ## pieces (beginner_pair); and Hard, Expert and Extreme levels mix three or
 ## four of the six pieces (tier_mix).

@@ -293,7 +293,7 @@ func _test_levels() -> void:
 		for kind in want:
 			own_pieces = own_pieces and found.has(int(kind))
 	_check("every baked ball is built from exactly its level's pieces", own_pieces)
-	_check("level 3 is only squares and upright lines; level 4 only flat lines and pluses", TSLevels.rules_for_level(3)["pieces"] == [TSBoard.O, TSBoard.I_UPRIGHT] and TSLevels.rules_for_level(4)["pieces"] == [TSBoard.I_FLAT, TSBoard.PLUS] and TSLevels.rules_for_level(5)["pieces"] == TSLevels.LINES)
+	_check("level 3 is only squares and upright lines, level 4 flat lines and pluses, level 6 upright lines and pluses", TSLevels.rules_for_level(3)["pieces"] == [TSBoard.O, TSBoard.I_UPRIGHT] and TSLevels.rules_for_level(4)["pieces"] == [TSBoard.I_FLAT, TSBoard.PLUS] and TSLevels.rules_for_level(5)["pieces"] == TSLevels.LINES and TSLevels.rules_for_level(6)["pieces"] == [TSBoard.I_UPRIGHT, TSBoard.PLUS])
 	var pairs_ok := true
 	var last_pair: Array = []
 	for lvl in range(TSLevels.BEGINNER_MIX_FROM, TSLevels.LEVEL_PLAN.size() + 1):
