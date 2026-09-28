@@ -10,7 +10,11 @@
 
 Open `project.godot` in Godot 4.7 and press F5. On desktop it opens as a
 450×800 portrait window, and the mouse stands in for touch. It opens on a
-splash and a loading screen; a brand-new player goes straight into Level 1
+splash and a loading screen. A brand-new player (a fresh install) opens
+instead on the crash cutscene (`scripts/screens/intro.gd`): the ship full of
+eggs sputters, dives into the planet and crashes, and the eggs burst out and
+bounce across the ground. It plays once, can be skipped, and goes straight
+into Level 1
 with its walkthrough, and everyone after that lands on Home. Progress is
 saved (encrypted) to `user://profile.cfg`; delete it to start over.
 

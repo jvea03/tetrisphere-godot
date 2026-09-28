@@ -1,10 +1,12 @@
 extends Control
 
 ## The branding splash: the hand-drawn logo and an egg, for a moment, then
-## the loading screen. A brand-new player goes straight onto the ball (the
-## Level 1 walkthrough); everyone else lands on Home. A tap skips it.
+## the loading screen. A brand-new player sees the crash cutscene first (the
+## intro scene), which goes straight into level 1; everyone else lands on
+## Home. A tap skips the splash.
 
 const SPLASH_SECONDS := 1.5
+const INTRO := "res://scenes/intro.tscn"
 
 var _advanced := false
 
@@ -14,6 +16,11 @@ func _ready() -> void:
 	if OS.has_feature("mobile"):
 		DisplayServer.screen_set_orientation(DisplayServer.SCREEN_PORTRAIT)
 	add_child(TSUI.paper_rect())
+	# A fresh install opens on the crash cutscene, no splash first.
+	if _wants_intro():
+		_advanced = true
+		SceneFlow.go.call_deferred(INTRO)
+		return
 	var center := CenterContainer.new()
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(center)
@@ -41,9 +48,17 @@ func _advance() -> void:
 	if _advanced:
 		return
 	_advanced = true
+	if _wants_intro():
+		SceneFlow.go(INTRO)
+		return
 	var first_launch := not TSProfile.tutorial_seen and TSProfile.last_level <= 1
 	Loading.target_scene_path = SceneFlow.GAME if first_launch else SceneFlow.HOME
 	SceneFlow.go("res://scenes/loading.tscn")
+
+
+## A brand-new player, before level 1, who has not seen the crash cutscene.
+func _wants_intro() -> bool:
+	return not TSProfile.intro_seen and not TSProfile.tutorial_seen and TSProfile.last_level <= 1
 
 
 ## The game's name, Egg Escape: Puzzle Break: "Egg Escape" hand-lettered, each

@@ -29,6 +29,7 @@ static func use_test_profile(level := 1) -> void:
 	persist = false
 	ensure_loaded()
 	tutorial_seen = true
+	intro_seen = true
 	bomb_tutorial_seen = true
 	slide_tutorial_seen = true
 	bombs_unlocked = true
@@ -225,6 +226,7 @@ static func booster_buy_cost(id: String) -> int:
 
 
 static var tutorial_seen: bool = false # the Level 1 walkthrough, once ever
+static var intro_seen: bool = false # the crash cutscene, once, before level 1
 static var bomb_tutorial_seen: bool = false # the bomb walkthrough, once, when bombs arrive
 static var slide_tutorial_seen: bool = false # the sliding walkthrough, once, at level 2
 static var club_intro_seen: bool = false
@@ -1893,6 +1895,7 @@ static func ensure_loaded() -> void:
 	rocks_unlocked = bool(g.call("rocks_unlocked", false))
 	rocks_tutorial_seen = bool(g.call("rocks_tutorial_seen", false))
 	tutorial_seen = bool(g.call("tutorial_seen", false))
+	intro_seen = bool(g.call("intro_seen", false))
 	bomb_tutorial_seen = bool(g.call("bomb_tutorial_seen", false))
 	slide_tutorial_seen = bool(g.call("slide_tutorial_seen", false))
 	club_intro_seen = bool(g.call("club_intro_seen", false))
@@ -1988,6 +1991,7 @@ static func save() -> void:
 	s.call("rocks_unlocked", rocks_unlocked)
 	s.call("rocks_tutorial_seen", rocks_tutorial_seen)
 	s.call("tutorial_seen", tutorial_seen)
+	s.call("intro_seen", intro_seen)
 	s.call("bomb_tutorial_seen", bomb_tutorial_seen)
 	s.call("slide_tutorial_seen", slide_tutorial_seen)
 	s.call("club_intro_seen", club_intro_seen)
