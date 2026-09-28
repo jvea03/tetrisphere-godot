@@ -181,8 +181,11 @@ parks it, and Home's PLAY becomes CONTINUE.
 - **Leaderboards and Clubs** have no backend: rivals, clubs, members and chat
   replies are simulated locally and deterministically, as in Duckdoku.
 - **Music**: the main menu song (`audio/main_menu.mp3`) loops on Home and every
-  menu screen, carrying on unbroken between them, and fades out when a level
-  starts (`TSSfx.menu_music`, driven by SceneFlow). It plays on the "Music"
+  menu screen, carrying on unbroken between them. In a level it fades out for
+  the three level songs (`audio/level_song_1-3.mp3`), played one after another
+  in a shuffled order -- every song once before any repeats, and never the
+  same song twice in a row -- carrying on from one level into the next
+  (`TSSfx.music` and `next_level_song`, driven by SceneFlow). Music plays on the "Music"
   bus, which the Settings toggle mutes. Sound effects are synthesized in code
   (`scripts/meta/sfx.gd`).
 

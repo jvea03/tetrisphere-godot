@@ -20,6 +20,7 @@ func _initialize() -> void:
 	_test_purchases()
 	_test_levels()
 	_test_boosters()
+	_test_level_music()
 	print("")
 	print("ALL PASSED" if _failures == 0 else "%d FAILED" % _failures)
 	quit(0 if _failures == 0 else 1)
@@ -365,3 +366,27 @@ func _test_boosters() -> void:
 	_check("every booster's mid-game buy is its pack pro rata", fair)
 	TSProfile.add_boosters("rocks", -99)
 	_check("spending can't go below zero", TSProfile.rock_count == 0)
+
+
+# The level songs play shuffled, every song once per round before any repeats,
+# and never the same song twice in a row, even across rounds.
+func _test_level_music() -> void:
+	var rounds_ok := true
+	var no_repeat := true
+	var last := ""
+	var orders := {}
+	for round_i in 30:
+		var seen := {}
+		for i in TSSfx.LEVEL_MUSIC.size():
+			var song := TSSfx.next_level_song()
+			seen[song] = true
+			no_repeat = no_repeat and song != last
+			last = song
+			orders[round_i] = str(orders.get(round_i, "")) + song
+		rounds_ok = rounds_ok and seen.size() == TSSfx.LEVEL_MUSIC.size()
+	var distinct := {}
+	for k in orders:
+		distinct[orders[k]] = true
+	_check("each round of level songs plays all %d once" % TSSfx.LEVEL_MUSIC.size(), rounds_ok)
+	_check("no level song plays twice in a row", no_repeat)
+	_check("the order is shuffled round to round", distinct.size() > 1)

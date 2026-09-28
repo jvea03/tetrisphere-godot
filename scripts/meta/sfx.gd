@@ -1,66 +1,113 @@
 class_name TSSfx
 extends RefCounted
 
-## Short sound effects, synthesized in code -- no audio files (ported from
-## Duckdoku's Sfx). TSSfx.play("click") from anywhere: players live under the
-## tree root, so a sound survives the scene change it may trigger. Everything
-## goes through the "SFX" bus, which the Settings toggle mutes. The menu song
-## (menu_music) plays on the "Music" bus, muted by its own toggle.
+## Short sound effects, synthesized in code (ported from Duckdoku's Sfx), and
+## the music. TSSfx.play("click") from anywhere: players live under the tree
+## root, so a sound survives the scene change it may trigger. Sounds go
+## through the "SFX" bus and music through the "Music" bus, each muted by its
+## own Settings toggle.
 
 const SAMPLE_RATE := 22050
 const MUSIC_BUS := "Music"
 const SFX_BUS := "SFX"
 const MENU_MUSIC := "res://audio/main_menu.mp3"
-const MUSIC_VOLUME_DB := -8.0   # under the sound effects, which carry the feedback
+const LEVEL_MUSIC := [
+	"res://audio/level_song_1.mp3",
+	"res://audio/level_song_2.mp3",
+	"res://audio/level_song_3.mp3",
+]
+const MUSIC_VOLUME_DB := {"menu": -8.0, "level": -10.0}   # under the sound effects, which carry the feedback
 const MUSIC_SILENT_DB := -40.0
 const MUSIC_FADE_IN := 1.2
 const MUSIC_FADE_OUT := 0.6
 
 static var _streams := {}
 static var _players := {}
-static var _music: AudioStreamPlayer
-static var _music_tween: Tween
-static var _music_on := false
+static var _music_mode := ""         # "menu", "level" or "" (silence)
+static var _music_players := {}      # mode -> AudioStreamPlayer
+static var _music_tweens := {}       # mode -> Tween
+static var _level_bag: Array = []    # the level songs still to play this round
+static var _last_level_song := ""
 
 
-## The menu song: on, it loops (fading in if it was stopped); off, it fades
-## out and stops. SceneFlow calls this as screens change -- on for every menu
-## screen, off for a level -- so it carries on unbroken from menu to menu.
-static func menu_music(on: bool) -> void:
+## The music for what is on screen: "menu" loops the main menu song; "level"
+## plays the level songs one after another in a shuffled order, every song
+## once before any repeats (next_level_song); "" is silence. Switching fades
+## the old music out and the new in. Asking for the mode already playing
+## changes nothing, so the menu song carries on from menu to menu and a level
+## song from one level into the next. SceneFlow calls this as screens change;
+## call it from _process-time code, not while a parent is setting up children.
+static func music(mode: String) -> void:
 	var tree := Engine.get_main_loop() as SceneTree
-	if tree == null or on == _music_on:
+	if tree == null or mode == _music_mode:
 		return
-	_music_on = on
+	var old := _music_mode
+	_music_mode = mode
 	ensure_buses()
-	if not is_instance_valid(_music):
-		if not on:
-			return
+	if old != "":
+		_fade_music(old, false)
+	if mode != "":
+		_fade_music(mode, true)
+
+
+## The next level song from the shuffle bag: the three songs in a random order,
+## each played once, then a fresh shuffle -- which never opens with the song
+## that just finished, so no song plays twice in a row.
+static func next_level_song() -> String:
+	if _level_bag.is_empty():
+		_level_bag = LEVEL_MUSIC.duplicate()
+		_level_bag.shuffle()
+		if _level_bag.size() > 1 and _level_bag[0] == _last_level_song:
+			_level_bag.push_back(_level_bag.pop_front())
+	_last_level_song = _level_bag.pop_front()
+	return _last_level_song
+
+
+static func _music_player(mode: String) -> AudioStreamPlayer:
+	var player: AudioStreamPlayer = _music_players.get(mode)
+	if is_instance_valid(player):
+		return player
+	player = AudioStreamPlayer.new()
+	player.bus = MUSIC_BUS
+	player.volume_db = MUSIC_SILENT_DB
+	player.process_mode = Node.PROCESS_MODE_ALWAYS
+	if mode == "menu":
 		var stream := load(MENU_MUSIC) as AudioStreamMP3
-		if stream == null:
-			return
 		stream.loop = true
-		_music = AudioStreamPlayer.new()
-		_music.bus = MUSIC_BUS
-		_music.stream = stream
-		_music.volume_db = MUSIC_SILENT_DB
-		_music.process_mode = Node.PROCESS_MODE_ALWAYS
-		tree.root.add_child.call_deferred(_music)
-		_music.ready.connect(func(): _fade_music(_music_on), CONNECT_ONE_SHOT)
-		return
-	if _music.is_inside_tree():
-		_fade_music(on)
+		player.stream = stream
+	else:
+		# A level song ends by itself (it never loops): on to the next one.
+		player.finished.connect(func() -> void:
+			if _music_mode == "level":
+				_play_level_song(player))
+	(Engine.get_main_loop() as SceneTree).root.add_child(player)
+	_music_players[mode] = player
+	return player
 
 
-static func _fade_music(on: bool) -> void:
-	if _music_tween != null and _music_tween.is_valid():
-		_music_tween.kill()
-	if on and not _music.playing:
-		_music.volume_db = MUSIC_SILENT_DB
-		_music.play()
-	_music_tween = _music.create_tween()
-	_music_tween.tween_property(_music, "volume_db", MUSIC_VOLUME_DB if on else MUSIC_SILENT_DB, MUSIC_FADE_IN if on else MUSIC_FADE_OUT)
+static func _play_level_song(player: AudioStreamPlayer) -> void:
+	var stream := load(next_level_song()) as AudioStreamMP3
+	stream.loop = false
+	player.stream = stream
+	player.play()
+
+
+static func _fade_music(mode: String, on: bool) -> void:
+	var player := _music_player(mode)
+	var tween: Tween = _music_tweens.get(mode)
+	if tween != null and tween.is_valid():
+		tween.kill()
+	if on and not player.playing:
+		player.volume_db = MUSIC_SILENT_DB
+		if mode == "level":
+			_play_level_song(player)
+		else:
+			player.play()
+	tween = player.create_tween()
+	tween.tween_property(player, "volume_db", float(MUSIC_VOLUME_DB[mode]) if on else MUSIC_SILENT_DB, MUSIC_FADE_IN if on else MUSIC_FADE_OUT)
 	if not on:
-		_music_tween.tween_callback(_music.stop)
+		tween.tween_callback(player.stop)
+	_music_tweens[mode] = tween
 
 
 static func play(name: String, pitch: float = 1.0) -> void:
