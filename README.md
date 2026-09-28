@@ -300,8 +300,10 @@ A cute, hand-drawn style, all in `scripts/toon.gd` (`TSToon`):
   (`TSBoard.has_escape`). Like the armour's second layer, a layer comes off
   only when pieces around it are broken -- a match beside it, a bomb, a
   rock -- and a slide can neither move nor smash one. They arrive at level 10
-  (`TSLevels.TIE_FROM_LEVEL`) and are on every even level from there: 2 in
-  Beginner and Intermediate (up to 2 and 3 layers), 3 above. Generation turns
+  (`TSLevels.TIE_FROM_LEVEL`) and are on every even level from there: 1 in
+  Beginner, 2 in Intermediate to Expert and 3 in Extreme, of up to 2 layers
+  (3 in Expert and Extreme) -- tuned so the sim journey averages stay at
+  Beginner 92%, Intermediate 47%, Hard 26%, Expert 15%, Extreme 7%. Generation turns
   surface blockers into them after tiling, spread round the middle rows, so the
   eggs are otherwise unchanged. A counter sits beside the hearts, a toast marks
   each one broken (and a dug hole with some still standing), and the first egg

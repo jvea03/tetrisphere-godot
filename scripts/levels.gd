@@ -79,8 +79,8 @@ const ARMOR_SHARE := [0.0, 0.5, 0.3, 0.45, 0.12]   # tuned with the 5-cell L and
 ## TIE_FROM_LEVEL and are on every other level from there (the even ones);
 ## per tier, how many a level has and the most layers each may have.
 const TIE_FROM_LEVEL := 10
-const TIE_COUNT := [2, 2, 3, 3, 3]
-const TIE_LAYERS := [2, 3, 3, 3, 3]
+const TIE_COUNT := [1, 2, 2, 2, 3]
+const TIE_LAYERS := [2, 2, 2, 3, 3]
 
 static var _bank: Dictionary = {}
 static var _bank_loaded := false
