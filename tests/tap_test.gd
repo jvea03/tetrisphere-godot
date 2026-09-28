@@ -202,7 +202,12 @@ func _screen_of(cell: Vector2i) -> Vector2:
 
 
 func _visible(cell: Vector2i) -> bool:
-	return _cell_at(_screen_of(cell)) == cell
+	var at := _screen_of(cell)
+	# A cell behind the booster or pause buttons can't be touched: those take
+	# the press themselves.
+	if _on_booster_button(at) or _pause_btn.get_global_rect().has_point(at):
+		return false
+	return _cell_at(at) == cell
 
 
 # A visible cell whose top piece you may slide, and a direction it can go.
