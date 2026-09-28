@@ -293,6 +293,15 @@ func _test_levels() -> void:
 			own_pieces = own_pieces and found.has(int(kind))
 	_check("every baked ball is built from exactly its level's pieces", own_pieces)
 	_check("level 3 is only squares and upright lines; level 4 only flat lines and pluses", TSLevels.rules_for_level(3)["pieces"] == [TSBoard.O, TSBoard.I_UPRIGHT] and TSLevels.rules_for_level(4)["pieces"] == [TSBoard.I_FLAT, TSBoard.PLUS] and TSLevels.rules_for_level(5)["pieces"] == TSLevels.LINES)
+	var pairs_ok := true
+	var last_pair: Array = []
+	for lvl in range(TSLevels.BEGINNER_MIX_FROM, TSLevels.LEVEL_PLAN.size() + 1):
+		if TSLevels.difficulty_for_level(lvl) != 0:
+			continue
+		var pair: Array = TSLevels.rules_for_level(lvl)["pieces"]
+		pairs_ok = pairs_ok and pair.size() == 2 and pair != last_pair
+		last_pair = pair
+	_check("Beginner levels from %d are two pieces each, never the same pair twice running" % TSLevels.BEGINNER_MIX_FROM, pairs_ok and TSLevels.rules_for_level(9)["pieces"] != TSLevels.LINES)
 	var first := TSBoard.new()
 	first.load_dict(TSLevels.baked_board(1))
 	var two_deep := first.shell_depth == 2 and first.largest_group() <= 2

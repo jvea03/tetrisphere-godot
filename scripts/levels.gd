@@ -140,17 +140,43 @@ const LEVEL_PIECES := {
 	4: [TSBoard.I_FLAT, TSBoard.PLUS],
 }
 
+## After level BEGINNER_MIX_FROM, a Beginner level is any two of the four
+## pieces rather than always the two lines: each takes the next pair in this
+## rotation (by how many such levels came before it), so the six pairs all
+## come round in turn and no two in a row match.
+const BEGINNER_MIX_FROM := 9
+const BEGINNER_PAIRS := [
+	[TSBoard.I_FLAT, TSBoard.O],
+	[TSBoard.I_UPRIGHT, TSBoard.PLUS],
+	[TSBoard.I_FLAT, TSBoard.I_UPRIGHT],
+	[TSBoard.O, TSBoard.PLUS],
+	[TSBoard.I_UPRIGHT, TSBoard.O],
+	[TSBoard.I_FLAT, TSBoard.PLUS],
+]
+
+
+## The two pieces a Beginner level from BEGINNER_MIX_FROM on is built from.
+static func beginner_pair(level: int) -> Array:
+	var before := 0
+	for l in range(BEGINNER_MIX_FROM, level):
+		if difficulty_for_level(l) == 0:
+			before += 1
+	return BEGINNER_PAIRS[before % BEGINNER_PAIRS.size()]
+
 
 ## A level's full rules: its tier's, except where noted. Level 1's egg is
 ## only two layers deep (every other egg is three), so the critter is never
-## far below -- a gentle first ball -- and levels 3 and 4 have their own
-## pieces (LEVEL_PIECES).
+## far below -- a gentle first ball; levels 3 and 4 have their own pieces
+## (LEVEL_PIECES); and Beginner levels from BEGINNER_MIX_FROM on are any two
+## pieces (beginner_pair).
 static func rules_for_level(level: int) -> Dictionary:
 	var rules := rules_for_tier(difficulty_for_level(level))
 	if level == 1:
 		rules["shell_depth"] = 2
 	if LEVEL_PIECES.has(level):
 		rules = _with_pieces(rules, LEVEL_PIECES[level])
+	elif level >= BEGINNER_MIX_FROM and difficulty_for_level(level) == 0:
+		rules = _with_pieces(rules, beginner_pair(level))
 	return rules
 
 

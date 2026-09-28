@@ -246,7 +246,13 @@ A cute, hand-drawn style, all in `scripts/toon.gd` (`TSToon`):
   Tetris piece; like every piece here it never rotates. Two early levels
   preview the new shapes with their own pairs (`TSLevels.LEVEL_PIECES`):
   **level 3 is only squares and upright lines**, and **level 4 only flat
-  lines and pluses** (the casual sim bot wins them 100% and 75%).
+  lines and pluses** (the casual sim bot wins them 100% and 75%). From level
+  9 on, a Beginner level is **any two of the four pieces**, taking the next
+  of the six pairs in turn (`TSLevels.BEGINNER_PAIRS`) so no two in a row
+  match: level 9 flat + square, 10 upright + plus, 12 the two lines, 13
+  square + plus, 50 upright + square. Pairs with the plus leave more grey
+  (about 40-45% of the surface), and all of them stay easy (100% for the
+  casual sim bot).
 - **The early lessons.** Level 1 walks through the egg, the gestures and the
   hearts. **Level 2 teaches sliding** hands-on: the egg turns to a flat line
   that can slide, and the walkthrough waits until you hold it and drag it.
@@ -536,7 +542,7 @@ projects cells through the rendered camera:
 Godot.exe --path . res://tests/tap_test.tscn
 ```
 
-The menus' systems (85 checks) and the game screen's flow through them (28
+The menus' systems (86 checks) and the game screen's flow through them (28
 checks), all passing. Neither touches the real save:
 
 ```
