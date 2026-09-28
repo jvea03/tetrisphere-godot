@@ -10,7 +10,7 @@ extends RefCounted
 #
 # The pieces. Beginner is the two lines, flat and upright (and, from level 9,
 # any two pieces). Intermediate adds the 2x2 O square. Hard mixes any three
-# of the five pieces -- the lines, the square, the plus and the capital L --
+# of the six pieces -- the lines, the square, the plus, the capital L and T --
 # and Expert and Extreme any four (see tier_mix); the lists below are each
 # tier's first mix. Every piece a level deals is also tiled into its shell,
 # so each one has somewhere to match from the first drop.
@@ -165,9 +165,9 @@ const BEGINNER_PAIRS := [
 ]
 
 
-## The five pieces the harder tiers mix from: the two lines, the square, the
-## plus and the capital L.
-const PIECE_POOL := [TSBoard.I_FLAT, TSBoard.I_UPRIGHT, TSBoard.O, TSBoard.PLUS, TSBoard.L]
+## The six pieces the harder tiers mix from: the two lines, the square, the
+## plus, the capital L and the capital T.
+const PIECE_POOL := [TSBoard.I_FLAT, TSBoard.I_UPRIGHT, TSBoard.O, TSBoard.PLUS, TSBoard.L, TSBoard.T]
 ## How many of PIECE_POOL each mixing tier uses: Hard any three, Expert and
 ## Extreme any four. Each level of the tier takes the next combination in turn
 ## (by how many levels of that tier came before it), so every combination
@@ -211,7 +211,7 @@ static func beginner_pair(level: int) -> Array:
 ## far below -- a gentle first ball; levels 3 and 4 have their own pieces
 ## (LEVEL_PIECES); Beginner levels from BEGINNER_MIX_FROM on are any two
 ## pieces (beginner_pair); and Hard, Expert and Extreme levels mix three or
-## four of the five pieces (tier_mix).
+## four of the six pieces (tier_mix).
 static func rules_for_level(level: int) -> Dictionary:
 	var rules := rules_for_tier(difficulty_for_level(level))
 	if level == 1:

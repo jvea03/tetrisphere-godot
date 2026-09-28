@@ -39,13 +39,13 @@ const CAP_TRIM := 0.07      # latitude the trim ring covers, in radians
 # yellow flat bars, green upright bars -- and blockers are pebble grey. The
 # other pieces take the rest of the sweet-shop palette: the O square (from
 # Intermediate) is sky blue, the plus (from Expert) strawberry pink and the
-# capital-L piece lilac.
+# capital-L piece lilac, the capital T tangerine.
 # I flat, I upright, O, T, S, Z, J, L, blocker, plus.
 const TYPE_COLORS := [
 	Color(1.00, 0.83, 0.36),   # I flat: butter
 	Color(0.50, 0.86, 0.56),   # I upright: mint
 	Color(0.52, 0.80, 0.98),   # O: sky
-	Color(1.00, 0.68, 0.44),   # T: peach (unused)
+	Color(1.00, 0.60, 0.28),   # T: tangerine
 	Color(1.00, 0.66, 0.82),   # S (unused)
 	Color(0.98, 0.52, 0.52),   # Z (unused)
 	Color(0.56, 0.64, 0.98),   # J (unused)

@@ -48,7 +48,9 @@ const SHAPES := [
 	{"name": "I flat", "offsets": [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(3, 0)]},
 	{"name": "I upright", "offsets": [Vector2i(0, 0), Vector2i(0, 1), Vector2i(0, 2), Vector2i(0, 3)]},
 	{"name": "O", "offsets": [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1)]},
-	{"name": "T", "offsets": [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(1, 1)]},
+	# A capital T: a bar of three across the top with a stem of two hanging
+	# from its middle (+y is up the ball) -- five cells, like the capital L.
+	{"name": "T", "offsets": [Vector2i(0, 2), Vector2i(1, 2), Vector2i(2, 2), Vector2i(1, 1), Vector2i(1, 0)]},
 	{"name": "S", "offsets": [Vector2i(0, 0), Vector2i(1, 0), Vector2i(1, 1), Vector2i(2, 1)]},
 	{"name": "Z", "offsets": [Vector2i(1, 0), Vector2i(2, 0), Vector2i(0, 1), Vector2i(1, 1)]},
 	{"name": "J", "offsets": [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(0, 1)]},
@@ -66,6 +68,7 @@ const TYPE_COUNT := 11
 const I_FLAT := 0
 const I_UPRIGHT := 1
 const O := 2
+const T := 3
 const L := 7
 const BLOCKER := 8
 const PLUS := 9

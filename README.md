@@ -240,9 +240,10 @@ A cute, hand-drawn style, all in `scripts/toon.gd` (`TSToon`):
   the pole caps follow it.
 - **New pieces join by tier.** Beginner levels are the two lines.
   **Intermediate adds the 2x2 O square** (sky blue). **Hard mixes any three**
-  of five pieces -- the two lines, the square, the **plus** (strawberry pink,
-  five blocks) and a **capital-L** piece (lilac: an upright stem of three
-  with a foot to the right at the bottom) -- and **Expert and Extreme any
+  of six pieces -- the two lines, the square, the **plus** (strawberry pink,
+  five blocks), a **capital-L** piece (lilac: an upright stem of three with a
+  foot of three along the bottom) and a **capital-T** piece (tangerine: a bar
+  of three on a stem of two) -- and **Expert and Extreme any
   four**, each level taking the next combination in turn (`TSLevels.tier_mix`)
   so no two in a row match.
   Every piece a level deals is also tiled into its shell,
@@ -351,9 +352,9 @@ A cute, hand-drawn style, all in `scripts/toon.gd` (`TSToon`):
   | --- | --- | --- | --- |
   | `BEGINNER` | flat, upright | 2x2 | 80% |
   | `INTERMEDIATE` | + O square | 3x3 | 65% |
-  | `HARD` | any 3 of lines, square, plus, L | 4x4 | 50% |
-  | `EXPERT` | any 4 of lines, square, plus, L | 2x2 | 85% |
-  | `EXTREME` | any 4 of lines, square, plus, L | 4x4 | 85% |
+  | `HARD` | any 3 of lines, square, plus, L, T | 4x4 | 50% |
+  | `EXPERT` | any 4 of lines, square, plus, L, T | 2x2 | 85% |
+  | `EXTREME` | any 4 of lines, square, plus, L, T | 4x4 | 85% |
 
   The plus costs so much that Expert and Extreme give some back through the
   other two levers -- a smaller critter and a kinder deal than before it

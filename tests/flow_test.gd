@@ -69,6 +69,12 @@ func _run() -> void:
 	_drop()
 	_check("dropped by a pair, it matches like that piece (no life lost)", lives == lives_before and board.plate_kind.size() < wild_pieces and cur_type != TSBoard.WILD)
 	_check("and nothing wild is left on the ball", not board.plate_kind.values().has(TSBoard.WILD))
+	# That match can dig the critter out and win; start level 12 afresh for
+	# the Rocks.
+	if state != State.PLAYING:
+		TSProfile.last_level = 12
+		_close_cards()
+		_start_level(12)
 
 	# Rocks: two rocks fly, and each finishes a match when it lands
 	TSProfile.rock_count = 1
