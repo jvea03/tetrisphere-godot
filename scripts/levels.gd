@@ -74,6 +74,13 @@ const SEARCH_MIX := -1.0   # see rules_for_tier; below -1 changes nothing
 ## knocks it off, and only then can the blocker be broken -- sliding into it
 ## does nothing. None in Beginner, more as the tiers climb.
 const ARMOR_SHARE := [0.0, 0.5, 0.3, 0.45, 0.12]   # tuned with the 5-cell L and T in the mix
+## Tie-downs (TSBoard.TIE): 1x1 stakes of one to three layers, every one of
+## which must be broken before the critter can escape. They arrive at
+## TIE_FROM_LEVEL and are on every other level from there (the even ones);
+## per tier, how many a level has and the most layers each may have.
+const TIE_FROM_LEVEL := 10
+const TIE_COUNT := [2, 2, 3, 3, 3]
+const TIE_LAYERS := [2, 3, 3, 3, 3]
 
 static var _bank: Dictionary = {}
 static var _bank_loaded := false
@@ -217,6 +224,10 @@ static func beginner_pair(level: int) -> Array:
 ## four of the six pieces (tier_mix).
 static func rules_for_level(level: int) -> Dictionary:
 	var rules := rules_for_tier(difficulty_for_level(level))
+	if has_ties(level):
+		var tier := difficulty_for_level(level)
+		rules["ties"] = TIE_COUNT[tier]
+		rules["tie_layers"] = TIE_LAYERS[tier]
 	if level == 1:
 		rules["shell_depth"] = 2
 	if LEVEL_PIECES.has(level):
@@ -257,3 +268,8 @@ const LEVELS := [
 		"fair_deal": true,
 	},
 ]
+
+
+## Whether this level's egg has tie-downs (see TIE_FROM_LEVEL).
+static func has_ties(level: int) -> bool:
+	return level >= TIE_FROM_LEVEL and level % 2 == 0

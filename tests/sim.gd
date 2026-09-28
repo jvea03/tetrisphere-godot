@@ -127,6 +127,8 @@ func _best_move(board: TSBoard, type_id: int, rng: RandomNumberGenerator, candid
 		var probe := board.clone()
 		var res := probe.place_and_resolve(offsets, at, type_id)
 		var s := int(res["removed"]) * 10 + int(res["pieces"]) * 25 + int(probe.best_escape_patch(escape)["open"]) * 60
+		# A player aims at the tie-downs: every layer knocked off is worth a lot.
+		s += (board.tie_layers_left() - probe.tie_layers_left()) * 80
 		if bool(res["overload"]):
 			s -= 500
 		if s > best_score:

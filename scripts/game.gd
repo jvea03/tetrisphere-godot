@@ -123,6 +123,11 @@ var _drawn_hold := -1       # the piece kinds last drawn in the tray and the nex
 var _drawn_next := -1
 var _deal_tweens: Array = [] # the deal animation (see _animate_deal)
 var _hearts: Array[Polygon2D] = []
+var _tie_pill: PanelContainer   # tie-downs left, beside the hearts, on levels with them
+var _tie_label: Label
+var _ties_seen := -1            # tie-downs standing at the last HUD refresh (-1: a new ball)
+var _level_ties := 0            # how many this ball started with
+var _tie_hole_hinted := false   # said once: the hole is ready, but tie-downs remain
 var _hud: Control
 var _pause_btn: Button
 var _pause: Dictionary
@@ -283,6 +288,19 @@ func _build_hud() -> void:
 		heart.position = Vector2(24.0 + i * 46.0, -0.5)
 		hearts_at.add_child(heart)
 		_hearts.append(heart)
+	# Tie-downs left, a pill to the right of the hearts, on levels that have them.
+	var ties_at := _pin(root, Control.PRESET_CENTER_TOP, Vector2(92.0, _top + 8.0))
+	_tie_pill = PanelContainer.new()
+	_tie_pill.add_theme_stylebox_override("panel", TSUI.sb(TSUI.CARD, 20, 3, 2, 6))
+	_tie_pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_tie_pill.visible = false
+	var tie_row := TSUI.hbox(6)
+	tie_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_tie_pill.add_child(tie_row)
+	tie_row.add_child(TSIcon.make("tie", 36))
+	_tie_label = TSUI.label("", 28, TSUI.INK)
+	tie_row.add_child(_tie_label)
+	ties_at.add_child(_tie_pill)
 	var pause_at := _pin(root, Control.PRESET_TOP_RIGHT, Vector2(-96.0, _top - 4.0))
 	_pause_btn = TSUI.icon_button("pause", 76, TSUI.CARD)
 	_pause_btn.pressed.connect(_open_pause)
@@ -534,6 +552,7 @@ func _start(seed_value: int, baked: Dictionary = {}) -> void:
 	else:
 		board.load_dict(baked)
 	_lbl_level.text = "DAILY EGG" if is_daily else "LEVEL %d" % current_level
+	_ties_seen = -1
 	state = State.PLAYING
 	if _escape_tween != null:
 		_escape_tween.kill()
@@ -593,6 +612,7 @@ func _resume() -> void:
 	_stop_deal_animation()
 	last_event = "Welcome back!"
 	_lbl_level.text = "DAILY EGG" if is_daily else "LEVEL %d" % current_level
+	_ties_seen = -1
 	_face(_piece_centre())
 	view.rebuild()
 	_refresh_piece()
@@ -658,6 +678,8 @@ func _select_at(cell: Vector2i) -> void:
 		last_event = "Nothing there. Hold a piece like yours (%s) to slide it." % holding
 	elif int(board.plate_kind[id]) == TSBoard.BLOCKER:
 		last_event = "Grey blockers can't be slid. Slide a piece into them to smash them."
+	elif int(board.plate_kind[id]) == TSBoard.TIE:
+		last_event = "Tie-downs can't be slid or smashed. Break pieces next to one to knock off a layer."
 	else:
 		last_event = "You can only slide pieces like the one you hold (%s)." % holding
 
@@ -677,7 +699,7 @@ func _slide(dir: Vector2i) -> void:
 		return
 	var res := board.slide(selected, dir)
 	if not bool(res["moved"]):
-		last_event = "Blocked. Only plain grey blockers can be pushed through -- armoured ones need a hit first."
+		last_event = "Blocked. Only plain grey blockers can be pushed through -- armour and tie-downs need a hit first."
 		_refresh_hud()
 		return
 
@@ -1132,6 +1154,7 @@ func _draw_piece(box: Control, kind: int, offsets: Array, px: float) -> Vector2:
 
 
 func _refresh_hud() -> void:
+	_note_ties()
 	_lbl_score.text = "SCORE %d" % score
 	var news := last_event.strip_edges()
 	if news != _toast_text:
@@ -1962,10 +1985,33 @@ func _maybe_start_tutorials() -> void:
 		_start_slide_tutorial()
 	elif TSProfile.bombs_unlocked and not TSProfile.bomb_tutorial_seen and current_level >= TSProfile.BOMB_UNLOCK_LEVEL:
 		_start_bomb_tutorial()
+	elif board.ties_left() > 0 and not TSProfile.tie_tutorial_seen and not is_daily:
+		_start_tie_tutorial()
 	elif TSProfile.swaps_unlocked and not TSProfile.swap_tutorial_seen:
 		_start_booster_tutorial(_btn_swap, "swap", "The Any Piece! Tap it to turn your piece into a wild block that becomes whatever it touches -- drop it by any pair to make a match. Here are %d to start." % TSProfile.SWAP_UNLOCK_GRANT)
 	elif TSProfile.rocks_unlocked and not TSProfile.rocks_tutorial_seen:
 		_start_booster_tutorial(_btn_rocks, "rocks", "Rocks! Tap to fire two rocks: each one lands on a pair and finishes the match. Here are %d shots to start." % TSProfile.ROCKS_UNLOCK_GRANT)
+
+
+## The first egg with tie-downs: the camera turns to one, the spotlight shows
+## it and how it breaks, then the counter by the hearts.
+func _start_tie_tutorial() -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if not is_inside_tree() or board.ties_left() == 0:
+		return
+	var id: int = board.ties.keys()[0]
+	_face(Vector2(board.plate_cols[id][0]))
+	_snap_camera()
+	_tutorial.finished.connect(func():
+		TSProfile.tie_tutorial_seen = true
+		TSProfile.save(), CONNECT_ONE_SHOT)
+	_tutorial.start([
+		{"rect": func() -> Rect2: return _piece_rect(id),
+			"text": "A tie-down! These stakes hold the critter in. Break pieces right next to one -- a match, a bomb or a rock -- to knock off a layer. The dots show how many hits it needs."},
+		{"rect": _tie_pill.get_global_rect(),
+			"text": "This counts the tie-downs left. Break every one AND dig the hole to free the critter!"},
+	])
 
 
 ## Level 1's walkthrough: the ball, the gestures, the pieces, the aim, the hearts.
@@ -2173,3 +2219,23 @@ func _show_toast(text: String) -> void:
 		if last_event.strip_edges() == _toast_text:
 			last_event = ""
 		_toast_text = "")
+
+
+## Tie-downs (TSBoard.TIE): keeps the counter by the hearts up to date and
+## says what happened -- one broken, the last one gone, or the hole dug while
+## some still hold the critter in (once a ball). A new ball (_ties_seen -1)
+## just takes its count.
+func _note_ties() -> void:
+	var left := board.ties_left()
+	if _ties_seen < 0:
+		_level_ties = left
+		_tie_hole_hinted = false
+	elif left < _ties_seen:
+		last_event = "Tie-down broken! %d left." % left if left > 0 else "Every tie-down is broken -- now dig the critter out!"
+		TSSfx.play("upgrade")
+	elif left > 0 and not _tie_hole_hinted and board.has_escape_hole(_escape_size()):
+		_tie_hole_hinted = true
+		last_event = "The hole's ready -- break the last tie-down%s to free the critter!" % ("" if left == 1 else "s")
+	_ties_seen = left
+	_tie_pill.visible = _level_ties > 0
+	_tie_label.text = str(left)

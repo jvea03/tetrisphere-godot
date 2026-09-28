@@ -164,6 +164,7 @@ func _draw() -> void:
 		"bomb": _draw_bomb()
 		"swap": _draw_any_piece()   # the Any Piece booster (saved under its old id, "swap")
 		"rocks": _draw_rocks()
+		"tie": _draw_tie()
 		"chest": _draw_chest()
 		"gift": _draw_gift()
 		"flame": _draw_flame()
@@ -235,6 +236,14 @@ func _draw_any_piece() -> void:
 		var cell := Vector2(0.23 + float(i % 2) * 0.25, 0.29 + float(i >> 1) * 0.25)
 		_rrect(Rect2(cell, Vector2(0.23, 0.23)), 0.06, colours[i], false)
 	_poly(_star_pts(Vector2(0.78, 0.22), 0.17, 0.07, 4), GOLD)
+
+
+# The tie-down: a stake-brown tile with a row of cream layer dots, as it sits
+# on the egg.
+func _draw_tie() -> void:
+	_rrect(Rect2(0.14, 0.14, 0.72, 0.72), 0.16, _col(Color(0.58, 0.38, 0.26)))
+	for k in 3:
+		_rrect(Rect2(0.2 + float(k) * 0.21, 0.4, 0.17, 0.2), 0.05, Color(1.0, 0.93, 0.78))
 
 
 # Rocks: two round pebbles flying in from the top left, speed lines behind,

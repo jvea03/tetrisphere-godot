@@ -63,8 +63,13 @@ const SHAPES := [
 	# piece gives the biggest match where it lands (see wild_kind). It is only
 	# ever in the player's hand -- on the ball it is always a real kind.
 	{"name": "Any Piece", "offsets": [Vector2i(0, 0)]},
+	# The tie-down: a 1x1 stake holding the critter in, with one to three
+	# layers (TSBoard.ties). Every one must be broken before the critter can
+	# escape. Like the armour, a layer comes off only when pieces around it are
+	# broken -- a match beside it, a bomb, a rock -- never by a slide.
+	{"name": "Tie-down", "offsets": [Vector2i(0, 0)]},
 ]
-const TYPE_COUNT := 11
+const TYPE_COUNT := 12
 const I_FLAT := 0
 const I_UPRIGHT := 1
 const O := 2
@@ -73,6 +78,8 @@ const L := 7
 const BLOCKER := 8
 const PLUS := 9
 const WILD := 10
+const TIE := 11
+const TIE_MAX_LAYERS := 3
 
 # cells[col][row] -> Array of piece ids, deepest first. A HOLE marks an empty
 # depth with something still above it; stacks never end in a HOLE, so a
@@ -85,6 +92,7 @@ var plate_cols := {}      # piece id -> Array[Vector2i], the columns it occupies
 ## it, a bomb, a rock -- knocks the armour off and leaves a plain blocker; a
 ## second hit breaks that. Sliding can't break armour: it stops a slide.
 var armored := {}         # blocker id -> true while its armour is on
+var ties := {}            # tie-down id -> layers left (1 to TIE_MAX_LAYERS)
 var initial_blocks := 0
 var cleared_blocks := 0
 
@@ -140,6 +148,7 @@ func generate(seed_value: int, level: Dictionary) -> void:
 		for id in plate_kind:
 			if int(plate_kind[id]) == BLOCKER and _rng.randf() < armor_share:
 				armored[id] = true
+	_place_ties(int(level.get("ties", 0)), int(level.get("tie_layers", TIE_MAX_LAYERS)))
 
 	initial_blocks = count_blocks()
 	cleared_blocks = 0
@@ -181,6 +190,69 @@ func generate(seed_value: int, level: Dictionary) -> void:
 # the search fills the layer between.
 
 const PLAIN_UNIT := [true, true, false, true, true, false, true, true]   # flat rows, row 0 up
+
+
+## Tie-downs, after the armour (so every ball without them is unchanged):
+## `count` plain grey blockers on the surface become tie-downs of 1 to
+## `max_layers` layers, spread round the ball -- each as far as can be from
+## the ones already placed, and off the rows by the caps where they are hard
+## to see -- so the player sees them all and has to work
+## the whole egg. With too few surface blockers, buried ones make up the rest.
+func _place_ties(count: int, max_layers: int) -> void:
+	ties.clear()
+	if count <= 0:
+		return
+	var middle: Array = []     # on the surface, away from the caps: easy to see
+	var surface: Array = []
+	var buried: Array = []
+	for id in plate_kind:
+		if int(plate_kind[id]) != BLOCKER or armored.has(id):
+			continue
+		var v: Vector2i = plate_cols[id][0]
+		if top_piece(v.x, v.y) != id:
+			buried.append(id)
+		elif v.y >= 1 and v.y <= ROWS - 2:
+			middle.append(id)
+		else:
+			surface.append(id)
+	middle.sort()
+	surface.sort()
+	buried.sort()
+	for pool in [middle, surface, buried]:
+		while ties.size() < count and not (pool as Array).is_empty():
+			var best: int = pool[_rng.randi_range(0, (pool as Array).size() - 1)]
+			if not ties.is_empty():
+				var best_gap := -1
+				for id in pool:
+					var gap := 999
+					var v: Vector2i = plate_cols[id][0]
+					for t in ties:
+						var w: Vector2i = plate_cols[t][0]
+						gap = mini(gap, absi(wrap_col(v.x - w.x + COLS / 2) - COLS / 2) + absi(v.y - w.y))
+					if gap > best_gap:
+						best_gap = gap
+						best = id
+			(pool as Array).erase(best)
+			plate_kind[best] = TIE
+			ties[best] = _rng.randi_range(1, clampi(max_layers, 1, TIE_MAX_LAYERS))
+
+
+## Tie-downs and grey blockers: never dealt, never matched, never slid.
+static func is_obstacle(kind: int) -> bool:
+	return kind == BLOCKER or kind == TIE
+
+
+## How many tie-downs are still standing: the critter can't escape until 0.
+## All the hits the tie-downs still need, every layer of every one.
+func tie_layers_left() -> int:
+	var n := 0
+	for id in ties:
+		n += int(ties[id])
+	return n
+
+
+func ties_left() -> int:
+	return ties.size()
 
 
 func _pattern_fits() -> bool:
@@ -401,6 +473,7 @@ func _remove_plate(id: int) -> void:
 	plate_kind.erase(id)
 	plate_cols.erase(id)
 	armored.erase(id)
+	ties.erase(id)
 
 
 # A hole with nothing above it is just open space; drop it from the stack.
@@ -526,7 +599,7 @@ func _matches(seeds: Array) -> Dictionary:
 	var checked := {}
 	for s in seeds:
 		var id: int = s
-		if checked.has(id) or not plate_kind.has(id) or int(plate_kind[id]) == BLOCKER:
+		if checked.has(id) or not plate_kind.has(id) or is_obstacle(int(plate_kind[id])):
 			continue
 		var group := _component(id)
 		for g in group:
@@ -536,7 +609,7 @@ func _matches(seeds: Array) -> Dictionary:
 		for p in group:
 			doomed[p] = true
 			for n in _neighbors(p):
-				if int(plate_kind[n]) == BLOCKER:
+				if is_obstacle(int(plate_kind[n])):
 					doomed[n] = true
 	return doomed
 
@@ -554,6 +627,15 @@ func _destroy(doomed: Dictionary, step: int, fx: Array) -> int:
 			for col in plate_cols[p]:
 				var v: Vector2i = col
 				fx.append([v.x, v.y, (cells[v.x][v.y] as Array).find(p), BLOCKER, step])
+	# A tie-down loses one layer per hit (a chip of it in the fx) and breaks
+	# with its last.
+	for p in doomed.keys():
+		if ties.has(p) and int(ties[p]) > 1:
+			ties[p] = int(ties[p]) - 1
+			doomed.erase(p)
+			for col in plate_cols[p]:
+				var v: Vector2i = col
+				fx.append([v.x, v.y, (cells[v.x][v.y] as Array).find(p), TIE, step])
 	for p in doomed:
 		var kind: int = plate_kind[p]
 		for col in plate_cols[p]:
@@ -581,7 +663,7 @@ func _chain(seeds: Array, fx: Array, step: int) -> Dictionary:
 			break
 		chain += 1
 		for p in doomed:
-			if int(plate_kind[p]) != BLOCKER:
+			if not is_obstacle(int(plate_kind[p])):
 				pieces += 1
 		removed += _destroy(doomed, step + chain - 1, fx)
 		seeds = _settle()
@@ -674,7 +756,7 @@ func wild_kind(offsets: Array, at: Vector2i, depth: int) -> int:
 				near.append(_occupant(n.x, n.y, depth))
 		for i in near.size():
 			var p: int = near[i]
-			if p == HOLE or int(plate_kind[p]) == BLOCKER:
+			if p == HOLE or is_obstacle(int(plate_kind[p])):
 				continue
 			# The piece underneath counts double, so it wins a tie.
 			touching[int(plate_kind[p])] = int(touching.get(int(plate_kind[p]), 0)) + (2 if i == 0 else 1)
@@ -780,14 +862,14 @@ func top_piece(c: int, r: int) -> int:
 # May piece `id` be slid while the player holds a piece of type `holding`?
 # Only pieces of that same type; never blockers.
 func can_slide(id: int, holding: int) -> bool:
-	return plate_kind.has(id) and int(plate_kind[id]) != BLOCKER and int(plate_kind[id]) == holding
+	return plate_kind.has(id) and not is_obstacle(int(plate_kind[id])) and int(plate_kind[id]) == holding
 
 
 # What sliding piece `id` one cell in `dir` would do, without doing it: -1 if
 # it cannot move (a Tetris piece or the rim in the way), otherwise how many
 # blockers it would smash (0 for a clear move).
 func slide_preview(id: int, dir: Vector2i) -> int:
-	if not plate_kind.has(id) or int(plate_kind[id]) == BLOCKER:
+	if not plate_kind.has(id) or is_obstacle(int(plate_kind[id])):
 		return -1
 	var d := depth_of(id)
 	var smash := 0
@@ -876,11 +958,11 @@ func detonate(at: Vector2i, radius: int) -> Dictionary:
 				doomed[p] = true
 	var pieces := 0
 	for p in doomed.keys():
-		if int(plate_kind[p]) == BLOCKER:
+		if is_obstacle(int(plate_kind[p])):
 			continue
 		pieces += 1
 		for n in _neighbors(p):
-			if int(plate_kind[n]) == BLOCKER:
+			if is_obstacle(int(plate_kind[n])):
 				doomed[n] = true
 	var fx: Array = []
 	var blasted := _destroy(doomed, 1, fx)
@@ -924,7 +1006,7 @@ func rock_targets(count: int, near: Vector2i) -> Array:
 	for c in COLS:
 		for r in ROWS:
 			var p := top_piece(c, r)
-			if p == HOLE or seen.has(p) or int(plate_kind[p]) == BLOCKER:
+			if p == HOLE or seen.has(p) or is_obstacle(int(plate_kind[p])):
 				continue
 			var group := _component(p)
 			for g in group:
@@ -955,7 +1037,7 @@ func rock_strike(groups: Array) -> Dictionary:
 			doomed[id] = true
 			pieces += 1
 			for n in _neighbors(id):
-				if int(plate_kind[n]) == BLOCKER:
+				if is_obstacle(int(plate_kind[n])):
 					doomed[n] = true
 	var fx: Array = []
 	var hit := _destroy(doomed, 1, fx)
@@ -987,7 +1069,7 @@ func largest_group() -> int:
 	var best := 0
 	var seen := {}
 	for p in plate_kind:
-		if seen.has(p) or int(plate_kind[p]) == BLOCKER:
+		if seen.has(p) or is_obstacle(int(plate_kind[p])):
 			continue
 		var group := _component(p)
 		for g in group:
@@ -1069,6 +1151,11 @@ func best_escape_patch(k: int) -> Dictionary:
 
 
 func has_escape(k: int) -> bool:
+	return ties.is_empty() and has_escape_hole(k)
+
+
+## The hole alone, ties aside: dug wide enough, whatever still holds it down.
+func has_escape_hole(k: int) -> bool:
 	return int(best_escape_patch(k)["open"]) >= k * k
 
 
@@ -1086,7 +1173,10 @@ func to_dict() -> Dictionary:
 		for r in ROWS:
 			column.append((cells[c][r] as Array).duplicate())
 		stacks.append(column)
-	return {"cells": stacks, "kinds": kinds, "armor": armored.keys()}
+	var tie_layers := {}
+	for id in ties:
+		tie_layers[str(id)] = int(ties[id])
+	return {"cells": stacks, "kinds": kinds, "armor": armored.keys(), "ties": tie_layers}
 
 
 ## Loads a ball saved by to_dict (numbers come back from JSON as floats).
@@ -1095,6 +1185,7 @@ func load_dict(data: Dictionary) -> void:
 	plate_kind.clear()
 	plate_cols.clear()
 	armored.clear()
+	ties.clear()
 	_next_id = 0
 	for id_str in data["kinds"]:
 		var id := int(id_str)
@@ -1121,6 +1212,10 @@ func load_dict(data: Dictionary) -> void:
 	for id in data.get("armor", []):
 		if plate_kind.has(int(id)):
 			armored[int(id)] = true
+	var tie_layers: Dictionary = data.get("ties", {})
+	for id_str in tie_layers:
+		if plate_kind.has(int(id_str)):
+			ties[int(id_str)] = int(tie_layers[id_str])
 	initial_blocks = count_blocks()
 	cleared_blocks = 0
 
@@ -1134,6 +1229,7 @@ func clone() -> TSBoard:
 	b.plate_kind = plate_kind.duplicate()
 	b.plate_cols = plate_cols.duplicate(true)
 	b.armored = armored.duplicate()
+	b.ties = ties.duplicate()
 	b.cells = []
 	for c in COLS:
 		var column: Array = []

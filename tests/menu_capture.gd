@@ -3,7 +3,8 @@
 # then opens the screen named on the command line. Never touches the real
 # save. Run with:
 #   Godot.exe --path . res://tests/menu_capture.tscn -- home
-# or `-- game 22` for the game screen on a given level, or `-- home all` for
+# or `-- game 22` for the game screen on a given level (`-- game 10 ties` to
+# see the tie-down lesson), or `-- home all` for
 # Home with every critter owned (add `max` or `broken` for the ship's parts).
 extends Node
 
@@ -59,6 +60,8 @@ func _ready() -> void:
 		# An optional level after it: `-- game 22` opens level 22's ball.
 		if args.size() > 1:
 			TSProfile.last_level = int(args[1])
+		if args.size() > 2 and args[2] == "ties":
+			TSProfile.tie_tutorial_seen = false
 		get_tree().change_scene_to_file.call_deferred(SceneFlow.GAME)
 		return
 	get_tree().change_scene_to_file.call_deferred("res://scenes/%s.tscn" % screen)

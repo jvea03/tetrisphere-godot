@@ -58,6 +58,7 @@ const TYPE_COLORS := [
 	Color(0.74, 0.72, 0.78),   # blocker: pebble grey
 	Color(1.00, 0.56, 0.72),   # plus: strawberry
 	Color(1.00, 0.97, 0.88),   # Any Piece: cream (only ever in your hand)
+	Color(0.58, 0.38, 0.26),   # tie-down: stake brown
 ]
 ## An armoured blocker (TSBoard.armored): dark steel until a hit knocks the
 ## armour off and leaves it pebble grey.
@@ -66,12 +67,18 @@ const ARMOR_COLOR := Color(0.42, 0.45, 0.58)
 ## two layers read at a glance: steel outside, the plain blocker within.
 const ARMOR_STUD_GAP := 0.27    # inset of the mini square on each side of its cell
 const ARMOR_STUD_RISE := 0.12   # how far it stands proud of the steel, in layers
+## A tie-down wears one cream pip per layer left, in a row, raised like the
+## armour's mini square: count them for the hits it still needs.
+const TIE_PIP_GAP := 0.38        # a pip's inset on each side of a cell: 0.24 across
+const TIE_PIP_SPACING := 0.28
+const TIE_PIP_COLOR := Color(1.0, 0.93, 0.78)
 
 var board: TSBoard
 var max_radius := CORE_RADIUS   # outermost occupied layer, used to frame the camera
 
 var _tile_sets := {}   # tile shape key -> MultiMeshInstance3D
 var _studs: MultiMeshInstance3D   # the mini squares on armoured blockers
+var _pips: MultiMeshInstance3D    # the layer pips on tie-downs
 var _fx_root: Node3D
 var _fx_rng := RandomNumberGenerator.new()
 var _caps: Array = []      # the cap meshes, rebuilt for a ball of another depth
@@ -297,6 +304,7 @@ func rebuild() -> void:
 	var tallest := 1
 	var sets := {}   # tile key -> [[colour, custom], ...]
 	var studs: Array = []
+	var pips: Array = []
 
 	for c in TSBoard.COLS:
 		for r in TSBoard.ROWS:
@@ -315,6 +323,11 @@ func rebuild() -> void:
 				sets[key].append([colour, Color(c, r, d, shade)])
 				if board.armored.has(p) and _open_above(stack, d):
 					studs.append([TYPE_COLORS[TSBoard.BLOCKER], Color(c, r, d + ARMOR_STUD_RISE, shade)])
+				if board.ties.has(p) and _open_above(stack, d):
+					var layers := int(board.ties[p])
+					for k in layers:
+						var dx := (float(k) - float(layers - 1) * 0.5) * TIE_PIP_SPACING
+						pips.append([TIE_PIP_COLOR, Color(c + dx, r, d + ARMOR_STUD_RISE, shade)])
 
 	for key in _tile_sets:
 		if not sets.has(key):
@@ -326,6 +339,9 @@ func rebuild() -> void:
 	if _studs == null:
 		_studs = _bent_tiles(0, make_material(Color.WHITE, 1.0, 0.0, true, true), ARMOR_STUD_GAP)
 	_fill_multi(_studs.multimesh, studs)
+	if _pips == null:
+		_pips = _bent_tiles(0, make_material(Color.WHITE, 1.0, 0.0, true, true), TIE_PIP_GAP)
+	_fill_multi(_pips.multimesh, pips)
 
 	max_radius = CORE_RADIUS + float(tallest) * LAYER_H
 

@@ -289,7 +289,7 @@ func _test_levels() -> void:
 		for id in ball.plate_kind:
 			found[int(ball.plate_kind[id])] = true
 		for kind in found.keys():
-			own_pieces = own_pieces and (want.has(kind) or kind == TSBoard.BLOCKER)
+			own_pieces = own_pieces and (want.has(kind) or TSBoard.is_obstacle(kind))
 		for kind in want:
 			own_pieces = own_pieces and found.has(int(kind))
 	_check("every baked ball is built from exactly its level's pieces", own_pieces)

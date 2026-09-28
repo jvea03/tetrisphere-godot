@@ -26,6 +26,7 @@ func _initialize() -> void:
 	_test_bomb()
 	_test_swap_and_rocks()
 	_test_armor()
+	_test_ties()
 	_test_pieces_stay_whole()
 	print("")
 	print("ALL PASSED" if _failures == 0 else "%d FAILED" % _failures)
@@ -555,3 +556,60 @@ func _all_whole(b: TSBoard) -> bool:
 				return false
 			depth = d
 	return true
+
+
+# Tie-downs: a match beside one knocks off a layer, the last layer breaks it,
+# a slide never does, and the critter can't escape while any stand.
+func _test_ties() -> void:
+	var b := _empty_board()
+	var shape: Array = TSBoard.SHAPES[FLAT]["offsets"]
+	var a := _flat(b, 0, 5)
+	var c := _flat(b, 4, 5)
+	var tie := b._add_plate(TSBoard.TIE, [Vector2i(8, 5)])
+	b.ties[tie] = 2
+	b.place_and_resolve(shape, Vector2i(2, 5), FLAT)
+	_check("a match beside a tie-down knocks off one layer", not b.plate_kind.has(a) and not b.plate_kind.has(c) and b.plate_kind.has(tie) and int(b.ties[tie]) == 1)
+	var d := _flat(b, 9, 5)
+	var e := _flat(b, 13, 5)
+	b.place_and_resolve(shape, Vector2i(11, 5), FLAT)
+	_check("the last layer's hit breaks it", not b.plate_kind.has(tie) and not b.ties.has(tie) and not b.plate_kind.has(d))
+
+	var s := _empty_board()
+	var mover := _flat(s, 0, 3)
+	var stake := s._add_plate(TSBoard.TIE, [Vector2i(4, 3)])
+	s.ties[stake] = 1
+	_check("sliding into a tie-down is blocked and doesn't hurt it", s.slide_preview(mover, Vector2i(1, 0)) < 0 and not bool(s.slide(mover, Vector2i(1, 0))["moved"]) and int(s.ties[stake]) == 1)
+	_check("a tie-down can't be slid, dealt a match or joined by the wild block", not s.can_slide(stake, TSBoard.TIE) and s.slide_preview(stake, Vector2i(1, 0)) < 0 and s.wild_kind(TSBoard.SHAPES[TSBoard.WILD]["offsets"], Vector2i(5, 3), 0) == FLAT)
+
+	var bomb := _empty_board()
+	var three := bomb._add_plate(TSBoard.TIE, [Vector2i(5, 4)])
+	bomb.ties[three] = 3
+	bomb.detonate(Vector2i(5, 4), 2)
+	_check("a bomb is one hit: 3 layers become 2", bomb.plate_kind.has(three) and int(bomb.ties[three]) == 2)
+
+	# The escape waits for the tie-downs, however big the hole.
+	var open := _empty_board()
+	var held := open._add_plate(TSBoard.TIE, [Vector2i(15, 0)])
+	open.ties[held] = 1
+	_check("with a tie-down standing, a dug-out hole is not an escape", open.has_escape_hole(2) and not open.has_escape(2))
+	open.ties.clear()
+	open._remove_plate(held)
+	_check("with none left, it is", open.has_escape(2))
+
+	# Generated eggs: the level's count, each 1 to its tier's layers, on the
+	# surface, and kept through saving and copying.
+	var lvl := TSLevels.TIE_FROM_LEVEL
+	var rules := TSLevels.rules_for_level(lvl)
+	var ball := TSBoard.new()
+	ball.generate(TSLevels.seed_for_level(lvl), rules)
+	var on_top := true
+	var layers_ok := true
+	for id in ball.ties:
+		var v: Vector2i = ball.plate_cols[id][0]
+		on_top = on_top and ball.top_piece(v.x, v.y) == id
+		layers_ok = layers_ok and int(ball.ties[id]) >= 1 and int(ball.ties[id]) <= int(rules["tie_layers"])
+	_check("level %d's egg has %d tie-downs on its surface, 1-%d layers each" % [lvl, int(rules["ties"]), int(rules["tie_layers"])], ball.ties_left() == int(rules["ties"]) and on_top and layers_ok)
+	var back := TSBoard.new()
+	back.load_dict(ball.to_dict())
+	_check("tie-downs survive saving and copying", back.ties == ball.ties and ball.clone().ties == ball.ties and not back.has_escape(2))
+	_check("none before level %d, and none on odd levels" % lvl, not TSLevels.rules_for_level(lvl - 1).has("ties") and not TSLevels.rules_for_level(lvl + 1).has("ties") and TSLevels.rules_for_level(lvl + 2).has("ties"))
