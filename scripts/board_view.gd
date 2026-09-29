@@ -72,6 +72,9 @@ const ARMOR_STUD_RISE := 0.12   # how far it stands proud of the steel, in layer
 const TIE_PIP_GAP := 0.38        # a pip's inset on each side of a cell: 0.24 across
 const TIE_PIP_SPACING := 0.28
 const TIE_PIP_COLOR := Color(1.0, 0.93, 0.78)
+## The cable from a tie-down to the critter: rope tan, part see-through.
+const WIRE_COLOR := Color(0.93, 0.76, 0.5, 0.85)
+const WIRE_RADIUS := 0.05
 
 var board: TSBoard
 var max_radius := CORE_RADIUS   # outermost occupied layer, used to frame the camera
@@ -81,6 +84,8 @@ var _studs: MultiMeshInstance3D   # the mini squares on armoured blockers
 var _pips: MultiMeshInstance3D    # the layer pips on tie-downs
 var _fx_root: Node3D
 var _fx_rng := RandomNumberGenerator.new()
+var _wires: Node3D         # a cable from each tie-down in to the critter
+var _wire_mat: StandardMaterial3D
 var _caps: Array = []      # the cap meshes, rebuilt for a ball of another depth
 var _caps_depth := -1
 
@@ -200,6 +205,40 @@ static func make_material(c: Color, alpha := 1.0, glow := 0.0, outline := true, 
 # cell is worked out on a sphere -- width tapering with cos(phi) so rows stay
 # flush toward the caps -- then carried onto the egg, basis and all, so tiles
 # still meet edge to edge after the stretch.
+## Each tie-down's cable, taut from the top of the stake straight in to the
+## critter at the core: drawn see-through, over the shell, so the player can
+## see what it holds -- and gone the moment its tie-down breaks.
+func _build_tie_wires() -> void:
+	if _wires == null:
+		_wires = Node3D.new()
+		add_child(_wires)
+		_wire_mat = StandardMaterial3D.new()
+		_wire_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_wire_mat.albedo_color = WIRE_COLOR
+		_wire_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_wire_mat.no_depth_test = true
+		_wire_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+		_wire_mat.render_priority = 2
+	for child in _wires.get_children():
+		child.queue_free()
+	for id in board.ties:
+		var cell: Vector2i = board.plate_cols[id][0]
+		var from := cell_transform(cell.x, cell.y, float(board.depth_of(id)) + 0.45).origin
+		var to := Vector3.ZERO
+		var mesh := CylinderMesh.new()
+		mesh.top_radius = WIRE_RADIUS
+		mesh.bottom_radius = WIRE_RADIUS
+		mesh.height = from.distance_to(to)
+		mesh.radial_segments = 8
+		mesh.rings = 1
+		var wire := MeshInstance3D.new()
+		wire.mesh = mesh
+		wire.material_override = _wire_mat
+		wire.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		wire.transform = Transform3D(Basis(Quaternion(Vector3.UP, (from - to).normalized())), (from + to) * 0.5)
+		_wires.add_child(wire)
+
+
 static func cell_transform(c: int, r: int, depth: float) -> Transform3D:
 	var theta := TAU * (float(c) + 0.5) / float(TSBoard.COLS)
 	var phi := lerpf(-LAT_SPAN, LAT_SPAN, (float(r) + 0.5) / float(TSBoard.ROWS))
@@ -301,6 +340,7 @@ static func _open_above(stack: Array, d: int) -> bool:
 func rebuild() -> void:
 	if board.shell_depth != _caps_depth:
 		_build_caps()
+	_build_tie_wires()
 	var tallest := 1
 	var sets := {}   # tile key -> [[colour, custom], ...]
 	var studs: Array = []
