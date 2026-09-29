@@ -1220,7 +1220,6 @@ static func _heart_shape(s: float) -> PackedVector2Array:
 
 
 func _process(delta: float) -> void:
-	view.face_wires(_camera.global_position)
 	# A touch held still long enough becomes a hold.
 	if _gesture == Gesture.PENDING and Time.get_ticks_msec() - _touch_ms >= int(HOLD_TIME * 1000.0):
 		_begin_hold()

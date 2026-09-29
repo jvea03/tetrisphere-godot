@@ -72,8 +72,8 @@ const ARMOR_STUD_RISE := 0.12   # how far it stands proud of the steel, in layer
 const TIE_PIP_GAP := 0.38        # a pip's inset on each side of a cell: 0.24 across
 const TIE_PIP_SPACING := 0.28
 const TIE_PIP_COLOR := Color(1.0, 0.93, 0.78)
-## The cable from a tie-down to the critter: rope tan, part see-through.
-const WIRE_COLOR := Color(0.93, 0.76, 0.5, 0.85)
+## The cable from a tie-down to the critter: rope tan.
+const WIRE_COLOR := Color(0.93, 0.76, 0.5)
 const WIRE_RADIUS := 0.05
 
 var board: TSBoard
@@ -200,14 +200,10 @@ static func make_material(c: Color, alpha := 1.0, glow := 0.0, outline := true, 
 	return TSToon.material(c, alpha, glow, false, outline, bent)
 
 
-# Places a unit-sized mesh at (col, row, depth): local +Y points out of the
-# ball, +X follows longitude (next column), -Z is up the ball (next row). The
-# cell is worked out on a sphere -- width tapering with cos(phi) so rows stay
-# flush toward the caps -- then carried onto the egg, basis and all, so tiles
-# still meet edge to edge after the stretch.
-## Each tie-down's cable, taut from the top of the stake straight in to the
-## critter at the core: drawn see-through, over the shell, so the player can
-## see what it holds -- and gone the moment its tie-down breaks.
+## Each tie-down's cable, taut from the stake straight in to the critter at
+## the core. It runs behind the blocks, hidden by them like anything else
+## inside the egg: it shows where the shell is dug away, down to the critter,
+## and goes the moment its tie-down breaks.
 func _build_tie_wires() -> void:
 	if _wires == null:
 		_wires = Node3D.new()
@@ -215,15 +211,11 @@ func _build_tie_wires() -> void:
 		_wire_mat = StandardMaterial3D.new()
 		_wire_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		_wire_mat.albedo_color = WIRE_COLOR
-		_wire_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		_wire_mat.no_depth_test = true
-		_wire_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-		_wire_mat.render_priority = 2
 	for child in _wires.get_children():
 		child.queue_free()
 	for id in board.ties:
 		var cell: Vector2i = board.plate_cols[id][0]
-		var from := cell_transform(cell.x, cell.y, float(board.depth_of(id)) + 0.45).origin
+		var from := cell_transform(cell.x, cell.y, float(board.depth_of(id))).origin   # the stake's middle
 		var to := Vector3.ZERO
 		var mesh := CylinderMesh.new()
 		mesh.top_radius = WIRE_RADIUS
@@ -236,22 +228,14 @@ func _build_tie_wires() -> void:
 		wire.material_override = _wire_mat
 		wire.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		wire.transform = Transform3D(Basis(Quaternion(Vector3.UP, (from - to).normalized())), (from + to) * 0.5)
-		wire.set_meta("tie_at", from)
 		_wires.add_child(wire)
 
 
-## Fades each cable by how squarely its tie-down faces the camera, so only the
-## tie-downs you can see show theirs: one round the back would otherwise draw
-## its cable straight through the egg, out of nowhere. Called every frame.
-func face_wires(camera_at: Vector3) -> void:
-	if _wires == null:
-		return
-	for wire in _wires.get_children():
-		var at: Vector3 = (wire as Node3D).get_meta("tie_at", Vector3.ZERO)
-		var facing := at.normalized().dot((camera_at - at).normalized())
-		(wire as GeometryInstance3D).transparency = 1.0 - smoothstep(0.0, 0.3, facing)
-
-
+# Places a unit-sized mesh at (col, row, depth): local +Y points out of the
+# ball, +X follows longitude (next column), -Z is up the ball (next row). The
+# cell is worked out on a sphere -- width tapering with cos(phi) so rows stay
+# flush toward the caps -- then carried onto the egg, basis and all, so tiles
+# still meet edge to edge after the stretch.
 static func cell_transform(c: int, r: int, depth: float) -> Transform3D:
 	var theta := TAU * (float(c) + 0.5) / float(TSBoard.COLS)
 	var phi := lerpf(-LAT_SPAN, LAT_SPAN, (float(r) + 0.5) / float(TSBoard.ROWS))
