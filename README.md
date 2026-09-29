@@ -216,7 +216,8 @@ A cute, hand-drawn style, all in `scripts/toon.gd` (`TSToon`):
   the crash site's sky takes the time of day of the player's current level
   -- the same colours, sun or crescent moon, and stars at night -- and the
   camp below is lit to match, moonlit at night and warm at sunset. At night
-  the camp lights up (drawn additively over the moonlight): the campfire casts
+  the camp lights up (drawn additively over the moonlight), each light a faint
+  halo where it hangs and a soft pool it casts flat on the ground: the campfire casts
   a warm, flickering pool, the ship's portholes glow with red and green lights
   blinking on its fins, and every camp spot you have built hangs a lantern.
 - **HUD** in a handwriting-style font from the device (Chalkboard on Apple,

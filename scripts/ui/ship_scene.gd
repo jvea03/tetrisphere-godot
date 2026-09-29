@@ -693,44 +693,57 @@ func _draw_sky() -> void:
 		ci.draw_circle(MOON + dimple[0], dimple[1], Color(0.9, 0.86, 0.8), true, -1.0, true)
 
 
-## The camp's lights at night, drawn additively over the moonlit world: a
-## warm, flickering pool round the campfire (bigger once it is upgraded),
-## portholes glowing on the ship with red and green lights blinking on its
-## fins and a red one on the antenna, and a lantern at every camp spot built.
+## The camp's lights at night, drawn additively over the moonlit world. Each
+## is a faint halo where it hangs and a pool of light it casts on the ground
+## below, flattened to lie on the floor: a big warm flickering one round the
+## campfire (bigger once upgraded), a lantern's at every camp spot built, and
+## a faint one under the ship from its lit portholes -- with red and green
+## lights blinking on its fins and a red one on the antenna.
 func _draw_lights() -> void:
 	var ci := _lights
-	var flick := 0.88 + 0.08 * sin(_t * 9.0) + 0.04 * sin(_t * 23.0)
+	var flick := 0.9 + 0.07 * sin(_t * 9.0) + 0.03 * sin(_t * 23.0)
 	var fire := _lv(TSProfile.CAMP_FIRE)
 	if fire >= 1:
 		var k := _depth_scale(FIRE.y)
-		var reach := (330.0 if fire >= 4 else 250.0) * flick * k
-		_glow(ci, FIRE + Vector2(0, -24) * k, reach, Color(1.0, 0.55, 0.22), 0.7)
-		_glow(ci, FIRE + Vector2(0, -24) * k, reach * 0.3, Color(1.0, 0.8, 0.45), 0.6)
+		var reach := (440.0 if fire >= 4 else 340.0) * flick * k
+		_pool(ci, FIRE + Vector2(0, 6) * k, reach, Color(1.0, 0.58, 0.25), 0.34)
+		_glow(ci, FIRE + Vector2(0, -26) * k, 90.0 * flick * k, Color(1.0, 0.7, 0.35), 0.22)
 	if _launch_start < 0.0:
 		if _lv(TSProfile.PART_PORTHOLES) >= 1:
+			_pool(ci, Vector2(_ship_at.x, _ship_depth), 300.0, Color(1.0, 0.8, 0.5), 0.12)
 			for p in PORTHOLES:
-				_glow(ci, _xf * (p as Vector2), 46.0, Color(1.0, 0.8, 0.45), 0.32)
+				_glow(ci, _xf * (p as Vector2), 40.0, Color(1.0, 0.8, 0.45), 0.18)
 		var blink := fposmod(_t, 1.2) < 0.6
-		_glow(ci, _xf * FIN_TIP, 34.0, Color(1.0, 0.25, 0.25) if blink else Color(0.25, 1.0, 0.4), 0.8)
-		_glow(ci, _xf * Vector2(100.0, 306.0), 34.0, Color(0.25, 1.0, 0.4) if blink else Color(1.0, 0.25, 0.25), 0.8)
+		_glow(ci, _xf * FIN_TIP, 24.0, Color(1.0, 0.25, 0.25) if blink else Color(0.25, 1.0, 0.4), 0.45)
+		_glow(ci, _xf * Vector2(100.0, 306.0), 24.0, Color(0.25, 1.0, 0.4) if blink else Color(1.0, 0.25, 0.25), 0.45)
 		if _lv(TSProfile.PART_ANTENNA) >= 1 and fposmod(_t, 0.9) < 0.3:
-			_glow(ci, _xf * _antenna_tip(), 30.0, Color(1.0, 0.3, 0.3), 0.9)
+			_glow(ci, _xf * _antenna_tip(), 20.0, Color(1.0, 0.3, 0.3), 0.5)
 	for spot in [[TSProfile.CAMP_TENT, TENT, Vector2(-66, -70)], [TSProfile.CAMP_BENCH, BENCH, Vector2(70, -60)],
 			[TSProfile.CAMP_GARDEN, GARDEN, Vector2(-70, -50)], [TSProfile.CAMP_WELL, WELL, Vector2(0, -130)],
 			[TSProfile.CAMP_LOOKOUT, LOOKOUT, Vector2(0, -175)]]:
 		if _lv(int(spot[0])) < 1:
 			continue
 		var at: Vector2 = spot[1]
-		var lamp: Vector2 = at + (spot[2] as Vector2) * _depth_scale(at.y)
-		_glow(ci, lamp, 120.0 * flick, Color(1.0, 0.75, 0.4), 0.5)
-		ci.draw_circle(lamp, 7.0, Color(1.0, 0.9, 0.6), true, -1.0, true)
+		var k := _depth_scale(at.y)
+		var lamp: Vector2 = at + (spot[2] as Vector2) * k
+		_pool(ci, Vector2(lamp.x, at.y + 6.0 * k), 190.0 * flick * k, Color(1.0, 0.75, 0.42), 0.24)
+		_glow(ci, lamp, 56.0 * flick * k, Color(1.0, 0.75, 0.4), 0.2)
+		ci.draw_circle(lamp, 5.0 * k, Color(1.0, 0.88, 0.6, 0.7), true, -1.0, true)
 
 
-# A soft pool of light: rings of `colour`, adding up to `strength` at the
-# middle and fading to nothing at `radius` (on the additive lights layer).
+# A soft halo of light: rings of `colour`, adding up to `strength` at the
+# middle and fading smoothly to nothing at `radius` (on the additive layer).
 func _glow(ci: CanvasItem, at: Vector2, radius: float, colour: Color, strength: float) -> void:
-	for k in 6:
-		ci.draw_circle(at, radius * (1.0 - float(k) * 0.16), Color(colour, strength / 6.0), true, -1.0, true)
+	for k in 10:
+		ci.draw_circle(at, radius * (1.0 - float(k) * 0.095), Color(colour, strength / 10.0), true, -1.0, true)
+
+
+# The light a lamp casts on the ground: a halo squashed flat to lie on the
+# floor, as seen from the camera's low angle.
+func _pool(ci: CanvasItem, at: Vector2, radius: float, colour: Color, strength: float) -> void:
+	ci.draw_set_transform(at, 0.0, Vector2(1.0, 0.34))
+	_glow(ci, Vector2.ZERO, radius, colour, strength)
+	ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
 func _draw_ground() -> void:
