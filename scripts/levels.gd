@@ -79,8 +79,8 @@ const ARMOR_SHARE := [0.0, 0.5, 0.3, 0.45, 0.12]   # tuned with the 5-cell L and
 ## TIE_FROM_LEVEL and are on every other level from there (the even ones);
 ## per tier, how many a level has and the most layers each may have.
 const TIE_FROM_LEVEL := 10
-const TIE_COUNT := [1, 2, 2, 2, 3]
-const TIE_LAYERS := [2, 2, 2, 3, 3]
+const TIE_COUNT := [1, 2, 2, 2, 2]
+const TIE_LAYERS := [2, 2, 2, 2, 3]
 
 static var _bank: Dictionary = {}
 static var _bank_loaded := false
@@ -97,9 +97,30 @@ static func tier_name(level: int) -> String:
 	return str(DIFFICULTIES[difficulty_for_level(level)]["name"])
 
 
-## A generated level's seed, so it is the same ball on every attempt.
+## A generated level's seed, so it is the same ball on every attempt. A level
+## in SEED_SHIFT takes the seed that many steps on: its first egg played as a
+## wall, far below its tier's win rate (chosen with `tests/sim.gd -- probe`).
 static func seed_for_level(level: int) -> int:
+	return shifted_seed(level, int(SEED_SHIFT.get(level, 0)))
+
+
+static func base_seed(level: int) -> int:
 	return hash("tetrisphere_level_%d" % level)
+
+
+## Level `level`'s egg number `shift` (0 is its own). A seed family of its own
+## -- not base_seed + shift, since neighbouring levels' seeds are 1 apart and
+## "the next seed" would be another level's egg.
+static func shifted_seed(level: int, shift: int) -> int:
+	return base_seed(level) if shift == 0 else hash("tetrisphere_level_%d_egg_%d" % [level, shift])
+
+
+const SEED_SHIFT := {
+	14: 6, 16: 1, 52: 7, 57: 4,          # Intermediate
+	34: 3, 42: 1, 58: 6, 63: 6, 64: 2,   # Hard
+	22: 5, 54: 5, 60: 4,                 # Expert
+	46: 2, 61: 2, 70: 3,                 # Extreme
+}
 
 
 ## A baked level's ball (see TSBoard.to_dict), or {} for a generated one.
@@ -236,6 +257,13 @@ static func rules_for_level(level: int) -> Dictionary:
 		rules = _with_pieces(rules, tier_mix(level))
 	elif level >= BEGINNER_MIX_FROM and difficulty_for_level(level) == 0:
 		rules = _with_pieces(rules, beginner_pair(level))
+	# Two or more five-cell pieces and no square to fill the gaps between them
+	# leave few ways to match: such a heavy mix digs a hole one size smaller,
+	# and is challenge enough without tie-downs on top.
+	if heavy_mix(rules["pieces"]):
+		rules["escape_size"] = int(DIFFICULTIES[difficulty_for_level(level)]["escape_size"]) - 1
+		rules.erase("ties")
+		rules.erase("tie_layers")
 	return rules
 
 
@@ -273,3 +301,15 @@ const LEVELS := [
 ## Whether this level's egg has tie-downs (see TIE_FROM_LEVEL).
 static func has_ties(level: int) -> bool:
 	return level >= TIE_FROM_LEVEL and level % 2 == 0
+
+
+## A mix with two or more five-cell pieces (plus, L, T) and no O square:
+## the hardest to match in, so its hole is one size smaller (rules_for_level).
+static func heavy_mix(pieces: Array) -> bool:
+	if pieces.has(TSBoard.O):
+		return false
+	var big := 0
+	for k in pieces:
+		if (TSBoard.SHAPES[int(k)]["offsets"] as Array).size() >= 5:
+			big += 1
+	return big >= 2

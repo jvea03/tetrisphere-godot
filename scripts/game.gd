@@ -1510,7 +1510,7 @@ func _fair(kind: int) -> int:
 # Size of the square hole, in cells, the creature needs to get out -- set by
 # the difficulty, which is the creature's size.
 func _escape_size() -> int:
-	return int(TSLevels.DIFFICULTIES[difficulty]["escape_size"])
+	return int(level.get("escape_size", TSLevels.DIFFICULTIES[difficulty]["escape_size"]))
 
 
 func _creature_scale() -> float:
@@ -1994,7 +1994,8 @@ func _maybe_start_tutorials() -> void:
 		_start_slide_tutorial()
 	elif TSProfile.bombs_unlocked and not TSProfile.bomb_tutorial_seen and current_level >= TSProfile.BOMB_UNLOCK_LEVEL:
 		_start_bomb_tutorial()
-	elif board.ties_left() > 0 and not TSProfile.tie_tutorial_seen and not is_daily:
+	elif board.ties_left() > 0 and not TSProfile.tie_tutorial_seen:
+		# (the Daily Egg too: it can bring tie-downs before level 10 does)
 		_start_tie_tutorial()
 	elif TSProfile.swaps_unlocked and not TSProfile.swap_tutorial_seen:
 		_start_booster_tutorial(_btn_swap, "swap", "The Any Piece! Tap it to turn your piece into a wild block that becomes whatever it touches -- drop it by any pair to make a match. Here are %d to start." % TSProfile.SWAP_UNLOCK_GRANT)

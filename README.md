@@ -305,13 +305,19 @@ A cute, hand-drawn style, all in `scripts/toon.gd` (`TSToon`):
   only when pieces around it are broken -- a match beside it, a bomb, a
   rock -- and a slide can neither move nor smash one. They arrive at level 10
   (`TSLevels.TIE_FROM_LEVEL`) and are on every even level from there: 1 in
-  Beginner, 2 in Intermediate to Expert and 3 in Extreme, of up to 2 layers
-  (3 in Expert and Extreme) -- tuned so the sim journey averages stay at
-  Beginner 92%, Intermediate 47%, Hard 26%, Expert 15%, Extreme 7%. Generation turns
+  Beginner and 2 in every tier above, of up to 2 layers (3 in Extreme), and
+  none on a heavy mix (below) -- the sim journey averages come out at
+  Beginner 92%, Intermediate 53%, Hard 32%, Expert 25%, Extreme 11%. Generation turns
   surface blockers into them after tiling, spread round the middle rows, so the
   eggs are otherwise unchanged. A counter sits beside the hearts, a toast marks
   each one broken (and a dug hole with some still standing), and the first egg
   with them has a short lesson.
+- **No walls:** a mix with two or more five-cell pieces (plus, L, T) and no
+  square leaves few ways to match, so it digs a hole one size smaller and has
+  no tie-downs (`TSLevels.heavy_mix`). And a level whose egg played far below
+  its tier's win rate is moved onto another egg of its own
+  (`TSLevels.SEED_SHIFT`, picked with `tests/sim.gd -- probe 16 7 24`), so no
+  level is a dead end -- level 16 went from 0% to 42%, level 14 from 17% to 58%.
 - Destroying pieces **exposes the layer underneath**.
 - **Gravity:** a piece with nothing beneath any of its blocks **falls to the
   next lower depth layer**, as one rigid piece, until something holds it. A

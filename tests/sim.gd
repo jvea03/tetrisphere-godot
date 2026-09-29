@@ -18,6 +18,17 @@ const LIVES := 3
 
 
 func _initialize() -> void:
+	# `-- probe 16,23 8 24`: for each level, the casual bot's win rate on its
+	# egg from each of the next 8 seeds (shift 0 is its own), over 24 plays --
+	# to pick TSLevels.SEED_SHIFT for a level that plays as a wall.
+	var args := OS.get_cmdline_user_args()
+	if args.size() >= 3 and args[0] == "probe":
+		var levels: Array = []
+		for s in args[1].split(","):
+			levels.append(int(s))
+		_probe(levels, int(args[2]), int(args[3]) if args.size() > 3 else 24)
+		quit()
+		return
 	print("==== tiers: win rate over %d generated balls each ====" % TIER_TRIALS)
 	print("%-13s %-8s %-6s %-5s | %-26s | %-26s" % ["tier", "pieces", "hole", "deal", "careful: won  drops  hearts", "casual: won  drops  hearts"])
 	for t in TSLevels.DIFFICULTIES.size():
@@ -51,6 +62,23 @@ func _initialize() -> void:
 			total += x
 		print("%-13s %2d levels, average win rate %3d%%" % [TSLevels.DIFFICULTIES[t]["name"], rates.size(), roundi(total / rates.size() * 100.0)])
 	quit()
+
+
+func _probe(levels: Array, shifts: int, trials: int) -> void:
+	for lvl in levels:
+		var rules := TSLevels.rules_for_level(lvl)
+		var line := "%2d %s" % [lvl, "BIHXE"[TSLevels.difficulty_for_level(lvl)]]
+		for shift in range(0, shifts + 1):
+			var egg := TSBoard.new()
+			egg.generate(TSLevels.shifted_seed(lvl, shift), rules)
+			var wins := 0
+			for i in trials:
+				var rng := RandomNumberGenerator.new()
+				rng.seed = lvl * 7919 + i
+				if bool(_play(egg.clone(), TSLevels.difficulty_for_level(lvl), rules, rng, CASUAL)["win"]):
+					wins += 1
+			line += "  +%d:%3d%%" % [shift, roundi(100.0 * wins / trials)]
+		print(line)
 
 
 ## Win rate on one level of the journey: its own ball (baked or seeded),
@@ -92,7 +120,7 @@ func _batch(tier: int, candidates: int, trials: int, seed_base: int) -> Dictiona
 ## and rules.
 func _play(board: TSBoard, tier: int, rules: Dictionary, rng: RandomNumberGenerator, candidates: int) -> Dictionary:
 	var d: Dictionary = TSLevels.DIFFICULTIES[tier]
-	var escape := int(d["escape_size"])
+	var escape := int(rules.get("escape_size", d["escape_size"]))
 	var bias := float(d["common_bias"])
 	var pieces: Array = rules["pieces"]
 	var next := board.deal_piece(pieces, bias, rng)

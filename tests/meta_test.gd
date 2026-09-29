@@ -335,7 +335,10 @@ func _test_levels() -> void:
 	var second := TSBoard.new()
 	second.load_dict(TSLevels.baked_board(2))
 	_check("level 1's egg is two full layers everywhere, with no ready-made match; level 2's is %d deep" % TSBoard.SHELL_DEPTH, two_deep and second.shell_depth == TSBoard.SHELL_DEPTH and second.clone().shell_depth == TSBoard.SHELL_DEPTH)
-	_check("a generated level is always the same ball", TSLevels.seed_for_level(57) == TSLevels.seed_for_level(57) and TSLevels.seed_for_level(57) != TSLevels.seed_for_level(58))
+	var seeds := {}
+	for lvl in range(1, 201):
+		seeds[TSLevels.seed_for_level(lvl)] = true
+	_check("a generated level is always the same ball, and no two levels share one", TSLevels.seed_for_level(57) == TSLevels.seed_for_level(57) and seeds.size() == 200)
 	var d := TSLevels.daily_level()
 	_check("the Daily Egg is never Beginner (level %d)" % d, TSLevels.difficulty_for_level(d) > 0)
 
