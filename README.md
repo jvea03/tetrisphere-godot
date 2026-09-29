@@ -215,7 +215,10 @@ A cute, hand-drawn style, all in `scripts/toon.gd` (`TSToon`):
   tinted a touch to match; piece colours never change. **Home matches it:**
   the crash site's sky takes the time of day of the player's current level
   -- the same colours, sun or crescent moon, and stars at night -- and the
-  camp below is lit to match, moonlit at night and warm at sunset.
+  camp below is lit to match, moonlit at night and warm at sunset. At night
+  the camp lights up (drawn additively over the moonlight): the campfire casts
+  a warm, flickering pool, the ship's portholes glow with red and green lights
+  blinking on its fins, and every camp spot you have built hangs a lantern.
 - **HUD** in a handwriting-style font from the device (Chalkboard on Apple,
   Comic Sans on Windows, "casual" on Android), in ink with a paper outline.
   Along the top: the level in the left corner, the hearts in the

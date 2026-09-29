@@ -114,6 +114,7 @@ var _xf := Transform2D()        # ship coordinates -> world coordinates
 var _world: Control             # everything that pans
 var _sky_layer: Control         # the sky: its time of day, stars, sun or moon, the ringed planet
 var _ground: Control            # ground, scenery and shadows
+var _lights: Control            # night only: the fire's glow, the ship's lights, lanterns
 var _painters: Array = []       # layers that redraw every frame
 var _ship_layer: Control
 var _props_layer: Control       # over the ship: the heap, ladder and flag
@@ -193,6 +194,13 @@ func _ready() -> void:
 	for child in _world.get_children():
 		if child != _sky_layer:
 			(child as CanvasItem).modulate = _sky["world"]
+	# At night the camp lights up: the fire, the ship, lanterns. Added on
+	# top, untinted, brightening what is under them.
+	if float(_sky["stars"]) > 0.5:
+		_lights = _layer(_draw_lights, 1.0e9)
+		var add := CanvasItemMaterial.new()
+		add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+		_lights.material = add
 	_home_view()
 	_process(0.0)
 
@@ -683,6 +691,46 @@ func _draw_sky() -> void:
 	ci.draw_arc(MOON, 32.0, 0.0, TAU, 32, INK, 4.0, true)
 	for dimple in [[Vector2(-10, -6), 7.0], [Vector2(10, 10), 5.0], [Vector2(8, -14), 4.0]]:
 		ci.draw_circle(MOON + dimple[0], dimple[1], Color(0.9, 0.86, 0.8), true, -1.0, true)
+
+
+## The camp's lights at night, drawn additively over the moonlit world: a
+## warm, flickering pool round the campfire (bigger once it is upgraded),
+## portholes glowing on the ship with red and green lights blinking on its
+## fins and a red one on the antenna, and a lantern at every camp spot built.
+func _draw_lights() -> void:
+	var ci := _lights
+	var flick := 0.88 + 0.08 * sin(_t * 9.0) + 0.04 * sin(_t * 23.0)
+	var fire := _lv(TSProfile.CAMP_FIRE)
+	if fire >= 1:
+		var k := _depth_scale(FIRE.y)
+		var reach := (330.0 if fire >= 4 else 250.0) * flick * k
+		_glow(ci, FIRE + Vector2(0, -24) * k, reach, Color(1.0, 0.55, 0.22), 0.7)
+		_glow(ci, FIRE + Vector2(0, -24) * k, reach * 0.3, Color(1.0, 0.8, 0.45), 0.6)
+	if _launch_start < 0.0:
+		if _lv(TSProfile.PART_PORTHOLES) >= 1:
+			for p in PORTHOLES:
+				_glow(ci, _xf * (p as Vector2), 46.0, Color(1.0, 0.8, 0.45), 0.32)
+		var blink := fposmod(_t, 1.2) < 0.6
+		_glow(ci, _xf * FIN_TIP, 34.0, Color(1.0, 0.25, 0.25) if blink else Color(0.25, 1.0, 0.4), 0.8)
+		_glow(ci, _xf * Vector2(100.0, 306.0), 34.0, Color(0.25, 1.0, 0.4) if blink else Color(1.0, 0.25, 0.25), 0.8)
+		if _lv(TSProfile.PART_ANTENNA) >= 1 and fposmod(_t, 0.9) < 0.3:
+			_glow(ci, _xf * _antenna_tip(), 30.0, Color(1.0, 0.3, 0.3), 0.9)
+	for spot in [[TSProfile.CAMP_TENT, TENT, Vector2(-66, -70)], [TSProfile.CAMP_BENCH, BENCH, Vector2(70, -60)],
+			[TSProfile.CAMP_GARDEN, GARDEN, Vector2(-70, -50)], [TSProfile.CAMP_WELL, WELL, Vector2(0, -130)],
+			[TSProfile.CAMP_LOOKOUT, LOOKOUT, Vector2(0, -175)]]:
+		if _lv(int(spot[0])) < 1:
+			continue
+		var at: Vector2 = spot[1]
+		var lamp: Vector2 = at + (spot[2] as Vector2) * _depth_scale(at.y)
+		_glow(ci, lamp, 120.0 * flick, Color(1.0, 0.75, 0.4), 0.5)
+		ci.draw_circle(lamp, 7.0, Color(1.0, 0.9, 0.6), true, -1.0, true)
+
+
+# A soft pool of light: rings of `colour`, adding up to `strength` at the
+# middle and fading to nothing at `radius` (on the additive lights layer).
+func _glow(ci: CanvasItem, at: Vector2, radius: float, colour: Color, strength: float) -> void:
+	for k in 6:
+		ci.draw_circle(at, radius * (1.0 - float(k) * 0.16), Color(colour, strength / 6.0), true, -1.0, true)
 
 
 func _draw_ground() -> void:

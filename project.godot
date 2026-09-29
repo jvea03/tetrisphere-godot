@@ -13,10 +13,10 @@ config_version=5
 config/name="Egg Escape: Puzzle Break"
 config/description="Egg Escape: Puzzle Break: a Tetrisphere-style egg-digging puzzle for phones in portrait. Original code and geometry only."
 config/version="0.2.0"
-config/icon="res://icons/icon.png"
 run/main_scene="res://scenes/opening.tscn"
 config/quit_on_go_back=false
 config/features=PackedStringArray("4.7", "GL Compatibility")
+config/icon="res://icons/icon.png"
 
 [autoload]
 
@@ -42,5 +42,5 @@ pointing/emulate_touch_from_mouse=true
 
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
-anti_aliasing/quality/msaa_3d=2
 textures/vram_compression/import_etc2_astc=true
+anti_aliasing/quality/msaa_3d=2
