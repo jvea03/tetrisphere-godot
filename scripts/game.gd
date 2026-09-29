@@ -1220,6 +1220,7 @@ static func _heart_shape(s: float) -> PackedVector2Array:
 
 
 func _process(delta: float) -> void:
+	view.face_wires(_camera.global_position)
 	# A touch held still long enough becomes a hold.
 	if _gesture == Gesture.PENDING and Time.get_ticks_msec() - _touch_ms >= int(HOLD_TIME * 1000.0):
 		_begin_hold()
@@ -2239,7 +2240,11 @@ func _note_ties() -> void:
 		_level_ties = left
 		_tie_hole_hinted = false
 	elif left < _ties_seen:
-		last_event = "Tie-down broken! %d left." % left if left > 0 else "Every tie-down is broken -- now dig the critter out!"
+		if left > 0:
+			last_event = "Tie-down broken! %d left." % left
+		elif not board.has_escape_hole(_escape_size()):
+			last_event = "Every tie-down is broken -- now dig the critter out!"
+		# (the last one down with the hole already dug is the escape itself)
 		TSSfx.play("upgrade")
 	elif left > 0 and not _tie_hole_hinted and board.has_escape_hole(_escape_size()):
 		_tie_hole_hinted = true

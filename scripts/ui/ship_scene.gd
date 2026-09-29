@@ -1396,6 +1396,8 @@ func _ellipse(ci: CanvasItem, c: Vector2, rx: float, ry: float, fill: Color, out
 
 
 func _sparkle(ci: CanvasItem, p: Vector2, r: float, color: Color) -> void:
+	if r < 0.5:
+		return   # a spark burnt down to nothing: too small to draw, and it can't be triangulated
 	var pts := PackedVector2Array()
 	for k in 8:
 		var a := TAU * float(k) / 8.0

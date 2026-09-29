@@ -236,7 +236,20 @@ func _build_tie_wires() -> void:
 		wire.material_override = _wire_mat
 		wire.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		wire.transform = Transform3D(Basis(Quaternion(Vector3.UP, (from - to).normalized())), (from + to) * 0.5)
+		wire.set_meta("tie_at", from)
 		_wires.add_child(wire)
+
+
+## Fades each cable by how squarely its tie-down faces the camera, so only the
+## tie-downs you can see show theirs: one round the back would otherwise draw
+## its cable straight through the egg, out of nowhere. Called every frame.
+func face_wires(camera_at: Vector3) -> void:
+	if _wires == null:
+		return
+	for wire in _wires.get_children():
+		var at: Vector3 = (wire as Node3D).get_meta("tie_at", Vector3.ZERO)
+		var facing := at.normalized().dot((camera_at - at).normalized())
+		(wire as GeometryInstance3D).transparency = 1.0 - smoothstep(0.0, 0.3, facing)
 
 
 static func cell_transform(c: int, r: int, depth: float) -> Transform3D:
