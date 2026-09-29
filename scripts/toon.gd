@@ -239,24 +239,25 @@ static func ink(width: float, bent := false) -> ShaderMaterial:
 ## SKY_LEVELS levels has its time of day, in this order, and then round again.
 ## `top`/`bottom` are the sky's gradient, `dots` its polka dots (stars at
 ## night), `orb` the sun or moon (alpha 0: none), `light` and `ambient` tint
-## the light on the egg a touch -- never enough to change a piece's colour.
+## the light on the egg a touch -- never enough to change a piece's colour --
+## and `world` tints the crash site on Home (moonlit at night, warm at sunset).
 const SKY_LEVELS := 10
 const SKIES := [
 	{"name": "Morning", "top": Color(1.0, 0.96, 0.88), "bottom": Color(1.0, 0.88, 0.89), "grad": 0.45,
 		"dots": Color(0.99, 0.89, 0.89), "stars": 0.0, "orb": Color(1.0, 0.9, 0.66, 0.55), "orb_uv": Vector2(0.84, 0.26), "crescent": 0.0,
-		"light": Color(1.0, 0.97, 0.92), "ambient": Color(1.0, 0.92, 0.95)},
+		"light": Color(1.0, 0.97, 0.92), "ambient": Color(1.0, 0.92, 0.95), "world": Color(1.0, 1.0, 1.0)},
 	{"name": "Day", "top": Color(0.78, 0.9, 1.0), "bottom": Color(1.0, 0.97, 0.9), "grad": 0.1,
 		"dots": Color(0.9, 0.95, 1.0), "stars": 0.0, "orb": Color(1.0, 0.87, 0.45, 0.95), "orb_uv": Vector2(0.84, 0.22), "crescent": 0.0,
-		"light": Color(1.0, 0.99, 0.95), "ambient": Color(0.95, 0.96, 1.0)},
+		"light": Color(1.0, 0.99, 0.95), "ambient": Color(0.95, 0.96, 1.0), "world": Color(1.0, 1.0, 1.0)},
 	{"name": "Sunset", "top": Color(1.0, 0.76, 0.56), "bottom": Color(0.9, 0.66, 0.84), "grad": 0.1,
 		"dots": Color(1.0, 0.84, 0.68), "stars": 0.0, "orb": Color(1.0, 0.56, 0.36, 0.95), "orb_uv": Vector2(0.14, 0.74), "crescent": 0.0,
-		"light": Color(1.0, 0.9, 0.8), "ambient": Color(1.0, 0.88, 0.9)},
+		"light": Color(1.0, 0.9, 0.8), "ambient": Color(1.0, 0.88, 0.9), "world": Color(1.0, 0.9, 0.84)},
 	{"name": "Night", "top": Color(0.14, 0.13, 0.3), "bottom": Color(0.32, 0.25, 0.47), "grad": 0.1,
 		"dots": Color(1.0, 0.93, 0.7), "stars": 1.0, "orb": Color(0.99, 0.95, 0.82, 1.0), "orb_uv": Vector2(0.84, 0.24), "crescent": 1.0,
-		"light": Color(0.92, 0.93, 1.0), "ambient": Color(0.86, 0.86, 1.0)},
+		"light": Color(0.92, 0.93, 1.0), "ambient": Color(0.86, 0.86, 1.0), "world": Color(0.62, 0.64, 0.86)},
 	{"name": "Dawn", "top": Color(0.78, 0.74, 0.96), "bottom": Color(1.0, 0.85, 0.76), "grad": 0.15,
 		"dots": Color(0.9, 0.84, 0.99), "stars": 0.0, "orb": Color(1.0, 0.8, 0.6, 0.8), "orb_uv": Vector2(0.86, 0.74), "crescent": 0.0,
-		"light": Color(1.0, 0.95, 0.92), "ambient": Color(1.0, 0.92, 0.96)},
+		"light": Color(1.0, 0.95, 0.92), "ambient": Color(1.0, 0.92, 0.96), "world": Color(0.98, 0.93, 0.96)},
 ]
 
 

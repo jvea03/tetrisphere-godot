@@ -212,7 +212,10 @@ A cute, hand-drawn style, all in `scripts/toon.gd` (`TSToon`):
   passes as you play:** every ten levels the sky moves on -- morning (1-10),
   day, sunset, a starry night with a crescent moon, dawn (41-50) -- and round
   again from 51 (`TSToon.SKIES`), with a sun or moon and the light on the egg
-  tinted a touch to match; piece colours never change.
+  tinted a touch to match; piece colours never change. **Home matches it:**
+  the crash site's sky takes the time of day of the player's current level
+  -- the same colours, sun or crescent moon, and stars at night -- and the
+  camp below is lit to match, moonlit at night and warm at sunset.
 - **HUD** in a handwriting-style font from the device (Chalkboard on Apple,
   Comic Sans on Windows, "casual" on Android), in ink with a paper outline.
   Along the top: the level in the left corner, the hearts in the

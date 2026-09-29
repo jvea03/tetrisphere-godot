@@ -71,6 +71,8 @@ const PATCH := Vector2(290.0, 176.0)        # the sticking plaster over a dent
 # crater field to the south.
 const PLANET := Vector2(1900.0, 170.0)
 const MOON := Vector2(620.0, 120.0)
+const SUN := Vector2(1100.0, 290.0)   # the time of day's sun or moon, in view as Home opens
+const SUN_R := 62.0
 const KITE_SKY := Vector2(340.0, 250.0)     # where the kite flies
 const POND := Vector2(560.0, 1000.0)
 const MOUND := SHIP_AT + Vector2(195.0, 62.0)
@@ -110,7 +112,8 @@ const CHASE := Vector2(840.0, 1420.0)       # the middle of the bug chase's loop
 var _t := 0.0
 var _xf := Transform2D()        # ship coordinates -> world coordinates
 var _world: Control             # everything that pans
-var _ground: Control            # sky, planet, ground, scenery and shadows
+var _sky_layer: Control         # the sky: its time of day, stars, sun or moon, the ringed planet
+var _ground: Control            # ground, scenery and shadows
 var _painters: Array = []       # layers that redraw every frame
 var _ship_layer: Control
 var _props_layer: Control       # over the ship: the heap, ladder and flag
@@ -124,6 +127,7 @@ var _trim := Color(1.0, 0.97, 0.9)
 var _stars: Array = []          # [position, size, phase]
 var _levels: Array = []         # each ship part's level (TSProfile.PARTS): 0 broken
 var _planet: Dictionary = PLANETS[0]   # this planet's colours
+var _sky: Dictionary = TSToon.SKIES[0]   # the time of day, as on the current level
 ## How far launch prep has come: 0 crashed, 1 righted on its legs amid
 ## scaffolding, 2 upright on the launch pad (every part fixed).
 var _stage := 0
@@ -150,6 +154,7 @@ func _ready() -> void:
 	for i in TSProfile.PART_COUNT:
 		_levels.append(TSProfile.part_level_of(i))
 	_planet = PLANETS[(TSProfile.planet_number - 1) % PLANETS.size()]
+	_sky = TSToon.sky_for_level(TSProfile.last_level)
 	_set_pose()
 	_make_scenery()
 
@@ -158,6 +163,7 @@ func _ready() -> void:
 	_world.scale = Vector2.ONE * ZOOM
 	_world.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_world)
+	_sky_layer = _layer(_draw_sky, -2.0)
 	_ground = _layer(_draw_ground, -1.0)
 	_pad_layer = _spot_layer(_draw_pad, _ship_depth - 2.0)
 	_ship_layer = _layer(_draw_ship, _ship_depth)
@@ -181,6 +187,12 @@ func _ready() -> void:
 		_spot_layer(spot[0], (spot[1] as Vector2).y)
 	if _jobs.has("crater"):
 		_lip_layer = _layer(_draw_crater_lip, CRATER.y + 1.0)
+	# The time of day, as on the player's current level (TSToon.SKIES): the
+	# sky draws itself, and everything under it takes the light -- moonlit at
+	# night, warm at sunset.
+	for child in _world.get_children():
+		if child != _sky_layer:
+			(child as CanvasItem).modulate = _sky["world"]
 	_home_view()
 	_process(0.0)
 
@@ -635,14 +647,28 @@ func _sign(ci: Control, foot: Vector2, text: String, colour: Color) -> void:
 
 # -- the world ------------------------------------------------------------------
 
-func _draw_ground() -> void:
-	var ci := _ground
-	# The sky, lilac high up, fading to cream at the horizon.
+## The sky at the time of day of the player's current level, as in the game
+## (TSToon.SKIES): its colours top to horizon, soft sparkles by day that turn
+## into bright twinkling stars at night, the sun -- or a crescent moon -- and
+## this world's own ringed planet and little moon.
+func _draw_sky() -> void:
+	var ci := _sky_layer
+	var top: Color = _sky["top"]
+	var low: Color = _sky["bottom"]
 	ci.draw_polygon(PackedVector2Array([Vector2(0, 0), Vector2(W, 0), Vector2(W, 420), Vector2(0, 420)]),
-		PackedColorArray([_planet["sky_top"], _planet["sky_top"], _planet["sky_low"], _planet["sky_low"]]))
+		PackedColorArray([top, top, low, low]))
+	var night := float(_sky["stars"]) > 0.5
 	for st in _stars:
 		var r: float = float(st[1]) * (0.7 + 0.3 * sin(_t * 2.2 + float(st[2])))
-		_sparkle(ci, st[0], r, Color(1.0, 0.8, 0.4, 0.85))
+		_sparkle(ci, st[0], r, Color(1.0, 0.9, 0.6, 0.95) if night else Color(_sky["dots"], 0.9))
+	var orb: Color = _sky["orb"]
+	if orb.a > 0.0:
+		ci.draw_circle(SUN, SUN_R * 1.8, Color(orb, 0.2 * orb.a), true, -1.0, true)
+		ci.draw_circle(SUN, SUN_R, Color(orb, orb.a), true, -1.0, true)
+		if float(_sky["crescent"]) > 0.5:
+			# The bite out of the moon: a disc of the sky behind it.
+			var bite := SUN + Vector2(SUN_R * 0.45, -SUN_R * 0.3)
+			ci.draw_circle(bite, SUN_R * 0.82, top.lerp(low, bite.y / 420.0), true, -1.0, true)
 	# A ringed planet and a little moon.
 	ci.draw_circle(PLANET, 60.0, Color(0.80, 0.70, 0.98), true, -1.0, true)
 	ci.draw_arc(PLANET, 60.0, 0.0, TAU, 48, INK, 5.0, true)
@@ -658,6 +684,9 @@ func _draw_ground() -> void:
 	for dimple in [[Vector2(-10, -6), 7.0], [Vector2(10, 10), 5.0], [Vector2(8, -14), 4.0]]:
 		ci.draw_circle(MOON + dimple[0], dimple[1], Color(0.9, 0.86, 0.8), true, -1.0, true)
 
+
+func _draw_ground() -> void:
+	var ci := _ground
 	# The planet's surface, curving away at the edges of the world.
 	var ground := PackedVector2Array()
 	for k in 41:
