@@ -296,8 +296,8 @@ A cute, hand-drawn style, all in `scripts/toon.gd` (`TSToon`):
   lever: none in Beginner, then 50% of the blockers in Intermediate, 30% in
   Hard, 45% in Expert and 12% in Extreme (`TSLevels.ARMOR_SHARE`; Expert also
   needs a 3x3 hole), tuned so
-  the casual sim bot's journey averages come out Beginner 95%, Intermediate
-  52%, Hard 28%, Expert 15% and Extreme 7% (targets 50/30/20/10).
+  the casual sim bot's journey averages come out (with tie-downs) Beginner 92%, Intermediate
+  53%, Hard 32%, Expert 25% and Extreme 11% (targets 50/30/20/10).
 - **Tie-downs** (`TSBoard.TIE`: stake brown, with a raised cream dot per layer
   left) are 1x1 stakes of one to three layers that hold the critter in: **every
   one must be broken before it can escape**, however big the hole
