@@ -208,7 +208,11 @@ A cute, hand-drawn style, all in `scripts/toon.gd` (`TSToon`):
   is left open and runs to the cell edge, so a line is one smooth bar with no
   seams, rounded and inked only round its own outline.
 - **Paper background:** cream warming to pink, with faint polka dots and
-  grain, on a quad behind the ball, so it stays put as the ball turns.
+  grain, on a quad behind the ball, so it stays put as the ball turns. **A day
+  passes as you play:** every ten levels the sky moves on -- morning (1-10),
+  day, sunset, a starry night with a crescent moon, dawn (41-50) -- and round
+  again from 51 (`TSToon.SKIES`), with a sun or moon and the light on the egg
+  tinted a touch to match; piece colours never change.
 - **HUD** in a handwriting-style font from the device (Chalkboard on Apple,
   Comic Sans on Windows, "casual" on Android), in ink with a paper outline.
   Along the top: the level and score in the left corner, the hearts in the

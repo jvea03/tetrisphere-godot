@@ -84,6 +84,9 @@ var _camera: Camera3D
 var _ghost_root: Node3D
 var _eyes: Node3D
 var _creature: Node3D     # core + eyes: the character you are digging out
+var _env: Environment
+var _key_light: DirectionalLight3D
+var _sky_mat: ShaderMaterial   # the background: a sky for the time of day (TSToon.SKIES)
 var _escaping := false    # true while it flies out, before the win banner shows
 var _escape_tween: Tween
 var _cam_theta := 0.0
@@ -165,6 +168,7 @@ func _build_environment() -> void:
 	# a drawing does not have them -- and just a little ambient, so the shadow
 	# side keeps its lilac tone instead of washing out.
 	var env := Environment.new()
+	_env = env
 	env.background_mode = Environment.BG_COLOR
 	env.background_color = TSToon.PAPER
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
@@ -176,6 +180,7 @@ func _build_environment() -> void:
 	add_child(we)
 
 	var key := DirectionalLight3D.new()
+	_key_light = key
 	key.light_energy = 0.9
 	key.light_color = Color(1.0, 0.97, 0.92)
 	key.rotation_degrees = Vector3(-42.0, -35.0, 0.0)
@@ -194,7 +199,8 @@ func _build_environment() -> void:
 	var quad := QuadMesh.new()
 	quad.size = Vector2(200.0, 400.0)
 	paper.mesh = quad
-	paper.material_override = TSToon.paper()
+	_sky_mat = TSToon.paper()
+	paper.material_override = _sky_mat
 	paper.position = Vector3(0.0, 0.0, -90.0)
 	paper.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_camera.add_child(paper)
@@ -553,6 +559,7 @@ func _start(seed_value: int, baked: Dictionary = {}) -> void:
 		board.load_dict(baked)
 	_lbl_level.text = "DAILY EGG" if is_daily else "LEVEL %d" % current_level
 	_ties_seen = -1
+	_apply_sky()
 	state = State.PLAYING
 	if _escape_tween != null:
 		_escape_tween.kill()
@@ -613,6 +620,7 @@ func _resume() -> void:
 	last_event = "Welcome back!"
 	_lbl_level.text = "DAILY EGG" if is_daily else "LEVEL %d" % current_level
 	_ties_seen = -1
+	_apply_sky()
 	_face(_piece_centre())
 	view.rebuild()
 	_refresh_piece()
@@ -2239,3 +2247,17 @@ func _note_ties() -> void:
 	_ties_seen = left
 	_tie_pill.visible = _level_ties > 0
 	_tie_label.text = str(left)
+
+
+## The sky for this level's time of day -- every ten levels the day moves on,
+## morning to day to sunset to night to dawn (TSToon.sky_for_level) -- and the
+## light on the egg tinted to match.
+func _apply_sky() -> void:
+	var sky := TSToon.sky_for_level(current_level)
+	TSToon.apply_sky(_sky_mat, sky)
+	_key_light.light_color = sky["light"]
+	_env.ambient_light_color = sky["ambient"]
+	# Ink on a dark night sky is hard to read: the score turns cream, inked round.
+	var night := float(sky["stars"]) > 0.5
+	_lbl_score.add_theme_color_override("font_color", TSToon.PAPER if night else TSToon.INK)
+	_lbl_score.add_theme_color_override("font_outline_color", TSToon.INK if night else TSToon.PAPER)

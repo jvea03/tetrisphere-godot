@@ -21,6 +21,7 @@ func _initialize() -> void:
 	_test_levels()
 	_test_boosters()
 	_test_level_music()
+	_test_skies()
 	print("")
 	print("ALL PASSED" if _failures == 0 else "%d FAILED" % _failures)
 	quit(0 if _failures == 0 else 1)
@@ -390,3 +391,13 @@ func _test_level_music() -> void:
 	_check("each round of level songs plays all %d once" % TSSfx.LEVEL_MUSIC.size(), rounds_ok)
 	_check("no level song plays twice in a row", no_repeat)
 	_check("the order is shuffled round to round", distinct.size() > 1)
+
+
+# The sky behind the egg moves on every ten levels: morning, day, sunset,
+# night, dawn, then round again.
+func _test_skies() -> void:
+	var names: Array = []
+	for level in [1, 10, 11, 20, 21, 31, 41, 50, 51, 61]:
+		names.append(TSToon.sky_for_level(level)["name"])
+	_check("every ten levels the sky moves on a time of day, and cycles (%s)" % ", ".join(names),
+		names == ["Morning", "Morning", "Day", "Day", "Sunset", "Night", "Dawn", "Dawn", "Morning", "Day"])

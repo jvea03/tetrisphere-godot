@@ -148,26 +148,45 @@ const _PAPER := """
 shader_type spatial;
 render_mode unshaded, cull_disabled, shadows_disabled;
 
-uniform vec4 paper : source_color = vec4(1.0, 0.96, 0.88, 1.0);
-uniform vec4 blush : source_color = vec4(1.0, 0.88, 0.89, 1.0);
+uniform vec4 paper : source_color = vec4(1.0, 0.96, 0.88, 1.0);   // the sky at the top
+uniform vec4 blush : source_color = vec4(1.0, 0.88, 0.89, 1.0);   // ... and at the bottom
 uniform vec4 dots : source_color = vec4(0.99, 0.89, 0.89, 1.0);
 uniform float dot_px = 110.0;
+uniform float stars = 0.0;        // 1: the dots are small twinkling stars (night)
+uniform vec4 orb : source_color = vec4(1.0, 1.0, 1.0, 0.0);   // the sun or moon; alpha 0 for none
+uniform vec2 orb_uv = vec2(0.82, 0.24);
+uniform float orb_px = 54.0;
+uniform float crescent = 0.0;     // 1: a crescent moon
+uniform float grad_start = 0.45;  // how far down the sky starts to turn
 
 float hash(vec2 p) {
 	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
 }
 
 void fragment() {
-	// Cream paper warming to pink toward the bottom.
-	vec3 col = mix(paper.rgb, blush.rgb, smoothstep(0.45, 1.0, SCREEN_UV.y));
-	// Scattered polka dots, one per grid cell, some cells left empty.
+	// The sky: top colour into bottom colour down the screen.
+	vec3 col = mix(paper.rgb, blush.rgb, smoothstep(grad_start, 1.0, SCREEN_UV.y));
+	// Scattered polka dots, one per grid cell, some cells left empty -- or at
+	// night, small stars twinkling at their own pace.
 	vec2 grid = FRAGCOORD.xy / dot_px;
 	vec2 cell = floor(grid);
 	vec2 centre = vec2(hash(cell), hash(cell + 7.0)) * 0.6 + 0.2;
-	float r = 0.08 + 0.06 * hash(cell + 3.0);
+	float r = mix(0.08 + 0.06 * hash(cell + 3.0), 0.03 + 0.03 * hash(cell + 3.0), stars);
 	float d = distance(fract(grid), centre);
-	float dot_mask = (1.0 - smoothstep(r - 0.015, r, d)) * step(0.5, hash(cell + 11.0));
+	float dot_mask = (1.0 - smoothstep(r - 0.015, r, d)) * step(mix(0.5, 0.35, stars), hash(cell + 11.0));
+	dot_mask *= mix(1.0, 0.55 + 0.45 * sin(TIME * (1.2 + 2.0 * hash(cell + 5.0)) + hash(cell) * 6.28), stars);
 	col = mix(col, dots.rgb, dot_mask);
+	// The sun or moon: a disc with a soft glow round it; a crescent moon has a
+	// bite taken out of it by a second disc of sky.
+	vec2 px = SCREEN_UV * VIEWPORT_SIZE;
+	vec2 at = orb_uv * VIEWPORT_SIZE;
+	float od = distance(px, at);
+	float disc = 1.0 - smoothstep(orb_px - 1.5, orb_px, od);
+	if (crescent > 0.5) {
+		disc *= smoothstep(orb_px * 0.82 - 1.5, orb_px * 0.82, distance(px, at + vec2(orb_px * 0.45, -orb_px * 0.3)));
+	}
+	float glow = (1.0 - smoothstep(orb_px, orb_px * 2.2, od)) * 0.25;
+	col = mix(col, orb.rgb, (disc + glow * (1.0 - disc)) * orb.a);
 	// Paper grain.
 	col *= 1.0 - 0.04 * hash(floor(FRAGCOORD.xy / 2.0));
 	ALBEDO = col;
@@ -216,6 +235,49 @@ static func ink(width: float, bent := false) -> ShaderMaterial:
 # camera. It is patterned by screen position, so it stays put as the ball
 # turns. (The Compatibility renderer ignores a 2D background layer, and gives
 # sky shaders no screen position, so a quad it is.)
+## The sky behind the egg, a day passing as the levels go by: each block of
+## SKY_LEVELS levels has its time of day, in this order, and then round again.
+## `top`/`bottom` are the sky's gradient, `dots` its polka dots (stars at
+## night), `orb` the sun or moon (alpha 0: none), `light` and `ambient` tint
+## the light on the egg a touch -- never enough to change a piece's colour.
+const SKY_LEVELS := 10
+const SKIES := [
+	{"name": "Morning", "top": Color(1.0, 0.96, 0.88), "bottom": Color(1.0, 0.88, 0.89), "grad": 0.45,
+		"dots": Color(0.99, 0.89, 0.89), "stars": 0.0, "orb": Color(1.0, 0.9, 0.66, 0.55), "orb_uv": Vector2(0.84, 0.26), "crescent": 0.0,
+		"light": Color(1.0, 0.97, 0.92), "ambient": Color(1.0, 0.92, 0.95)},
+	{"name": "Day", "top": Color(0.78, 0.9, 1.0), "bottom": Color(1.0, 0.97, 0.9), "grad": 0.1,
+		"dots": Color(0.9, 0.95, 1.0), "stars": 0.0, "orb": Color(1.0, 0.87, 0.45, 0.95), "orb_uv": Vector2(0.84, 0.22), "crescent": 0.0,
+		"light": Color(1.0, 0.99, 0.95), "ambient": Color(0.95, 0.96, 1.0)},
+	{"name": "Sunset", "top": Color(1.0, 0.76, 0.56), "bottom": Color(0.9, 0.66, 0.84), "grad": 0.1,
+		"dots": Color(1.0, 0.84, 0.68), "stars": 0.0, "orb": Color(1.0, 0.56, 0.36, 0.95), "orb_uv": Vector2(0.14, 0.74), "crescent": 0.0,
+		"light": Color(1.0, 0.9, 0.8), "ambient": Color(1.0, 0.88, 0.9)},
+	{"name": "Night", "top": Color(0.14, 0.13, 0.3), "bottom": Color(0.32, 0.25, 0.47), "grad": 0.1,
+		"dots": Color(1.0, 0.93, 0.7), "stars": 1.0, "orb": Color(0.99, 0.95, 0.82, 1.0), "orb_uv": Vector2(0.84, 0.24), "crescent": 1.0,
+		"light": Color(0.92, 0.93, 1.0), "ambient": Color(0.86, 0.86, 1.0)},
+	{"name": "Dawn", "top": Color(0.78, 0.74, 0.96), "bottom": Color(1.0, 0.85, 0.76), "grad": 0.15,
+		"dots": Color(0.9, 0.84, 0.99), "stars": 0.0, "orb": Color(1.0, 0.8, 0.6, 0.8), "orb_uv": Vector2(0.86, 0.74), "crescent": 0.0,
+		"light": Color(1.0, 0.95, 0.92), "ambient": Color(1.0, 0.92, 0.96)},
+]
+
+
+## The sky for a level: levels 1-10 morning, 11-20 day, 21-30 sunset, 31-40
+## night, 41-50 dawn, then morning again from 51.
+static func sky_for_level(level: int) -> Dictionary:
+	return SKIES[(maxi(level, 1) - 1) / SKY_LEVELS % SKIES.size()]
+
+
+## Paints the background material (from paper()) with a sky from SKIES.
+static func apply_sky(mat: ShaderMaterial, sky: Dictionary) -> void:
+	mat.set_shader_parameter("paper", sky["top"])
+	mat.set_shader_parameter("blush", sky["bottom"])
+	mat.set_shader_parameter("grad_start", sky["grad"])
+	mat.set_shader_parameter("dots", sky["dots"])
+	mat.set_shader_parameter("stars", sky["stars"])
+	mat.set_shader_parameter("orb", sky["orb"])
+	mat.set_shader_parameter("orb_uv", sky["orb_uv"])
+	mat.set_shader_parameter("crescent", sky["crescent"])
+
+
 static func paper() -> ShaderMaterial:
 	var shader := Shader.new()
 	shader.code = _PAPER
