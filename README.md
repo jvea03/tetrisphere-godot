@@ -315,6 +315,16 @@ A cute, hand-drawn style, all in `scripts/toon.gd` (`TSToon`):
   eggs are otherwise unchanged. A counter sits beside the hearts, a chime marks
   each one broken, and the first egg
   with them has a short lesson.
+- **Geodes** (`TSBoard.GEODE`: a deep-teal 1x2 stone, lying across or up the
+  ball, with a raised crystal dot per hit to go) take **three hits** -- pieces
+  broken beside them, a bomb, a rock; a slide can neither move nor smash one.
+  **On the last hit a geode cracks open and fires a rock** at the biggest
+  near-match showing, exactly like a Rocks booster shot, which can crack
+  another geode in turn. They arrive at level 13 on the odd levels (tie-downs
+  have the even ones): 1 to an egg in Beginner and Intermediate, 2 above
+  (`TSLevels.GEODE_FROM_LEVEL`, `GEODE_COUNT`). Generation merges two
+  side-by-side surface blockers into each after tiling, so the eggs are
+  otherwise unchanged; the first egg with one has a short lesson.
 - **No walls:** a mix with two or more five-cell pieces (plus, L, T) and no
   square leaves few ways to match, so it digs a hole one size smaller and has
   no tie-downs (`TSLevels.heavy_mix`). And a level whose egg played far below
