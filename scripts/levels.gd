@@ -81,6 +81,11 @@ const ARMOR_SHARE := [0.0, 0.5, 0.3, 0.45, 0.12]   # tuned with the 5-cell L and
 const TIE_FROM_LEVEL := 10
 const TIE_COUNT := [1, 2, 2, 2, 2]
 const TIE_LAYERS := [2, 2, 2, 2, 3]
+## Geodes (TSBoard.GEODE): 1x2 stones that take three hits and fire a rock as
+## they crack open. From GEODE_FROM_LEVEL on the odd levels (tie-downs have
+## the even ones), GEODE_COUNT[tier] to an egg.
+const GEODE_FROM_LEVEL := 13
+const GEODE_COUNT := [1, 1, 2, 2, 2]
 
 static var _bank: Dictionary = {}
 static var _bank_loaded := false
@@ -245,6 +250,8 @@ static func beginner_pair(level: int) -> Array:
 ## four of the six pieces (tier_mix).
 static func rules_for_level(level: int) -> Dictionary:
 	var rules := rules_for_tier(difficulty_for_level(level))
+	if has_geodes(level):
+		rules["geodes"] = GEODE_COUNT[difficulty_for_level(level)]
 	if has_ties(level):
 		var tier := difficulty_for_level(level)
 		rules["ties"] = TIE_COUNT[tier]
@@ -313,3 +320,8 @@ static func heavy_mix(pieces: Array) -> bool:
 		if (TSBoard.SHAPES[int(k)]["offsets"] as Array).size() >= 5:
 			big += 1
 	return big >= 2
+
+
+## Whether this level's egg has geodes (see GEODE_FROM_LEVEL).
+static func has_geodes(level: int) -> bool:
+	return level >= GEODE_FROM_LEVEL and level % 2 == 1

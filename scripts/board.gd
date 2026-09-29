@@ -68,8 +68,12 @@ const SHAPES := [
 	# escape. Like the armour, a layer comes off only when pieces around it are
 	# broken -- a match beside it, a bomb, a rock -- never by a slide.
 	{"name": "Tie-down", "offsets": [Vector2i(0, 0)]},
+	# The geode: a 1x2 stone (lying either way on the ball) that takes
+	# GEODE_HITS hits -- pieces broken around it, a bomb, a rock -- and on the
+	# last one cracks open and fires a rock of its own (TSBoard.geodes).
+	{"name": "Geode", "offsets": [Vector2i(0, 0), Vector2i(1, 0)]},
 ]
-const TYPE_COUNT := 12
+const TYPE_COUNT := 13
 const I_FLAT := 0
 const I_UPRIGHT := 1
 const O := 2
@@ -80,6 +84,8 @@ const PLUS := 9
 const WILD := 10
 const TIE := 11
 const TIE_MAX_LAYERS := 3
+const GEODE := 12
+const GEODE_HITS := 3
 
 # cells[col][row] -> Array of piece ids, deepest first. A HOLE marks an empty
 # depth with something still above it; stacks never end in a HOLE, so a
@@ -93,6 +99,8 @@ var plate_cols := {}      # piece id -> Array[Vector2i], the columns it occupies
 ## second hit breaks that. Sliding can't break armour: it stops a slide.
 var armored := {}         # blocker id -> true while its armour is on
 var ties := {}            # tie-down id -> layers left (1 to TIE_MAX_LAYERS)
+var geodes := {}          # geode id -> hits left (1 to GEODE_HITS)
+var _geode_breaks: Array = []   # where geodes cracked open this resolve: each fires a rock
 var initial_blocks := 0
 var cleared_blocks := 0
 
@@ -149,6 +157,7 @@ func generate(seed_value: int, level: Dictionary) -> void:
 			if int(plate_kind[id]) == BLOCKER and _rng.randf() < armor_share:
 				armored[id] = true
 	_place_ties(int(level.get("ties", 0)), int(level.get("tie_layers", TIE_MAX_LAYERS)))
+	_place_geodes(int(level.get("geodes", 0)))
 
 	initial_blocks = count_blocks()
 	cleared_blocks = 0
@@ -237,9 +246,71 @@ func _place_ties(count: int, max_layers: int) -> void:
 			ties[best] = _rng.randi_range(1, clampi(max_layers, 1, TIE_MAX_LAYERS))
 
 
-## Tie-downs and grey blockers: never dealt, never matched, never slid.
+## Geodes, after the tie-downs (so every ball without them is unchanged): up
+## to `count` pairs of plain grey blockers side by side on the surface --
+## across or up and down the ball -- become one 1x2 geode each, with
+## GEODE_HITS hits to go. Pairs away from the caps first, and each as far as
+## can be from the geodes already placed.
+func _place_geodes(count: int) -> void:
+	geodes.clear()
+	if count <= 0:
+		return
+	var plain := func(id: int) -> bool:
+		if id == HOLE or int(plate_kind[id]) != BLOCKER or armored.has(id):
+			return false
+		var v: Vector2i = plate_cols[id][0]
+		return top_piece(v.x, v.y) == id
+	var pairs: Array = []   # [cells, middle?]
+	for c in COLS:
+		for r in ROWS:
+			var a := top_piece(c, r)
+			if not plain.call(a):
+				continue
+			for step in [Vector2i(1, 0), Vector2i(0, 1)]:
+				var s: Vector2i = step
+				var nb := Vector2i(wrap_col(c + s.x), r + s.y)
+				if not in_rows(nb.y):
+					continue
+				var b := top_piece(nb.x, nb.y)
+				if plain.call(b) and depth_of(a) == depth_of(b):
+					pairs.append([[Vector2i(c, r), nb], r >= 1 and nb.y <= ROWS - 2])
+	var placed: Array = []   # cells of the geodes so far
+	while placed.size() < count * 2 and not pairs.is_empty():
+		var pool: Array = pairs.filter(func(p: Array) -> bool: return bool(p[1]))
+		if pool.is_empty():
+			pool = pairs
+		var best: Array = pool[_rng.randi_range(0, pool.size() - 1)]
+		if not placed.is_empty():
+			var best_gap := -1
+			for p in pool:
+				var gap := 999
+				for v in p[0]:
+					for w in placed:
+						var vv: Vector2i = v
+						var ww: Vector2i = w
+						gap = mini(gap, absi(wrap_col(vv.x - ww.x + COLS / 2) - COLS / 2) + absi(vv.y - ww.y))
+				if gap > best_gap:
+					best_gap = gap
+					best = p
+		var cols: Array = best[0]
+		var d := depth_of(top_piece(cols[0].x, cols[0].y))
+		for v in cols:
+			var vv: Vector2i = v
+			_remove_plate(top_piece(vv.x, vv.y))
+		var id := _add_plate(GEODE, cols, d)
+		geodes[id] = GEODE_HITS
+		placed.append_array(cols)
+		# No other pair may reuse these cells.
+		pairs = pairs.filter(func(p: Array) -> bool:
+			for v in p[0]:
+				if cols.has(v):
+					return false
+			return true)
+
+
+## Blockers, tie-downs and geodes: never dealt, never matched, never slid.
 static func is_obstacle(kind: int) -> bool:
-	return kind == BLOCKER or kind == TIE
+	return kind == BLOCKER or kind == TIE or kind == GEODE
 
 
 ## How many tie-downs are still standing: the critter can't escape until 0.
@@ -474,6 +545,7 @@ func _remove_plate(id: int) -> void:
 	plate_cols.erase(id)
 	armored.erase(id)
 	ties.erase(id)
+	geodes.erase(id)
 
 
 # A hole with nothing above it is just open space; drop it from the stack.
@@ -636,6 +708,19 @@ func _destroy(doomed: Dictionary, step: int, fx: Array) -> int:
 			for col in plate_cols[p]:
 				var v: Vector2i = col
 				fx.append([v.x, v.y, (cells[v.x][v.y] as Array).find(p), TIE, step])
+	# A geode takes a hit the same way; on its last it cracks open, and the
+	# rock inside flies (the caller plays it: see geode_shots in the result).
+	for p in doomed.keys():
+		if not geodes.has(p):
+			continue
+		if int(geodes[p]) > 1:
+			geodes[p] = int(geodes[p]) - 1
+			doomed.erase(p)
+			for col in plate_cols[p]:
+				var v: Vector2i = col
+				fx.append([v.x, v.y, (cells[v.x][v.y] as Array).find(p), GEODE, step])
+		else:
+			_geode_breaks.append(plate_cols[p][0])
 	for p in doomed:
 		var kind: int = plate_kind[p]
 		for col in plate_cols[p]:
@@ -929,6 +1014,7 @@ func slide(id: int, dir: Vector2i) -> Dictionary:
 # Sets the piece into layer `depth` (where a straight drop lands, by default)
 # and resolves the matches and chain reactions.
 func place_and_resolve(offsets: Array, at: Vector2i, kind: int, depth: int = -1) -> Dictionary:
+	_geode_breaks.clear()
 	if depth < 0:
 		depth = landing_depth(offsets, at)
 	if kind == WILD:
@@ -938,6 +1024,7 @@ func place_and_resolve(offsets: Array, at: Vector2i, kind: int, depth: int = -1)
 	var res := _chain([id], fx, 1)
 	res["fx"] = fx
 	res["overload"] = _overloaded()
+	res["geode_shots"] = _geode_breaks.duplicate()   # a rock from each geode that cracked open
 	return res
 
 
@@ -948,6 +1035,7 @@ func place_and_resolve(offsets: Array, at: Vector2i, kind: int, depth: int = -1)
 # as with a match, the blockers touching them shatter too. Gravity and chain
 # reactions then follow as after a drop.
 func detonate(at: Vector2i, radius: int) -> Dictionary:
+	_geode_breaks.clear()
 	var doomed := {}
 	for dc in range(-radius, radius + 1):
 		for dr in range(-radius, radius + 1):
@@ -971,6 +1059,7 @@ func detonate(at: Vector2i, radius: int) -> Dictionary:
 	res["pieces"] = int(res["pieces"]) + pieces
 	res["fx"] = fx
 	res["overload"] = _overloaded()
+	res["geode_shots"] = _geode_breaks.duplicate()   # a rock from each geode that cracked open
 	return res
 
 
@@ -1028,6 +1117,7 @@ func rock_targets(count: int, near: Vector2i) -> Array:
 # reactions follow as after a drop. Like a bomb, a rock is not a drop and
 # never costs a life.
 func rock_strike(groups: Array) -> Dictionary:
+	_geode_breaks.clear()
 	var doomed := {}
 	var pieces := 0
 	for group in groups:
@@ -1046,7 +1136,34 @@ func rock_strike(groups: Array) -> Dictionary:
 	res["pieces"] = int(res["pieces"]) + pieces
 	res["fx"] = fx
 	res["overload"] = _overloaded()
+	res["geode_shots"] = _geode_breaks.duplicate()   # a rock from each geode that cracked open
 	return res
+
+
+## Where the rocks from geodes that cracked open at `from` land: one group
+## per rock (see rock_targets), aimed near the first geode.
+func geode_targets(shots: Array) -> Array:
+	if shots.is_empty():
+		return []
+	return rock_targets(shots.size(), shots[0])
+
+
+## Plays out every rock a result's geodes fired -- and the rocks of any geode
+## those break in turn -- at once, for code with no flight to show (the sim,
+## tests). Returns how many pieces they cleared.
+func resolve_geode_shots(res: Dictionary) -> int:
+	var shots: Array = res.get("geode_shots", [])
+	var pieces := 0
+	var guard := 0
+	while not shots.is_empty() and guard < 32:
+		guard += 1
+		var targets := geode_targets(shots)
+		if targets.is_empty():
+			break
+		var more := rock_strike(targets)
+		pieces += int(more["pieces"])
+		shots = more["geode_shots"]
+	return pieces
 
 
 func _overloaded() -> bool:
@@ -1176,7 +1293,13 @@ func to_dict() -> Dictionary:
 	var tie_layers := {}
 	for id in ties:
 		tie_layers[str(id)] = int(ties[id])
-	return {"cells": stacks, "kinds": kinds, "armor": armored.keys(), "ties": tie_layers}
+	var out := {"cells": stacks, "kinds": kinds, "armor": armored.keys(), "ties": tie_layers}
+	if not geodes.is_empty():
+		var hits := {}
+		for id in geodes:
+			hits[str(id)] = int(geodes[id])
+		out["geodes"] = hits
+	return out
 
 
 ## Loads a ball saved by to_dict (numbers come back from JSON as floats).
@@ -1186,6 +1309,7 @@ func load_dict(data: Dictionary) -> void:
 	plate_cols.clear()
 	armored.clear()
 	ties.clear()
+	geodes.clear()
 	_next_id = 0
 	for id_str in data["kinds"]:
 		var id := int(id_str)
@@ -1216,6 +1340,10 @@ func load_dict(data: Dictionary) -> void:
 	for id_str in tie_layers:
 		if plate_kind.has(int(id_str)):
 			ties[int(id_str)] = int(tie_layers[id_str])
+	var geode_hits: Dictionary = data.get("geodes", {})
+	for id_str in geode_hits:
+		if plate_kind.has(int(id_str)):
+			geodes[int(id_str)] = int(geode_hits[id_str])
 	initial_blocks = count_blocks()
 	cleared_blocks = 0
 
@@ -1230,6 +1358,7 @@ func clone() -> TSBoard:
 	b.plate_cols = plate_cols.duplicate(true)
 	b.armored = armored.duplicate()
 	b.ties = ties.duplicate()
+	b.geodes = geodes.duplicate()
 	b.cells = []
 	for c in COLS:
 		var column: Array = []

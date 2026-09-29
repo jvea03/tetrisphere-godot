@@ -27,6 +27,7 @@ func _initialize() -> void:
 	_test_swap_and_rocks()
 	_test_armor()
 	_test_ties()
+	_test_geodes()
 	_test_pieces_stay_whole()
 	print("")
 	print("ALL PASSED" if _failures == 0 else "%d FAILED" % _failures)
@@ -613,3 +614,58 @@ func _test_ties() -> void:
 	back.load_dict(ball.to_dict())
 	_check("tie-downs survive saving and copying", back.ties == ball.ties and ball.clone().ties == ball.ties and not back.has_escape(2))
 	_check("none before level %d, and none on odd levels" % lvl, not TSLevels.rules_for_level(lvl - 1).has("ties") and not TSLevels.rules_for_level(lvl + 1).has("ties") and TSLevels.rules_for_level(lvl + 2).has("ties"))
+
+
+# Geodes: 1x2 stones that take three hits -- pieces broken beside them, a
+# bomb, a rock -- and on the last crack open and fire a rock at a pair.
+func _test_geodes() -> void:
+	var b := _empty_board()
+	var shape: Array = TSBoard.SHAPES[FLAT]["offsets"]
+	var geode := b._add_plate(TSBoard.GEODE, [Vector2i(8, 5), Vector2i(9, 5)])
+	b.geodes[geode] = TSBoard.GEODE_HITS
+	_flat(b, 0, 5)
+	_flat(b, 4, 5)
+	var first := b.place_and_resolve(shape, Vector2i(2, 5), FLAT)
+	_check("a match beside a geode is one hit: 3 become 2", b.plate_kind.has(geode) and int(b.geodes[geode]) == 2 and (first["geode_shots"] as Array).is_empty())
+	var bomb := b.clone()
+	bomb.detonate(Vector2i(9, 5), 2)
+	_check("a bomb is one hit too", bomb.plate_kind.has(geode) and int(bomb.geodes[geode]) == 1)
+
+	# The last hit: it cracks open, and its rock finishes the O pair far away.
+	b.geodes[geode] = 1
+	var o1 := b._add_plate(TSBoard.O, [Vector2i(14, 1), Vector2i(15, 1), Vector2i(14, 2), Vector2i(15, 2)])
+	var o2 := b._add_plate(TSBoard.O, [Vector2i(16, 1), Vector2i(17, 1), Vector2i(16, 2), Vector2i(17, 2)])
+	_flat(b, 10, 5)
+	_flat(b, 10, 6)
+	var last := b.place_and_resolve(shape, Vector2i(10, 4), FLAT)
+	var shots: Array = last["geode_shots"]
+	_check("the last hit cracks it open and fires a rock", not b.plate_kind.has(geode) and not b.geodes.has(geode) and shots.size() == 1)
+	var targets := b.geode_targets(shots)
+	_check("the rock aims at a pair showing", targets.size() == 1 and (targets[0] as Array).has(o1) and (targets[0] as Array).has(o2))
+	var cleared := b.resolve_geode_shots(last)
+	_check("and it lands, finishing that match", cleared >= 2 and not b.plate_kind.has(o1) and not b.plate_kind.has(o2))
+
+	var s := _empty_board()
+	var mover := _flat(s, 0, 3)
+	var stone := s._add_plate(TSBoard.GEODE, [Vector2i(4, 3), Vector2i(4, 4)])
+	s.geodes[stone] = 3
+	_check("a slide can't move, smash or hurt a geode", s.slide_preview(mover, Vector2i(1, 0)) < 0 and s.slide_preview(stone, Vector2i(1, 0)) < 0 and int(s.geodes[stone]) == 3)
+
+	# Generated eggs: the level's count, 1x2 on the surface, three hits each,
+	# kept through saving and copying.
+	var lvl := TSLevels.GEODE_FROM_LEVEL
+	var rules := TSLevels.rules_for_level(lvl)
+	var ball := TSBoard.new()
+	ball.generate(TSLevels.seed_for_level(lvl), rules)
+	var ok := ball.geodes.size() == int(rules["geodes"])
+	for id in ball.geodes:
+		var cols: Array = ball.plate_cols[id]
+		ok = ok and cols.size() == 2 and int(ball.geodes[id]) == TSBoard.GEODE_HITS
+		for v in cols:
+			var vv: Vector2i = v
+			ok = ok and ball.top_piece(vv.x, vv.y) == id
+	_check("level %d's egg has %d geode(s): 1x2, on top, %d hits each" % [lvl, int(rules["geodes"]), TSBoard.GEODE_HITS], ok)
+	var back := TSBoard.new()
+	back.load_dict(ball.to_dict())
+	_check("geodes survive saving and copying", back.geodes == ball.geodes and ball.clone().geodes == ball.geodes)
+	_check("none before level %d, and none on even levels" % lvl, not TSLevels.rules_for_level(lvl - 2).has("geodes") and not TSLevels.rules_for_level(lvl + 1).has("geodes") and TSLevels.rules_for_level(lvl + 2).has("geodes"))

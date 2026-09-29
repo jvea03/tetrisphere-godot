@@ -84,13 +84,27 @@ func _run() -> void:
 		aimed += (g as Array).size()
 	_fire_rocks()
 	_check("firing Rocks spends a shot and holds off drops in flight", TSProfile.rock_count == 0 and _rocks_flying)
-	for _i in 40:
+	for _i in 120:   # a rock flies for about 0.4 s; frames run as fast as they can here
 		await get_tree().process_frame
 		if not _rocks_flying:
 			break
 	_check("the rocks land on two pairs and clear them (%d pieces aimed, %d gone)" % [aimed, pieces_before - board.plate_kind.size()], not _rocks_flying and shot.size() == 2 and aimed >= 4 and pieces_before - board.plate_kind.size() >= aimed)
 	# The rocks can dig the critter out and win outright; start level 12 afresh
 	# for the checks that follow.
+	if state != State.PLAYING:
+		TSProfile.last_level = 12
+		_close_cards()
+		_start_level(12)
+
+	# A geode cracking open fires its own rock, which lands like the booster's.
+	var pieces_before_geode := board.plate_kind.size()
+	_crack_geodes({"geode_shots": [cursor]})
+	_check("a geode cracking open fires a rock", _rocks_flying)
+	for _i in 120:   # a rock flies for about 0.4 s; frames run as fast as they can here
+		await get_tree().process_frame
+		if not _rocks_flying:
+			break
+	_check("and it lands, finishing a match", not _rocks_flying and board.plate_kind.size() < pieces_before_geode)
 	if state != State.PLAYING:
 		TSProfile.last_level = 12
 		_close_cards()

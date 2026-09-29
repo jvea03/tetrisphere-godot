@@ -135,6 +135,7 @@ func _play(board: TSBoard, tier: int, rules: Dictionary, rng: RandomNumberGenera
 					break
 		var at := _best_move(board, type_id, rng, candidates, escape)
 		var res := board.place_and_resolve(TSBoard.SHAPES[type_id]["offsets"], at, type_id)
+		board.resolve_geode_shots(res)   # a geode's rock lands at once here: no flight to show
 		if int(res["pieces"]) == 0:
 			misses += 1
 		if board.has_escape(escape):
@@ -154,6 +155,7 @@ func _best_move(board: TSBoard, type_id: int, rng: RandomNumberGenerator, candid
 			continue
 		var probe := board.clone()
 		var res := probe.place_and_resolve(offsets, at, type_id)
+		probe.resolve_geode_shots(res)
 		var s := int(res["removed"]) * 10 + int(res["pieces"]) * 25 + int(probe.best_escape_patch(escape)["open"]) * 60
 		# A player aims at the tie-downs: every layer knocked off is worth a lot.
 		s += (board.tie_layers_left() - probe.tie_layers_left()) * 80

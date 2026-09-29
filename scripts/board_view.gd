@@ -59,6 +59,7 @@ const TYPE_COLORS := [
 	Color(1.00, 0.56, 0.72),   # plus: strawberry
 	Color(1.00, 0.97, 0.88),   # Any Piece: cream (only ever in your hand)
 	Color(0.58, 0.38, 0.26),   # tie-down: stake brown
+	Color(0.26, 0.5, 0.54),    # geode: deep teal stone
 ]
 ## An armoured blocker (TSBoard.armored): dark steel until a hit knocks the
 ## armour off and leaves it pebble grey.
@@ -72,6 +73,9 @@ const ARMOR_STUD_RISE := 0.12   # how far it stands proud of the steel, in layer
 const TIE_PIP_GAP := 0.38        # a pip's inset on each side of a cell: 0.24 across
 const TIE_PIP_SPACING := 0.28
 const TIE_PIP_COLOR := Color(1.0, 0.93, 0.78)
+## A geode's dots are crystals, pale aqua, one per hit to go, spread along the stone.
+const GEODE_PIP_COLOR := Color(0.82, 1.0, 0.98)
+const GEODE_PIP_SPACING := 0.42
 ## The cable from a tie-down to the critter: rope tan.
 const WIRE_COLOR := Color(0.93, 0.76, 0.5)
 const WIRE_RADIUS := 0.05
@@ -325,6 +329,18 @@ static func depth_shade(d: int, depth: int) -> float:
 	return clampf(float(depth - 1 - d) / float(depth - 1), 0.0, 1.0)
 
 
+# A geode's first cell -- the left one lying across the ball, the lower one
+# lying up it -- which its row of dots starts from. Its two cells can come in
+# either order (a saved ball lists them cell by cell), and across the seam
+# where the columns wrap the left one has the higher column.
+func _geode_origin(id: int) -> Vector2i:
+	var a: Vector2i = board.plate_cols[id][0]
+	var b: Vector2i = board.plate_cols[id][1]
+	if a.y == b.y:
+		return a if board.wrap_col(a.x + 1) == b.x else b
+	return a if a.y < b.y else b
+
+
 # True when nothing sits on depth `d` of this cell's stack, so a raised mini
 # square there has room and never pokes into the tile above.
 static func _open_above(stack: Array, d: int) -> bool:
@@ -365,6 +381,15 @@ func rebuild() -> void:
 					for k in layers:
 						var dx := (float(k) - float(layers - 1) * 0.5) * TIE_PIP_SPACING
 						pips.append([TIE_PIP_COLOR, Color(c + dx, r, d + ARMOR_STUD_RISE, shade)])
+				if board.geodes.has(p) and _open_above(stack, d) and _geode_origin(p) == Vector2i(c, r):
+					# One row of crystal dots for the whole stone, along its length.
+					var hits := int(board.geodes[p])
+					var cols: Array = board.plate_cols[p]
+					var across := (cols[0] as Vector2i).y == (cols[1] as Vector2i).y
+					for k in hits:
+						var along := 0.5 + (float(k) - float(hits - 1) * 0.5) * GEODE_PIP_SPACING
+						var at := Vector2(c + along, r) if across else Vector2(c, r + along)
+						pips.append([GEODE_PIP_COLOR, Color(at.x, at.y, d + ARMOR_STUD_RISE, shade)])
 
 	for key in _tile_sets:
 		if not sets.has(key):

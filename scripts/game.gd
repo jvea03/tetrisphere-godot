@@ -729,11 +729,18 @@ func _fire_rocks() -> void:
 	TSProfile.add_boosters("rocks", -1)
 	TSProfile.record_quest_event("booster")
 	TSProfile.save()
+	_throw_rocks(_btn_rocks.get_global_rect().get_center(), targets)
+	TSSfx.play("upgrade")
+	_refresh_hud()
+
+
+## Rocks in flight from `from` (a screen point) -- one to each group of
+## `targets`, a block of it showing on top -- and when the last lands, the
+## strike (_rocks_land). Drops wait while they fly.
+func _throw_rocks(from: Vector2, targets: Array) -> void:
 	_rocks_flying = true
 	_rocks_shot += 1
 	var shot := _rocks_shot
-	# Each rock flies from the button to a block of its group showing on top.
-	var from := _btn_rocks.get_global_rect().get_center()
 	var flights: Array = []
 	for group in targets:
 		var aim := from
@@ -764,8 +771,6 @@ func _fire_rocks() -> void:
 			if landed[0] == flights.size():
 				if shot == _rocks_shot:
 					_rocks_land(targets))
-	TSSfx.play("upgrade")
-	_refresh_hud()
 
 
 func _rocks_land(targets: Array) -> void:
@@ -797,6 +802,24 @@ func _rocks_land(targets: Array) -> void:
 	view.rebuild()
 	_refresh_piece()
 	_refresh_hud()
+	_crack_geodes(res)
+
+
+## Geodes that cracked open in `res` (TSBoard.geodes) each fire a rock from
+## where they stood at the biggest near-matches showing, which land like the
+## Rocks booster's -- and can crack more geodes in turn.
+func _crack_geodes(res: Dictionary) -> void:
+	var shots: Array = res.get("geode_shots", [])
+	if shots.is_empty() or state != State.PLAYING:
+		return
+	var targets := board.geode_targets(shots)
+	if targets.is_empty():
+		return
+	var at: Vector2i = shots[0]
+	var from := _camera.unproject_position(TSBoardView.cell_transform(at.x, at.y, float(board.height(at.x, at.y))).origin)
+	TSSfx.play("bomb", 1.6)
+	TSHaptics.medium()
+	_throw_rocks(from, targets)
 
 
 func _drop() -> void:
@@ -865,6 +888,7 @@ func _drop() -> void:
 	view.rebuild()
 	_refresh_piece()
 	_refresh_hud()
+	_crack_geodes(res)
 
 
 func _refresh_piece() -> void:
@@ -1908,6 +1932,8 @@ func _maybe_start_tutorials() -> void:
 	elif board.ties_left() > 0 and not TSProfile.tie_tutorial_seen:
 		# (the Daily Egg too: it can bring tie-downs before level 10 does)
 		_start_tie_tutorial()
+	elif not board.geodes.is_empty() and not TSProfile.geode_tutorial_seen:
+		_start_geode_tutorial()
 	elif TSProfile.swaps_unlocked and not TSProfile.swap_tutorial_seen:
 		_start_booster_tutorial(_btn_swap, "swap", "The Any Piece! Tap it to turn your piece into a wild block that becomes whatever it touches -- drop it by any pair to make a match. Here are %d to start." % TSProfile.SWAP_UNLOCK_GRANT)
 	elif TSProfile.rocks_unlocked and not TSProfile.rocks_tutorial_seen:
@@ -1932,6 +1958,25 @@ func _start_tie_tutorial() -> void:
 			"text": "A tie-down! These stakes hold the critter in. Break pieces right next to one -- a match, a bomb or a rock -- to knock off a layer. The dots show how many hits it needs."},
 		{"rect": _tie_pill.get_global_rect(),
 			"text": "This counts the tie-downs left. Break every one AND dig the hole to free the critter!"},
+	])
+
+
+## The first egg with geodes: the camera turns to one and the spotlight shows
+## how it breaks, and what it gives back.
+func _start_geode_tutorial() -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if not is_inside_tree() or board.geodes.is_empty():
+		return
+	var id: int = board.geodes.keys()[0]
+	_face(Vector2(board.plate_cols[id][0]))
+	_snap_camera()
+	_tutorial.finished.connect(func():
+		TSProfile.geode_tutorial_seen = true
+		TSProfile.save(), CONNECT_ONE_SHOT)
+	_tutorial.start([
+		{"rect": func() -> Rect2: return _piece_rect(id),
+			"text": "A geode! It takes three hits -- break pieces right next to it (the dots count down). On the last one it cracks open and fires a rock that finishes a match for you."},
 	])
 
 
