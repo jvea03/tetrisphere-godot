@@ -38,13 +38,12 @@ func _run() -> void:
 	_drop()
 	var drops_board := board
 	lives = 2
-	score = 1234
 	_park()
 	_check("parking the ball keeps it for CONTINUE", TSSession.has_saved_game)
 	var other: Node = load("res://main.tscn").instantiate()
 	get_root_ref().add_child(other)
 	await get_tree().process_frame
-	_check("a new game screen picks the ball back up", other.board == drops_board and other.lives == 2 and other.score == 1234 and other.current_level == 12)
+	_check("a new game screen picks the ball back up", other.board == drops_board and other.lives == 2 and other.current_level == 12)
 	_check("and the parked ball is used up", not TSSession.has_saved_game)
 	other.queue_free()
 

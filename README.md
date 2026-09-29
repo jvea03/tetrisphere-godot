@@ -215,7 +215,7 @@ A cute, hand-drawn style, all in `scripts/toon.gd` (`TSToon`):
   tinted a touch to match; piece colours never change.
 - **HUD** in a handwriting-style font from the device (Chalkboard on Apple,
   Comic Sans on Windows, "casual" on Android), in ink with a paper outline.
-  Along the top: the level and score in the left corner, the hearts in the
+  Along the top: the level in the left corner, the hearts in the
   middle and the pause button on the right, all kept below the phone's safe
   area and never less than 48 px from the top, clear of a notch or
   punch-hole camera.
@@ -309,8 +309,8 @@ A cute, hand-drawn style, all in `scripts/toon.gd` (`TSToon`):
   none on a heavy mix (below) -- the sim journey averages come out at
   Beginner 92%, Intermediate 53%, Hard 32%, Expert 25%, Extreme 11%. Generation turns
   surface blockers into them after tiling, spread round the middle rows, so the
-  eggs are otherwise unchanged. A counter sits beside the hearts, a toast marks
-  each one broken (and a dug hole with some still standing), and the first egg
+  eggs are otherwise unchanged. A counter sits beside the hearts, a chime marks
+  each one broken, and the first egg
   with them has a short lesson.
 - **No walls:** a mix with two or more five-cell pieces (plus, L, T) and no
   square leaves few ways to match, so it digs a hole one size smaller and has
@@ -352,14 +352,13 @@ A cute, hand-drawn style, all in `scripts/toon.gd` (`TSToon`):
   of one, so no line is left as a stub -- shatters the grey touching them,
   and lets gravity and chains follow.
 - Clears play like the footage: the blocks flash white, tumble off the ball
-  in their own colour, and the score floats up. Down the left, the next piece
+  in their own colour, and a chain is called out ("CHAIN x2"). There is no
+  score, and no pop-up text: the egg and the pieces carry the play. Down the left, the next piece
   sits above the piece you hold, which rests in a tray. After each drop the
   next piece falls into the tray, lands with a squash and a little hop (the
   tray dips under it), and the new next piece drops into its slot from above.
   An Any Piece pops its wild block into the tray. The next piece waits on a
-  slimmer tray of its own. Tips and events ("Chain x2!", "Bomb armed")
-  show as a short toast beside the pieces and then fade, so there is no
-  standing line of text over the egg.
+  slimmer tray of its own.
 - Readability pass: muted text is darker for contrast, and locked
   collectibles show as soft grey shapes with a small lock instead of black
   silhouettes. The chest band reads UNLOCK, and the LAUNCH PREP sign hangs
@@ -508,7 +507,7 @@ stepped through frame by frame.
 - A wide-eyed creature is sealed in the core; a magenta tunnel sits behind.
 - The shell is made of whole pieces, and a match is made of pieces, not
   individual squares. Pieces do not rotate; each orientation is its own piece.
-- Clears flash white, then shatter into tumbling tiles, with a floating score.
+- Clears flash white, then shatter into tumbling tiles.
 - The held and next pieces sit down the left; `RESCUE 1:1` sits in the corner,
   with three lives beneath it.
 
@@ -534,7 +533,7 @@ stepped through frame by frame.
 
 - The burst of light rays on big combos.
 - A per-level palette (navy with gold, navy with green) and different cores.
-- The score multiplier badge (the multiplier exists; only the badge is missing).
+- A score: there is none, by design.
 
 **Still guessed:**
 

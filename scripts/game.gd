@@ -10,8 +10,6 @@ const CAM_DIST_MIN := 17.0
 const CAM_DIST_MAX := 28.0
 const CAM_LAG := 5.0
 const BOARD_ZOOM := 0.93   # camera distance scale: under 1 draws the egg bigger
-const TOAST_FONT := 26
-const TOAST_MAX_WIDTH := 430.0   # clear of the piece column on the left
 const NEXT_TRAY_H := 86.0        # the next piece's tray: room for any piece at NEXT_PX
 # A bomb is earned by a chain reaction, or by destroying this many pieces at once.
 const BOMB_PIECES := 5
@@ -57,8 +55,7 @@ var cursor := Vector2i(0, TSBoard.ROWS / 2)
 var cur_type := 0
 var next_type := 0
 
-var score := 0
-var best_clear := 0         # most pieces cleared by a single drop
+var best_clear := 0        # most pieces cleared by a single drop
 var best_chain := 0
 var bomb_armed := false     # bombs themselves are kept in TSProfile.bomb_count
 var lives := LIVES
@@ -78,7 +75,6 @@ var aim_combo := 0          # pieces the current aim would clear; 0 = no combo
 # Per-block depths once the piece has been slid into the shell; empty while it
 # is simply aimed at the surface.
 var selected := -1          # the piece on the ball picked for sliding (TSBoard.HOLE for none)
-var last_event := ""
 
 var _camera: Camera3D
 var _ghost_root: Node3D
@@ -104,11 +100,6 @@ var _last_tap_ms := -100000
 var _last_tap_pos := Vector2.ZERO
 
 var _lbl_level: Label
-var _lbl_score: Label
-var _lbl_event: Label       # the toast's text
-var _toast: PanelContainer  # news, fading out (see _show_toast)
-var _toast_text := ""
-var _toast_tween: Tween
 var _btn_bomb: Button       # the bomb booster, bottom centre
 var _bomb_badge: Label      # how many bombs you have, on the button's corner
 var _btn_swap: Button       # the Any Piece booster, left of the bomb
@@ -130,7 +121,6 @@ var _tie_pill: PanelContainer   # tie-downs left, beside the hearts, on levels w
 var _tie_label: Label
 var _ties_seen := -1            # tie-downs standing at the last HUD refresh (-1: a new ball)
 var _level_ties := 0            # how many this ball started with
-var _tie_hole_hinted := false   # said once: the hole is ready, but tie-downs remain
 var _hud: Control
 var _pause_btn: Button
 var _pause: Dictionary
@@ -270,8 +260,8 @@ func _build_hud() -> void:
 	# --- top ---
 	# Everything up here sits below _top: the phone's safe area, and never
 	# less than CAMERA_MARGIN, so a notch or punch-hole camera never covers
-	# it. The level and score in the top-left corner, the hearts in the
-	# middle, and the pause button (with the settings) top right.
+	# it. The level in the top-left corner, the hearts in the middle, and the
+	# pause button (with the settings) top right.
 	_top = maxf(TSUI.safe_top(), CAMERA_MARGIN)
 	_next_mid_y = _top + NEXT_MID_Y
 	_tray_top = _top + TRAY_TOP
@@ -279,7 +269,6 @@ func _build_hud() -> void:
 	_lbl_level.add_theme_color_override("font_color", TITLE_PINK)
 	_lbl_level.add_theme_color_override("font_outline_color", TSToon.INK)
 	_lbl_level.add_theme_constant_override("outline_size", 12)
-	_lbl_score = _make_label(root, Vector2(24.0, _top + 46.0), 30)
 	# Three hearts 46 px apart, centred on the screen's middle.
 	var hearts_at := _pin(root, Control.PRESET_CENTER_TOP, Vector2(-70.0, _top + 30.0))
 	for i in LIVES:
@@ -311,27 +300,6 @@ func _build_hud() -> void:
 	_pause_btn = TSUI.icon_button("pause", 76, TSUI.CARD)
 	_pause_btn.pressed.connect(_open_pause)
 	pause_at.add_child(_pause_btn)
-
-	# News -- a hint, "Smashed 3 blockers", "No match: lost a life" -- as a
-	# toast: a pill under the hearts that fades out after a few seconds, so the
-	# screen stays clear and each message stands out when it arrives.
-	var toast_row := CenterContainer.new()
-	toast_row.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	toast_row.offset_left = PIECE_COLUMN_X + TRAY_SIZE + 12.0   # beside the piece column, never over it
-	toast_row.offset_right = -12.0
-	toast_row.offset_top = _top + 92.0
-	toast_row.offset_bottom = _top + 92.0
-	toast_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.add_child(toast_row)
-	_toast = PanelContainer.new()
-	var toast_style := TSUI.sb(TSUI.CARD, 24, 3, 3, 18)
-	_toast.add_theme_stylebox_override("panel", toast_style)
-	_toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_toast.visible = false
-	toast_row.add_child(_toast)
-	_lbl_event = TSUI.label("", TOAST_FONT, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER)
-	_lbl_event.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_toast.add_child(_lbl_event)
 
 	# Held and next pieces drawn flat, as in the footage, stacked down the left:
 	# the next piece on top, and the piece you hold below it, sitting in its
@@ -567,7 +535,6 @@ func _start(seed_value: int, baked: Dictionary = {}) -> void:
 	_creature.position = Vector3.ZERO
 	_creature.scale = Vector3.ONE * _creature_scale()
 	cursor = Vector2i(0, TSBoard.ROWS / 2)
-	score = 0
 	best_clear = 0
 	best_chain = 0
 	bomb_armed = false
@@ -579,7 +546,6 @@ func _start(seed_value: int, baked: Dictionary = {}) -> void:
 	is_first_attempt = true
 	lose_ad_used = false
 	selected = TSBoard.HOLE
-	last_event = "Drop a piece onto two of its own kind to clear them."
 	cur_type = _fair(_deal())
 	next_type = _deal()
 	_clamp_cursor()
@@ -606,7 +572,6 @@ func _resume() -> void:
 	next_type = int(s["next_type"])
 	cursor = s["cursor"]
 	lives = int(s["lives"])
-	score = int(s["score"])
 	is_first_attempt = bool(s["first_attempt"])
 	lose_ad_used = bool(s["lose_ad_used"])
 	state = State.PLAYING
@@ -617,7 +582,6 @@ func _resume() -> void:
 	_rocks_flying = false
 	_rocks_shot += 1
 	_stop_deal_animation()
-	last_event = "Welcome back!"
 	_lbl_level.text = "DAILY EGG" if is_daily else "LEVEL %d" % current_level
 	_ties_seen = -1
 	_apply_sky()
@@ -635,7 +599,7 @@ func _park() -> void:
 	TSSession.state = {
 		"board": board, "daily": is_daily, "level": current_level, "difficulty": difficulty,
 		"cur_type": cur_type, "next_type": next_type, "cursor": cursor, "lives": lives,
-		"score": score, "first_attempt": is_first_attempt, "lose_ad_used": lose_ad_used,
+		"first_attempt": is_first_attempt, "lose_ad_used": lose_ad_used,
 	}
 
 
@@ -673,23 +637,7 @@ func _current_depth() -> int:
 # piece of the same type as the one you are about to drop can be picked.
 func _select_at(cell: Vector2i) -> void:
 	var id := board.top_piece(cell.x, cell.y)
-	if board.can_slide(id, cur_type):
-		selected = id
-		last_event = "Got it. Drag to slide it; let go to put it down."
-		return
-	selected = TSBoard.HOLE
-	var holding: String = TSBoard.SHAPES[cur_type]["name"]
-	if cur_type == TSBoard.WILD:
-		last_event = "The Any Piece doesn't slide pieces -- drop it by a pair to match."
-		return
-	if id == TSBoard.HOLE:
-		last_event = "Nothing there. Hold a piece like yours (%s) to slide it." % holding
-	elif int(board.plate_kind[id]) == TSBoard.BLOCKER:
-		last_event = "Grey blockers can't be slid. Slide a piece into them to smash them."
-	elif int(board.plate_kind[id]) == TSBoard.TIE:
-		last_event = "Tie-downs can't be slid or smashed. Break pieces next to one to knock off a layer."
-	else:
-		last_event = "You can only slide pieces like the one you hold (%s)." % holding
+	selected = id if board.can_slide(id, cur_type) else TSBoard.HOLE
 
 
 func _has_selection() -> bool:
@@ -702,24 +650,12 @@ func _has_selection() -> bool:
 # drops. Sliding is not a drop, so it never costs a life.
 func _slide(dir: Vector2i) -> void:
 	if not _has_selection():
-		last_event = "Hold a piece like yours (%s), then drag to slide it." % TSBoard.SHAPES[cur_type]["name"]
-		_refresh_hud()
 		return
 	var res := board.slide(selected, dir)
 	if not bool(res["moved"]):
-		last_event = "Blocked. Only plain grey blockers can be pushed through -- armour and tie-downs need a hit first."
-		_refresh_hud()
 		return
-
-	var smashed := int(res["smashed"])
-	if smashed > 0:
-		var points := smashed * 10
-		score += points
-		last_event = "Smashed %d blocker%s." % [smashed, "" if smashed == 1 else "s"]
+	if int(res["smashed"]) > 0:
 		view.spawn_clear_fx(res["fx"])
-		view.spawn_popup("+%d" % points, res["fx"])
-	else:
-		last_event = "Slid."
 	view.rebuild()
 	if _tutorial.on_step("slide"):
 		_tutorial.gate_passed()
@@ -737,7 +673,6 @@ func _toggle_bomb() -> void:
 		_open_ad("bomb")
 	else:
 		bomb_armed = not bomb_armed
-		last_event = "Bomb armed: your next drop blasts." if bomb_armed else "Bomb stowed."
 		if bomb_armed and _tutorial.on_step("arm_bomb"):
 			_tutorial.gate_passed()
 	_refresh_piece()
@@ -758,13 +693,9 @@ func _use_any_piece() -> void:
 		_open_ad("swap")
 		return
 	if cur_type == TSBoard.WILD:
-		last_event = "You're already holding an Any Piece -- drop it by a pair."
-		_refresh_hud()
 		return
 	var pick := board.best_piece([TSBoard.WILD])
 	if int(pick["kind"]) == TSBoard.HOLE:
-		last_event = "Nothing to match right now -- your Any Piece is saved."
-		_refresh_hud()
 		return
 	TSProfile.add_boosters("swap", -1)
 	TSProfile.record_quest_event("booster")
@@ -775,7 +706,6 @@ func _use_any_piece() -> void:
 	_gesture = Gesture.NONE
 	_clamp_cursor()
 	_face(_piece_centre())
-	last_event = "Any Piece! It turns into whatever it touches -- aimed at a %d-piece match." % int(pick["pieces"])
 	_animate_swap_in()
 	TSSfx.play("upgrade")
 	TSHaptics.light()
@@ -795,8 +725,6 @@ func _fire_rocks() -> void:
 		return
 	var targets := board.rock_targets(ROCKS_PER_SHOT, cursor)
 	if targets.is_empty():
-		last_event = "Nothing for the rocks to hit."
-		_refresh_hud()
 		return
 	TSProfile.add_boosters("rocks", -1)
 	TSProfile.record_quest_event("booster")
@@ -804,7 +732,6 @@ func _fire_rocks() -> void:
 	_rocks_flying = true
 	_rocks_shot += 1
 	var shot := _rocks_shot
-	last_event = ""
 	# Each rock flies from the button to a block of its group showing on top.
 	var from := _btn_rocks.get_global_rect().get_center()
 	var flights: Array = []
@@ -851,13 +778,11 @@ func _rocks_land(targets: Array) -> void:
 	if int(res["pieces"]) > 0:
 		TSProfile.record_quest_event("clear", int(res["pieces"]))
 	var chain := int(res["chain"])
-	var points := int(res["removed"]) * 10 * maxi(1, chain)
-	score += points
 	best_clear = maxi(best_clear, int(res["pieces"]))
 	best_chain = maxi(best_chain, chain)
 	view.spawn_clear_fx(res["fx"])
-	if points > 0:
-		view.spawn_popup("+%d" % points if chain < 2 else "+%d  CHAIN x%d" % [points, chain], res["fx"])
+	if chain >= 2:
+		view.spawn_popup("CHAIN x%d" % chain, res["fx"])
 	TSProfile.save()
 	# The ball changed under the held piece: the fair deal still holds.
 	cur_type = _fair(cur_type)
@@ -887,7 +812,6 @@ func _drop() -> void:
 		bomb_armed = false
 		TSProfile.record_quest_event("booster")
 		res = board.detonate(landing, 2)
-		last_event = ""
 		TSSfx.play("bomb")
 		TSHaptics.heavy()
 		if _tutorial.on_step("blast"):
@@ -896,30 +820,26 @@ func _drop() -> void:
 		res = board.place_and_resolve(offsets, landing, cur_type, _current_depth())
 		if int(res["chain"]) == 0:
 			lives -= 1
-			last_event = "No match: lost a life."
 			TSSfx.play("miss")
 			TSHaptics.medium()
 			if lives <= 0:
 				lose_reason = "OUT OF LIVES"
 		else:
-			# The clear speaks for itself: blocks fly off and the points
-			# (and any chain) float up from the ball.
-			last_event = ""
+			# The clear speaks for itself: blocks fly off the ball, and a
+			# chain is called out as it floats up.
 			TSSfx.play("chain" if int(res["chain"]) >= 2 else "match")
 			TSHaptics.light()
 	if int(res["pieces"]) > 0:
 		TSProfile.record_quest_event("clear", int(res["pieces"]))
 
-	# Each link of a chain reaction multiplies the score.
+	# A chain reaction gets its call-out.
 	var pieces := int(res["pieces"])
 	var chain := int(res["chain"])
-	var points := int(res["removed"]) * 10 * maxi(1, chain)
-	score += points
 	best_clear = maxi(best_clear, pieces)
 	best_chain = maxi(best_chain, chain)
 	view.spawn_clear_fx(res["fx"])
-	if points > 0:
-		view.spawn_popup("+%d" % points if chain < 2 else "+%d  CHAIN x%d" % [points, chain], res["fx"])
+	if chain >= 2:
+		view.spawn_popup("CHAIN x%d" % chain, res["fx"])
 	# Bombs are earned only once they have arrived (and been taught), at
 	# TSProfile.BOMB_UNLOCK_LEVEL.
 	if not bomb_was_armed and TSProfile.bombs_unlocked and (chain >= 2 or pieces >= BOMB_PIECES):
@@ -1163,10 +1083,6 @@ func _draw_piece(box: Control, kind: int, offsets: Array, px: float) -> Vector2:
 
 func _refresh_hud() -> void:
 	_note_ties()
-	_lbl_score.text = "SCORE %d" % score
-	var news := last_event.strip_edges()
-	if news != _toast_text:
-		_show_toast(news)
 	_refresh_bomb_button()
 	for i in _hearts.size():
 		_hearts[i].color = HEART_ALIVE if i < lives else HEART_LOST
@@ -1499,9 +1415,6 @@ func _fair(kind: int) -> int:
 	for other in level["pieces"]:
 		var alt := int(other)
 		if alt != kind and board.has_combo_spot(alt):
-			last_event += "   No spot for %s, dealt %s instead." % [
-				TSBoard.SHAPES[kind]["name"], TSBoard.SHAPES[alt]["name"]
-			]
 			return alt
 	return kind
 
@@ -1962,7 +1875,6 @@ func _on_ad_buy() -> void:
 	TSProfile.save()
 	TSSfx.play("upgrade")
 	_close_ad()
-	last_event = "Bought %d %s." % [TSProfile.booster_buy_count(_ad_reward), TSProfile.BOOSTER_NAMES[_ad_reward][2]]
 	_refresh_hud()
 
 
@@ -2204,51 +2116,14 @@ func _start_booster_tutorial(btn: Button, id: String, text: String) -> void:
 	_tutorial.start([{"rect": btn.get_global_rect(), "text": text}])
 
 
-## Shows a piece of news in the toast and fades it out after a moment --
-## longer for longer messages. Empty news hides it.
-func _show_toast(text: String) -> void:
-	_toast_text = text
-	if _toast_tween != null:
-		_toast_tween.kill()
-	if text == "":
-		_toast.visible = false
-		return
-	var width := TSToon.hand_font().get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, TOAST_FONT).x
-	_lbl_event.custom_minimum_size.x = minf(width + 4.0, TOAST_MAX_WIDTH)
-	_lbl_event.text = text
-	_toast.visible = true
-	_toast.modulate.a = 1.0
-	_toast.reset_size()
-	_toast_tween = _toast.create_tween()
-	_toast_tween.tween_interval(2.2 + text.length() * 0.035)
-	_toast_tween.tween_property(_toast, "modulate:a", 0.0, 0.45)
-	_toast_tween.tween_callback(func() -> void:
-		_toast.visible = false
-		# Read: clear it, so the same news again (a second miss) shows again.
-		if last_event.strip_edges() == _toast_text:
-			last_event = ""
-		_toast_text = "")
-
-
-## Tie-downs (TSBoard.TIE): keeps the counter by the hearts up to date and
-## says what happened -- one broken, the last one gone, or the hole dug while
-## some still hold the critter in (once a ball). A new ball (_ties_seen -1)
-## just takes its count.
+## Tie-downs (TSBoard.TIE): keeps the counter by the hearts up to date, with
+## a chime as each one breaks. A new ball (_ties_seen -1) just takes its count.
 func _note_ties() -> void:
 	var left := board.ties_left()
 	if _ties_seen < 0:
 		_level_ties = left
-		_tie_hole_hinted = false
 	elif left < _ties_seen:
-		if left > 0:
-			last_event = "Tie-down broken! %d left." % left
-		elif not board.has_escape_hole(_escape_size()):
-			last_event = "Every tie-down is broken -- now dig the critter out!"
-		# (the last one down with the hole already dug is the escape itself)
 		TSSfx.play("upgrade")
-	elif left > 0 and not _tie_hole_hinted and board.has_escape_hole(_escape_size()):
-		_tie_hole_hinted = true
-		last_event = "The hole's ready -- break the last tie-down%s to free the critter!" % ("" if left == 1 else "s")
 	_ties_seen = left
 	_tie_pill.visible = _level_ties > 0
 	_tie_label.text = str(left)
@@ -2262,7 +2137,3 @@ func _apply_sky() -> void:
 	TSToon.apply_sky(_sky_mat, sky)
 	_key_light.light_color = sky["light"]
 	_env.ambient_light_color = sky["ambient"]
-	# Ink on a dark night sky is hard to read: the score turns cream, inked round.
-	var night := float(sky["stars"]) > 0.5
-	_lbl_score.add_theme_color_override("font_color", TSToon.PAPER if night else TSToon.INK)
-	_lbl_score.add_theme_color_override("font_outline_color", TSToon.INK if night else TSToon.PAPER)
