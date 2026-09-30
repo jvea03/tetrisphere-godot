@@ -73,6 +73,7 @@ const PLANET := Vector2(1900.0, 170.0)
 const MOON := Vector2(620.0, 120.0)
 const SUN := Vector2(1100.0, 290.0)   # the time of day's sun or moon, in view as Home opens
 const SUN_R := 62.0
+const SPOT_BEAM := Color(0.95, 0.95, 0.84)   # the floodlights on the ship at night: a cool white
 const KITE_SKY := Vector2(340.0, 250.0)     # where the kite flies
 const POND := Vector2(560.0, 1000.0)
 const MOUND := SHIP_AT + Vector2(195.0, 62.0)
@@ -191,6 +192,10 @@ func _ready() -> void:
 	# The time of day, as on the player's current level (TSToon.SKIES): the
 	# sky draws itself, and everything under it takes the light -- moonlit at
 	# night, warm at sunset.
+	# Two floodlights stand on the ground by the ship at night (their beams
+	# are on the lights layer); the lamps themselves take the moonlight.
+	if float(_sky["stars"]) > 0.5:
+		_spot_layer(_draw_spot_lamps, _ship_depth + 40.0)
 	for child in _world.get_children():
 		if child != _sky_layer:
 			(child as CanvasItem).modulate = _sky["world"]
@@ -718,6 +723,19 @@ func _draw_lights() -> void:
 		_glow(ci, _xf * Vector2(100.0, 306.0), 24.0, Color(0.25, 1.0, 0.4) if blink else Color(1.0, 0.25, 0.25), 0.45)
 		if _lv(TSProfile.PART_ANTENNA) >= 1 and fposmod(_t, 0.9) < 0.3:
 			_glow(ci, _xf * _antenna_tip(), 20.0, Color(1.0, 0.3, 0.3), 0.5)
+		# The floodlights' beams: bright at the lens, fading as they widen up
+		# to the hull, where each leaves a lit patch drifting along it.
+		for s in _spotlights():
+			var lamp: Vector2 = s[0]
+			var aim: Vector2 = s[1]
+			var dir := (aim - lamp).normalized()
+			var across := Vector2(-dir.y, dir.x)
+			var lens := lamp + dir * 18.0
+			ci.draw_polygon(PackedVector2Array([lens + across * 9.0, lens - across * 9.0, aim - across * 80.0, aim + across * 80.0]),
+				PackedColorArray([Color(SPOT_BEAM, 0.32), Color(SPOT_BEAM, 0.32), Color(SPOT_BEAM, 0.05), Color(SPOT_BEAM, 0.05)]))
+			_glow(ci, aim, 100.0, SPOT_BEAM, 0.3)
+			_glow(ci, lens, 24.0, Color(1.0, 1.0, 0.92), 0.7)
+			_pool(ci, lamp + Vector2(0, 30), 110.0, SPOT_BEAM, 0.14)
 	for spot in [[TSProfile.CAMP_TENT, TENT, Vector2(-66, -70)], [TSProfile.CAMP_BENCH, BENCH, Vector2(70, -60)],
 			[TSProfile.CAMP_GARDEN, GARDEN, Vector2(-70, -50)], [TSProfile.CAMP_WELL, WELL, Vector2(0, -130)],
 			[TSProfile.CAMP_LOOKOUT, LOOKOUT, Vector2(0, -175)]]:
@@ -729,6 +747,32 @@ func _draw_lights() -> void:
 		_pool(ci, Vector2(lamp.x, at.y + 6.0 * k), 190.0 * flick * k, Color(1.0, 0.75, 0.42), 0.24)
 		_glow(ci, lamp, 56.0 * flick * k, Color(1.0, 0.75, 0.4), 0.2)
 		ci.draw_circle(lamp, 5.0 * k, Color(1.0, 0.88, 0.6, 0.7), true, -1.0, true)
+
+
+## The ship's two floodlights at night: [where the lamp stands, the point on
+## the hull it lights], one each side in front of the ship, their aim drifting
+## slowly along the hull. They follow the ship's pose (_xf).
+func _spotlights() -> Array:
+	var out: Array = []
+	for side in [-1.0, 1.0]:
+		var s: float = side
+		var lamp := Vector2(_ship_at.x + s * 330.0, _ship_depth + 70.0)
+		var aim := _xf * Vector2(245.0 + s * 80.0 + sin(_t * 0.5 + s) * 35.0, 200.0)
+		out.append([lamp, aim])
+	return out
+
+
+## The floodlights themselves: a lamp on a little stand, turned to its aim.
+func _draw_spot_lamps(ci: Control) -> void:
+	for s in _spotlights():
+		var lamp: Vector2 = s[0]
+		var aim: Vector2 = s[1]
+		for leg in [-16.0, 16.0]:
+			ci.draw_line(lamp, lamp + Vector2(leg, 36.0), INK, 5.0, true)
+		ci.draw_set_transform(lamp, (aim - lamp).angle(), Vector2.ONE)
+		_blob(ci, [Vector2(-20, -14), Vector2(16, -18), Vector2(16, 18), Vector2(-20, 14)], Color(0.38, 0.39, 0.46))
+		ci.draw_rect(Rect2(14.0, -16.0, 6.0, 32.0), Color(0.96, 0.95, 0.84))
+		ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
 # A soft halo of light: rings of `colour`, adding up to `strength` at the

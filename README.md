@@ -218,7 +218,8 @@ A cute, hand-drawn style, all in `scripts/toon.gd` (`TSToon`):
   camp below is lit to match, moonlit at night and warm at sunset. At night
   the camp lights up (drawn additively over the moonlight), each light a faint
   halo where it hangs and a soft pool it casts flat on the ground: the campfire casts
-  a warm, flickering pool, the ship's portholes glow with red and green lights
+  a warm, flickering pool, two floodlights stand by the ship throwing beams up
+  onto its hull, its portholes glow with red and green lights
   blinking on its fins, and every camp spot you have built hangs a lantern.
 - **HUD** in a handwriting-style font from the device (Chalkboard on Apple,
   Comic Sans on Windows, "casual" on Android), in ink with a paper outline.
