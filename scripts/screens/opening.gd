@@ -57,34 +57,3 @@ func _advance() -> void:
 ## A brand-new player, before level 1, who has not seen the crash cutscene.
 func _wants_intro() -> bool:
 	return not TSProfile.intro_seen and not TSProfile.tutorial_seen and TSProfile.last_level <= 1
-
-
-## The game's name, Egg Escape: Puzzle Break: "Egg Escape" hand-lettered, each
-## letter in its own pastel with a thick ink outline and tipped a little so it
-## reads as drawn, not typeset; "Puzzle Break" under it, smaller.
-class Logo extends VBoxContainer:
-	const WORD := "Egg Escape"
-	const TAGLINE := "Puzzle Break"
-
-	static func make(px: int) -> Logo:
-		var logo := Logo.new()
-		logo.alignment = BoxContainer.ALIGNMENT_CENTER
-		logo.add_theme_constant_override("separation", int(px * 0.05))
-		var row := HBoxContainer.new()
-		row.alignment = BoxContainer.ALIGNMENT_CENTER
-		row.add_theme_constant_override("separation", -2)
-		logo.add_child(row)
-		var colors := [TSUI.PINK, TSUI.BUTTER, TSUI.MINT, TSUI.SKY, TSUI.LILAC, TSUI.PEACH]
-		for i in WORD.length():
-			if WORD[i] == " ":   # the gap between the words, not an outlined blank
-				var gap := Control.new()
-				gap.custom_minimum_size = Vector2(px * 0.28, 0)
-				row.add_child(gap)
-				continue
-			var l := TSUI.outlined(TSUI.label(WORD[i], px, colors[i % colors.size()], HORIZONTAL_ALIGNMENT_CENTER), TSUI.INK, int(px * 0.16))
-			l.rotation = deg_to_rad(-6.0 if i % 2 == 0 else 5.0)
-			l.pivot_offset = Vector2(px * 0.3, px * 0.6)
-			row.add_child(l)
-		var tagline := TSUI.outlined(TSUI.label(TAGLINE, int(px * 0.42), TSUI.INK.lightened(0.25), HORIZONTAL_ALIGNMENT_CENTER), Color.WHITE, int(px * 0.08))
-		logo.add_child(tagline)
-		return logo

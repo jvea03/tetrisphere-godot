@@ -3,45 +3,45 @@ extends Control
 
 ## A loading screen: whoever comes here sets target_scene_path first. Loads it
 ## on a background thread with a progress bar, never for less than
-## MIN_SECONDS so it does not just flash by.
+## MIN_SECONDS so it does not just flash by. The screen is the game's key art
+## -- the title over the pink ship of critters in space -- with the bar along
+## the bottom, over its clouds.
 
 static var target_scene_path: String = ""
 
 const MIN_SECONDS := 1.0
+const ART := "res://icons/loading_screen.webp"
+const BAR_FROM_BOTTOM := 70.0   # px above the phone's safe area
 
 var _elapsed := 0.0
 var _advanced := false
 var _bar: ProgressBar
 var _label: Label
-var _egg: TSIcon
 
 
 func _ready() -> void:
-	add_child(TSUI.paper_rect())
-	var center := CenterContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
-	add_child(center)
-	var v := TSUI.vbox(28)
-	v.alignment = BoxContainer.ALIGNMENT_CENTER
-	center.add_child(v)
-	var logo := preload("res://scripts/screens/opening.gd").Logo.make(80)
-	v.add_child(logo)
-	v.add_child(TSUI.spacer(12.0))
-	_egg = TSIcon.make("egg", 220, 0)
-	_egg.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	v.add_child(_egg)
+	# The art fills the screen whatever its shape (it is 9:16, as the game is);
+	# a taller phone trims a little off its sides.
+	var art := TextureRect.new()
+	art.texture = load(ART)
+	art.set_anchors_preset(Control.PRESET_FULL_RECT)
+	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(art)
+	var bottom := TSUI.vbox(10)
+	bottom.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
+	bottom.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	bottom.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	bottom.offset_bottom = -(TSUI.safe_bottom() + BAR_FROM_BOTTOM)
+	add_child(bottom)
 	_bar = TSUI.bar(TSUI.PINK, 34)
 	_bar.custom_minimum_size.x = 440
 	_bar.max_value = 1.0
 	_bar.step = 0.0
-	v.add_child(_bar)
-	_label = TSUI.label("Loading", 30, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER)
-	v.add_child(_label)
-	# the egg wobbles while it waits
-	_egg.pivot_offset = Vector2(110, 200)
-	var t := _egg.create_tween().set_loops()
-	t.tween_property(_egg, "rotation", 0.12, 0.4).set_trans(Tween.TRANS_SINE)
-	t.tween_property(_egg, "rotation", -0.12, 0.4).set_trans(Tween.TRANS_SINE)
+	bottom.add_child(_bar)
+	_label = TSUI.outlined(TSUI.label("Loading", 30, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER), TSUI.INK, 10)
+	bottom.add_child(_label)
 	if target_scene_path == "":
 		target_scene_path = SceneFlow.HOME
 	ResourceLoader.load_threaded_request(target_scene_path)

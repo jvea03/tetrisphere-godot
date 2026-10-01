@@ -11,7 +11,9 @@
 Open `project.godot` in Godot 4.7 and press F5. On desktop it opens as a
 450×800 portrait window, and the mouse stands in for touch. It opens on the
 studio splash -- The Little Guy Games' logo (`icons/company_logo.png`) on a pale
-blue, as Duckdoku opens -- and then a loading screen. A brand-new player (a fresh install)
+blue, as Duckdoku opens -- and then a loading screen (the key art,
+`icons/loading_screen.webp`: the title over the pink ship of critters, with the
+loading bar along the bottom). A brand-new player (a fresh install)
 goes from the splash
 to the crash cutscene (`scripts/screens/intro.gd`): the ship full of
 eggs sputters, dives into the planet and crashes, and the eggs burst out and
