@@ -9,9 +9,11 @@
 ## Running it
 
 Open `project.godot` in Godot 4.7 and press F5. On desktop it opens as a
-450×800 portrait window, and the mouse stands in for touch. It opens on a
-splash and a loading screen. A brand-new player (a fresh install) opens
-instead on the crash cutscene (`scripts/screens/intro.gd`): the ship full of
+450×800 portrait window, and the mouse stands in for touch. It opens on the
+studio splash -- The Little Guy Games' logo (`icons/company_logo.png`) on a pale
+blue, as Duckdoku opens -- and then a loading screen. A brand-new player (a fresh install)
+goes from the splash
+to the crash cutscene (`scripts/screens/intro.gd`): the ship full of
 eggs sputters, dives into the planet and crashes, and the eggs burst out and
 bounce across the ground. It plays once, can be skipped, and goes straight
 into Level 1

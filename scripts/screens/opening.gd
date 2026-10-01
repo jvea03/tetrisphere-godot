@@ -1,12 +1,17 @@
 extends Control
 
-## The branding splash: the hand-drawn logo and an egg, for a moment, then
-## the loading screen. A brand-new player sees the crash cutscene first (the
-## intro scene), which goes straight into level 1; everyone else lands on
-## Home. A tap skips the splash.
+## The first screen: the studio's splash, The Little Guy Games' logo, as in
+## Duckdoku -- the same logo on the same pale blue, at the same share of the
+## screen -- for a moment, then on. A brand-new player sees the crash cutscene
+## next (the intro scene), which goes straight into level 1; everyone else
+## goes through the loading screen (with the game's own logo) to Home. A tap
+## skips the splash.
 
 const SPLASH_SECONDS := 1.5
 const INTRO := "res://scenes/intro.tscn"
+const STUDIO_LOGO := "res://icons/company_logo.png"
+const STUDIO_BG := Color(0.858824, 0.933333, 0.980392)   # Duckdoku's splash blue
+const STUDIO_LOGO_PX := 390.0   # Duckdoku's 260 on its 480-wide screen, on our 720
 
 var _advanced := false
 
@@ -15,27 +20,20 @@ func _ready() -> void:
 	TSProfile.ensure_loaded()
 	if OS.has_feature("mobile"):
 		DisplayServer.screen_set_orientation(DisplayServer.SCREEN_PORTRAIT)
-	add_child(TSUI.paper_rect())
-	# A fresh install opens on the crash cutscene, no splash first.
-	if _wants_intro():
-		_advanced = true
-		SceneFlow.go.call_deferred(INTRO)
-		return
+	var bg := ColorRect.new()
+	bg.color = STUDIO_BG
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(bg)
 	var center := CenterContainer.new()
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(center)
-	var v := TSUI.vbox(24)
-	v.alignment = BoxContainer.ALIGNMENT_CENTER
-	center.add_child(v)
-	v.add_child(Logo.make(96))
-	v.add_child(TSUI.spacer(24.0))   # room for the critter's ears under the tagline
-	var egg := TSIcon.make("egg", 300, 0)
-	egg.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	v.add_child(egg)
-	var critter := TSIcon.make("critter", 150, TSProfile.avatar())
-	critter.position = Vector2(75, -40)
-	egg.add_child(critter)
-	egg.move_child(critter, 0)
+	var logo := TextureRect.new()
+	logo.texture = load(STUDIO_LOGO)
+	logo.custom_minimum_size = Vector2.ONE * STUDIO_LOGO_PX
+	logo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	center.add_child(logo)
 	get_tree().create_timer(SPLASH_SECONDS).timeout.connect(_advance)
 
 
