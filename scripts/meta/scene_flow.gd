@@ -14,13 +14,13 @@ const GAME := "res://main.tscn"
 var fade_rect: ColorRect
 var in_flight := false
 var _music_scene: Node   # the screen the music was last set for
-const QUIET_SCREENS := ["res://scenes/opening.tscn", "res://scenes/loading.tscn", "res://scenes/intro.tscn"]
+const QUIET_SCREENS := ["res://scenes/opening.tscn", "res://scenes/loading.tscn"]
 
 
 ## The menu song plays on every menu screen and the level songs in a level
-## (the game screen is the only 3D one). The screens on the way in -- the
-## studio splash, the loading screen, the crash cutscene -- are quiet, so the
-## menu song starts as the main menu itself appears.
+## (the game screen is the only 3D one), and over the crash cutscene. The
+## screens on the way in -- the studio splash and the loading screen -- are
+## quiet, so the menu song starts as the main menu (or the cutscene) appears.
 func _process(_delta: float) -> void:
 	var scene := get_tree().current_scene
 	if scene != _music_scene:

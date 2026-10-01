@@ -192,7 +192,7 @@ parks it, and Home's PLAY becomes CONTINUE.
   replies are simulated locally and deterministically, as in Duckdoku.
 - **Music**: the main menu song (`audio/main_menu.mp3`) loops on Home and every
   menu screen, carrying on unbroken between them -- starting as the main menu
-  appears: the studio splash, the loading screen and the crash cutscene are
+  appears (and over the crash cutscene): the studio splash and the loading screen are
   quiet (`SceneFlow.QUIET_SCREENS`). In a level it fades out for
   the four level songs (`audio/level_song_1-4.mp3`), played one after another
   in a shuffled order -- every song once before any repeats, and never the
