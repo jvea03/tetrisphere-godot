@@ -26,7 +26,9 @@ looks the same on desktop.
 **Android.** `export_presets.cfg` has an **Android** preset: package
 `com.jvea03.tetrisphere`, version 0.2.0 (code 1), portrait, immersive, for
 64- and 32-bit ARM phones, with the app icon and Android's adaptive icon from
-`icons/` (drawn by `tools/make_icons.gd` from the game's own art). It needs
+`icons/` (built by `tools/make_icons.gd` from the icon art, `art/app_icon.png`:
+the pink ship of critters in space -- its white corners cut away, and for the
+adaptive icon set on a deep-blue background inside the area every mask shows). It needs
 Godot 4.7.1's export templates, the Android SDK and JDK 17, with their paths
 set in Godot's Editor Settings (Export > Android). A debug build, signed with
 Godot's debug key, comes out of:

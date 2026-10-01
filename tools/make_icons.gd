@@ -1,57 +1,63 @@
-# Draws the app icons with the game's own art (TSIcon), so there are no image
-# files to keep in sync by hand: a critter sitting in a pink egg on a butter
-# background. Writes res://icons/icon.png (512, the project and launcher icon)
-# and, for Android's adaptive icon, icon_foreground.png (the egg and critter,
-# kept inside the middle two thirds so no mask shape crops it) and
-# icon_background.png (plain butter). Needs a window, as it renders. Run with:
-#   Godot.exe --path . --script res://tools/make_icons.gd
+# Builds the app icons from the icon art, art/app_icon.png (1254 px: the pink
+# ship of critters in space, on a rounded square whose corners are white).
+# Writes res://icons/icon.png (512, the project and launcher icon: the art
+# with its corners cut away to transparent) and, for Android's adaptive icon,
+# icon_foreground.png (the same art scaled into the middle two thirds, the
+# part every launcher mask shows) and icon_background.png (the deep blue of
+# its space, filling behind it out to the edges). art/ is ignored by Godot, so
+# the full-size art is not bundled into the game. Run with:
+#   Godot.exe --headless --path . --script res://tools/make_icons.gd
 extends SceneTree
 
-const BUTTER := Color(1.0, 0.86, 0.5)
-
-var _frames := 0
-var _shots: Array = []   # [viewport, file]
+const SOURCE := "res://art/app_icon.png"
+const INSET := 9.0 / 1254.0     # the art's rounded square, just inside its edge (past a white fringe)...
+const RADIUS := 315.0 / 1254.0  # ...with corners this round (as a share of its size)
+const SPACE := Color(0.14, 0.12, 0.58)   # the adaptive icon's background
+const FOREGROUND_ART := 312     # px of the 432 foreground: just past the 288 a mask shows
 
 
 func _initialize() -> void:
+	var art := Image.load_from_file(ProjectSettings.globalize_path(SOURCE))
+	if art == null:
+		push_error("no icon art at %s" % SOURCE)
+		quit(1)
+		return
+	art.convert(Image.FORMAT_RGBA8)
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://icons"))
-	_shots.append([_scene(512, true, 0.8), "res://icons/icon.png"])
-	_shots.append([_scene(432, false, 0.62), "res://icons/icon_foreground.png"])
-	_shots.append([_scene(432, true, 0.0), "res://icons/icon_background.png"])
+
+	_rounded(art, 512).save_png(ProjectSettings.globalize_path("res://icons/icon.png"))
+
+	var fg := Image.create(432, 432, false, Image.FORMAT_RGBA8)
+	fg.fill(Color(0, 0, 0, 0))
+	var inner := _rounded(art, FOREGROUND_ART)
+	var at := (432 - FOREGROUND_ART) / 2
+	fg.blend_rect(inner, Rect2i(0, 0, FOREGROUND_ART, FOREGROUND_ART), Vector2i(at, at))
+	fg.save_png(ProjectSettings.globalize_path("res://icons/icon_foreground.png"))
+
+	var bg := Image.create(432, 432, false, Image.FORMAT_RGBA8)
+	bg.fill(SPACE)
+	bg.save_png(ProjectSettings.globalize_path("res://icons/icon_background.png"))
+	print("icons written")
+	quit()
 
 
-# One icon: optional butter background, then the egg and critter scaled to
-# `art` of the size (0 draws no art).
-func _scene(px: int, background: bool, art: float) -> SubViewport:
-	var vp := SubViewport.new()
-	vp.size = Vector2i(px, px)
-	vp.transparent_bg = true
-	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-	root.add_child(vp)
-	if background:
-		var bg := ColorRect.new()
-		bg.color = BUTTER
-		bg.size = Vector2(px, px)
-		vp.add_child(bg)
-	if art > 0.0:
-		var s := px * art
-		var egg := TSIcon.make("egg", s, 0)
-		egg.size = Vector2(s, s)
-		egg.position = Vector2(px - s, px - s) * 0.5 + Vector2(0.0, s * 0.06)
-		vp.add_child(egg)
-		var critter := TSIcon.make("critter", s * 0.62, 0)
-		critter.size = Vector2(s, s) * 0.62
-		critter.position = Vector2(px * 0.5 - s * 0.31, px * 0.5 - s * 0.46)
-		vp.add_child(critter)
-	return vp
-
-
-func _process(_delta: float) -> bool:
-	_frames += 1
-	if _frames == 10:
-		for shot in _shots:
-			var img := (shot[0] as SubViewport).get_texture().get_image()
-			img.save_png(shot[1])
-			print("wrote ", shot[1])
-		quit()
-	return false
+# The art at `px`, with everything outside its rounded square -- the white
+# corners -- faded to transparent over a pixel, so the edge stays smooth.
+func _rounded(art: Image, px: int) -> Image:
+	var img := art.duplicate() as Image
+	img.resize(px, px, Image.INTERPOLATE_LANCZOS)
+	var inset := INSET * px
+	var radius := RADIUS * px
+	var lo := inset + radius
+	var hi := float(px) - inset - radius
+	for y in px:
+		for x in px:
+			var p := Vector2(float(x) + 0.5, float(y) + 0.5)
+			var q := Vector2(clampf(p.x, lo, hi), clampf(p.y, lo, hi))
+			var outside := p.distance_to(q) - radius   # > 0 past the rounded edge
+			var keep := clampf(0.5 - outside, 0.0, 1.0)
+			if keep < 1.0:
+				var c := img.get_pixel(x, y)
+				c.a *= keep
+				img.set_pixel(x, y, c)
+	return img
