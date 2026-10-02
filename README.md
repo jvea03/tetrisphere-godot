@@ -205,13 +205,13 @@ parks it, and Home's PLAY becomes CONTINUE.
 
 A cute, hand-drawn style, all in `scripts/toon.gd` (`TSToon`):
 
+- **Cel shading in pastels.** Two hard steps of light instead of a smooth
   falloff, a soft lilac shadow side with a faint pencil grain, and a small hard
-  falloff, a soft lilac shadow side with pencil hatching, and a small hard
   shine. Deeper layers are drawn a little darker, so you can tell them apart.
+- **Ink outlines** round every piece, the caps and the creature. They are
   drawn by growing each mesh along its normals, as one clean, even line (the
   shader can still make it wobble and re-draw like a pencil, its "line boil",
   but that is off for a cleaner look).
-  to place, re-drawn five times a second like a pencil line ("line boil").
 - **Soft pieces.** Each cell is a rounded tile that the vertex shader bends
   onto the curved egg. Where a piece carries on into the next cell, the tile
   is left open and runs to the cell edge, so a line is one smooth bar with no
