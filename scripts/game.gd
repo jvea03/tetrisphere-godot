@@ -1569,15 +1569,19 @@ func _build_dialogs(root: Control) -> void:
 	var help := TSUI.card(Color(1.0, 0.95, 0.86), 20, 14, 0)
 	help.visible = false
 	help.add_child(TSUI.wrap(TSUI.label(TSUI.HOW_TO_PLAY, 20), 480))
-	var help_btn := TSUI.button("How to Play", TSUI.SKY, 24, Vector2(0, 60))
+	# Help sits a step down from Resume and Restart: two quiet buttons side by
+	# side, the rules opening under them.
+	var help_row := TSUI.hbox(12)
+	var help_btn := TSUI.expand(TSUI.button("How to Play", TSUI.CARD, 24, Vector2(0, 60), 4)) as Button
 	help_btn.pressed.connect(func(): help.visible = not help.visible)
-	pbox.add_child(help_btn)
-	pbox.add_child(help)
-	var replay := TSUI.button("Replay Walkthrough", TSUI.LILAC, 22, Vector2(0, 56))
+	help_row.add_child(help_btn)
+	var replay := TSUI.expand(TSUI.button("Walkthrough", TSUI.CARD, 24, Vector2(0, 60), 4)) as Button
 	replay.pressed.connect(func():
 		TSUI.conceal(_pause["root"])
 		_start_tutorial())
-	pbox.add_child(replay)
+	help_row.add_child(replay)
+	pbox.add_child(help_row)
+	pbox.add_child(help)
 	for row in [["music", "Music", "music_enabled"], ["sound", "Sound Effects", "sfx_enabled"], ["vibrate", "Haptics", "haptics_enabled"]]:
 		pbox.add_child(_toggle_row(row[0], row[1], row[2]))
 	var home := TSUI.button("Home", TSUI.PINK, 28)

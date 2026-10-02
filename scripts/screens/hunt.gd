@@ -54,9 +54,10 @@ func build() -> void:
 	pv.add_child(play)
 	content.add_child(panel)
 	content.add_child(_prize_card())
-	content.add_child(TSUI.spacer(0, true))
+	# How long is left, right under the grand prize it is counting down to.
 	_footer = TSUI.label("", 22, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER)
 	content.add_child(_footer)
+	content.add_child(TSUI.spacer(0, true))
 	_selected = _default_day()
 	_refresh()
 

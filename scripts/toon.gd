@@ -1,6 +1,7 @@
-# The hand-drawn look: flat pastel cel shading with a pencil-hatched shadow
-# side, a wobbly ink outline that "boils" a few times a second like a
-# hand-drawn animation, soft rounded pieces, and a paper background. Every
+# The hand-drawn look: flat pastel cel shading with a faint pencil grain on the
+# shadow side, a clean, even ink outline (it can "boil" -- wobble and re-draw
+# like a pencil line -- through `boil`, but stays steady for a cleaner look),
+# soft rounded pieces, and a paper background. Every
 # material, tile mesh and the font come from here.
 class_name TSToon
 extends RefCounted
@@ -92,9 +93,9 @@ void light() {
 	float ndl = dot(NORMAL, LIGHT);
 	float lit = smoothstep(0.0, 0.08, ndl) * 0.6 + smoothstep(0.55, 0.62, ndl) * 0.4;
 	vec3 tone = mix(shade.rgb, vec3(1.0), lit);
-	// Pencil hatching across the shadow side.
+	// A faint pencil grain across the shadow side.
 	float hatch = step(0.6, fract((FRAGCOORD.x - FRAGCOORD.y) * 0.14));
-	tone *= 1.0 - hatch * 0.12 * (1.0 - lit);
+	tone *= 1.0 - hatch * 0.04 * (1.0 - lit);   // a faint grain, not stripes
 	DIFFUSE_LIGHT += tone * LIGHT_COLOR / PI;
 	// A small, hard, cartoon shine.
 	vec3 h = normalize(VIEW + LIGHT);
@@ -117,7 +118,7 @@ render_mode unshaded, cull_front;
 
 uniform vec4 ink : source_color = vec4(0.27, 0.16, 0.19, 1.0);
 uniform float width = 0.07;
-uniform float boil = 0.35;
+uniform float boil = 0.0;   // 0: a steady, even line; ~0.35: a wobbly, re-drawn pencil line
 %s
 void vertex() {
 	vec3 s = vec3(length(MODEL_MATRIX[0].xyz), length(MODEL_MATRIX[1].xyz), length(MODEL_MATRIX[2].xyz));
@@ -155,7 +156,7 @@ uniform float dot_px = 110.0;
 uniform float stars = 0.0;        // 1: the dots are small twinkling stars (night)
 uniform vec4 orb : source_color = vec4(1.0, 1.0, 1.0, 0.0);   // the sun or moon; alpha 0 for none
 uniform vec2 orb_uv = vec2(0.82, 0.24);
-uniform float orb_px = 54.0;
+uniform float orb_px = 44.0;
 uniform float crescent = 0.0;     // 1: a crescent moon
 uniform float grad_start = 0.45;  // how far down the sky starts to turn
 
@@ -175,7 +176,8 @@ void fragment() {
 	float d = distance(fract(grid), centre);
 	float dot_mask = (1.0 - smoothstep(r - 0.015, r, d)) * step(mix(0.5, 0.35, stars), hash(cell + 11.0));
 	dot_mask *= mix(1.0, 0.55 + 0.45 * sin(TIME * (1.2 + 2.0 * hash(cell + 5.0)) + hash(cell) * 6.28), stars);
-	col = mix(col, dots.rgb, dot_mask);
+	// By day the dots are a soft texture, half way to the sky; at night, bright stars.
+	col = mix(col, dots.rgb, dot_mask * mix(0.5, 1.0, stars));
 	// The sun or moon: a disc with a soft glow round it; a crescent moon has a
 	// bite taken out of it by a second disc of sky.
 	vec2 px = SCREEN_UV * VIEWPORT_SIZE;
@@ -244,19 +246,19 @@ static func ink(width: float, bent := false) -> ShaderMaterial:
 const SKY_LEVELS := 10
 const SKIES := [
 	{"name": "Morning", "top": Color(1.0, 0.96, 0.88), "bottom": Color(1.0, 0.88, 0.89), "grad": 0.45,
-		"dots": Color(0.99, 0.89, 0.89), "stars": 0.0, "orb": Color(1.0, 0.9, 0.66, 0.55), "orb_uv": Vector2(0.84, 0.26), "crescent": 0.0,
+		"dots": Color(0.99, 0.89, 0.89), "stars": 0.0, "orb": Color(1.0, 0.9, 0.66, 0.55), "orb_uv": Vector2(0.84, 0.21), "crescent": 0.0,
 		"light": Color(1.0, 0.97, 0.92), "ambient": Color(1.0, 0.92, 0.95), "world": Color(1.0, 1.0, 1.0)},
 	{"name": "Day", "top": Color(0.78, 0.9, 1.0), "bottom": Color(1.0, 0.97, 0.9), "grad": 0.1,
-		"dots": Color(0.9, 0.95, 1.0), "stars": 0.0, "orb": Color(1.0, 0.87, 0.45, 0.95), "orb_uv": Vector2(0.84, 0.22), "crescent": 0.0,
+		"dots": Color(0.9, 0.95, 1.0), "stars": 0.0, "orb": Color(1.0, 0.87, 0.45, 0.9), "orb_uv": Vector2(0.84, 0.21), "crescent": 0.0,
 		"light": Color(1.0, 0.99, 0.95), "ambient": Color(0.95, 0.96, 1.0), "world": Color(1.0, 1.0, 1.0)},
 	{"name": "Sunset", "top": Color(1.0, 0.76, 0.56), "bottom": Color(0.9, 0.66, 0.84), "grad": 0.1,
-		"dots": Color(1.0, 0.84, 0.68), "stars": 0.0, "orb": Color(1.0, 0.56, 0.36, 0.95), "orb_uv": Vector2(0.14, 0.74), "crescent": 0.0,
+		"dots": Color(1.0, 0.84, 0.68), "stars": 0.0, "orb": Color(1.0, 0.66, 0.45, 0.85), "orb_uv": Vector2(0.84, 0.21), "crescent": 0.0,
 		"light": Color(1.0, 0.9, 0.8), "ambient": Color(1.0, 0.88, 0.9), "world": Color(1.0, 0.9, 0.84)},
 	{"name": "Night", "top": Color(0.14, 0.13, 0.3), "bottom": Color(0.32, 0.25, 0.47), "grad": 0.1,
-		"dots": Color(1.0, 0.93, 0.7), "stars": 1.0, "orb": Color(0.99, 0.95, 0.82, 1.0), "orb_uv": Vector2(0.84, 0.24), "crescent": 1.0,
+		"dots": Color(1.0, 0.93, 0.7), "stars": 1.0, "orb": Color(0.99, 0.95, 0.82, 1.0), "orb_uv": Vector2(0.84, 0.21), "crescent": 1.0,
 		"light": Color(0.92, 0.93, 1.0), "ambient": Color(0.86, 0.86, 1.0), "world": Color(0.62, 0.64, 0.86)},
 	{"name": "Dawn", "top": Color(0.78, 0.74, 0.96), "bottom": Color(1.0, 0.85, 0.76), "grad": 0.15,
-		"dots": Color(0.9, 0.84, 0.99), "stars": 0.0, "orb": Color(1.0, 0.8, 0.6, 0.8), "orb_uv": Vector2(0.86, 0.74), "crescent": 0.0,
+		"dots": Color(0.9, 0.84, 0.99), "stars": 0.0, "orb": Color(1.0, 0.8, 0.6, 0.75), "orb_uv": Vector2(0.84, 0.21), "crescent": 0.0,
 		"light": Color(1.0, 0.95, 0.92), "ambient": Color(1.0, 0.92, 0.96), "world": Color(0.98, 0.93, 0.96)},
 ]
 
