@@ -207,8 +207,10 @@ func _run() -> void:
 	_touch(blast_at, false)
 	_touch(blast_at, true)
 	_touch(blast_at, false)   # a double tap on the egg, through the spotlight
-	for _i in 3:
+	for _i in 120:   # the bomb falls onto the egg (about 0.4 s) before it goes off
 		await get_tree().process_frame
+		if not _rocks_flying:
+			break
 	_check("the blast moves it on to the last card", _tutorial.visible and not _tutorial.on_step("blast") and TSProfile.bomb_count == TSProfile.BOMB_UNLOCK_GRANT - 1)
 	_tutorial._finish()
 	_check("and it is marked seen", TSProfile.bomb_tutorial_seen)

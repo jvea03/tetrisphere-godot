@@ -124,6 +124,8 @@ var _level_ties := 0            # how many this ball started with
 var _hud: Control
 const FUSE_SPARKS := [Color(1.0, 0.85, 0.3), Color(1.0, 0.55, 0.2), Color(1.0, 1.0, 0.9)]
 const ROCK_DUST := Color(0.82, 0.78, 0.72)
+const BOMB_DROP_PX := 96.0
+const BOMB_DROP_SECONDS := 0.32
 var _fx: TSFxLayer          # the boosters' sparks, puffs, rings and flashes
 var _shake := 0.0           # how hard the camera shakes, in world units, fading out
 var _sparkle_clock := 0.0   # paces the armed bomb's fuse sparks and the Any Piece's shimmer
@@ -867,15 +869,14 @@ func _drop() -> void:
 
 	var res: Dictionary
 	if bomb_was_armed:
+		# The bomb is spent now, but goes off only once it has fallen onto the
+		# egg (_drop_bomb), and the drop finishes then.
 		TSProfile.bomb_count -= 1
 		bomb_armed = false
 		TSProfile.record_quest_event("booster")
-		res = board.detonate(landing, 2)
-		_bomb_blast(landing_at)
-		TSSfx.play("bomb")
-		TSHaptics.heavy()
-		if _tutorial.on_step("blast"):
-			_tutorial.gate_passed()
+		_drop_bomb(landing, landing_at)
+		_refresh_hud()
+		return
 	else:
 		var wild := cur_type == TSBoard.WILD
 		res = board.place_and_resolve(offsets, landing, cur_type, _current_depth())
@@ -894,6 +895,55 @@ func _drop() -> void:
 			# chain is called out as it floats up.
 			TSSfx.play("chain" if int(res["chain"]) >= 2 else "match")
 			TSHaptics.light()
+	_finish_drop(res, false)
+
+
+## A bomb falls from the top of the screen onto `cell` (`at` on screen),
+## spinning and trailing fuse sparks, and blows up as it lands. While it falls
+## it counts as a rock in flight: drops and boosters wait, and a restart or a
+## resumed ball cancels it.
+func _drop_bomb(cell: Vector2i, at: Vector2) -> void:
+	_rocks_flying = true
+	_rocks_shot += 1
+	var shot := _rocks_shot
+	var bomb := TSIcon.make("bomb", BOMB_DROP_PX)
+	bomb.size = Vector2.ONE * BOMB_DROP_PX
+	bomb.pivot_offset = bomb.size * 0.5
+	bomb.position = Vector2(at.x, -BOMB_DROP_PX) - bomb.size * 0.5
+	_hud.add_child(bomb)
+	_hud.move_child(bomb, _fx.get_index())
+	var trail := func(_t: float) -> void:
+		_fx.burst(bomb.position + bomb.size * Vector2(0.78, 0.16), FUSE_SPARKS, 1, 120.0, 0.3, 4.0, 200.0)
+	var fall := bomb.create_tween()
+	fall.set_parallel(true)
+	fall.tween_property(bomb, "position", at - bomb.size * 0.5, BOMB_DROP_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	fall.tween_property(bomb, "rotation", 0.6, BOMB_DROP_SECONDS)
+	fall.tween_method(trail, 0.0, 1.0, BOMB_DROP_SECONDS)
+	fall.set_parallel(false)
+	# A squash as it hits, then it goes off.
+	fall.tween_property(bomb, "scale", Vector2(1.3, 0.7), 0.05)
+	fall.tween_callback(func() -> void:
+		bomb.queue_free()
+		if shot == _rocks_shot:
+			_bomb_lands(cell, at))
+
+
+func _bomb_lands(cell: Vector2i, at: Vector2) -> void:
+	_rocks_flying = false
+	if state != State.PLAYING or not is_inside_tree():
+		return
+	var res := board.detonate(cell, 2)
+	_bomb_blast(at)
+	TSSfx.play("bomb")
+	TSHaptics.heavy()
+	if _tutorial.on_step("blast"):
+		_tutorial.gate_passed()
+	_finish_drop(res, true)
+
+
+## Everything after a drop's (or a bomb's) clear: the quests, the chain
+## call-out, a bomb earned, the next piece dealt, and a win or a loss.
+func _finish_drop(res: Dictionary, bomb_was_armed: bool) -> void:
 	if int(res["pieces"]) > 0:
 		TSProfile.record_quest_event("clear", int(res["pieces"]))
 

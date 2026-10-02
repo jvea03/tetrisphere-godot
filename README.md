@@ -242,7 +242,8 @@ A cute, hand-drawn style, all in `scripts/toon.gd` (`TSToon`):
 - **Booster animations** (on their own particle layer, `scripts/ui/fx_layer.gd`;
   every button kicks with a squash and a springy bounce when used): arming the
   **bomb** lights its fuse with a puff of sparks and a shiver, and the fuse
-  keeps spitting sparks while armed; when it goes off there is a flash, two
+  keeps spitting sparks while armed; dropped, it falls from the top of the
+  screen onto the egg, spinning and trailing sparks, and as it lands there is a flash, two
   shockwave rings, a spray of falling sparks, smoke and a hard screen shake.
   The **Any Piece** flies from its button up and over to the hold tray,
   spinning and trailing colourful sparkles, pops in with a burst and a ring,
