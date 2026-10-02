@@ -231,7 +231,7 @@ func _build_showcase() -> void:
 	# At the end of a season, a readied ship can launch (TSProfile.can_launch).
 	if TSProfile.can_launch():
 		gap.add_child(TSUI.spacer(0, true))
-		_launch_btn = TSUI.button("LAUNCH!  ·  +%s coins" % TSProfile.fmt_coins(TSProfile.launch_reward()), TSUI.GOLD, 32, Vector2(420, 84))
+		_launch_btn = TSUI.button("LAUNCH!  +%s" % TSProfile.fmt_coins(TSProfile.launch_reward()), TSUI.GOLD, 30, Vector2(320, 80))   # narrow enough to clear the side tiles
 		_launch_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		_launch_btn.pressed.connect(_on_launch_pressed)
 		gap.add_child(_launch_btn)
