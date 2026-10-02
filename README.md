@@ -239,6 +239,16 @@ A cute, hand-drawn style, all in `scripts/toon.gd` (`TSToon`):
   It includes ink-outlined hearts, rounded piece previews (the next piece
   above the held one, which sits in a sunken tray) and three round booster
   buttons: the Any Piece (a wild tile of every colour), a bomb with a face, and a pair of smiling Rocks.
+- **Booster animations** (on their own particle layer, `scripts/ui/fx_layer.gd`;
+  every button kicks with a squash and a springy bounce when used): arming the
+  **bomb** lights its fuse with a puff of sparks and a shiver, and the fuse
+  keeps spitting sparks while armed; when it goes off there is a flash, two
+  shockwave rings, a spray of falling sparks, smoke and a hard screen shake.
+  The **Any Piece** flies from its button up and over to the hold tray,
+  spinning and trailing colourful sparkles, pops in with a burst and a ring,
+  shimmers while held, and lands on the egg in a burst of every colour.
+  **Rocks** kick the launcher back in a puff of dust, trail dust as they fly,
+  and land in a dusty impact with a small jolt (a geode's rock flies the same way).
 - **The creature** is a milky blob with big sparkly eyes and pink cheeks.
 
 ## The rules as implemented

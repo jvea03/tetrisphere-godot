@@ -122,6 +122,12 @@ var _tie_label: Label
 var _ties_seen := -1            # tie-downs standing at the last HUD refresh (-1: a new ball)
 var _level_ties := 0            # how many this ball started with
 var _hud: Control
+const FUSE_SPARKS := [Color(1.0, 0.85, 0.3), Color(1.0, 0.55, 0.2), Color(1.0, 1.0, 0.9)]
+const ROCK_DUST := Color(0.82, 0.78, 0.72)
+var _fx: TSFxLayer          # the boosters' sparks, puffs, rings and flashes
+var _shake := 0.0           # how hard the camera shakes, in world units, fading out
+var _sparkle_clock := 0.0   # paces the armed bomb's fuse sparks and the Any Piece's shimmer
+var _swap_flyer: Control    # the Any Piece's icon while it flies to the tray
 var _pause_btn: Button
 var _pause: Dictionary
 var _win_card: Dictionary
@@ -331,6 +337,10 @@ func _build_hud() -> void:
 	_build_bomb_button(boosters_at)
 	_btn_swap = _build_booster_button(boosters_at, "swap", -BOOSTER_SPACING, _use_any_piece)
 	_btn_rocks = _build_booster_button(boosters_at, "rocks", BOOSTER_SPACING, _fire_rocks)
+	# The boosters' animations play on their own layer, over the HUD and
+	# under the cards.
+	_fx = TSFxLayer.new()
+	root.add_child(_fx)
 	_build_dialogs(root)
 	_tutorial = TSTutorial.new()
 	root.add_child(_tutorial)
@@ -673,6 +683,15 @@ func _toggle_bomb() -> void:
 		_open_ad("bomb")
 	else:
 		bomb_armed = not bomb_armed
+		_kick_button(_btn_bomb)
+		if bomb_armed:
+			# Armed: the fuse catches with a puff of sparks and the bomb shivers.
+			var r := _btn_bomb.get_global_rect()
+			_fx.burst(r.position + Vector2(r.size.x * 0.78, r.size.y * 0.16), FUSE_SPARKS, 12, 300.0, 0.45, 5.0, 400.0)
+			var shiver := _btn_bomb.create_tween()
+			for k in 4:
+				shiver.tween_property(_btn_bomb, "rotation", 0.14 * (1.0 if k % 2 == 0 else -1.0), 0.05)
+			shiver.tween_property(_btn_bomb, "rotation", 0.0, 0.06)
 		if bomb_armed and _tutorial.on_step("arm_bomb"):
 			_tutorial.gate_passed()
 	_refresh_piece()
@@ -729,7 +748,12 @@ func _fire_rocks() -> void:
 	TSProfile.add_boosters("rocks", -1)
 	TSProfile.record_quest_event("booster")
 	TSProfile.save()
-	_throw_rocks(_btn_rocks.get_global_rect().get_center(), targets)
+	# The launcher kicks back with a puff of dust as the rocks leave it.
+	_kick_button(_btn_rocks)
+	var muzzle := _btn_rocks.get_global_rect().get_center()
+	for k in 5:
+		_fx.puff(muzzle + Vector2(randf_range(-30.0, 30.0), randf_range(-20.0, 10.0)), ROCK_DUST, 16.0, 0.5, Vector2(randf_range(-50.0, 50.0), -60.0))
+	_throw_rocks(muzzle, targets)
 	TSSfx.play("upgrade")
 	_refresh_hud()
 
@@ -764,8 +788,19 @@ func _throw_rocks(from: Vector2, targets: Array) -> void:
 		tw.tween_property(rock, "position", (flights[i] as Vector2) - Vector2(32.0, 32.0), 0.38).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 		tw.tween_property(rock, "rotation", TAU * 1.5, 0.38)
 		tw.tween_property(rock, "scale", Vector2.ONE * 0.7, 0.38)
+		# A trail of dust behind it as it flies.
+		var trail := func(_t: float) -> void:
+			if randf() < 0.4:
+				_fx.puff(rock.position + rock.size * 0.5, ROCK_DUST, 9.0, 0.4)
+		tw.tween_method(trail, 0.0, 1.0, 0.38)
 		tw.set_parallel(false)
+		var hit: Vector2 = flights[i]
 		tw.tween_callback(func() -> void:
+			# It lands: a dusty impact, chips flying, and a small jolt.
+			for k in 5:
+				_fx.puff(hit + Vector2(randf_range(-24.0, 24.0), randf_range(-16.0, 16.0)), ROCK_DUST, 18.0, 0.55, Vector2(randf_range(-70.0, 70.0), -40.0))
+			_fx.burst(hit, [Color(0.6, 0.58, 0.64), Color(0.74, 0.7, 0.78)], 10, 420.0, 0.5, 5.0, 900.0)
+			_shake_screen(0.16)
 			rock.queue_free()
 			landed[0] += 1
 			if landed[0] == flights.size():
@@ -828,6 +863,7 @@ func _drop() -> void:
 	var offsets := current_offsets()
 	var landing := cursor
 	var bomb_was_armed := bomb_armed and TSProfile.bomb_count > 0
+	var landing_at := _screen_of_cell(landing)   # before the drop changes the surface there
 
 	var res: Dictionary
 	if bomb_was_armed:
@@ -835,12 +871,18 @@ func _drop() -> void:
 		bomb_armed = false
 		TSProfile.record_quest_event("booster")
 		res = board.detonate(landing, 2)
+		_bomb_blast(landing_at)
 		TSSfx.play("bomb")
 		TSHaptics.heavy()
 		if _tutorial.on_step("blast"):
 			_tutorial.gate_passed()
 	else:
+		var wild := cur_type == TSBoard.WILD
 		res = board.place_and_resolve(offsets, landing, cur_type, _current_depth())
+		if wild:
+			# The Any Piece lands: a burst of every colour where it becomes one.
+			_fx.burst(landing_at, TSFxLayer.RAINBOW, 24, 620.0, 0.7, 9.0, 0.0, true)
+			_fx.ring(landing_at, Color.WHITE, 16.0, 150.0, 0.35)
 		if int(res["chain"]) == 0:
 			lives -= 1
 			TSSfx.play("miss")
@@ -945,6 +987,10 @@ func _stop_deal_animation() -> void:
 			(tw as Tween).kill()
 	_deal_tweens.clear()
 	_hold_tray.position.y = _tray_top
+	# An Any Piece cut off mid-flight: the tray it was flying to shows again.
+	_hold_box.modulate.a = 1.0
+	if is_instance_valid(_swap_flyer):
+		_swap_flyer.queue_free()
 
 
 # After a drop: the next piece falls from its slot into the tray, growing to
@@ -991,14 +1037,41 @@ func _animate_deal() -> void:
 	_deal_tweens.append(drop_in)
 
 
-# The Any Piece put a wild block in the tray: it pops in where it sits.
+# The Any Piece: its icon leaves the button and swoops up and over to the
+# hold tray, spinning and trailing colourful sparkles, then lands in the tray
+# with a pop, a burst and a ring.
 func _animate_swap_in() -> void:
 	_stop_deal_animation()
 	_draw_piece_boxes()
-	_hold_box.scale = Vector2.ONE * 0.5
-	var pop := create_tween()
-	pop.tween_property(_hold_box, "scale", Vector2.ONE, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	_deal_tweens.append(pop)
+	_kick_button(_btn_swap)
+	var from := _btn_swap.get_global_rect().get_center()
+	var to := _hold_box.get_global_rect().get_center()
+	var peak := (from + to) * 0.5 + Vector2(140.0, -180.0)   # an arc up and over the egg's edge
+	_swap_flyer = TSIcon.make("swap", 92.0)
+	_swap_flyer.size = Vector2(92.0, 92.0)
+	_swap_flyer.pivot_offset = Vector2(46.0, 46.0)
+	_swap_flyer.position = from - _swap_flyer.size * 0.5
+	_hud.add_child(_swap_flyer)
+	_hud.move_child(_swap_flyer, _fx.get_index())   # just under the sparkles it trails
+	_hold_box.modulate.a = 0.0
+	var flyer := _swap_flyer
+	var step := func(t: float) -> void:
+		var p: Vector2 = from.lerp(peak, t).lerp(peak.lerp(to, t), t)
+		flyer.position = p - flyer.size * 0.5
+		flyer.rotation = t * TAU
+		flyer.scale = Vector2.ONE * lerpf(1.0, 0.75, t)
+		if randf() < 0.6:
+			_fx.sparkle(p, TSFxLayer.RAINBOW[randi() % TSFxLayer.RAINBOW.size()], 10.0, 0.45)
+	var fly := create_tween()
+	fly.tween_method(step, 0.0, 1.0, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	fly.tween_callback(func() -> void:
+		flyer.queue_free()
+		_hold_box.modulate.a = 1.0
+		_hold_box.scale = Vector2.ONE * 0.5
+		_fx.burst(to, TSFxLayer.RAINBOW, 18, 420.0, 0.6, 9.0, 0.0, true)
+		_fx.ring(to, Color.WHITE, 20.0, 110.0, 0.35))
+	fly.tween_property(_hold_box, "scale", Vector2.ONE, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_deal_tweens.append(fly)
 
 
 # Your piece, aimed as a translucent footprint lying on the shell exactly where
@@ -1141,6 +1214,55 @@ func _refresh_bomb_button() -> void:
 		btn.visible = state == State.PLAYING and TSProfile.booster_unlocked(id)
 
 
+# -- booster animations -------------------------------------------------------------
+
+## A booster button used: squashed flat for a beat, then a springy bounce back.
+func _kick_button(btn: Control) -> void:
+	btn.pivot_offset = btn.size * 0.5
+	var tw := btn.create_tween()
+	tw.tween_property(btn, "scale", Vector2(1.18, 0.82), 0.07)
+	tw.tween_property(btn, "scale", Vector2.ONE, 0.4).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+
+
+func _shake_screen(amount: float) -> void:
+	_shake = maxf(_shake, amount)
+
+
+func _screen_of_cell(cell: Vector2i) -> Vector2:
+	return _camera.unproject_position(TSBoardView.cell_transform(cell.x, cell.y, float(board.height(cell.x, cell.y))).origin)
+
+
+## Every frame: the camera shake dying away, and -- a few times a second --
+## the armed bomb's fuse spitting sparks and the Any Piece shimmering in its tray.
+func _animate_boosters(delta: float) -> void:
+	if _shake > 0.0:
+		_shake = maxf(0.0, _shake - delta * 1.6)
+		_camera.h_offset = randf_range(-1.0, 1.0) * _shake
+		_camera.v_offset = randf_range(-1.0, 1.0) * _shake
+	_sparkle_clock += delta
+	if _sparkle_clock < 0.12:
+		return
+	_sparkle_clock = 0.0
+	if bomb_armed and _btn_bomb.is_visible_in_tree():
+		var r := _btn_bomb.get_global_rect()
+		_fx.burst(r.position + Vector2(r.size.x * 0.78, r.size.y * 0.16), FUSE_SPARKS, 2, 140.0, 0.35, 4.0, 300.0)
+	if cur_type == TSBoard.WILD and _hold_box.is_visible_in_tree():
+		var h := _hold_box.get_global_rect()
+		_fx.sparkle(h.position + Vector2(randf() * h.size.x, randf() * h.size.y), TSFxLayer.RAINBOW[randi() % TSFxLayer.RAINBOW.size()], 9.0, 0.5)
+
+
+## The bomb goes off at `at` (a screen point): a white flash, two shockwaves,
+## a spray of sparks falling away, a few puffs of smoke, and a hard shake.
+func _bomb_blast(at: Vector2) -> void:
+	_fx.flash(Color(1.0, 1.0, 0.92, 0.6), 0.3)
+	_fx.ring(at, Color(1.0, 0.72, 0.3), 24.0, 320.0, 0.45)
+	_fx.ring(at, Color.WHITE, 12.0, 200.0, 0.3)
+	_fx.burst(at, FUSE_SPARKS + [Color(1.0, 0.35, 0.25)], 36, 900.0, 0.7, 7.0, 900.0)
+	for i in 6:
+		_fx.puff(at + Vector2(randf_range(-40.0, 40.0), randf_range(-30.0, 30.0)), Color(0.55, 0.5, 0.6), 30.0, 0.9, Vector2(randf_range(-60.0, 60.0), -80.0))
+	_shake_screen(0.45)
+
+
 # A bomb was earned: the button pops so the player notices.
 func _pulse_bomb_button() -> void:
 	var tw := _btn_bomb.create_tween()
@@ -1160,6 +1282,7 @@ static func _heart_shape(s: float) -> PackedVector2Array:
 
 
 func _process(delta: float) -> void:
+	_animate_boosters(delta)
 	# A touch held still long enough becomes a hold.
 	if _gesture == Gesture.PENDING and Time.get_ticks_msec() - _touch_ms >= int(HOLD_TIME * 1000.0):
 		_begin_hold()
