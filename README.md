@@ -43,10 +43,16 @@ Godot.exe --headless --path . --export-debug "Android" build/egg-escape-debug.ap
 
 Copy it to a phone and open it (allow installs from unknown sources), or
 with the phone plugged in and USB debugging on, `adb install -r
-build/egg-escape-debug.apk`. `build/` is left out of git. A Play Store
-release needs your own upload key (set under the preset's release keystore)
-and, for Google Play, an App Bundle (AAB) -- a Gradle build, which needs the
-Android build template installed from the editor's Project menu.
+build/egg-escape-debug.apk`. `build/` is left out of git.
+
+**Play Store release (App Bundle).** The "Android AAB" preset is a Gradle
+build (target SDK 36) that writes a signed `.aab`. `tools/release_aab.ps1`
+builds it: it installs the Android build template into `android/` on the
+first run (left out of git), asks for your upload key's password in the
+terminal and hands it to Godot for that export only, and writes
+`build/egg-escape-<version>-<code>.aab`. The top of the script has the
+one-time `keytool` command for making the upload key. Bump `version/code`
+under `[preset.1.options]` before each new upload.
 
 **Touch controls** — everything is a gesture, apart from the three booster buttons and pause:
 

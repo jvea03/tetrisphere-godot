@@ -4,6 +4,8 @@
 # Export output and signing credentials never go in the repo.
 /build/
 /export/
+# The Android Gradle build template: reinstalled by tools/release_aab.ps1.
+/android/
 export_credentials.cfg
 *.apk
 *.aab
