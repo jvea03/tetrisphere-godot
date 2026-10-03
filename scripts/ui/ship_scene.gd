@@ -633,8 +633,8 @@ func _draw_pad(ci: Control) -> void:
 	if _launch_start < 0.0:
 		ci.draw_polyline(hose, INK, 7.0, true)
 		ci.draw_polyline(hose, Color(0.5, 0.52, 0.6), 4.0, true)
-	# The countdown board, hung off the gantry's right leg so it shows in
-	# Home's opening view.
+	# The countdown board, bolted across the gantry and out past its right leg
+	# so it shows in Home's opening view.
 	var lines: Array[String] = []
 	var colour := ACCENT
 	if TSProfile.can_launch():
@@ -645,21 +645,19 @@ func _draw_pad(ci: Control) -> void:
 	else:
 		var days := TSProfile.days_to_launch_window()
 		lines = ["LAUNCH IN", "%d DAY%s" % [days, "" if days == 1 else "S"]]
-	_gantry_board(ci, Vector2(gx + 30.0, PAD.y - 480.0), lines, colour)
+	_gantry_board(ci, Vector2(gx - 30.0, PAD.y - 505.0), lines, colour)
 
 
 # A board bolted to the gantry at `left_top`, its lines shrunk to fit.
 func _gantry_board(ci: Control, left_top: Vector2, lines: Array[String], colour: Color) -> void:
 	var font := TSToon.hand_font()
-	var width := 130.0
-	var fs := 28
+	var width := 200.0
+	var fs := 40
 	for line in lines:
 		while fs > 14 and font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > width - 20.0:
 			fs -= 1
 	var line_h := float(fs) + 6.0
-	var board := Rect2(left_top + Vector2(10.0, 0.0), Vector2(width, line_h * lines.size() + 18.0))
-	for y in [board.position.y + 14.0, board.end.y - 14.0]:
-		ci.draw_line(Vector2(left_top.x - 4.0, y), Vector2(board.position.x + 6.0, y), INK, 6.0, true)
+	var board := Rect2(left_top, Vector2(width, line_h * lines.size() + 18.0))
 	ci.draw_rect(board, colour)
 	ci.draw_rect(board, INK, false, 4.0)
 	for n in lines.size():
