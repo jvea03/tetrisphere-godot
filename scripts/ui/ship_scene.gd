@@ -633,18 +633,38 @@ func _draw_pad(ci: Control) -> void:
 	if _launch_start < 0.0:
 		ci.draw_polyline(hose, INK, 7.0, true)
 		ci.draw_polyline(hose, Color(0.5, 0.52, 0.6), 4.0, true)
-	# The countdown board.
-	var text := ""
+	# The countdown board, hung off the gantry's right leg so it shows in
+	# Home's opening view.
+	var lines: Array[String] = []
 	var colour := ACCENT
 	if TSProfile.can_launch():
-		text = "LAUNCH!"
+		lines = ["LAUNCH!"]
 		colour = Color(1.0, 0.45, 0.5) if fposmod(_t, 1.0) < 0.6 else BUTTER
 	elif TSProfile.has_launched_this_season():
-		text = "NEXT SEASON"
+		lines = ["NEXT", "SEASON"]
 	else:
 		var days := TSProfile.days_to_launch_window()
-		text = "LAUNCH IN %d DAY%s" % [days, "" if days == 1 else "S"]
-	_sign(ci, PAD + Vector2(340.0, 150.0), text, colour)
+		lines = ["LAUNCH IN", "%d DAY%s" % [days, "" if days == 1 else "S"]]
+	_gantry_board(ci, Vector2(gx + 30.0, PAD.y - 480.0), lines, colour)
+
+
+# A board bolted to the gantry at `left_top`, its lines shrunk to fit.
+func _gantry_board(ci: Control, left_top: Vector2, lines: Array[String], colour: Color) -> void:
+	var font := TSToon.hand_font()
+	var width := 130.0
+	var fs := 28
+	for line in lines:
+		while fs > 14 and font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > width - 20.0:
+			fs -= 1
+	var line_h := float(fs) + 6.0
+	var board := Rect2(left_top + Vector2(10.0, 0.0), Vector2(width, line_h * lines.size() + 18.0))
+	for y in [board.position.y + 14.0, board.end.y - 14.0]:
+		ci.draw_line(Vector2(left_top.x - 4.0, y), Vector2(board.position.x + 6.0, y), INK, 6.0, true)
+	ci.draw_rect(board, colour)
+	ci.draw_rect(board, INK, false, 4.0)
+	for n in lines.size():
+		var w := font.get_string_size(lines[n], HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+		ci.draw_string(font, Vector2(board.get_center().x - w * 0.5, board.position.y + 9.0 + line_h * (n + 1) - 6.0), lines[n], HORIZONTAL_ALIGNMENT_LEFT, -1, fs, INK)
 
 
 # A signboard on a post.
