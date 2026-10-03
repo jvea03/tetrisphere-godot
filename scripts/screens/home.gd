@@ -34,6 +34,7 @@ var _launch_btn: Button      # shown at a season's end when the ship is ready
 
 var _chest_slots: Array = [] # per slot: {btn, plate, art, pill, pill_label, band}
 var _settings: Dictionary
+const PRIVACY_URL := "https://jvea03.github.io/duckdoku-privacy/egg-escape.html"
 var _profile: Dictionary
 var _sale: Dictionary
 var _skip: Dictionary
@@ -738,7 +739,7 @@ func _build_settings() -> void:
 	box.add_child(help)
 	for row in [["music", "Music", "music_enabled"], ["sound", "Sound Effects", "sfx_enabled"], ["vibrate", "Haptics", "haptics_enabled"]]:
 		box.add_child(_toggle_row(row[0], row[1], row[2]))
-	var restore := TSUI.button("Restore Purchases", TSUI.LILAC, 24, Vector2(0, 64))
+	var restore := TSUI.expand(TSUI.button("Restore Purchases", TSUI.LILAC, 22, Vector2(0, 64))) as Button
 	restore.pressed.connect(func():
 		restore.disabled = true
 		restore.text = "Restoring..."
@@ -748,7 +749,14 @@ func _build_settings() -> void:
 			restore.disabled = false
 			restore.text = "Restored: No Ads Pass" if Billing.NO_ADS in restored else ("No Ads Pass already active" if TSProfile.no_ads else "Nothing to restore"), CONNECT_ONE_SHOT)
 		Billing.restore_purchases())
-	box.add_child(restore)
+	# The privacy policy, opened in the phone's browser (Play wants it
+	# reachable from inside the app as well as from the store listing).
+	var privacy := TSUI.expand(TSUI.button("Privacy Policy", TSUI.CARD, 22, Vector2(0, 64))) as Button
+	privacy.pressed.connect(func(): OS.shell_open(PRIVACY_URL))
+	var links := TSUI.hbox(12)
+	links.add_child(restore)
+	links.add_child(privacy)
+	box.add_child(links)
 	var close := TSUI.button("Close", TSUI.PINK, 28)
 	close.pressed.connect(func(): TSUI.conceal(_settings["root"]))
 	box.add_child(close)

@@ -5,7 +5,8 @@
 #   Godot.exe --path . res://tests/menu_capture.tscn -- home
 # or `-- game 22` for the game screen on a given level (`-- game 10 ties` or
 # `-- game 13 geodes` to see that lesson), or `-- home all` for
-# Home with every critter owned (add `max` or `broken` for the ship's parts).
+# Home with every critter owned (add `max` or `broken` for the ship's parts),
+# or `-- settings` for Home's Settings pop-up.
 extends Node
 
 
@@ -55,6 +56,12 @@ func _ready() -> void:
 	if screen == "slide":
 		get_tree().change_scene_to_file.call_deferred("res://scenes/home.tscn")
 		get_tree().create_timer(0.6).timeout.connect(func(): SceneFlow.slide("res://scenes/shop.tscn", -1))
+		return
+	if screen == "settings":
+		# `-- settings`: Home with its Settings pop-up open.
+		var tree := get_tree()   # this node is gone by the time the timer fires
+		tree.change_scene_to_file.call_deferred("res://scenes/home.tscn")
+		tree.create_timer(1.0).timeout.connect(func(): tree.current_scene._open_settings())
 		return
 	if screen == "game":
 		# An optional level after it: `-- game 22` opens level 22's ball.

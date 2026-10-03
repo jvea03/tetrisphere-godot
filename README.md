@@ -100,7 +100,9 @@ art drawn in code (`scripts/ui/icon.gd`) -- none of Duckdoku's art is copied.
 **Screens:** splash and loading; **Home** (avatar card with collection level,
 wallet, Settings, the side tiles for the login streak, Daily Egg, Battle Pass,
 Egg Hunt and any running sale, the chest tray, the level plate and PLAY) with
-its pop-ups -- Settings, Profile, chest opening, finish-a-chest-now, pop-up sales, leaderboard results, and
+its pop-ups -- Settings (How to Play, sound and haptics toggles, Restore
+Purchases and a Privacy Policy link, which opens the policy page in the
+browser), Profile, chest opening, finish-a-chest-now, pop-up sales, leaderboard results, and
 the Home and Daily Egg walkthroughs; **Battle Pass** (30 tiers of free and
 premium rewards, buy a tier for coins, Daily/Weekly quests, buy-pass pop-up);
 **Collection** (critters to buy and upgrade to Lv 10; the camp to build and the ship to fix, each up to Lv 4, the ship once the camp is done; titles
