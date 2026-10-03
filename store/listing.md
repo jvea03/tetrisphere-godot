@@ -10,7 +10,7 @@ go in.
 **App name** (30): Egg Escape: Puzzle Break
 
 **Short description** (80):
-Spin the egg, match the blocks, and break the critters free!
+Spin the egg, match the blocks, and help the critters escape!
 
 **Full description** (4000):
 
@@ -35,14 +35,15 @@ Can you get every critter off the planet?
 
 **App icon**: store/icon_512.png
 **Feature graphic**: store/feature_1024x500.png
-**Phone screenshots**: store/screenshots/01.png – 06.png
+**Phone and 7-inch tablet screenshots**: store/screenshots/01.png – 06.png (540 x 960)
+**10-inch tablet screenshots**: store/screenshots_tablet/01.png – 06.png (the same, 2x to 1080 x 1920)
 
 ## Store settings
 
 - App category: Game → Puzzle
 - Tags: Puzzle, Casual, Match 3 (pick what Play offers)
 - Contact email: jvea03@gmail.com
-- Privacy policy URL: where store/privacy.html is published
+- Privacy policy URL: https://jvea03.github.io/duckdoku-privacy/egg-escape.html
 
 ## App content (Policy → App content)
 
