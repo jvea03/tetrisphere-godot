@@ -28,6 +28,11 @@ const PRODUCTS := {
 	"coins_50000": {"coins": 50000, "consumable": true},
 	"coins_120000": {"coins": 120000, "consumable": true},
 	"coins_320000": {"coins": 320000, "consumable": true},
+	"materials_500": {"materials": 500, "consumable": true},
+	"materials_1600": {"materials": 1600, "consumable": true},
+	"materials_5000": {"materials": 5000, "consumable": true},
+	"materials_12000": {"materials": 12000, "consumable": true},
+	"materials_32000": {"materials": 32000, "consumable": true},
 	"bundle_starter": {"coins": 10000, "bomb": 4, "consumable": true},
 	"bundle_value": {"coins": 50000, "bomb": 11, "consumable": true},
 	"bundle_mega": {"coins": 150000, "bomb": 26, "consumable": true},
@@ -157,6 +162,7 @@ func _grant(product_id: String) -> void:
 		TSProfile.purchase_battle_pass()
 		return
 	TSProfile.coin_count += int(p.get("coins", 0))
+	TSProfile.add_materials(int(p.get("materials", 0)))
 	if int(p.get("bomb", 0)) > 0:
 		TSProfile.bomb_count += int(p["bomb"])
 		TSProfile.bombs_unlocked = true

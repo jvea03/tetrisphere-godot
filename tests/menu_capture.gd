@@ -114,4 +114,10 @@ func _ready() -> void:
 			TSProfile.tie_tutorial_seen = false
 		get_tree().change_scene_to_file.call_deferred(SceneFlow.GAME)
 		return
+	if args_has("bottom"):
+		# `-- shop bottom`: the screen's list scrolled to its end.
+		var t := get_tree()
+		t.create_timer(0.6).timeout.connect(func():
+			for s in t.current_scene.find_children("*", "ScrollContainer", true, false):
+				(s as ScrollContainer).scroll_vertical = 100000)
 	get_tree().change_scene_to_file.call_deferred("res://scenes/%s.tscn" % screen)

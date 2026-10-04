@@ -65,14 +65,25 @@ static var starter_coin_claims: int = 0
 static var starter_coin_claims_date: String = ""
 
 
-## Zeroes the daily pack's claims on the first look each day.
+## And the Shop's daily materials pack, claimed the same way, on its own count.
+static var starter_material_claims: int = 0
+static var starter_material_claims_date: String = ""
+
+
+## Zeroes the daily packs' claims on the first look each day.
 static func roll_starter_claims() -> void:
 	var today := Time.get_date_string_from_system()
+	var changed := false
 	if starter_coin_claims_date != today:
 		starter_coin_claims_date = today
-		if starter_coin_claims != 0:
-			starter_coin_claims = 0
-			save()
+		changed = changed or starter_coin_claims != 0
+		starter_coin_claims = 0
+	if starter_material_claims_date != today:
+		starter_material_claims_date = today
+		changed = changed or starter_material_claims != 0
+		starter_material_claims = 0
+	if changed:
+		save()
 
 
 ## The Shop's No Ads pass: every "watch an ad" step is skipped and its reward
@@ -2149,6 +2160,8 @@ static func ensure_loaded() -> void:
 	coin_count = int(g.call("coin_count", 0))
 	starter_coin_claims = int(g.call("starter_coin_claims", 0))
 	starter_coin_claims_date = str(g.call("starter_coin_claims_date", ""))
+	starter_material_claims = int(g.call("starter_material_claims", 0))
+	starter_material_claims_date = str(g.call("starter_material_claims_date", ""))
 	no_ads = bool(g.call("no_ads", false))
 	is_payer = bool(g.call("is_payer", false)) or no_ads
 	interstitial_owed = bool(g.call("interstitial_owed", false))
@@ -2254,6 +2267,8 @@ static func save() -> void:
 	s.call("last_level", last_level)
 	s.call("coin_count", coin_count)
 	s.call("starter_coin_claims", starter_coin_claims)
+	s.call("starter_material_claims", starter_material_claims)
+	s.call("starter_material_claims_date", starter_material_claims_date)
 	s.call("starter_coin_claims_date", starter_coin_claims_date)
 	s.call("no_ads", no_ads)
 	s.call("is_payer", is_payer)

@@ -1,8 +1,9 @@
 extends TSScreen
 
 ## The Shop (Duckdoku's ShopScreen): a featured sale that rotates weekly, the
-## No Ads pass, three bundles, booster packs bought with coins, and coin packs --
-## the first of which is a free daily pack (one free claim, then two for an ad
+## No Ads pass, three bundles, booster packs bought with coins, coin packs and
+## building-materials packs --
+## the first of each a free daily pack (one free claim, then two for an ad
 ## each). Every real-money item goes through Billing, simulated until the
 ## store plugins and product ids exist.
 
@@ -21,6 +22,16 @@ const COIN_PACKS := [
 	{"coins": 50000, "price": "$6.99", "product_id": "coins_50000"},
 	{"coins": 120000, "price": "$12.99", "product_id": "coins_120000"},
 	{"coins": 320000, "price": "$29.99", "product_id": "coins_320000"},
+]
+## Building materials for the camp and the ship, packed like the coins: a free
+## daily pack, then five for real money.
+const MATERIAL_PACKS := [
+	{"materials": 100, "price": "Free", "starter": true},
+	{"materials": 500, "price": "$0.99", "product_id": "materials_500"},
+	{"materials": 1600, "price": "$2.99", "product_id": "materials_1600"},
+	{"materials": 5000, "price": "$6.99", "product_id": "materials_5000"},
+	{"materials": 12000, "price": "$12.99", "product_id": "materials_12000"},
+	{"materials": 32000, "price": "$29.99", "product_id": "materials_32000"},
 ]
 const STARTER_PACK_LIMIT := 3 # per day: 1 free + 2 ads
 const NO_ADS_PRICE := "$4.99"
@@ -80,15 +91,27 @@ func _refresh() -> void:
 	for p in COIN_PACKS:
 		grid.add_child(_coin_card(p))
 	_list.add_child(grid)
+	_list.add_child(_header("Materials", TSUI.SKY, "", "materials"))
+	var mgrid := GridContainer.new()
+	mgrid.columns = 3
+	mgrid.add_theme_constant_override("h_separation", 12)
+	mgrid.add_theme_constant_override("v_separation", 12)
+	for p in MATERIAL_PACKS:
+		mgrid.add_child(_material_card(p))
+	_list.add_child(mgrid)
 	_list.add_child(TSUI.spacer(12))
 	TSUI.juice(_list)
 
 
-func _header(text: String, color: Color, trailing: String) -> Control:
+func _header(text: String, color: Color, trailing: String, note := "") -> Control:
 	var bar := TSUI.card(color, 20, 10, 3)
 	var row := TSUI.hbox(8)
 	bar.add_child(row)
 	row.add_child(TSUI.expand(TSUI.outlined(TSUI.label(text, 30, Color.WHITE), TSUI.INK, 8)))
+	if note == "materials":
+		# How many you have, as the coins show in the wallet.
+		row.add_child(TSIcon.make("materials", 34))
+		row.add_child(TSUI.outlined(TSUI.label(TSProfile.fmt_coins(TSProfile.materials), 24, Color.WHITE), TSUI.INK, 6))
 	if trailing != "":
 		row.add_child(TSIcon.make("clock", 32))
 		row.add_child(TSUI.outlined(TSUI.label(trailing, 22, Color.WHITE), TSUI.INK, 6))
@@ -247,24 +270,71 @@ func _coin_card(p: Dictionary) -> Control:
 	return card
 
 
-## Payers are never shown ads, so for them the daily pack is its one free claim.
-func _starter_left() -> int:
+## A materials pack: a heap of the materials icon, bigger for bigger packs.
+func _material_card(p: Dictionary) -> Control:
+	var card := TSUI.card(TSUI.CARD, 24, 10, 3)
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var v := TSUI.vbox(4)
+	card.add_child(v)
+	var amount := int(p["materials"])
+	var stack := Control.new()
+	stack.custom_minimum_size = Vector2(0, 90)
+	var n := clampi(int(log(float(amount) / 100.0) / log(2.5)) + 1, 1, 5)
+	for k in n:
+		var c := TSIcon.make("materials", 58)
+		c.position = Vector2(38 + (k % 3) * 22 - (n - 1) * 6, 28 - (k / 3) * 22 - k * 3)
+		c.size = Vector2(58, 58)
+		stack.add_child(c)
+	v.add_child(stack)
+	v.add_child(TSUI.label("%s materials" % TSProfile.fmt_coins(amount), 22, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER))
+	if p.get("starter", false):
+		var left := _starter_left(true)
+		var claims := TSProfile.starter_material_claims
+		v.add_child(TSUI.label("Back tomorrow" if left <= 0 else ("Free today" if claims == 0 else "%d ad%s left" % [left, "" if left == 1 else "s"]), 16, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+		var b := _buy_button("Free" if claims == 0 else ("Watch Ad" if left > 0 else "Claimed"), _on_starter.bind(p))
+		b.disabled = left <= 0
+		v.add_child(b)
+		return card
+	v.add_child(_buy_button(_price(p), func(): Billing.purchase(p["product_id"])))
+	return card
+
+
+## Payers are never shown ads, so for them a daily pack is its one free claim.
+func _starter_left(materials := false) -> int:
 	TSProfile.roll_starter_claims()
 	var limit := 1 if TSProfile.is_payer else STARTER_PACK_LIMIT
-	return maxi(limit - TSProfile.starter_coin_claims, 0)
+	return maxi(limit - (TSProfile.starter_material_claims if materials else TSProfile.starter_coin_claims), 0)
 
 
+## A daily pack (coins or materials): the first claim is free, the rest an ad each.
 func _on_starter(p: Dictionary) -> void:
-	if _starter_left() <= 0:
+	var mats := p.has("materials")
+	if _starter_left(mats) <= 0:
 		return
-	if TSProfile.starter_coin_claims == 0:
-		TSProfile.starter_coin_claims = 1
-		TSProfile.coin_count += int(p["coins"])
-		TSProfile.save()
+	if (TSProfile.starter_material_claims if mats else TSProfile.starter_coin_claims) == 0:
+		_grant_starter(p)
 		_celebrate()
 		_refresh()
 		return
 	_open_ad(p)
+
+
+## One claim of a daily pack, counted against today's.
+func _grant_starter(p: Dictionary) -> void:
+	if p.has("materials"):
+		TSProfile.starter_material_claims += 1
+		TSProfile.add_materials(int(p["materials"]))
+	else:
+		TSProfile.starter_coin_claims += 1
+		TSProfile.coin_count += int(p["coins"])
+	TSProfile.save()
+
+
+## "1,000 coins" or "100 materials": what a daily pack gives.
+static func _pack_text(p: Dictionary) -> String:
+	if p.has("materials"):
+		return "%s materials" % TSProfile.fmt_coins(int(p["materials"]))
+	return "%s coins" % TSProfile.fmt_coins(int(p["coins"]))
 
 
 func _celebrate() -> void:
@@ -289,11 +359,11 @@ func _open_ad(pack: Dictionary) -> void:
 	var box: VBoxContainer = _ad["box"]
 	for c in box.get_children():
 		c.queue_free()
-	box.add_child(TSUI.title("Free Coins", 44))
+	box.add_child(TSUI.title("Free Materials" if pack.has("materials") else "Free Coins", 44))
 	var ic := TSIcon.make("ad", 120)
 	ic.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	box.add_child(ic)
-	var status := TSUI.wrap(TSUI.label("Watch a short ad to earn %s coins." % TSProfile.fmt_coins(int(pack["coins"])), 24, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER))
+	var status := TSUI.wrap(TSUI.label("Watch a short ad to earn %s." % _pack_text(pack), 24, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER))
 	box.add_child(status)
 	var progress := TSUI.bar(TSUI.SKY, 26)
 	progress.visible = false
@@ -318,12 +388,10 @@ func _open_ad(pack: Dictionary) -> void:
 			close.visible = true
 			if not earned:
 				watch.visible = true
-				status.text = "The ad didn't finish -- no coins this time."
+				status.text = "The ad didn't finish -- nothing this time."
 				return
-			TSProfile.starter_coin_claims += 1
-			TSProfile.coin_count += int(_ad_pack["coins"])
-			TSProfile.save()
-			status.text = "You earned %s coins!" % TSProfile.fmt_coins(int(_ad_pack["coins"]))
+			_grant_starter(_ad_pack)
+			status.text = "You earned %s!" % _pack_text(_ad_pack)
 			close.text = "Done"
 			_refresh(), CONNECT_ONE_SHOT)
 		Ads.show_rewarded())

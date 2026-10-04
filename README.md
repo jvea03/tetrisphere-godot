@@ -108,7 +108,7 @@ premium rewards, buy a tier for coins, Daily/Weekly quests, buy-pass pop-up);
 **Collection** (critters to buy and upgrade to Lv 10; titles
 and stars, rarity, collection level, the first-visit walkthrough with its
 coin gift); **Shop** (weekly featured sale, No Ads pass, bundles, bomb, Any Piece and Rocks packs,
-coin packs with a free daily pack); **Leaderboard** (Daily / Weekly /
+coin packs and building-materials packs, each with a free daily pack); **Leaderboard** (Daily / Weekly /
 Season, pinned own row, podium prizes); **Clubs** (join, search, create with
 a badge; club page with the Leader's note, chat, members and a weekly club
 leaderboard); **Daily Streaks** (login and Daily Egg streaks, a coin claim
