@@ -147,10 +147,19 @@ func _test_building() -> void:
 	_check("once the time is up it finishes, a level up, and the critter is free", TSProfile.finish_part_build(p) and TSProfile.part_level_of(p) == 1 and not TSProfile.is_part_building(p) and TSProfile.free_builders().has(TSProfile.avatar()))
 	_check("each level takes longer and more materials", TSProfile.part_build_seconds(p) == secs * 2 and TSProfile.part_next_materials(p) == mats * 2)
 	_check("later waves take longer still", TSProfile.part_build_seconds(TSProfile.CAMP_HAMMOCK) > TSProfile.part_build_seconds(TSProfile.CAMP_WELL) and TSProfile.part_build_seconds(TSProfile.PART_ENGINE) > TSProfile.part_build_seconds(TSProfile.CAMP_STATUE))
+	# Time skips: a minute off each, never more than a build needs.
+	TSProfile.start_part_build(p)
+	TSProfile.time_skips = 5
+	TSProfile.part_builds[p]["end"] = TSProfile._now_unix() + 150   # three minutes' worth of skips
+	var left := TSProfile.part_build_seconds_left(p)
+	_check("a time skip takes a minute off", TSProfile.use_time_skips(p, 1) == 1 and TSProfile.time_skips == 4 and TSProfile.part_build_seconds_left(p) <= left - 60)
+	_check("and no more are used than it takes to finish (%d needed)" % TSProfile.time_skips_to_finish(p), TSProfile.use_time_skips(p, 99) == 2 and TSProfile.is_part_build_done(p) and TSProfile.time_skips == 2)
+	TSProfile.finish_part_build(p)
+	_check("chests and the Battle Pass give time skips", int(TSChests.SKIP_PAYOUT[TSChests.COMMON]) > 0 and int(TSProfile.battle_pass_free_reward(2).get("skips", 0)) > 0)
 	TSProfile.start_part_build(p)
 	var coins := TSProfile.coin_count
 	var skip := TSProfile.part_build_skip_cost(p)
-	_check("finishing early costs %d coins" % skip, skip > 0 and TSProfile.skip_part_build(p) and TSProfile.coin_count == coins - skip and TSProfile.part_level_of(p) == 2)
+	_check("finishing early costs %d coins" % skip, skip > 0 and TSProfile.skip_part_build(p) and TSProfile.coin_count == coins - skip and TSProfile.part_level_of(p) == 3)
 	# Where materials come from.
 	var before := TSProfile.materials
 	TSProfile.claim_battle_pass_free(1)

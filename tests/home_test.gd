@@ -72,16 +72,23 @@ func _run() -> void:
 	_check("a critter goes to work on it", TSProfile.part_builder(TSProfile.CAMP_FIRE) == TSProfile.avatar())
 	_open_part(TSProfile.CAMP_FIRE)
 	_check("its card counts down and offers Finish Now", (_part["go"] as Button).text.begins_with("Finish Now"))
+	TSProfile.time_skips = 3
+	_fill_part_card()
+	_check("its card offers time skips", (_part["skips"] as Control).visible and not (_part["skip_one"] as Button).disabled)
+	_use_skips(1)   # its 30 seconds gone with one
+	_check("a time skip finishes it, collected at once: Lv 1", TSProfile.part_level_of(TSProfile.CAMP_FIRE) == 1 and not TSProfile.is_part_building(TSProfile.CAMP_FIRE) and TSProfile.time_skips == 2)
+	_open_part(TSProfile.CAMP_FIRE)
+	_on_part_pressed()
 	TSUI.conceal(_part["root"])
 	_time_up(TSProfile.CAMP_FIRE)
 	_open_part(TSProfile.CAMP_FIRE)
-	_check("once done, tapping its node collects it: Lv 1", TSProfile.part_level_of(TSProfile.CAMP_FIRE) == 1 and not TSProfile.is_part_building(TSProfile.CAMP_FIRE))
+	_check("once done, tapping its node collects it: Lv 2", TSProfile.part_level_of(TSProfile.CAMP_FIRE) == 2 and not TSProfile.is_part_building(TSProfile.CAMP_FIRE))
 	_open_part(TSProfile.CAMP_FIRE)
 	_on_part_pressed()
 	coins = TSProfile.coin_count
 	_open_part(TSProfile.CAMP_FIRE)
 	_on_part_pressed()   # Finish Now
-	_check("Finish Now pays coins and finishes the upgrade at once", TSProfile.part_level_of(TSProfile.CAMP_FIRE) == 2 and TSProfile.coin_count < coins)
+	_check("Finish Now pays coins and finishes the upgrade at once", TSProfile.part_level_of(TSProfile.CAMP_FIRE) == 3 and TSProfile.coin_count < coins)
 	_check("none of it counts toward the collection level", TSProfile.collection_points() == points)
 
 	# The reasons a build can't start.

@@ -187,7 +187,7 @@ func _reward_card(tier: int, current: int, reward: Dictionary, premium: bool) ->
 	var stack := MarginContainer.new()
 	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	card.add_child(stack)
-	var h := TSUI.hbox(8)
+	var h := TSUI.hbox(2)
 	h.alignment = BoxContainer.ALIGNMENT_CENTER
 	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(h)
@@ -199,10 +199,12 @@ func _reward_card(tier: int, current: int, reward: Dictionary, premium: bool) ->
 		h.add_child(_item("coin", 0, "x%s" % TSProfile.fmt_coins(int(reward["coins"]))))
 	if int(reward.get("materials", 0)) > 0:
 		h.add_child(_item("materials", 0, "x%d" % int(reward["materials"])))
+	if int(reward.get("skips", 0)) > 0:
+		h.add_child(_item("skip", 0, "x%d" % int(reward["skips"])))
 	if int(reward.get("bomb", 0)) > 0:
 		h.add_child(_item("bomb", 0, "x%d" % int(reward["bomb"])))
 	if (not premium and not reached) or (premium and not TSProfile.battle_pass_purchased):
-		var lock := TSIcon.make("lock", 34)
+		var lock := TSIcon.make("lock", 28)
 		lock.size_flags_horizontal = Control.SIZE_SHRINK_END
 		lock.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 		stack.add_child(lock)
@@ -222,11 +224,11 @@ func _reward_card(tier: int, current: int, reward: Dictionary, premium: bool) ->
 func _item(icon: String, idx: int, caption: String) -> Control:
 	var v := TSUI.vbox(0)
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var ic := TSIcon.make(icon, 52, idx)
+	var ic := TSIcon.make(icon, 42, idx)
 	ic.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	v.add_child(ic)
-	var l := TSUI.label(caption, 17, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER)
-	l.custom_minimum_size.x = 70
+	var l := TSUI.label(caption, 15, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER)
+	l.custom_minimum_size.x = 54
 	v.add_child(l)
 	return v
 
@@ -325,7 +327,7 @@ func _open_buy() -> void:
 	box.add_child(TSUI.title("Premium Pass", 44))
 	var season := TSProfile.season_rewards()
 	var lines := PackedStringArray()
-	lines.append("A bigger reward on every tier: more coins, bombs and building materials.")
+	lines.append("A bigger reward on every tier: more coins, bombs, building materials and time skips.")
 	for t in season["paid_critters"]:
 		var c := int(season["paid_critters"][t])
 		lines.append("%s at tier %d%s." % [TSProfile.critter_name(c), t, " -- only here" if TSProfile.is_critter_pass_exclusive(c) else ""])
@@ -343,12 +345,14 @@ func _open_buy() -> void:
 		var coins := 0
 		var bombs := 0
 		var mats := 0
+		var skips := 0
 		for t in range(1, tier + 1):
 			var r := TSProfile.battle_pass_paid_reward(t)
 			coins += int(r.get("coins", 0))
 			bombs += int(r.get("bomb", 0))
 			mats += int(r.get("materials", 0))
-		box.add_child(TSUI.wrap(TSUI.label("You are on tier %d, so buying now unlocks right away: %s coins, %d bombs and %d building materials." % [tier, TSProfile.fmt_coins(coins), bombs, mats], 22, TSFX.COL_GAIN, HORIZONTAL_ALIGNMENT_CENTER), 540))
+			skips += int(r.get("skips", 0))
+		box.add_child(TSUI.wrap(TSUI.label("You are on tier %d, so buying now unlocks right away: %s coins, %d bombs, %d building materials and %d time skips." % [tier, TSProfile.fmt_coins(coins), bombs, mats, skips], 22, TSFX.COL_GAIN, HORIZONTAL_ALIGNMENT_CENTER), 540))
 	var confirm := TSUI.button("Buy Pass  ·  %s" % _price(), COL_PREMIUM_RIM, 30, Vector2(0, 84))
 	confirm.pressed.connect(func():
 		TSUI.conceal(_buy["root"])

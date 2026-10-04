@@ -172,6 +172,7 @@ func _draw() -> void:
 		"pass": _draw_pass()
 		"hunt": _draw_hunt()
 		"materials": _draw_materials()
+		"skip": _draw_skip()
 		"tag": _draw_tag()
 		"cog": _draw_cog()
 		"home": _draw_home()
@@ -604,6 +605,15 @@ func _draw_pass() -> void:
 	_poly([Vector2(0.7, 0.5), Vector2(0.78, 0.92), Vector2(0.64, 0.84), Vector2(0.56, 0.94), Vector2(0.52, 0.56)], PINK)
 	_circle(Vector2(0.5, 0.42), 0.3, _col(GOLD))
 	_poly(_star_pts(Vector2(0.5, 0.44), 0.18, 0.08), WHITE)
+
+
+## A time skip: a sky-blue clock with a fast-forward mark on its face.
+func _draw_skip() -> void:
+	_circle(Vector2(0.5, 0.52), 0.38, _col(Color(0.62, 0.8, 1.0)))
+	_circle(Vector2(0.5, 0.52), 0.29, WHITE, false)
+	_rrect(Rect2(0.44, 0.06, 0.12, 0.1), 0.03, _col(Color(0.62, 0.8, 1.0)))
+	for x in [0.33, 0.5]:
+		_poly([Vector2(x, 0.38), Vector2(x + 0.17, 0.52), Vector2(x, 0.66)], _col(Color(0.36, 0.5, 0.9)), false)
 
 
 ## Building materials: a grey stone block with two wooden planks crossed over

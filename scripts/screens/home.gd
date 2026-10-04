@@ -409,6 +409,18 @@ func _build_part_card() -> void:
 	builder.alignment = BoxContainer.ALIGNMENT_CENTER
 	box.add_child(builder)
 	_part["builder"] = builder
+	# While it builds: time skips, a minute off each -- one, or as many as it takes.
+	var skips := TSUI.hbox(12)
+	box.add_child(skips)
+	_part["skips"] = skips
+	var one := TSUI.expand(TSUI.button("", TSUI.SKY, 22, Vector2(0, 64), 4)) as Button
+	one.pressed.connect(func(): _use_skips(1))
+	skips.add_child(one)
+	_part["skip_one"] = one
+	var all := TSUI.expand(TSUI.button("", TSUI.SKY, 22, Vector2(0, 64), 4)) as Button
+	all.pressed.connect(func(): _use_skips(TSProfile.time_skips_to_finish(_part_index)))
+	skips.add_child(all)
+	_part["skip_all"] = all
 	var go := TSUI.button("", TSUI.GREEN, 28, Vector2(0, 76))
 	go.pressed.connect(_on_part_pressed)
 	box.add_child(go)
@@ -476,6 +488,7 @@ func _fill_part_card() -> void:
 	for c in costs.get_children() + builder.get_children():
 		c.queue_free()
 	go.disabled = false
+	(_part["skips"] as Control).visible = TSProfile.is_part_building(i) and not TSProfile.is_part_build_done(i)
 	if TSProfile.is_part_max_level(i):
 		note.text = "Fully upgraded!"
 		go.text = "Max Level"
@@ -490,7 +503,16 @@ func _fill_part_card() -> void:
 		builder.add_child(TSUI.label("%s is building: %s" % [TSProfile.critter_name(who), next], 22))
 		var left := TSProfile.part_build_seconds_left(i)
 		costs.add_child(_cost_chip("clock", fmt_time(left) + " left", false))
-		note.text = ""
+		costs.add_child(_cost_chip("skip", "%d skips" % TSProfile.time_skips, false))
+		note.text = "Each time skip takes a minute off. Get them from chests and the Battle Pass." if TSProfile.time_skips == 0 else ""
+		var need := TSProfile.time_skips_to_finish(i)
+		var one: Button = _part["skip_one"]
+		var all: Button = _part["skip_all"]
+		one.text = "Skip 1 min"
+		one.disabled = TSProfile.time_skips <= 0
+		var use := mini(need, TSProfile.time_skips)
+		all.text = ("Use %d to finish" % need) if TSProfile.time_skips >= need else ("Use all %d" % TSProfile.time_skips)
+		all.disabled = use <= 0 or need <= 1
 		var skip := TSProfile.part_build_skip_cost(i)
 		go.text = "Finish Now  ·  %s coins" % TSProfile.fmt_coins(skip)
 		TSUI.restyle(go, TSUI.GOLD)
@@ -572,6 +594,21 @@ func _on_part_pressed() -> void:
 	TSHaptics.light()
 	TSUI.conceal(_part["root"])
 	TSUI.note(self, materials_pill, "%s started on the %s!" % [TSProfile.critter_name(who), TSProfile.part_name(i).to_lower()])
+
+
+## Time skips on the open card's build: n minutes off. If that finishes it,
+## it is collected right away.
+func _use_skips(n: int) -> void:
+	var i := _part_index
+	if TSProfile.use_time_skips(i, n) <= 0:
+		return
+	TSSfx.play("coin")
+	TSFX.sparkle_burst(self, _part["skip_all"] if n > 1 else _part["skip_one"])
+	if TSProfile.is_part_build_done(i):
+		TSUI.conceal(_part["root"])
+		_finish_build(i)
+	else:
+		_fill_part_card()
 
 
 ## A finished build, collected from its node: the part goes up a level.
@@ -839,7 +876,8 @@ func _open_chest(i: int) -> void:
 	_chest_coins_before = before
 	coin_pill.label.text = TSProfile.fmt_coins(before)
 	(_chest["title"] as Label).text = "%s Chest" % TSChests.DISPLAY_NAMES[reward["rarity"]]
-	(_chest["mats"] as Label).text = "+%d building materials" % int(reward.get("materials", 0))
+	(_chest["mats"] as Label).text = "+%d" % int(reward.get("materials", 0))
+	(_chest["skips"] as Label).text = "+%d" % int(reward.get("skips", 0))
 	(_chest["mats_row"] as Control).modulate.a = 0.0
 	_refresh_materials()
 	TSUI.reveal(_chest["root"], _chest["panel"])
@@ -1108,6 +1146,11 @@ func _build_dialogs() -> void:
 	mats_row.add_child(TSIcon.make("materials", 44))
 	var mats := TSUI.label("", 28)
 	mats_row.add_child(mats)
+	mats_row.add_child(TSUI.spacer(10))
+	mats_row.add_child(TSIcon.make("skip", 44))
+	var skips := TSUI.label("", 28)
+	mats_row.add_child(skips)
+	_chest["skips"] = skips
 	cbox.add_child(mats_row)
 	_chest["mats"] = mats
 	_chest["mats_row"] = mats_row

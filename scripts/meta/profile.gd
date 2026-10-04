@@ -666,6 +666,10 @@ const MATERIALS_PER_WIN := 30
 const MATERIALS_PER_DAILY := 50
 
 static var materials: int = 0
+## Time skips: each takes TIME_SKIP_SECONDS off a build under way. From chests
+## and the Battle Pass.
+const TIME_SKIP_SECONDS := 60
+static var time_skips: int = 0
 ## Steps under way: part index -> {"end": unix time it is done, "critter": the builder}.
 static var part_builds: Dictionary = {}
 
@@ -784,6 +788,25 @@ static func _complete_build(i: int) -> void:
 static func part_build_skip_cost(i: int) -> int:
 	var minutes := maxi(1, ceili(part_build_seconds_left(i) / 60.0))
 	return minutes * BUILD_SKIP_COINS_PER_MINUTE
+
+
+## How many time skips would finish a build (each takes a minute off).
+static func time_skips_to_finish(i: int) -> int:
+	return ceili(part_build_seconds_left(i) / float(TIME_SKIP_SECONDS))
+
+
+## Spends up to n time skips on a build, a minute off each -- never more than
+## it needs. Returns how many were used.
+static func use_time_skips(i: int, n: int) -> int:
+	if not is_part_building(i) or is_part_build_done(i):
+		return 0
+	var used := mini(mini(n, time_skips), time_skips_to_finish(i))
+	if used <= 0:
+		return 0
+	time_skips -= used
+	part_builds[i]["end"] = int(part_builds[i]["end"]) - used * TIME_SKIP_SECONDS
+	save()
+	return used
 
 
 static func skip_part_build(i: int) -> bool:
@@ -1843,9 +1866,9 @@ const BATTLE_PASS_PAID_COINS_BASE := 1000
 const BATTLE_PASS_COINS_STEP := 100
 
 ## Building materials on every tier: 50 + 10 a tier on the free track, 100 + 20
-## a tier on the premium one.
+## a tier on the premium one -- and time skips, 3 a tier free and 5 premium.
 static func battle_pass_free_reward(tier: int) -> Dictionary:
-	var r := {"coins": BATTLE_PASS_FREE_COINS_BASE + BATTLE_PASS_COINS_STEP * (tier - 1), "materials": 50 + 10 * tier}
+	var r := {"coins": BATTLE_PASS_FREE_COINS_BASE + BATTLE_PASS_COINS_STEP * (tier - 1), "materials": 50 + 10 * tier, "skips": 3}
 	var critters: Dictionary = season_rewards()["free_critters"]
 	if critters.has(tier):
 		r["critter"] = critters[tier]
@@ -1858,7 +1881,7 @@ static func battle_pass_free_reward(tier: int) -> Dictionary:
 ## 1 a tier, 3 on every 5th, 5 on the 10th and 20th -- unless the tier hands
 ## out a critter or a ship part.
 static func battle_pass_paid_reward(tier: int) -> Dictionary:
-	var r := {"coins": BATTLE_PASS_PAID_COINS_BASE + BATTLE_PASS_COINS_STEP * (tier - 1), "materials": 100 + 20 * tier}
+	var r := {"coins": BATTLE_PASS_PAID_COINS_BASE + BATTLE_PASS_COINS_STEP * (tier - 1), "materials": 100 + 20 * tier, "skips": 5}
 	var season := season_rewards()
 	if season["paid_critters"].has(tier):
 		r["critter"] = season["paid_critters"][tier]
@@ -1876,6 +1899,7 @@ static func battle_pass_paid_reward(tier: int) -> Dictionary:
 static func _apply_reward(reward: Dictionary) -> void:
 	coin_count += boost_earned_coins(int(reward.get("coins", 0)))
 	add_materials(int(reward.get("materials", 0)))
+	time_skips += int(reward.get("skips", 0))
 	if reward.has("critter"):
 		grant_critter(int(reward["critter"]))
 	if reward.has("part"):
@@ -2156,6 +2180,7 @@ static func ensure_loaded() -> void:
 	var cl: Array = g.call("critter_level", [])
 	var pl: Array = g.call("camp_and_ship", [])   # the camp-first list (an older ship-only one is ignored)
 	materials = maxi(0, int(g.call("materials", 0)))
+	time_skips = maxi(0, int(g.call("time_skips", 0)))
 	part_builds = {}
 	var pb: Variant = g.call("part_builds", {})
 	if pb is Dictionary:
@@ -2263,6 +2288,7 @@ static func save() -> void:
 	s.call("camp_and_ship", part_level)
 	s.call("part_builds", part_builds)
 	s.call("materials", materials)
+	s.call("time_skips", time_skips)
 	s.call("planet_number", planet_number)
 	s.call("launched_season", launched_season)
 	s.call("has_club", has_club)
