@@ -6,7 +6,7 @@ extends RefCounted
 
 const COLLECTION_UNLOCK_LEVEL := 5
 const CLUBS_UNLOCK_LEVEL := 25
-const FEATURES_UNLOCK_LEVEL := 7 # chest tray + Battle Pass + Egg Hunt (with their Home walkthrough)
+const FEATURES_UNLOCK_LEVEL := 7 # chest tray + Battle Pass + Eggsperience (with their Home walkthrough)
 const DAILY_UNLOCK_LEVEL := 10 # the Daily Egg tile on Home
 
 const LOCKED_ALPHA := 0.45

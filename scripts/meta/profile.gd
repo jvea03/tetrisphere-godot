@@ -371,7 +371,7 @@ const CAMP_LEVEL_FOR_SHIP := PART_MAX_LEVEL
 static var part_level: Array = []   # per part: 0 broken, 1 built / fixed, 2+ upgraded
 
 ## The egg's colours in play, and a palette of egg paints the menus draw for
-## decoration (a golden egg on a sale, one per Egg Hunt day). Not collectible.
+## decoration (a golden egg on a sale, one per Eggsperience day). Not collectible.
 const EGG_PAINTS := [
 	{"cap": Color(1.00, 0.74, 0.82), "trim": Color(1.00, 0.97, 0.90)},   # strawberry: the egg in play
 	{"cap": Color(1.00, 0.95, 0.80), "trim": Color(1.00, 0.72, 0.80)},
@@ -1339,7 +1339,7 @@ static func stars_open() -> bool:
 	return TSNav.features_unlocked()
 
 
-## Coins paid by something other than the level just played (an Egg Hunt day
+## Coins paid by something other than the level just played (an Eggsperience day
 ## finishing): logged here so the win card can list them.
 static var coin_notices: Array[Dictionary] = []
 

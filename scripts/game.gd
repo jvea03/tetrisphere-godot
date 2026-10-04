@@ -1657,7 +1657,7 @@ func _win() -> void:
 
 
 ## Stars (hearts left, +2 for a first attempt), coins for them, chest progress,
-## quests, the Egg Hunt and level progress -- all banked at the moment of the win.
+## quests, the Eggsperience and level progress -- all banked at the moment of the win.
 func _pay_win() -> void:
 	TSProfile.settle_boards()
 	var before := TSProfile.coin_count

@@ -1,6 +1,6 @@
 extends TSScreen
 
-## The 7-Day Egg Hunt (Duckdoku's VoyageScreen): a row of seven day cards --
+## The 7-Day Eggsperience (Duckdoku's VoyageScreen): a row of seven day cards --
 ## locked, open, today, or done -- the selected day's three quests with
 ## progress bars, what finishing them pays, PLAY, and the Day 7 grand prize.
 
@@ -20,11 +20,11 @@ func build() -> void:
 	TSProfile.ensure_loaded()
 	TSHunt.roll()
 	TSHunt.mark_seen()
-	add_header("Egg Hunt", true)
+	add_header("7-Day Eggsperience", true)
 	var hero := TSUI.hbox(10)
 	hero.alignment = BoxContainer.ALIGNMENT_CENTER
 	hero.add_child(TSIcon.make("hunt", 150))
-	hero.add_child(TSUI.wrap(TSUI.label("Finish each day's quests for coins -- and hunt all week for the grand prize!", 24), 420))
+	hero.add_child(TSUI.wrap(TSUI.label("Finish each day's quests for coins -- and keep going all week for the grand prize!", 24), 420))
 	content.add_child(hero)
 	if TSHunt.reward_message != "":
 		var toast := TSUI.card(TSUI.BUTTER, 20, 12, 2)
@@ -82,14 +82,14 @@ func _refresh() -> void:
 	for i in TSHunt.QUESTS[_selected - 1].size():
 		_quests.add_child(_quest_row(_selected, i))
 	var left := TSHunt.days_left()
-	_footer.text = "The hunt ends in %d day%s" % [left, "" if left == 1 else "s"]
+	_footer.text = "The Eggsperience ends in %d day%s" % [left, "" if left == 1 else "s"]
 	var done := 0
 	var total := 0
 	for day in range(1, TSHunt.DAYS + 1):
 		total += int(TSHunt.DAY_REWARDS[day - 1])
 		if TSHunt.day_claimed(day):
 			done += 1
-	_prize_sub.text = "Hunt complete -- every day claimed!" if done >= TSHunt.DAYS else "%s coins  ·  %s for the whole hunt" % [TSProfile.fmt_coins(int(TSHunt.DAY_REWARDS[TSHunt.DAYS - 1])), TSProfile.fmt_coins(total)]
+	_prize_sub.text = "Eggsperience complete -- every day claimed!" if done >= TSHunt.DAYS else "%s coins  ·  %s for the whole week" % [TSProfile.fmt_coins(int(TSHunt.DAY_REWARDS[TSHunt.DAYS - 1])), TSProfile.fmt_coins(total)]
 	_prize_bar.value = done
 	_prize_count.text = "%d/%d days" % [done, TSHunt.DAYS]
 	TSUI.juice(self)

@@ -92,14 +92,14 @@ art drawn in code (`scripts/ui/icon.gd`) -- none of Duckdoku's art is copied.
 | Ships | **The crash site** -- a camp to build (6 spots) and then the crashed spaceship to fix (9 parts); each is upgraded after, and every step shows at Home |
 | Anchors (1 per life left) | **Stars** (1 per heart left, +2 for a first try) |
 | Crews / Teams | **Clubs** (Leader, Officer, Member) |
-| 7 Day Quest Voyage | **7-Day Egg Hunt** |
+| 7 Day Quest Voyage | **7-Day Eggsperience** |
 | Sonar, Bomb, Tidal Wave boosters | the **bomb**, the **Any Piece** and **Rocks** -- the bundle, streak and Battle Pass rewards pay bombs |
 | Daily Puzzle | **Daily Egg** -- a level picked from the date |
 | Sinking ships (quests) | **Clearing pieces** |
 
 **Screens:** splash and loading; **Home** (avatar card with collection level,
 wallet, Settings, the side tiles for the login streak, Daily Egg, Battle Pass,
-Egg Hunt and any running sale, the chest tray, the level plate and PLAY) with
+Eggsperience and any running sale, the chest tray, the level plate and PLAY) with
 its pop-ups -- Settings (How to Play, sound and haptics toggles, Restore
 Purchases and a Privacy Policy link, which opens the policy page in the
 browser), Profile, chest opening, finish-a-chest-now, pop-up sales, leaderboard results, and
@@ -112,7 +112,7 @@ coin packs with a free daily pack); **Leaderboard** (Daily / Weekly /
 Season, pinned own row, podium prizes); **Clubs** (join, search, create with
 a badge; club page with the Leader's note, chat, members and a weekly club
 leaderboard); **Daily Streaks** (login and Daily Egg streaks, a coin claim
-a day, bombs every 7th day); **Egg Hunt**; and in the game: pause, the win
+a day, bombs every 7th day); **Eggsperience**; and in the game: pause, the win
 card (coins, stars, chest progress, bonuses, Next Level), the lose card (+3
 hearts for coins, an ad for +1 heart, Quit), the out-of-booster cards, and the
 Level 1, sliding (level 2), bomb (level 3), Any Piece and Rocks walkthroughs. The bottom nav (Collection, Shop, Home,
@@ -181,7 +181,7 @@ board size and starting-hint columns have no Tetrisphere equivalent (the
 egg is one size, and there are no hints), so only the tier carries over.
 Features unlock as in Duckdoku -- bombs at level 3, the Any Piece at 4, Rocks at 8,
 the Collection at
-5, chests, the Battle Pass and the Egg Hunt at 7, the Daily Egg at 10, Clubs
+5, chests, the Battle Pass and the Eggsperience at 7, the Daily Egg at 10, Clubs
 at 25 -- each with its walkthrough the first time. Leaving a level mid-ball
 parks it, and Home's PLAY becomes CONTINUE.
 
@@ -608,7 +608,7 @@ stepped through frame by frame.
 | `scripts/board_view.gd` | Maps the grid onto the egg, draws each piece as one rounded bar and the pole caps, and plays the clear effects. |
 | `scripts/game.gd` | The game screen: builds the scene in code, drives input, camera and HUD, levels, and the pause, win, lose and ad cards. |
 | `scripts/meta/profile.gd` | `TSProfile`: the saved player -- coins, boosters, critters and ship parts, clubs, streaks, simulated leaderboards, Battle Pass and quests. |
-| `scripts/meta/chests.gd`, `hunt.gd`, `sales.gd` | The chest tray, the Egg Hunt, and pop-up sales. |
+| `scripts/meta/chests.gd`, `hunt.gd`, `sales.gd` | The chest tray, the Eggsperience, and pop-up sales. |
 | `scripts/meta/nav.gd`, `tunables.gd`, `session.gd`, `filter.gd`, `haptics.gd`, `sfx.gd` | Unlock levels, live-tunable numbers, the parked ball, the name/chat filter, vibration, and synthesized sounds. |
 | `scripts/meta/scene_flow.gd`, `ads.gd`, `billing.gd` | Autoloads: fade and slide transitions (and the Android back button), the ad service, the purchase service. |
 | `scripts/ui/kit.gd`, `icon.gd`, `fx.gd`, `coin_pill.gd`, `tutorial.gd`, `screen.gd`, `ship_scene.gd` | The menus' hand-drawn widgets, every drawn icon, the coin shower and confetti, the wallet, the spotlight walkthrough, and the base for every screen with its nav bar. |
@@ -618,7 +618,7 @@ stepped through frame by frame.
 | `tests/rules_test.gd` | Hand-built positions pinning down slides, spreading matches (lines, the O and the plus), gravity, chain reactions and the aim preview; plus generated balls for Beginner (pattern) and Intermediate and Expert (search) checked for ready-made matches, grey share, gaps and match spots. |
 | `tests/tap_test.tscn` | Taps projected cells on the real rendered ball and checks the piece lands over them; then plays the gestures (swipe, tap, double-tap, hold and drag) through the touch handler, and checks the egg mapping and the bomb button. |
 | `tests/demo.tscn` | Visual QA — boots the real game and plays a greedy opening. |
-| `tests/meta_test.gd` | The menus' systems on a throwaway profile: stars and coins, chests, the Battle Pass, quests, streaks, the collection, clubs, the Egg Hunt, purchases, sales, level progression. |
+| `tests/meta_test.gd` | The menus' systems on a throwaway profile: stars and coins, chests, the Battle Pass, quests, streaks, the collection, clubs, the Eggsperience, purchases, sales, level progression. |
 | `tests/flow_test.tscn` | The game screen's side of them: level start, parking and resuming a ball, the Any Piece and Rocks, booster buys, the lose card's refill, a win's payout, the Daily Egg. |
 | `tests/menu_capture.tscn`, `tests/card_capture.tscn` | Visual QA -- open any menu screen, or the pause / win / lose / out-of-booster card, on a throwaway profile with everything unlocked. |
 

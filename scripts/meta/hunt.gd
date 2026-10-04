@@ -1,7 +1,7 @@
 class_name TSHunt
 extends RefCounted
 
-## The 7-Day Egg Hunt (Duckdoku's Voyage, re-themed): a rolling event with
+## The 7-Day Eggsperience (Duckdoku's Voyage, re-themed): a rolling event with
 ## three quests for each of seven days. Day N unlocks N-1 days after the hunt
 ## began; a day's quests only count once it is unlocked, and finishing all
 ## three pays that day's coins on the spot. Earlier days stay open for
@@ -174,7 +174,7 @@ static func _pay_day(day: int) -> void:
 	claimed[day - 1] = true
 	var coins := TSProfile.boost_earned_coins(int(DAY_REWARDS[day - 1]))
 	TSProfile.coin_count += coins
-	TSProfile.note_coins("Egg Hunt Day %d" % day, coins)
+	TSProfile.note_coins("Eggsperience Day %d" % day, coins)
 	reward_message = "Day %d complete! +%s coins" % [day, TSProfile.fmt_coins(coins)]
 
 

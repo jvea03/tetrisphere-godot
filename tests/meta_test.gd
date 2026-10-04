@@ -1,5 +1,5 @@
 # Headless checks for the menus' systems -- coins, chests, the Battle Pass,
-# quests, streaks, the Egg Hunt, the collection, clubs, sales and purchases --
+# quests, streaks, the Eggsperience, the collection, clubs, sales and purchases --
 # on a throwaway profile that never touches the real save. Run with:
 #   Godot.exe --headless --path . --script res://tests/meta_test.gd
 extends SceneTree
@@ -201,7 +201,7 @@ func _test_hunt() -> void:
 	TSProfile.last_level = 12
 	TSHunt.start_day = 0
 	TSHunt.roll()
-	_check("the Egg Hunt starts on day 1", TSHunt.start_day > 0 and TSHunt.today_day() == 1 and TSHunt.day_unlocked(1) and not TSHunt.day_unlocked(2))
+	_check("the Eggsperience starts on day 1", TSHunt.start_day > 0 and TSHunt.today_day() == 1 and TSHunt.day_unlocked(1) and not TSHunt.day_unlocked(2))
 	var before := TSProfile.coin_count
 	TSProfile.coin_notices.clear()
 	TSHunt.note_level_reached(TSHunt.goal_level(1, 0))

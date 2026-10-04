@@ -2,7 +2,7 @@ extends TSScreen
 
 ## Home (Duckdoku's StartMenu): the avatar card (critter, collection level,
 ## Profile), the wallet (a shortcut to the Shop) and Settings along the top;
-## the side tiles -- login streak, Daily Egg, Battle Pass, Egg Hunt and any
+## the side tiles -- login streak, Daily Egg, Battle Pass, Eggsperience and any
 ## running sale -- down the left; behind it all, a crash site to drag around:
 ## a spaceship crash-landed on a planet, crewed by the critters you own; the
 ## chest tray; the level plate and PLAY. Pop-ups for Settings, Profile, a
@@ -876,7 +876,7 @@ func _start_home_tutorial() -> void:
 		{"rect": tray.get_global_rect(), "text": "Win 3 levels to earn a chest."},
 		{"rect": tray.get_global_rect(), "text": "Tap a chest to start unlocking it, then tap again when it's ready to collect coins. One chest unlocks at a time."},
 		{"rect": pass_btn.get_global_rect(), "text": "The Battle Pass is open! Hearts left on a win become stars, and stars climb the tiers for coins."},
-		{"rect": hunt_btn.get_global_rect(), "text": "And the Egg Hunt: three quests a day for a week, with coins for every day you finish."},
+		{"rect": hunt_btn.get_global_rect(), "text": "And the 7-Day Eggsperience: three quests a day for a week, with coins for every day you finish."},
 	])
 
 
