@@ -135,10 +135,10 @@ func _test_building() -> void:
 	TSProfile.part_builds = {}
 	var p := TSProfile.CAMP_FIRE
 	_check("a build needs materials", TSProfile.part_build_block(p) == "materials" and not TSProfile.start_part_build(p))
-	TSProfile.materials = 100
+	TSProfile.materials = 1000
 	var mats := TSProfile.part_next_materials(p)
 	var secs := TSProfile.part_build_seconds(p)
-	_check("with materials it starts (%d materials, %ds)" % [mats, secs], TSProfile.start_part_build(p) and TSProfile.materials == 100 - mats and TSProfile.is_part_building(p) and TSProfile.part_level_of(p) == 0)
+	_check("with materials it starts (%d materials, %ds)" % [mats, secs], TSProfile.start_part_build(p) and TSProfile.materials == 1000 - mats and TSProfile.is_part_building(p) and TSProfile.part_level_of(p) == 0)
 	_check("a critter is put on it, and isn't free for another", TSProfile.part_builder(p) == TSProfile.avatar() and not TSProfile.free_builders().has(TSProfile.avatar()))
 	var owned := TSProfile.builder_count()
 	_check("with every critter busy, nothing else can start (%d critter)" % owned, owned > 1 or TSProfile.part_build_block(TSProfile.CAMP_TENT) == "builder")

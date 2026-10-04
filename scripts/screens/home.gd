@@ -193,7 +193,7 @@ func _build_camp_badge(parent: Control) -> void:
 	parent.add_child(row)
 	materials_pill = Button.new()
 	materials_pill.focus_mode = Control.FOCUS_NONE
-	materials_pill.custom_minimum_size = Vector2(118, 58)
+	materials_pill.custom_minimum_size = Vector2(150, 58)
 	for st in ["normal", "hover", "pressed", "focus"]:
 		materials_pill.add_theme_stylebox_override(st, face)
 	materials_pill.pressed.connect(func(): TSUI.note(self, materials_pill, "Building materials: win levels, open chests, finish quests and climb the Battle Pass for more"))
@@ -205,7 +205,7 @@ func _build_camp_badge(parent: Control) -> void:
 	materials_pill.add_child(crate)
 	materials_label = TSUI.label("0", 24)
 	materials_label.position = Vector2(52, 12)
-	materials_label.size = Vector2(60, 32)
+	materials_label.size = Vector2(92, 32)
 	materials_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	materials_pill.add_child(materials_label)
 	row.add_child(camp_badge)

@@ -654,16 +654,16 @@ static func _fill_parts() -> void:
 
 ## Materials for a step: this much times the level it builds up to, by wave
 ## (CAMP_WAVES), with the ship last.
-const PART_MATERIALS := [2, 4, 6, 8]
-const SHIP_MATERIALS := 10
+const PART_MATERIALS := [20, 40, 60, 80]
+const SHIP_MATERIALS := 100
 ## Build time for a step, in seconds: this times the level it builds up to.
 const PART_BUILD_SECONDS := [30, 120, 300, 600]
 const SHIP_BUILD_SECONDS := 1200
 ## Finishing a build early: coins a minute of what is left (at least one minute's).
 const BUILD_SKIP_COINS_PER_MINUTE := 20
 ## Materials a win pays (the Daily Egg pays more).
-const MATERIALS_PER_WIN := 3
-const MATERIALS_PER_DAILY := 5
+const MATERIALS_PER_WIN := 30
+const MATERIALS_PER_DAILY := 50
 
 static var materials: int = 0
 ## Steps under way: part index -> {"end": unix time it is done, "critter": the builder}.
@@ -1842,10 +1842,10 @@ const BATTLE_PASS_FREE_COINS_BASE := 500
 const BATTLE_PASS_PAID_COINS_BASE := 1000
 const BATTLE_PASS_COINS_STEP := 100
 
-## Building materials on every tier: 5 + the tier on the free track, 10 + twice
-## the tier on the premium one.
+## Building materials on every tier: 50 + 10 a tier on the free track, 100 + 20
+## a tier on the premium one.
 static func battle_pass_free_reward(tier: int) -> Dictionary:
-	var r := {"coins": BATTLE_PASS_FREE_COINS_BASE + BATTLE_PASS_COINS_STEP * (tier - 1), "materials": 5 + tier}
+	var r := {"coins": BATTLE_PASS_FREE_COINS_BASE + BATTLE_PASS_COINS_STEP * (tier - 1), "materials": 50 + 10 * tier}
 	var critters: Dictionary = season_rewards()["free_critters"]
 	if critters.has(tier):
 		r["critter"] = critters[tier]
@@ -1858,7 +1858,7 @@ static func battle_pass_free_reward(tier: int) -> Dictionary:
 ## 1 a tier, 3 on every 5th, 5 on the 10th and 20th -- unless the tier hands
 ## out a critter or a ship part.
 static func battle_pass_paid_reward(tier: int) -> Dictionary:
-	var r := {"coins": BATTLE_PASS_PAID_COINS_BASE + BATTLE_PASS_COINS_STEP * (tier - 1), "materials": 10 + 2 * tier}
+	var r := {"coins": BATTLE_PASS_PAID_COINS_BASE + BATTLE_PASS_COINS_STEP * (tier - 1), "materials": 100 + 20 * tier}
 	var season := season_rewards()
 	if season["paid_critters"].has(tier):
 		r["critter"] = season["paid_critters"][tier]
@@ -2044,9 +2044,9 @@ static func claim_quest(week_key: String, index: int) -> int:
 	return credited
 
 
-## Building materials a quest pays along with its stars: as many as its stars.
+## Building materials a quest pays along with its stars: ten for every star.
 static func quest_materials(points: int) -> int:
-	return points
+	return points * 10
 
 
 static func has_unclaimed_quests() -> bool:

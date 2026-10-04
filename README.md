@@ -137,11 +137,11 @@ once; with every critter busy, nothing new starts. While a step is under
 way its node is a clock filling round, the time left under it, its critter
 hopping beside it; when it is done, a bouncing tick to tap and collect. A
 build can also be finished early for 20 coins a minute left. Materials
-(`TSProfile.PART_MATERIALS`: 2 a level in the first wave, 4, 6 and 8 in the
-next three, 10 on the ship -- 1,900 for the whole camp and ship) come from
-every level won (3, or 5 for the Daily Egg), every chest (8-12 common, 20-30
-rare, 50-70 legendary), every quest (as many as its stars) and every Battle
-Pass tier (5 + the tier free, 10 + twice the tier premium); the count shows
+(`TSProfile.PART_MATERIALS`: 20 a level in the first wave, 40, 60 and 80 in the
+next three, 100 on the ship -- 19,000 for the whole camp and ship) come from
+every level won (30, or 50 for the Daily Egg), every chest (80-120 common, 200-300
+rare, 500-700 legendary), every quest (ten for every star) and every Battle
+Pass tier (50 + 10 a tier free, 100 + 20 a tier premium); the count shows
 beside the Camp level on Home. Nodes beyond the open middle of Home are gathered into
 an arrow at its edge, with a count, that glides the world over to them; the
 first time the nodes appear, a walkthrough points at the campfire's hammer.

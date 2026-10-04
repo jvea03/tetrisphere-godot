@@ -19,7 +19,7 @@ func _ready() -> void:
 	TSProfile.daily_callout_seen = true
 	TSProfile.camp_callout_seen = true
 	TSProfile.coin_count = 100000
-	TSProfile.materials = 1000
+	TSProfile.materials = 10000
 	TSProfile.part_builds = {}
 	TSProfile.part_level = []
 	for i in TSProfile.PART_COUNT:
@@ -58,7 +58,7 @@ func _run() -> void:
 	for p in parts:
 		only_camp = only_camp and TSProfile.is_camp(p)
 	_check("the first wave's five camp nodes show, and no ship part's (%d nodes)" % parts.size(), _world.nodes_enabled and only_camp and parts.size() == 5)
-	_check("the Camp level and materials show on Home", camp_badge.visible and camp_label.text == "Camp Lv 1" and materials_pill.visible and materials_label.text == "1,000")
+	_check("the Camp level and materials show on Home", camp_badge.visible and camp_label.text == "Camp Lv 1" and materials_pill.visible and materials_label.text == "10,000")
 
 	var points := TSProfile.collection_points()
 	var coins := TSProfile.coin_count
@@ -88,7 +88,7 @@ func _run() -> void:
 	TSProfile.materials = 0
 	_open_part(TSProfile.CAMP_TENT)
 	_check("short of materials, the card says so", (_part["go"] as Button).disabled and (_part["go"] as Button).text.begins_with("Need"))
-	TSProfile.materials = 1000
+	TSProfile.materials = 10000
 	var busy := {}
 	for c in TSProfile.free_builders():
 		busy[c] = true

@@ -41,7 +41,7 @@ func _ready() -> void:
 		var lv := int(args_all[args_all.find("lv") + 1])
 		for i in TSProfile.PART_COUNT:
 			TSProfile.part_level[i] = lv if TSProfile.is_camp(i) else 0
-	TSProfile.materials = 120
+	TSProfile.materials = 1200
 	if args_all.has("building"):
 		# `-- home building camp`: a build counting down, and one done to collect.
 		var now := int(Time.get_unix_time_from_system())
