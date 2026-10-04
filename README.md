@@ -28,7 +28,7 @@ portrait, UI that stretches to taller screens, and the Compatibility renderer
 looks the same on desktop.
 
 **Android.** `export_presets.cfg` has an **Android** preset: package
-`com.jvea.eggescape`, version 0.2.0 (code 1), portrait, immersive, for
+`com.jvea.eggescape`, version 0.2.0 (code 2), portrait, immersive, for
 64- and 32-bit ARM phones, with the app icon and Android's adaptive icon from
 `icons/` (built by `tools/make_icons.gd` from the icon art, `art/app_icon.png`:
 the pink ship of critters in space -- its white corners cut away, and for the
