@@ -349,8 +349,23 @@ const PARTS := [
 	{"name": "Nose Cone", "group": "ship", "fix": 2000, "stages": ["Buried", "Dug Out", "Racing Tip", "Nose Light", "Golden Tip"]},
 	{"name": "Landing Legs", "group": "ship", "fix": 2500, "stages": ["Snapped", "Standing", "Springs", "Foot Lights", "Golden Legs"]},
 	{"name": "Solar Panels", "group": "ship", "fix": 3000, "stages": ["Shattered", "One Panel", "Two Panels", "Sun Tracking", "Golden Frames"]},
+	# the camp's later waves (after the ship parts, so older saves keep their places)
+	{"name": "Hammock", "group": "camp", "fix": 800, "stages": ["Tangled Rope", "Hammock", "Pillow", "Sunshade", "Fairy Lights"]},
+	{"name": "Picnic Table", "group": "camp", "fix": 850, "stages": ["Fallen Log", "Log Seat", "Picnic Table", "Checked Cloth", "Picnic Spread"]},
+	{"name": "Clothesline", "group": "camp", "fix": 900, "stages": ["Loose Line", "Clothesline", "Socks", "Bedsheet", "Bunting"]},
+	{"name": "Mailbox", "group": "camp", "fix": 950, "stages": ["Dented Can", "Mailbox", "Painted", "Flag Up", "Parcel Pile"]},
+	{"name": "Windmill", "group": "camp", "fix": 1100, "stages": ["Broken Blades", "Spinning", "Painted Sails", "Little Door", "Flower Boxes"]},
+	{"name": "Dock", "group": "camp", "fix": 1200, "stages": ["Driftwood", "Little Dock", "Rowboat", "Lantern Post", "Duck Float"]},
+	{"name": "Playground", "group": "camp", "fix": 1300, "stages": ["Rope & Plank", "Swing", "Twin Swings", "Slide", "Seesaw"]},
+	{"name": "Treehouse", "group": "camp", "fix": 1400, "stages": ["Bare Tree", "Platform", "Little House", "Rope Ladder", "Tire Swing"]},
+	{"name": "Market Stall", "group": "camp", "fix": 1500, "stages": ["Crates", "Stall", "Awning", "Fruit Baskets", "Bell & Sign"]},
+	{"name": "Greenhouse", "group": "camp", "fix": 1600, "stages": ["Glass Shards", "Frame", "Glass Panes", "Potted Plants", "Blossoms"]},
+	{"name": "Hot Spring", "group": "camp", "fix": 1700, "stages": ["Puddle", "Stone Pool", "Steam", "Rubber Duck", "Bamboo Fence"]},
+	{"name": "Observatory", "group": "camp", "fix": 1800, "stages": ["Rubble", "Round Base", "Dome", "Telescope", "Star Banner"]},
+	{"name": "Oven", "group": "camp", "fix": 1900, "stages": ["Clay Lump", "Clay Oven", "Chimney", "Fresh Loaves", "Pie Shelf"]},
+	{"name": "Statue", "group": "camp", "fix": 2000, "stages": ["Big Rock", "Rough Carving", "Critter Statue", "Pedestal", "Golden Statue"]},
 ]
-const PART_COUNT := 15
+const PART_COUNT := 29
 const CAMP_FIRE := 0
 const CAMP_TENT := 1
 const CAMP_BENCH := 2
@@ -366,9 +381,34 @@ const PART_PORTHOLES := 11
 const PART_NOSE := 12
 const PART_LEGS := 13
 const PART_SOLAR := 14
+const CAMP_HAMMOCK := 15
+const CAMP_PICNIC := 16
+const CAMP_CLOTHESLINE := 17
+const CAMP_MAILBOX := 18
+const CAMP_WINDMILL := 19
+const CAMP_DOCK := 20
+const CAMP_PLAYGROUND := 21
+const CAMP_TREEHOUSE := 22
+const CAMP_STALL := 23
+const CAMP_GREENHOUSE := 24
+const CAMP_SPRING := 25
+const CAMP_OBSERVATORY := 26
+const CAMP_OVEN := 27
+const CAMP_STATUE := 28
 const PART_MAX_LEVEL := 4        # built / fixed (1), then three upgrades
 ## How far every camp spot must be upgraded before the ship can be worked on.
 const CAMP_LEVEL_FOR_SHIP := PART_MAX_LEVEL
+## The camp opens in waves of five spots, so only a few build nodes show at a
+## time: the next wave's spots appear once every spot in the one before is
+## fully upgraded. Each finished wave is a Camp level -- Camp Lv 1 to start,
+## Lv 5 with all four done -- and Camp Lv 5 opens the ship.
+const CAMP_WAVES := [
+	[CAMP_FIRE, CAMP_TENT, CAMP_BENCH, CAMP_GARDEN, CAMP_WELL],
+	[CAMP_LOOKOUT, CAMP_HAMMOCK, CAMP_PICNIC, CAMP_CLOTHESLINE, CAMP_MAILBOX],
+	[CAMP_WINDMILL, CAMP_DOCK, CAMP_PLAYGROUND, CAMP_TREEHOUSE, CAMP_STALL],
+	[CAMP_GREENHOUSE, CAMP_SPRING, CAMP_OBSERVATORY, CAMP_OVEN, CAMP_STATUE],
+]
+const CAMP_MAX_LEVEL := 5
 
 static var part_level: Array = []   # per part: 0 broken, 1 built / fixed, 2+ upgraded
 
@@ -547,15 +587,61 @@ static func camp_spot_count() -> int:
 	return n
 
 
-## The camp comes first: the ship opens once every camp spot is done.
+## Whether every spot in a camp wave (CAMP_WAVES index) is fully upgraded.
+static func is_camp_wave_done(wave: int) -> bool:
+	for i in CAMP_WAVES[wave]:
+		if part_level_of(int(i)) < CAMP_LEVEL_FOR_SHIP:
+			return false
+	return true
+
+
+## The Camp level: 1, plus one for each wave finished in turn (up to 5).
+static func camp_level() -> int:
+	var lv := 1
+	for w in CAMP_WAVES.size():
+		if not is_camp_wave_done(w):
+			break
+		lv += 1
+	return lv
+
+
+## How far into the current Camp level: the open wave's steps taken, out of
+## its five spots' worth (0..1). 1 once the camp is finished.
+static func camp_level_progress() -> float:
+	var w := camp_level() - 1
+	if w >= CAMP_WAVES.size():
+		return 1.0
+	var done := 0
+	for i in CAMP_WAVES[w]:
+		done += part_level_of(int(i))
+	return float(done) / float(CAMP_WAVES[w].size() * PART_MAX_LEVEL)
+
+
+## Which wave a camp spot is in (CAMP_WAVES index), or -1.
+static func camp_wave_of(i: int) -> int:
+	for w in CAMP_WAVES.size():
+		if CAMP_WAVES[w].has(i):
+			return w
+	return -1
+
+
+## The camp comes first: the ship opens at Camp Lv 5, every wave done.
 static func is_ship_open() -> bool:
-	return camp_spots_done() == camp_spot_count()
+	return camp_level() >= CAMP_MAX_LEVEL
 
 
-## Whether a part can be worked on yet: camp spots always, ship parts once
-## the camp is done.
+## Whether a part can be worked on yet: a camp spot once its wave is open
+## (every wave before it finished), a ship part once the camp is done.
 static func is_part_available(i: int) -> bool:
-	return is_camp(i) or is_ship_open()
+	if is_camp(i):
+		return camp_wave_of(i) < camp_level()
+	return is_ship_open()
+
+
+## Older saves (and tests) may have fewer parts than there are now.
+static func _fill_parts() -> void:
+	while part_level.size() < PART_COUNT:
+		part_level.append(0)
 
 
 ## Builds or fixes a broken part, or upgrades one, for coins.
@@ -565,6 +651,7 @@ static func improve_part(i: int) -> bool:
 	var cost := part_next_cost(i)
 	if coin_count < cost:
 		return false
+	_fill_parts()
 	coin_count -= cost
 	part_level[i] += 1
 	save()
@@ -576,6 +663,7 @@ static func improve_part(i: int) -> bool:
 static func grant_part_level(i: int) -> bool:
 	if i < 0 or i >= PART_COUNT or is_part_max_level(i):
 		return false
+	_fill_parts()
 	part_level[i] += 1
 	return true
 

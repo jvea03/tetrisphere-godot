@@ -31,8 +31,20 @@ func _ready() -> void:
 	TSProfile.avatar_critter = 8
 	# The camp and the ship, spot by spot -- `-- home all max` (or
 	# `broken`) as the last argument sets every part to its best (or worst).
+	# (The first wave part way up; the later waves not open yet.)
 	TSProfile.part_level = [4, 3, 2, 1, 1, 0, 2, 1, 0, 3, 0, 1, 1, 2, 1]
-	var last_arg: String = OS.get_cmdline_user_args()[-1] if OS.get_cmdline_user_args().size() > 0 else ""
+	TSProfile._fill_parts()
+	var args_all := OS.get_cmdline_user_args()
+	var last_arg: String = args_all[-1] if args_all.size() > 0 else ""
+	if args_all.has("lv"):
+		# `-- home lv 2 at 19`: every camp spot at level 2, gliding to spot 19.
+		var lv := int(args_all[args_all.find("lv") + 1])
+		for i in TSProfile.PART_COUNT:
+			TSProfile.part_level[i] = lv if TSProfile.is_camp(i) else 0
+	if args_all.has("at"):
+		var spot := int(args_all[args_all.find("at") + 1])
+		var t := get_tree()
+		t.create_timer(0.8).timeout.connect(func(): t.current_scene._world.glide_to_part(spot))
 	if last_arg == "max":
 		TSProfile.launch_window_forced = true   # the ship on its pad, LAUNCH! showing
 		TSProfile.part_level = []
@@ -45,6 +57,10 @@ func _ready() -> void:
 	elif last_arg == "ship":
 		# The camp finished, so the ship's build nodes show; a few parts done.
 		TSProfile.part_level = [4, 4, 4, 4, 4, 4, 2, 1, 0, 3, 0, 1, 0, 0, 1]
+		TSProfile._fill_parts()
+		for i in TSProfile.PART_COUNT:
+			if TSProfile.is_camp(i):
+				TSProfile.part_level[i] = TSProfile.PART_MAX_LEVEL
 	if args_has("camp") or args_has("ship") or args_has("card"):
 		# `-- home camp` glides to the camp's nodes (`ship`, the ship's);
 		# `card` opens the tent's build card too.

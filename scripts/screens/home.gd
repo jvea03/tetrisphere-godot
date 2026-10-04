@@ -33,6 +33,9 @@ var _world: TSShipScene      # the crash site behind everything
 var _gap: Control            # the open stretch of Home the crash site shows through
 var _part: Dictionary        # the build / upgrade card for a camp spot or ship part
 var _part_index := -1
+var camp_badge: Button       # the Camp level, under the wallet
+var camp_label: Label
+var camp_bar: ProgressBar
 var _launch_btn: Button      # shown at a season's end when the ship is ready
 
 var _chest_slots: Array = [] # per slot: {btn, plate, art, pill, pill_label, band}
@@ -145,15 +148,75 @@ func _build_top_bar() -> void:
 	_refresh_avatar()
 
 	row.add_child(TSUI.spacer(0, true))
+	# The wallet and Settings, with the Camp level under them.
+	var right := TSUI.vbox(10)
+	right.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_child(right)
+	var top := TSUI.hbox(14)
+	right.add_child(top)
 	coin_pill = TSCoinPill.new(true)
 	coin_pill.gui_input.connect(func(e: InputEvent):
 		if (e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT) or (e is InputEventScreenTouch and e.pressed):
 			SceneFlow.slide("res://scenes/shop.tscn", -1))
-	row.add_child(coin_pill)
+	top.add_child(coin_pill)
 	var cog := TSUI.icon_button("cog", 84)
 	cog.pressed.connect(_open_settings)
 	cog.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	row.add_child(cog)
+	top.add_child(cog)
+	_build_camp_badge(right)
+
+
+## The Camp level (TSProfile.camp_level): a tent, "Camp Lv 2" and a bar for
+## the open wave's steps. Tapping it glides the world to the next thing to
+## build. Shown once the build nodes are.
+func _build_camp_badge(parent: Control) -> void:
+	camp_badge = Button.new()
+	camp_badge.focus_mode = Control.FOCUS_NONE
+	camp_badge.custom_minimum_size = Vector2(250, 58)
+	camp_badge.size_flags_horizontal = Control.SIZE_SHRINK_END
+	var face := TSUI.sb(TSUI.CARD, 29, 3, 3, 6)
+	for st in ["normal", "hover", "pressed", "focus"]:
+		camp_badge.add_theme_stylebox_override(st, face)
+	camp_badge.pressed.connect(_on_camp_badge_pressed)
+	parent.add_child(camp_badge)
+	var tent := TSIcon.make("part", 44, TSProfile.CAMP_TENT)
+	tent.position = Vector2(10, 6)
+	tent.size = Vector2(44, 44)
+	tent.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	camp_badge.add_child(tent)
+	camp_label = TSUI.label("", 22)
+	camp_label.position = Vector2(60, 2)
+	camp_label.size = Vector2(180, 30)
+	camp_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	camp_badge.add_child(camp_label)
+	camp_bar = TSUI.bar(TSUI.GREEN, 14)
+	camp_bar.position = Vector2(62, 34)
+	camp_bar.size = Vector2(172, 14)
+	camp_bar.max_value = 1.0
+	camp_bar.step = 0.0
+	camp_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	camp_badge.add_child(camp_bar)
+	_refresh_camp_badge()
+
+
+func _refresh_camp_badge() -> void:
+	if camp_badge == null:
+		return
+	camp_badge.visible = TSNav.collection_unlocked()
+	var lv := TSProfile.camp_level()
+	camp_label.text = "Camp Lv %d" % lv
+	camp_bar.value = TSProfile.camp_level_progress()
+	if lv >= TSProfile.CAMP_MAX_LEVEL:
+		camp_bar.add_theme_stylebox_override("fill", TSUI.sb(TSUI.GOLD, 99, 0, 0, 0))   # the camp finished
+
+
+## Glides to the next camp spot (or, once the camp is done, the ship) with a
+## step left.
+func _on_camp_badge_pressed() -> void:
+	for i in TSProfile.PART_COUNT:
+		if TSProfile.is_part_available(i) and not TSProfile.is_part_max_level(i):
+			_world.glide_to_part(i)
+			return
 
 
 func _refresh_avatar() -> void:
@@ -376,7 +439,7 @@ func _on_part_pressed() -> void:
 		SceneFlow.slide("res://scenes/shop.tscn", -1)
 		return
 	var before := TSProfile.coin_count
-	var ship_was_open := TSProfile.is_ship_open()
+	var camp_before := TSProfile.camp_level()
 	if not TSProfile.improve_part(i):
 		return
 	coin_pill.spend(before, TSProfile.coin_count)
@@ -384,29 +447,35 @@ func _on_part_pressed() -> void:
 	TSHaptics.medium()
 	TSFX.sparkle_burst(self, _part["tile"])
 	_world.refresh_parts()
+	_refresh_camp_badge()
 	if TSProfile.can_launch() and _launch_btn == null:
 		# The last ship part fixed in the launch window: Home reopens with LAUNCH!
 		TSUI.conceal(_part["root"])
 		SceneFlow.go(SceneFlow.HOME)
 		return
-	if not ship_was_open and TSProfile.is_ship_open():
+	var camp_now := TSProfile.camp_level()
+	if camp_now > camp_before:
 		TSUI.conceal(_part["root"])
-		_camp_done_banner()
+		if TSProfile.is_ship_open():
+			_camp_banner("Camp Lv %d!" % camp_now, "Camp complete -- now fix up your ship", TSProfile.PART_ENGINE)
+		else:
+			var wave: Array = TSProfile.CAMP_WAVES[camp_now - 1]
+			_camp_banner("Camp Lv %d!" % camp_now, "%d new spots to build" % wave.size(), int(wave[0]))
 		return
 	_fill_part_card()
 
 
-## The camp is finished: the ship's nodes appear, and the world glides over
-## to the first of them.
-func _camp_done_banner() -> void:
+## A Camp level reached: the banner, and the world glides to what it opened --
+## the next wave's first spot, or, with the camp finished, the ship.
+func _camp_banner(title: String, sub: String, glide_to: int) -> void:
 	var banner := TSUI.card(TSUI.CARD, 30, 24, 6)
 	banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	banner.top_level = true
 	banner.z_index = 80
 	var v := TSUI.vbox(4)
 	banner.add_child(v)
-	v.add_child(TSUI.title("Camp complete!", 42))
-	v.add_child(TSUI.label("Now fix up your ship", 26, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(TSUI.title(title, 42))
+	v.add_child(TSUI.label(sub, 26, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER))
 	add_child(banner)
 	banner.reset_size()
 	var area := get_viewport_rect().size
@@ -420,7 +489,7 @@ func _camp_done_banner() -> void:
 	t.chain().tween_callback(banner.queue_free)
 	TSFX.confetti(self)
 	TSHaptics.heavy()
-	_world.glide_to_part(TSProfile.PART_ENGINE)
+	_world.glide_to_part(glide_to)
 
 
 ## Lift-off: the ship roars away with its crew aboard; then the reward and the
@@ -1088,7 +1157,7 @@ func _start_camp_callout() -> void:
 		TSProfile.camp_callout_seen = true
 		TSProfile.save(), CONNECT_ONE_SHOT)
 	var at := _world.get_global_rect().position + _world.node_screen_position(TSProfile.CAMP_FIRE)
-	tutorial.start([{"rect": Rect2(at - Vector2(48, 48), Vector2(96, 120)), "text": "Build your camp! Tap a hammer to build, then tap its arrow to upgrade. Finish the camp to start fixing your ship."}])
+	tutorial.start([{"rect": Rect2(at - Vector2(48, 48), Vector2(96, 120)), "text": "Build your camp! Tap a hammer to build, then its arrow to upgrade. Each finished set of spots raises your Camp level -- Camp Lv 5 opens your ship."}])
 
 
 ## Android back: close whatever is open; with nothing open, Home quits.

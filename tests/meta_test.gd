@@ -137,19 +137,29 @@ func _test_collection() -> void:
 	var all_broken := true
 	for p in TSProfile.PART_COUNT:
 		all_broken = all_broken and not TSProfile.is_part_fixed(p)
-	_check("every camp spot and ship part starts broken", all_broken and TSProfile.parts_fixed() == 0 and TSProfile.PART_COUNT == 15 and TSProfile.camp_spot_count() == 6)
+	_check("every camp spot and ship part starts broken", all_broken and TSProfile.parts_fixed() == 0 and TSProfile.PART_COUNT == 29 and TSProfile.camp_spot_count() == 20)
 	_check("the ship waits for the camp: no fixing the engine yet", not TSProfile.is_ship_open() and not TSProfile.improve_part(TSProfile.PART_ENGINE))
+	# The camp opens in waves of five; each finished wave is a Camp level.
+	var wave_sizes_ok := TSProfile.CAMP_WAVES.size() == 4
+	for w in TSProfile.CAMP_WAVES:
+		wave_sizes_ok = wave_sizes_ok and (w as Array).size() == 5
+	_check("the camp is four waves of five spots", wave_sizes_ok)
+	_check("it starts at Camp Lv 1 with only the first wave open", TSProfile.camp_level() == 1 and TSProfile.is_part_available(TSProfile.CAMP_WELL) and not TSProfile.is_part_available(TSProfile.CAMP_LOOKOUT) and not TSProfile.improve_part(TSProfile.CAMP_HAMMOCK))
 	var coins := TSProfile.coin_count
 	var points_before_camp := TSProfile.collection_points()
 	var build_cost := TSProfile.part_next_cost(TSProfile.CAMP_FIRE)
 	_check("building the campfire costs %s" % TSProfile.fmt_coins(build_cost), TSProfile.improve_part(TSProfile.CAMP_FIRE) and TSProfile.part_stage(TSProfile.CAMP_FIRE, 1) == "Little Fire" and TSProfile.coin_count == coins - build_cost)
 	_check("and doesn't count toward the collection level", TSProfile.collection_points() == points_before_camp)
 	_check("each upgrade costs one more multiple of the first step", TSProfile.part_next_cost(TSProfile.CAMP_FIRE) == build_cost * 2)
-	for p in TSProfile.PART_COUNT:
-		if TSProfile.is_camp(p):
+	for p in TSProfile.CAMP_WAVES[0]:
+		while TSProfile.improve_part(p):
+			pass
+	_check("finishing the first wave makes Camp Lv 2 and opens the second", TSProfile.camp_level() == 2 and TSProfile.is_part_available(TSProfile.CAMP_LOOKOUT) and not TSProfile.is_part_available(TSProfile.CAMP_WINDMILL) and not TSProfile.is_ship_open())
+	for w in range(1, TSProfile.CAMP_WAVES.size()):
+		for p in TSProfile.CAMP_WAVES[w]:
 			while TSProfile.improve_part(p):
 				pass
-	_check("finishing every camp spot (Lv %d) opens the ship" % TSProfile.CAMP_LEVEL_FOR_SHIP, TSProfile.camp_spots_done() == 6 and TSProfile.is_ship_open())
+	_check("finishing all four waves (Camp Lv %d) opens the ship" % TSProfile.CAMP_MAX_LEVEL, TSProfile.camp_level() == TSProfile.CAMP_MAX_LEVEL and TSProfile.camp_spots_done() == 20 and TSProfile.is_ship_open())
 	var fix_cost := TSProfile.part_next_cost(TSProfile.PART_ENGINE)
 	_check("then the engine can be fixed, for %s" % TSProfile.fmt_coins(fix_cost), TSProfile.improve_part(TSProfile.PART_ENGINE) and TSProfile.part_stage(TSProfile.PART_ENGINE, 1) == "Running")
 	while TSProfile.improve_part(TSProfile.PART_ENGINE):

@@ -89,7 +89,7 @@ art drawn in code (`scripts/ui/icon.gd`) -- none of Duckdoku's art is copied.
 | Duckdoku | Tetrisphere |
 | --- | --- |
 | Ducks (the collection) | **Critters** -- the little creatures sealed in the egg. The one you pick is the one in the egg, in its colour |
-| Ships | **The crash site** -- a camp to build (6 spots) and then the crashed spaceship to fix (9 parts); each is upgraded after, and every step shows at Home |
+| Ships | **The crash site** -- a camp to build (20 spots in 4 waves, raising the Camp level) and then the crashed spaceship to fix (9 parts); each is upgraded after, and every step shows at Home |
 | Anchors (1 per life left) | **Stars** (1 per heart left, +2 for a first try) |
 | Crews / Teams | **Clubs** (Leader, Officer, Member) |
 | 7 Day Quest Voyage | **7-Day Eggsperience** |
@@ -119,7 +119,7 @@ Level 1, sliding (level 2), bomb (level 3), Any Piece and Rocks walkthroughs. Th
 Ranks, Clubs) slides between the tab screens.
 
 **The crash site.** Behind all of Home is a little planet in three-quarter
-view, a world about 3.6 screens wide (`scripts/ui/ship_scene.gd`). A
+view, a world about 3.6 screens wide and 2.6 deep (`scripts/ui/ship_scene.gd`). A
 spaceship has crash-landed nose-first in a heap of dirt, and the critters
 have made camp around it. Everything there looks however far you have got
 with it, and it is all built right there: from level 5 (when the Collection
@@ -131,16 +131,31 @@ when you are short). Nodes beyond the open middle of Home are gathered into
 an arrow at its edge, with a count, that glides the world over to them; the
 first time the nodes appear, a walkthrough points at the campfire's hammer.
 None of this counts toward the Collection level, which is critters only.
-**The camp comes first**: its six spots --
-campfire, tent, workbench, garden, well and lookout -- start as makings
-(cold ashes, a torn tarp, loose planks, bare dirt, a pile of stones, a pile
-of logs), are built, then upgraded three times, up to a bonfire with a
-cooking pot, a cabin tent with string lights, a workbench under a striped
-awning, a garden of pumpkins with a sunflower, a roofed well with flower
-boxes and a flagged lookout tower. The ship's nodes don't appear until every
-camp spot is fully upgraded (`TSProfile.CAMP_LEVEL_FOR_SHIP`) -- a "Camp
-complete!" banner, and the world glides to the ship, its nine nodes ringed
-round it, each with a dotted line in to its part. The parts -- engine,
+**The camp comes first**: twenty spots in four waves of five
+(`TSProfile.CAMP_WAVES`), so no more than five build nodes show at once. A
+wave's spots appear (until then the ground there is bare) when every spot
+in the wave before is fully upgraded, and each finished wave raises the
+**Camp level**, shown under the wallet on Home with a bar for the open
+wave: Camp Lv 1 to start, a banner and a glide to the new spots at each
+level, Lv 5 with the camp done. Each spot starts as its makings, is built,
+then upgraded three times: the campfire, tent, workbench, garden and well
+first (cold ashes to a bonfire with a cooking pot, a torn tarp to a cabin
+tent with string lights, loose planks to a workbench under a striped
+awning, bare dirt to pumpkins and a sunflower, a pile of stones to a roofed
+well with flower boxes); then round the camp the lookout, a hammock (with a
+pillow, a sunshade and fairy lights), a picnic table (a checked cloth and a
+spread), a clothesline (socks, a bedsheet, bunting) and a mailbox (painted,
+flag up, a pile of parcels); then out west a windmill (painted sails, a
+door, flower boxes), a dock on the pond (a rowboat, a lantern, a duck
+float), a playground (two swings, a slide, a seesaw), a treehouse (a house,
+a rope ladder, a tire swing) and a market stall (an awning, fruit baskets,
+a bell and sign); and last, across the south, a greenhouse, a hot spring
+(steam, a rubber duck, a bamboo fence), an observatory (a dome, a telescope,
+a star banner), a clay oven (a smoking chimney, loaves, pies) and a statue
+of a critter, gold at the top. Later waves cost more. The ship's nodes don't
+appear until Camp Lv 5 -- a banner, and the world glides to the ship, its
+nine nodes ringed round it, each with a dotted line in to its part. The
+parts -- engine,
 hull, cockpit, antenna, fins, portholes, nose cone, landing legs and solar
 panels -- broken until fixed (a smoking engine, a scorched hull, cracked
 glass, a bent antenna and fin, boarded portholes, the nose buried in dirt,
@@ -655,8 +670,8 @@ projects cells through the rendered camera:
 Godot.exe --path . res://tests/tap_test.tscn
 ```
 
-The menus' systems (95 checks), the game screen's flow through them (34
-checks) and Home's camp and ship build nodes (10 checks), all passing. None
+The menus' systems (98 checks), the game screen's flow through them (34
+checks) and Home's camp and ship build nodes (13 checks), all passing. None
 touches the real save:
 
 ```

@@ -403,6 +403,138 @@ func _draw_part(i: int, broken: bool) -> void:
 					_line([Vector2(x, 0.86), Vector2(x, 0.34)], logs, 1.0)
 				_rrect(Rect2(0.18, 0.28, 0.64, 0.1), 0.02, logs)
 				_poly([Vector2(0.16, 0.28), Vector2(0.5, 0.08), Vector2(0.84, 0.28)], Color(0.62, 0.8, 1.0))
+		_:
+			_draw_camp_spot(i, broken)
+
+
+## The camp's later waves (TSProfile.CAMP_HAMMOCK on): built, or their makings.
+func _draw_camp_spot(i: int, broken: bool) -> void:
+	var wood := Color(0.62, 0.5, 0.44) if broken else Color(0.78, 0.56, 0.38)
+	var pink := Color(0.8, 0.7, 0.72) if broken else Color(1.0, 0.7, 0.78)
+	var leaf := Color(0.6, 0.7, 0.6) if broken else Color(0.48, 0.78, 0.5)
+	var stone := Color(0.74, 0.72, 0.78)
+	match i:
+		TSProfile.CAMP_HAMMOCK:
+			for x in [0.16, 0.84]:
+				_line([Vector2(x, 0.84), Vector2(x, 0.3)], wood, 1.6)
+			if broken:
+				_line([Vector2(0.3, 0.8), Vector2(0.42, 0.72), Vector2(0.5, 0.82), Vector2(0.62, 0.74)], Color(0.9, 0.84, 0.7), 1.0)
+			else:
+				_poly([Vector2(0.16, 0.36), Vector2(0.5, 0.5), Vector2(0.84, 0.36), Vector2(0.5, 0.66)], pink)
+		TSProfile.CAMP_PICNIC:
+			if broken:
+				_rrect(Rect2(0.14, 0.56, 0.72, 0.18), 0.08, wood)
+			else:
+				_rrect(Rect2(0.12, 0.42, 0.76, 0.1), 0.02, Color(1.0, 0.62, 0.66))
+				for x in [0.2, 0.72]:
+					_rrect(Rect2(x, 0.52, 0.08, 0.3), 0.02, wood)
+				_rrect(Rect2(0.08, 0.66, 0.84, 0.07), 0.02, wood)
+		TSProfile.CAMP_CLOTHESLINE:
+			for x in [0.14, 0.86]:
+				_line([Vector2(x, 0.86), Vector2(x, 0.24)], wood, 1.4)
+			if broken:
+				_line([Vector2(0.14, 0.26), Vector2(0.4, 0.7), Vector2(0.7, 0.8)], WHITE, 0.8)
+			else:
+				_line([Vector2(0.14, 0.26), Vector2(0.5, 0.34), Vector2(0.86, 0.26)], INK, 0.7)
+				_rrect(Rect2(0.28, 0.3, 0.16, 0.26), 0.03, Color(0.62, 0.8, 1.0))
+				_rrect(Rect2(0.54, 0.31, 0.2, 0.34), 0.03, WHITE)
+		TSProfile.CAMP_MAILBOX:
+			if broken:
+				_poly([Vector2(0.24, 0.66), Vector2(0.7, 0.58), Vector2(0.76, 0.76), Vector2(0.28, 0.82)], stone)
+			else:
+				_line([Vector2(0.5, 0.88), Vector2(0.5, 0.56)], wood, 1.6)
+				_rrect(Rect2(0.22, 0.28, 0.56, 0.3), 0.12, pink)
+				_poly([Vector2(0.76, 0.3), Vector2(0.76, 0.14), Vector2(0.9, 0.2)], Color(1.0, 0.36, 0.42))
+		TSProfile.CAMP_WINDMILL:
+			_poly([Vector2(0.32, 0.88), Vector2(0.68, 0.88), Vector2(0.6, 0.4), Vector2(0.4, 0.4)], Color(1.0, 0.95, 0.86))
+			if not broken:
+				for a in [0.4, 0.4 + PI * 0.5, 0.4 + PI, 0.4 + PI * 1.5]:
+					_line([Vector2(0.5, 0.38), Vector2(0.5, 0.38) + Vector2.from_angle(a) * 0.32], pink, 1.6)
+				_circle(Vector2(0.5, 0.38), 0.05, INK, false)
+		TSProfile.CAMP_DOCK:
+			_ellipse(Vector2(0.5, 0.4), 0.42, 0.14, Color(0.6, 0.82, 1.0), false)
+			if broken:
+				for k in 3:
+					_rrect(Rect2(0.2 + k * 0.18, 0.58 + (k % 2) * 0.08, 0.2, 0.06), 0.02, wood)
+			else:
+				for k in 4:
+					_rrect(Rect2(0.36, 0.38 + k * 0.12, 0.28, 0.09), 0.02, wood)
+		TSProfile.CAMP_PLAYGROUND:
+			if broken:
+				_rrect(Rect2(0.3, 0.7, 0.4, 0.08), 0.02, wood)
+			else:
+				for x in [0.2, 0.8]:
+					_line([Vector2(x - 0.08, 0.86), Vector2(x, 0.2), Vector2(x + 0.08, 0.86)], Color(1.0, 0.6, 0.4), 1.4)
+				_line([Vector2(0.2, 0.2), Vector2(0.8, 0.2)], INK, 1.4)
+				_line([Vector2(0.44, 0.2), Vector2(0.44, 0.62)], INK, 0.6)
+				_line([Vector2(0.58, 0.2), Vector2(0.58, 0.62)], INK, 0.6)
+				_rrect(Rect2(0.4, 0.62, 0.22, 0.06), 0.02, wood)
+		TSProfile.CAMP_TREEHOUSE:
+			_rrect(Rect2(0.42, 0.42, 0.16, 0.46), 0.04, wood)
+			if broken:
+				_line([Vector2(0.5, 0.5), Vector2(0.24, 0.26)], wood, 1.4)
+				_line([Vector2(0.5, 0.44), Vector2(0.76, 0.22)], wood, 1.4)
+			else:
+				_circle(Vector2(0.5, 0.3), 0.26, leaf)
+				_rrect(Rect2(0.3, 0.26, 0.4, 0.22), 0.03, Color(1.0, 0.86, 0.66))
+				_poly([Vector2(0.26, 0.28), Vector2(0.5, 0.1), Vector2(0.74, 0.28)], Color(1.0, 0.5, 0.56))
+		TSProfile.CAMP_STALL:
+			if broken:
+				_rrect(Rect2(0.18, 0.56, 0.3, 0.28), 0.03, wood)
+				_rrect(Rect2(0.5, 0.6, 0.3, 0.24), 0.03, wood)
+			else:
+				_rrect(Rect2(0.16, 0.54, 0.68, 0.3), 0.03, wood)
+				for k in 4:
+					_poly([Vector2(0.12 + k * 0.19, 0.2), Vector2(0.31 + k * 0.19, 0.2), Vector2(0.31 + k * 0.19, 0.34), Vector2(0.12 + k * 0.19, 0.34)], pink if k % 2 == 0 else WHITE)
+				for x in [0.18, 0.82]:
+					_line([Vector2(x, 0.34), Vector2(x, 0.54)], wood, 1.0)
+		TSProfile.CAMP_GREENHOUSE:
+			if broken:
+				for p in [Vector2(0.3, 0.74), Vector2(0.5, 0.7), Vector2(0.7, 0.76)]:
+					_poly([p, p + Vector2(0.1, -0.05), p + Vector2(0.05, 0.06)], Color(0.8, 0.92, 1.0))
+			else:
+				_poly([Vector2(0.14, 0.84), Vector2(0.86, 0.84), Vector2(0.86, 0.44), Vector2(0.5, 0.18), Vector2(0.14, 0.44)], Color(0.78, 0.92, 1.0))
+				_circle(Vector2(0.36, 0.68), 0.1, leaf)
+				_circle(Vector2(0.64, 0.66), 0.1, leaf)
+		TSProfile.CAMP_SPRING:
+			_ellipse(Vector2(0.5, 0.64), 0.38 if not broken else 0.2, 0.14 if not broken else 0.07, Color(0.62, 0.88, 0.94))
+			if not broken:
+				for x in [0.38, 0.52, 0.66]:
+					_line([Vector2(x, 0.48), Vector2(x - 0.04, 0.36), Vector2(x + 0.02, 0.24)], WHITE, 0.8)
+		TSProfile.CAMP_OBSERVATORY:
+			if broken:
+				for p in [Vector2(0.32, 0.72), Vector2(0.56, 0.74), Vector2(0.46, 0.6)]:
+					_ellipse(p, 0.12, 0.08, stone)
+			else:
+				_rrect(Rect2(0.2, 0.5, 0.6, 0.36), 0.03, Color(0.96, 0.94, 1.0))
+				var dome: Array = []
+				for k in 17:
+					var a := PI + PI * float(k) / 16.0
+					dome.append(Vector2(0.5, 0.5) + Vector2(cos(a), sin(a)) * 0.3)
+				_poly(dome, Color(0.62, 0.66, 0.9))
+				_line([Vector2(0.5, 0.36), Vector2(0.8, 0.14)], Color(0.88, 0.9, 0.96), 1.6)
+		TSProfile.CAMP_OVEN:
+			var clay := Color(0.76, 0.56, 0.48) if broken else Color(0.88, 0.58, 0.44)
+			if broken:
+				_ellipse(Vector2(0.5, 0.7), 0.3, 0.16, clay)
+			else:
+				var dome: Array = []
+				for k in 17:
+					var a := PI + PI * float(k) / 16.0
+					dome.append(Vector2(0.5, 0.82) + Vector2(cos(a), sin(a)) * 0.38)
+				_poly(dome, clay)
+				_rrect(Rect2(0.38, 0.62, 0.24, 0.2), 0.1, Color(0.32, 0.22, 0.24))
+				_rrect(Rect2(0.62, 0.22, 0.12, 0.26), 0.02, clay)
+		TSProfile.CAMP_STATUE:
+			if broken:
+				_poly([Vector2(0.2, 0.84), Vector2(0.8, 0.84), Vector2(0.7, 0.4), Vector2(0.5, 0.3), Vector2(0.28, 0.44)], stone)
+			else:
+				_rrect(Rect2(0.24, 0.7, 0.52, 0.16), 0.02, Color(0.92, 0.9, 0.96))
+				_poly([Vector2(0.32, 0.36), Vector2(0.26, 0.14), Vector2(0.42, 0.28)], stone)
+				_poly([Vector2(0.68, 0.36), Vector2(0.74, 0.14), Vector2(0.58, 0.28)], stone)
+				_circle(Vector2(0.5, 0.46), 0.24, stone)
+				_circle(Vector2(0.42, 0.44), 0.025, INK, false)
+				_circle(Vector2(0.58, 0.44), 0.025, INK, false)
 
 
 const CHEST_COLORS := {

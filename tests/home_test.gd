@@ -39,7 +39,8 @@ func _run() -> void:
 	var only_camp := not parts.is_empty()
 	for p in parts:
 		only_camp = only_camp and TSProfile.is_camp(p)
-	_check("the camp's nodes show, and no ship part's yet (%d nodes)" % parts.size(), _world.nodes_enabled and only_camp and parts.size() == TSProfile.camp_spot_count())
+	_check("the first wave's five camp nodes show, and no ship part's (%d nodes)" % parts.size(), _world.nodes_enabled and only_camp and parts.size() == 5)
+	_check("the Camp level shows on Home: Camp Lv 1", camp_badge.visible and camp_label.text == "Camp Lv 1")
 
 	var points := TSProfile.collection_points()
 	var coins := TSProfile.coin_count
@@ -53,14 +54,25 @@ func _run() -> void:
 	_check("upgrading from the same card", TSProfile.part_level_of(TSProfile.CAMP_FIRE) == 2)
 	_check("none of it counts toward the collection level", TSProfile.collection_points() == points)
 
+	# Finish the first wave but its last step, and take that through the card.
+	for p in TSProfile.CAMP_WAVES[0]:
+		TSProfile.part_level[p] = TSProfile.PART_MAX_LEVEL
+	TSProfile.part_level[TSProfile.CAMP_WELL] = TSProfile.PART_MAX_LEVEL - 1
+	_world.refresh_parts()
+	_open_part(TSProfile.CAMP_WELL)
+	_on_part_pressed()
+	parts = _world._node_parts()
+	_check("finishing a wave makes Camp Lv 2 and brings out the next five (%d)" % parts.size(), camp_label.text == "Camp Lv 2" and parts.size() == 5 and parts.has(TSProfile.CAMP_LOOKOUT) and parts.has(TSProfile.CAMP_MAILBOX))
+
 	# Finish the camp but the last step, then take that through the card.
 	for p in TSProfile.PART_COUNT:
 		if TSProfile.is_camp(p):
 			TSProfile.part_level[p] = TSProfile.PART_MAX_LEVEL
-	TSProfile.part_level[TSProfile.CAMP_LOOKOUT] = TSProfile.PART_MAX_LEVEL - 1
+	TSProfile.part_level[TSProfile.CAMP_STATUE] = TSProfile.PART_MAX_LEVEL - 1
 	_world.refresh_parts()
-	_open_part(TSProfile.CAMP_LOOKOUT)
+	_open_part(TSProfile.CAMP_STATUE)
 	_on_part_pressed()
+	_check("the last camp step makes Camp Lv %d" % TSProfile.CAMP_MAX_LEVEL, camp_label.text == "Camp Lv %d" % TSProfile.CAMP_MAX_LEVEL)
 	parts = _world._node_parts()
 	var only_ship := not parts.is_empty()
 	for p in parts:

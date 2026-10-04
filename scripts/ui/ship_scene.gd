@@ -31,7 +31,7 @@ signal part_tapped(part: int)
 ## which glides the world over to them.
 
 const W := 2600.0                # the world, in the menus' 720-wide units
-const H := 2300.0                # deep enough to scroll the far south up into view
+const H := 2900.0                # deep enough to scroll the far south (the camp's last wave) up into view
 const INK := Color(0.27, 0.16, 0.19)
 const GLASS := Color(0.62, 0.84, 1.0)
 const DIRT := Color(0.74, 0.58, 0.44)
@@ -95,6 +95,23 @@ const GARDEN := Vector2(2340.0, 1300.0)
 const WELL := Vector2(300.0, 1010.0)
 const LOOKOUT := Vector2(2480.0, 640.0)
 const SOLAR := Vector2(470.0, 700.0)
+# The camp's later waves: the second round the camp to the east, the third
+# by the pond to the west, the fourth across the south.
+const HAMMOCK := Vector2(1820.0, 1390.0)
+const PICNIC := Vector2(2400.0, 1560.0)
+const CLOTHESLINE := Vector2(1880.0, 820.0)
+const MAILBOX := Vector2(2150.0, 770.0)
+const WINDMILL := Vector2(720.0, 560.0)
+const DOCK := Vector2(470.0, 1070.0)
+const PLAYGROUND := Vector2(600.0, 1580.0)
+const TREEHOUSE := Vector2(300.0, 1380.0)
+const STALL := Vector2(1010.0, 1190.0)
+const GREENHOUSE := Vector2(2000.0, 1820.0)
+const SPRING := Vector2(1560.0, 1900.0)
+const OBSERVATORY := Vector2(2420.0, 1960.0)
+const OVEN := Vector2(1080.0, 1860.0)
+const STATUE := Vector2(470.0, 1950.0)
+const LEAF := Color(0.48, 0.78, 0.5)
 
 ## The jobs, in the order critters take them.
 const JOBS := [
@@ -152,7 +169,10 @@ var _scatter: Array = []        # ground decoration: [kind, position, size]
 
 ## Where the build nodes on the ground float, in world coordinates (above each
 ## camp spot, and the solar panels' stand), by TSProfile.PARTS index.
-const GROUND_NODES := {0: FIRE + Vector2(0.0, -150.0), 1: TENT + Vector2(0.0, -230.0), 2: BENCH + Vector2(0.0, -190.0), 3: GARDEN + Vector2(0.0, -150.0), 4: WELL + Vector2(0.0, -210.0), 5: LOOKOUT + Vector2(0.0, -330.0), 14: SOLAR + Vector2(0.0, -190.0)}
+const GROUND_NODES := {0: FIRE + Vector2(0.0, -150.0), 1: TENT + Vector2(0.0, -230.0), 2: BENCH + Vector2(0.0, -190.0), 3: GARDEN + Vector2(0.0, -150.0), 4: WELL + Vector2(0.0, -210.0), 5: LOOKOUT + Vector2(0.0, -330.0), 14: SOLAR + Vector2(0.0, -190.0),
+	15: HAMMOCK + Vector2(0.0, -190.0), 16: PICNIC + Vector2(0.0, -160.0), 17: CLOTHESLINE + Vector2(0.0, -220.0), 18: MAILBOX + Vector2(0.0, -180.0),
+	19: WINDMILL + Vector2(0.0, -350.0), 20: DOCK + Vector2(0.0, -130.0), 21: PLAYGROUND + Vector2(0.0, -230.0), 22: TREEHOUSE + Vector2(0.0, -350.0), 23: STALL + Vector2(0.0, -240.0),
+	24: GREENHOUSE + Vector2(0.0, -230.0), 25: SPRING + Vector2(0.0, -150.0), 26: OBSERVATORY + Vector2(0.0, -280.0), 27: OVEN + Vector2(0.0, -210.0), 28: STATUE + Vector2(0.0, -250.0)}
 ## The ship parts' nodes ring the ship (too many to sit on the hull itself):
 ## each at its own angle round SHIP_MIDDLE, in ship coordinates (0 towards the
 ## nose, 90 the belly), on an oval SHIP_RING across, with a dotted line in to
@@ -217,7 +237,10 @@ func _ready() -> void:
 		_crew.append(entry)
 		_jobs[job] = entry
 	# The camp spots and the solar panels, each sorted in where it stands.
-	for spot in [[_draw_campfire, FIRE], [_draw_tent, TENT], [_draw_bench, BENCH], [_draw_garden, GARDEN], [_draw_well, WELL], [_draw_lookout, LOOKOUT], [_draw_solar, SOLAR]]:
+	for spot in [[_draw_campfire, FIRE], [_draw_tent, TENT], [_draw_bench, BENCH], [_draw_garden, GARDEN], [_draw_well, WELL], [_draw_lookout, LOOKOUT], [_draw_solar, SOLAR],
+			[_draw_hammock, HAMMOCK], [_draw_picnic, PICNIC], [_draw_clothesline, CLOTHESLINE], [_draw_mailbox, MAILBOX], [_draw_windmill, WINDMILL],
+			[_draw_dock, DOCK], [_draw_playground, PLAYGROUND], [_draw_treehouse, TREEHOUSE], [_draw_stall, STALL], [_draw_greenhouse, GREENHOUSE],
+			[_draw_spring, SPRING], [_draw_observatory, OBSERVATORY], [_draw_oven, OVEN], [_draw_statue, STATUE]]:
 		_spot_layer(spot[0], (spot[1] as Vector2).y)
 	if _jobs.has("crater"):
 		_lip_layer = _layer(_draw_crater_lip, CRATER.y + 1.0)
@@ -278,8 +301,9 @@ func _make_scenery() -> void:
 		var p := Vector2(rng.randf_range(10.0, W - 10.0), rng.randf_range(10.0, 300.0))
 		if p.y < _horizon(p.x) - 24.0 and p.distance_to(PLANET) > 110.0 and p.distance_to(MOON) > 60.0:
 			_stars.append([p, rng.randf_range(3.0, 8.0), rng.randf() * TAU])
-	var keep_clear := [SHIP_AT, POND, MOUND, FIRE, CRATER, Vector2(1250, 930), CHASE, TENT, BENCH, GARDEN, WELL, LOOKOUT, SOLAR]
-	while _scatter.size() < 110:
+	var keep_clear := [SHIP_AT, POND, MOUND, FIRE, CRATER, Vector2(1250, 930), CHASE, TENT, BENCH, GARDEN, WELL, LOOKOUT, SOLAR,
+		HAMMOCK, PICNIC, CLOTHESLINE, MAILBOX, WINDMILL, DOCK, PLAYGROUND, TREEHOUSE, STALL, GREENHOUSE, SPRING, OBSERVATORY, OVEN, STATUE]
+	while _scatter.size() < 150:
 		var p := Vector2(rng.randf_range(20.0, W - 20.0), rng.randf_range(_horizon(W * 0.5) + 30.0, H - 20.0))
 		if p.y < _horizon(p.x) + 20.0:
 			continue
@@ -1003,7 +1027,13 @@ func _draw_lights() -> void:
 			_pool(ci, lamp + Vector2(0, 30), 110.0, SPOT_BEAM, 0.14)
 	for spot in [[TSProfile.CAMP_TENT, TENT, Vector2(-66, -70)], [TSProfile.CAMP_BENCH, BENCH, Vector2(70, -60)],
 			[TSProfile.CAMP_GARDEN, GARDEN, Vector2(-70, -50)], [TSProfile.CAMP_WELL, WELL, Vector2(0, -130)],
-			[TSProfile.CAMP_LOOKOUT, LOOKOUT, Vector2(0, -175)]]:
+			[TSProfile.CAMP_LOOKOUT, LOOKOUT, Vector2(0, -175)], [TSProfile.CAMP_HAMMOCK, HAMMOCK, Vector2(-110, -104)],
+			[TSProfile.CAMP_PICNIC, PICNIC, Vector2(0, -90)], [TSProfile.CAMP_MAILBOX, MAILBOX, Vector2(0, -120)],
+			[TSProfile.CAMP_WINDMILL, WINDMILL, Vector2(0, -120)], [TSProfile.CAMP_DOCK, DOCK, Vector2(30, -146)],
+			[TSProfile.CAMP_TREEHOUSE, TREEHOUSE, Vector2(0, -182)], [TSProfile.CAMP_STALL, STALL, Vector2(80, -150)],
+			[TSProfile.CAMP_GREENHOUSE, GREENHOUSE, Vector2(0, -60)], [TSProfile.CAMP_SPRING, SPRING, Vector2(0, -20)],
+			[TSProfile.CAMP_OBSERVATORY, OBSERVATORY, Vector2(0, -60)], [TSProfile.CAMP_OVEN, OVEN, Vector2(0, -12)],
+			[TSProfile.CAMP_STATUE, STATUE, Vector2(0, -60)]]:
 		if _lv(int(spot[0])) < 1:
 			continue
 		var at: Vector2 = spot[1]
@@ -1532,7 +1562,15 @@ func _draw_well(ci: Control) -> void:
 				ci.draw_circle(box + Vector2(-10 + n * 10, -12) * k, 5.0 * k, [Color(1.0, 0.62, 0.74), BUTTER, Color(0.8, 0.7, 0.98)][n], true, -1.0, true)
 
 
+## A camp spot shows once its wave is open (TSProfile.CAMP_WAVES): until then
+## the ground there is bare.
+func _spot_open(i: int) -> bool:
+	return _lv(i) > 0 or TSProfile.is_part_available(i)
+
+
 func _draw_lookout(ci: Control) -> void:
+	if not _spot_open(TSProfile.CAMP_LOOKOUT):
+		return
 	var lv := _lv(TSProfile.CAMP_LOOKOUT)
 	var k := _depth_scale(LOOKOUT.y)
 	_ellipse(ci, LOOKOUT + Vector2(0, 6) * k, 70.0 * k, 14.0 * k, SHADOW, false)
@@ -1614,6 +1652,488 @@ func _draw_solar(ci: Control) -> void:
 		if lv >= 3:
 			var glint := fposmod(_t * 0.5 + n * 0.5, 1.0)
 			_sparkle(ci, c + Vector2(lerpf(-40.0, 40.0, glint), -8).rotated(tilt) * k, 7.0 * k, Color(1, 1, 1, 0.9))
+
+
+# -- the camp's later waves ---------------------------------------------------------
+# Each starts as its makings (level 0) and gains a piece at every level, like
+# the first camp spots; each shows only once its wave is open (_spot_open).
+
+## A wooden post or plank, outlined.
+func _post(ci: CanvasItem, a: Vector2, b: Vector2, width: float, col := WOOD) -> void:
+	ci.draw_line(a, b, INK, width + 5.0, true)
+	ci.draw_line(a, b, col, width, true)
+
+
+## An outlined box.
+func _box(ci: CanvasItem, r: Rect2, fill: Color) -> void:
+	_blob(ci, [r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)], fill)
+
+
+## Little lights along a line, twinkling in turn.
+func _fairy_lights(ci: CanvasItem, a: Vector2, b: Vector2, sag: float, n: int, k: float) -> void:
+	var cols := [Color(1.0, 0.62, 0.74), BUTTER, ACCENT, Color(0.62, 0.9, 0.66)]
+	var line := PackedVector2Array()
+	for j in n + 1:
+		var u := float(j) / float(n)
+		line.append(a.lerp(b, u) + Vector2(0.0, sin(u * PI) * sag))
+	ci.draw_polyline(line, INK, 2.0, true)
+	for j in range(1, n):
+		var on := fposmod(_t * 1.5 + float(j) * 0.37, 1.0) < 0.7
+		ci.draw_circle(line[j] + Vector2(0, 4) * k, 5.0 * k, (cols[j % 4] as Color) if on else Color(0.5, 0.5, 0.55), true, -1.0, true)
+
+
+func _draw_hammock(ci: Control) -> void:
+	if not _spot_open(TSProfile.CAMP_HAMMOCK):
+		return
+	var lv := _lv(TSProfile.CAMP_HAMMOCK)
+	var p := HAMMOCK
+	var k := _depth_scale(p.y)
+	_ellipse(ci, p + Vector2(0, 6) * k, 130.0 * k, 16.0 * k, SHADOW, false)
+	if lv == 0:
+		_post(ci, p + Vector2(-110, 0) * k, p + Vector2(-110, -100) * k, 10.0 * k)
+		_post(ci, p + Vector2(20, 4) * k, p + Vector2(120, -6) * k, 10.0 * k)   # the other post, fallen
+		var knot := PackedVector2Array()
+		for j in 14:
+			knot.append(p + Vector2(-60 + j * 6, -4 + sin(j * 2.1) * 8) * k)
+		ci.draw_polyline(knot, Color(0.9, 0.84, 0.7), 4.0 * k, true)
+		return
+	var a := p + Vector2(-110, -100) * k
+	var b := p + Vector2(110, -100) * k
+	if lv >= 3:
+		_blob(ci, [a + Vector2(-20, -30) * k, b + Vector2(20, -30) * k, p + Vector2(0, -170) * k], ACCENT)
+	for post in [a, b]:
+		_post(ci, Vector2(post.x, p.y), post, 10.0 * k)
+	var sway := sin(_t * 1.2) * 4.0 * k
+	var top := PackedVector2Array()
+	var low := PackedVector2Array()
+	for j in 9:
+		var u := float(j) / 8.0
+		top.append(a.lerp(b, u) + Vector2(sway, 20.0 * k + sin(u * PI) * 40.0 * k))
+		low.append(a.lerp(b, 1.0 - u) + Vector2(sway, 20.0 * k + sin((1.0 - u) * PI) * 64.0 * k))
+	var cloth := Array(top) + Array(low)
+	_blob(ci, cloth, Color(1.0, 0.8, 0.86))
+	ci.draw_line(a, top[0], INK, 3.0, true)
+	ci.draw_line(b, top[8], INK, 3.0, true)
+	if lv >= 2:
+		_ellipse(ci, top[1] + Vector2(10, 14) * k, 22.0 * k, 12.0 * k, Color(1.0, 0.98, 0.9))
+	if lv >= 4:
+		_fairy_lights(ci, a + Vector2(0, -4) * k, b + Vector2(0, -4) * k, 26.0 * k, 9, k)
+
+
+func _draw_picnic(ci: Control) -> void:
+	if not _spot_open(TSProfile.CAMP_PICNIC):
+		return
+	var lv := _lv(TSProfile.CAMP_PICNIC)
+	var p := PICNIC
+	var k := _depth_scale(p.y)
+	_ellipse(ci, p + Vector2(0, 8) * k, 110.0 * k, 16.0 * k, SHADOW, false)
+	if lv <= 1:
+		if lv == 1:
+			for x in [-60.0, 60.0]:
+				_box(ci, Rect2(p + Vector2(x - 14, -26) * k, Vector2(28, 26) * k), WOOD.darkened(0.15))
+		var y := -40.0 if lv == 1 else -14.0
+		_blob(ci, [p + Vector2(-90, y - 16) * k, p + Vector2(90, y - 16) * k, p + Vector2(90, y + 14) * k, p + Vector2(-90, y + 14) * k], WOOD)
+		_ellipse(ci, p + Vector2(90, y - 1) * k, 9.0 * k, 15.0 * k, Color(0.9, 0.76, 0.56))
+		return
+	for x in [-80.0, 80.0]:
+		_post(ci, p + Vector2(x * 0.8, 0) * k, p + Vector2(x * 0.7, -50) * k, 8.0 * k)
+	for y in [-22.0, 10.0]:
+		_box(ci, Rect2(p + Vector2(-100, y - 2) * k, Vector2(200, 10) * k), WOOD.darkened(0.1))   # the benches
+	var top := Rect2(p + Vector2(-90, -62) * k, Vector2(180, 18) * k)
+	_box(ci, top, WOOD)
+	if lv >= 3:
+		_box(ci, Rect2(top.position + Vector2(-6, -4) * k, top.size + Vector2(12, 8) * k), Color.WHITE)
+		for j in 6:
+			ci.draw_rect(Rect2(top.position + Vector2(-6 + j * 32, -4) * k, Vector2(16, 26) * k), Color(1.0, 0.55, 0.6, 0.8))
+	if lv >= 4:
+		_ellipse(ci, p + Vector2(-40, -72) * k, 26.0 * k, 9.0 * k, Color(0.96, 0.78, 0.45))
+		for j in 3:
+			ci.draw_circle(p + Vector2(20 + j * 16, -72) * k, 8.0 * k, Color(1.0, 0.42, 0.42), true, -1.0, true)
+		_box(ci, Rect2(p + Vector2(62, -98) * k, Vector2(20, 30) * k), Color(0.7, 0.86, 1.0))
+
+
+func _draw_clothesline(ci: Control) -> void:
+	if not _spot_open(TSProfile.CAMP_CLOTHESLINE):
+		return
+	var lv := _lv(TSProfile.CAMP_CLOTHESLINE)
+	var p := CLOTHESLINE
+	var k := _depth_scale(p.y)
+	_ellipse(ci, p + Vector2(0, 6) * k, 120.0 * k, 12.0 * k, SHADOW, false)
+	var a := p + Vector2(-100, -130) * k
+	var b := p + Vector2(100, -130) * k
+	if lv == 0:
+		_post(ci, Vector2(a.x, p.y), a, 8.0 * k)
+		_post(ci, p + Vector2(40, 2) * k, p + Vector2(130, -30) * k, 8.0 * k)   # leaning over
+		var loose := PackedVector2Array([a, p + Vector2(-40, -10) * k, p + Vector2(20, 0) * k, p + Vector2(70, -14) * k])
+		ci.draw_polyline(loose, Color(0.95, 0.95, 0.95), 3.0, true)
+		return
+	for post in [a, b]:
+		_post(ci, Vector2(post.x, p.y), post, 8.0 * k)
+		_post(ci, post + Vector2(-16, 0) * k, post + Vector2(16, 0) * k, 6.0 * k)
+	var wind := sin(_t * 1.6) * 6.0 * k
+	var line := PackedVector2Array()
+	for j in 9:
+		var u := float(j) / 8.0
+		line.append(a.lerp(b, u) + Vector2(0, sin(u * PI) * 20.0 * k))
+	ci.draw_polyline(line, INK, 3.0, true)
+	if lv >= 2:
+		for j in [2, 3]:
+			var at: Vector2 = line[j]
+			_blob(ci, [at + Vector2(-6, 0) * k, at + Vector2(6, 0) * k, at + Vector2(6 + wind * 0.3, 26) * k, at + Vector2(18 + wind * 0.3, 32) * k, at + Vector2(16 + wind * 0.3, 40) * k, at + Vector2(-6 + wind * 0.3, 34) * k], Color(1.0, 0.62, 0.74) if j == 2 else ACCENT)
+	if lv >= 3:
+		var s0: Vector2 = line[5]
+		var s1: Vector2 = line[7]
+		_blob(ci, [s0, s1, s1 + Vector2(wind, 70) * k, s0 + Vector2(wind * 1.4, 64) * k], Color(1.0, 0.98, 0.92))
+	if lv >= 4:
+		for j in 8:
+			var u := (float(j) + 0.5) / 8.0
+			var at := a.lerp(b, u) + Vector2(0, -24.0 * k + sin(u * PI) * 10.0 * k)
+			_blob(ci, [at + Vector2(-9, 0) * k, at + Vector2(9, 0) * k, at + Vector2(0, 16) * k], [Color(1.0, 0.62, 0.74), BUTTER, ACCENT, Color(0.62, 0.9, 0.66)][j % 4], false)
+
+
+func _draw_mailbox(ci: Control) -> void:
+	if not _spot_open(TSProfile.CAMP_MAILBOX):
+		return
+	var lv := _lv(TSProfile.CAMP_MAILBOX)
+	var p := MAILBOX
+	var k := _depth_scale(p.y)
+	_ellipse(ci, p + Vector2(0, 4) * k, 36.0 * k, 9.0 * k, SHADOW, false)
+	if lv == 0:
+		_blob(ci, [p + Vector2(-26, -2) * k, p + Vector2(18, -10) * k, p + Vector2(24, 6) * k, p + Vector2(-20, 10) * k], Color(0.66, 0.66, 0.72))
+		return
+	_post(ci, p, p + Vector2(0, -70) * k, 8.0 * k)
+	var body := Color(1.0, 0.6, 0.7) if lv >= 2 else Color(0.74, 0.74, 0.8)
+	_blob(ci, [p + Vector2(-30, -70) * k, p + Vector2(30, -70) * k, p + Vector2(30, -100) * k, p + Vector2(20, -112) * k, p + Vector2(-20, -112) * k, p + Vector2(-30, -100) * k], body)
+	ci.draw_circle(p + Vector2(-30, -88) * k, 4.0 * k, INK, true, -1.0, true)
+	if lv >= 3:
+		var wave := sin(_t * 3.0) * 0.1
+		_post(ci, p + Vector2(30, -78) * k, p + Vector2(30, -128) * k, 3.0 * k, CHROME)
+		_blob(ci, [p + Vector2(30, -128) * k, p + Vector2(54, -122 + wave * 40) * k, p + Vector2(30, -112) * k], Color(1.0, 0.36, 0.42))
+	if lv >= 4:
+		_box(ci, Rect2(p + Vector2(18, -26) * k, Vector2(34, 26) * k), Color(0.86, 0.68, 0.48))
+		_box(ci, Rect2(p + Vector2(24, -46) * k, Vector2(22, 20) * k), Color(0.96, 0.86, 0.6))
+		ci.draw_line(p + Vector2(35, -46) * k, p + Vector2(35, -26) * k, Color(1.0, 0.45, 0.5), 3.0, true)
+
+
+func _draw_windmill(ci: Control) -> void:
+	if not _spot_open(TSProfile.CAMP_WINDMILL):
+		return
+	var lv := _lv(TSProfile.CAMP_WINDMILL)
+	var p := WINDMILL
+	var k := _depth_scale(p.y)
+	_ellipse(ci, p + Vector2(0, 8) * k, 70.0 * k, 14.0 * k, SHADOW, false)
+	var h := 90.0 if lv == 0 else 210.0
+	_blob(ci, [p + Vector2(-46, 0) * k, p + Vector2(46, 0) * k, p + Vector2(26, -h) * k, p + Vector2(-26, -h) * k], Color(1.0, 0.95, 0.86))
+	if lv == 0:
+		for j in 2:
+			_post(ci, p + Vector2(40 + j * 30, 4 + j * 6) * k, p + Vector2(120 + j * 20, -20 + j * 20) * k, 8.0 * k, Color(0.84, 0.8, 0.78))
+		return
+	_blob(ci, [p + Vector2(-34, -h) * k, p + Vector2(34, -h) * k, p + Vector2(0, -h - 40) * k], Color(1.0, 0.6, 0.68))
+	if lv >= 3:
+		_blob(ci, [p + Vector2(-14, 0) * k, p + Vector2(14, 0) * k, p + Vector2(14, -36) * k, p + Vector2(0, -46) * k, p + Vector2(-14, -36) * k], WOOD)
+		ci.draw_circle(p + Vector2(0, -120) * k, 11.0 * k, INK, true, -1.0, true)
+		ci.draw_circle(p + Vector2(0, -120) * k, 8.0 * k, Color(1.0, 0.86, 0.5), true, -1.0, true)
+	if lv >= 4:
+		for j in 7:
+			ci.draw_circle(p + Vector2(-48 + j * 16, -2) * k, 7.0 * k, [Color(1.0, 0.62, 0.74), BUTTER, ACCENT][j % 3], true, -1.0, true)
+	var hub := p + Vector2(0, -h + 10) * k
+	var spin := _t * (1.8 if lv >= 2 else 1.0)
+	for j in 4:
+		var d := Vector2.from_angle(spin + j * PI * 0.5)
+		var across := Vector2(-d.y, d.x) * 14.0 * k
+		var fill := (Color(1.0, 0.7, 0.78) if j % 2 == 0 else Color.WHITE) if lv >= 2 else Color(0.86, 0.8, 0.72)
+		_blob(ci, [hub + d * 18.0 * k, hub + d * 100.0 * k, hub + d * 100.0 * k + across, hub + d * 18.0 * k + across], fill)
+	ci.draw_circle(hub, 9.0 * k, INK, true, -1.0, true)
+
+
+func _draw_dock(ci: Control) -> void:
+	if not _spot_open(TSProfile.CAMP_DOCK):
+		return
+	var lv := _lv(TSProfile.CAMP_DOCK)
+	var p := DOCK
+	var k := _depth_scale(p.y)
+	if lv == 0:
+		for j in 3:
+			var at := p + Vector2(-50 + j * 44, -6 + (j % 2) * 10) * k
+			_post(ci, at, at + Vector2(34, -6 + j * 4) * k, 7.0 * k, Color(0.8, 0.7, 0.6))
+		return
+	if lv >= 2:
+		var bob := sin(_t * 1.4) * 3.0
+		var boat := Vector2(380.0, 1000.0 + bob)
+		_blob(ci, [boat + Vector2(-50, -8), boat + Vector2(50, -8), boat + Vector2(36, 12), boat + Vector2(-36, 12)], Color(1.0, 0.7, 0.55))
+		_post(ci, boat + Vector2(-10, -10), boat + Vector2(40, -30), 4.0, WOOD)
+	for x in [-26.0, 26.0]:
+		_post(ci, p + Vector2(x, 10) * k, p + Vector2(x, -66) * k, 7.0 * k, WOOD.darkened(0.2))
+	for j in 6:
+		var y := -10.0 - j * 11.0
+		_box(ci, Rect2(p + Vector2(-34, y) * k, Vector2(68, 9) * k), WOOD)
+	if lv >= 3:
+		_post(ci, p + Vector2(30, -70) * k, p + Vector2(30, -140) * k, 5.0 * k, INK)
+		ci.draw_circle(p + Vector2(30, -146) * k, 10.0 * k, INK, true, -1.0, true)
+		ci.draw_circle(p + Vector2(30, -146) * k, 7.0 * k, BUTTER, true, -1.0, true)
+	if lv >= 4:
+		var ring := Vector2(640.0, 1012.0 + sin(_t * 2.0) * 3.0)
+		ci.draw_arc(ring, 16.0, 0.0, TAU, 20, INK, 14.0, true)
+		ci.draw_arc(ring, 16.0, 0.0, TAU, 20, BUTTER, 9.0, true)
+		ci.draw_circle(ring + Vector2(0, -20), 9.0, BUTTER, true, -1.0, true)
+		ci.draw_circle(ring + Vector2(7, -20), 4.0, Color(1.0, 0.6, 0.3), true, -1.0, true)
+
+
+func _draw_playground(ci: Control) -> void:
+	if not _spot_open(TSProfile.CAMP_PLAYGROUND):
+		return
+	var lv := _lv(TSProfile.CAMP_PLAYGROUND)
+	var p := PLAYGROUND
+	var k := _depth_scale(p.y)
+	_ellipse(ci, p + Vector2(0, 8) * k, 140.0 * k, 18.0 * k, SHADOW, false)
+	if lv == 0:
+		_box(ci, Rect2(p + Vector2(-40, -8) * k, Vector2(80, 12) * k), WOOD)
+		var rope := PackedVector2Array()
+		for j in 12:
+			rope.append(p + Vector2(-60 + j * 10, 10 + sin(j * 1.7) * 6) * k)
+		ci.draw_polyline(rope, Color(0.9, 0.84, 0.7), 4.0 * k, true)
+		return
+	var top_y := -150.0
+	for x in [-90.0, 90.0]:
+		_post(ci, p + Vector2(x - 30, 0) * k, p + Vector2(x, top_y) * k, 8.0 * k, Color(1.0, 0.6, 0.4))
+		_post(ci, p + Vector2(x + 30, 0) * k, p + Vector2(x, top_y) * k, 8.0 * k, Color(1.0, 0.6, 0.4))
+	_post(ci, p + Vector2(-96, top_y) * k, p + Vector2(96, top_y) * k, 8.0 * k, CHROME)
+	var swings := [-40.0] if lv == 1 else [-45.0, 35.0]
+	for j in swings.size():
+		var x: float = swings[j]
+		var a := sin(_t * 1.6 + j * 1.3) * 0.35
+		var seat := p + Vector2(x, top_y) * k + Vector2(0, 120.0 * k).rotated(a)
+		for side in [-14.0, 14.0]:
+			ci.draw_line(p + Vector2(x + side, top_y) * k, seat + Vector2(side, 0) * k, INK, 2.5, true)
+		_box(ci, Rect2(seat + Vector2(-18, -4) * k, Vector2(36, 8) * k), WOOD)
+	if lv >= 3:
+		var s := p + Vector2(150, 0) * k
+		_post(ci, s + Vector2(0, 0) * k, s + Vector2(0, -110) * k, 6.0 * k, CHROME)
+		_post(ci, s + Vector2(20, 0) * k, s + Vector2(20, -110) * k, 6.0 * k, CHROME)
+		_blob(ci, [s + Vector2(20, -110) * k, s + Vector2(34, -110) * k, s + Vector2(130, -6) * k, s + Vector2(110, 0) * k], Color(0.62, 0.9, 0.66))
+	if lv >= 4:
+		var s := p + Vector2(-60, 40) * k
+		var tip := sin(_t * 1.3) * 0.25
+		_blob(ci, [s + Vector2(-10, 0) * k, s + Vector2(10, 0) * k, s + Vector2(0, -22) * k], WOOD.darkened(0.2))
+		var plank := Vector2(80, 0).rotated(tip) * k
+		ci.draw_line(s + Vector2(0, -22) * k - plank, s + Vector2(0, -22) * k + plank, INK, 12.0 * k, true)
+		ci.draw_line(s + Vector2(0, -22) * k - plank, s + Vector2(0, -22) * k + plank, Color(1.0, 0.86, 0.45), 7.0 * k, true)
+
+
+func _draw_treehouse(ci: Control) -> void:
+	if not _spot_open(TSProfile.CAMP_TREEHOUSE):
+		return
+	var lv := _lv(TSProfile.CAMP_TREEHOUSE)
+	var p := TREEHOUSE
+	var k := _depth_scale(p.y)
+	_ellipse(ci, p + Vector2(0, 8) * k, 110.0 * k, 20.0 * k, SHADOW, false)
+	_blob(ci, [p + Vector2(-26, 0) * k, p + Vector2(26, 0) * k, p + Vector2(16, -250) * k, p + Vector2(-16, -250) * k], WOOD.darkened(0.1))
+	for b in [[Vector2(0, -170), Vector2(-90, -230)], [Vector2(0, -200), Vector2(80, -260)], [Vector2(0, -240), Vector2(-30, -300)]]:
+		_post(ci, p + (b[0] as Vector2) * k, p + (b[1] as Vector2) * k, 9.0 * k, WOOD.darkened(0.1))
+	if lv == 0:
+		return
+	for c in [Vector2(-80, -250), Vector2(70, -270), Vector2(0, -300), Vector2(-30, -240), Vector2(40, -230)]:
+		ci.draw_circle(p + c * k, 58.0 * k, INK, true, -1.0, true)
+	for c in [Vector2(-80, -250), Vector2(70, -270), Vector2(0, -300), Vector2(-30, -240), Vector2(40, -230)]:
+		ci.draw_circle(p + c * k, 54.0 * k, LEAF, true, -1.0, true)
+	_box(ci, Rect2(p + Vector2(-80, -150) * k, Vector2(160, 14) * k), WOOD)
+	if lv >= 2:
+		_box(ci, Rect2(p + Vector2(-50, -216) * k, Vector2(100, 66) * k), Color(1.0, 0.86, 0.66))
+		_blob(ci, [p + Vector2(-62, -214) * k, p + Vector2(62, -214) * k, p + Vector2(0, -262) * k], Color(1.0, 0.5, 0.56))
+		ci.draw_rect(Rect2(p + Vector2(-14, -196) * k, Vector2(28, 28) * k), Color(0.36, 0.42, 0.62))
+	if lv >= 3:
+		for side in [-70.0, -50.0]:
+			ci.draw_line(p + Vector2(side, -136) * k, p + Vector2(side, -10) * k, Color(0.9, 0.84, 0.7), 3.0, true)
+		for j in 5:
+			ci.draw_line(p + Vector2(-70, -116 + j * 22) * k, p + Vector2(-50, -116 + j * 22) * k, WOOD, 4.0, true)
+	if lv >= 4:
+		var a := sin(_t * 1.2) * 0.2
+		var hang := p + Vector2(70, -150) * k
+		var tire := hang + Vector2(0, 100.0 * k).rotated(a)
+		ci.draw_line(hang, tire, INK, 2.5, true)
+		ci.draw_arc(tire + Vector2(0, 16) * k, 16.0 * k, 0.0, TAU, 20, INK, 10.0 * k, true)
+
+
+func _draw_stall(ci: Control) -> void:
+	if not _spot_open(TSProfile.CAMP_STALL):
+		return
+	var lv := _lv(TSProfile.CAMP_STALL)
+	var p := STALL
+	var k := _depth_scale(p.y)
+	_ellipse(ci, p + Vector2(0, 6) * k, 100.0 * k, 14.0 * k, SHADOW, false)
+	if lv == 0:
+		_box(ci, Rect2(p + Vector2(-60, -44) * k, Vector2(50, 44) * k), WOOD)
+		_box(ci, Rect2(p + Vector2(-4, -36) * k, Vector2(44, 36) * k), WOOD.darkened(0.1))
+		_box(ci, Rect2(p + Vector2(-40, -80) * k, Vector2(40, 36) * k), WOOD.lightened(0.1))
+		return
+	for x in [-80.0, 80.0]:
+		_post(ci, p + Vector2(x, -60) * k, p + Vector2(x, -170) * k, 7.0 * k)
+	_box(ci, Rect2(p + Vector2(-90, -64) * k, Vector2(180, 64) * k), WOOD)
+	if lv >= 2:
+		for j in 6:
+			var x0 := -100.0 + j * 33.4
+			_blob(ci, [p + Vector2(x0, -190) * k, p + Vector2(x0 + 33.4, -190) * k, p + Vector2(x0 + 33.4, -160) * k, p + Vector2(x0 + 16.7, -150) * k, p + Vector2(x0, -160) * k], Color(1.0, 0.6, 0.68) if j % 2 == 0 else Color.WHITE)
+	if lv >= 3:
+		for j in 3:
+			var c := p + Vector2(-56 + j * 56, -70) * k
+			_ellipse(ci, c, 22.0 * k, 9.0 * k, WOOD.lightened(0.2))
+			for f in 3:
+				ci.draw_circle(c + Vector2(-10 + f * 10, -8) * k, 8.0 * k, [Color(1.0, 0.42, 0.42), Color(1.0, 0.7, 0.3), Color(0.62, 0.9, 0.5)][j], true, -1.0, true)
+	if lv >= 4:
+		_box(ci, Rect2(p + Vector2(-50, -230) * k, Vector2(100, 34) * k), Color(1.0, 0.98, 0.9))
+		_text(ci, p + Vector2(-46, -205) * k, "MARKET", 22.0 * k, INK)
+		var ring := sin(_t * 6.0) * 0.3 if fposmod(_t, 4.0) < 0.6 else 0.0
+		var bell := p + Vector2(80, -150) * k
+		_blob(ci, [bell + Vector2(-10, 0).rotated(ring) * k, bell + Vector2(10, 0).rotated(ring) * k, bell + Vector2(14, 22).rotated(ring) * k, bell + Vector2(-14, 22).rotated(ring) * k], GOLD)
+
+
+func _draw_greenhouse(ci: Control) -> void:
+	if not _spot_open(TSProfile.CAMP_GREENHOUSE):
+		return
+	var lv := _lv(TSProfile.CAMP_GREENHOUSE)
+	var p := GREENHOUSE
+	var k := _depth_scale(p.y)
+	_ellipse(ci, p + Vector2(0, 8) * k, 120.0 * k, 16.0 * k, SHADOW, false)
+	if lv == 0:
+		for j in 6:
+			var at := p + Vector2(-70 + j * 28, -4 + (j % 3) * 6) * k
+			_blob(ci, [at, at + Vector2(16, -6) * k, at + Vector2(8, 8) * k], Color(0.8, 0.92, 1.0))
+		_sparkle(ci, p + Vector2(20, -16) * k, 6.0 * k * (0.6 + 0.4 * sin(_t * 3.0)), Color.WHITE)
+		return
+	var house := [p + Vector2(-100, 0) * k, p + Vector2(100, 0) * k, p + Vector2(100, -100) * k, p + Vector2(0, -170) * k, p + Vector2(-100, -100) * k]
+	if lv >= 2:
+		ci.draw_colored_polygon(PackedVector2Array(house), Color(0.78, 0.92, 1.0, 0.6))
+	if lv >= 3:
+		for j in 4:
+			var pot := p + Vector2(-66 + j * 44, -6) * k
+			_blob(ci, [pot + Vector2(-12, -18) * k, pot + Vector2(12, -18) * k, pot + Vector2(8, 0) * k, pot + Vector2(-8, 0) * k], Color(0.86, 0.5, 0.36))
+			ci.draw_circle(pot + Vector2(0, -32) * k, 16.0 * k, LEAF, true, -1.0, true)
+			if lv >= 4:
+				ci.draw_circle(pot + Vector2(6, -40) * k, 6.0 * k, [Color(1.0, 0.62, 0.74), BUTTER, Color(1.0, 0.5, 0.5)][j % 3], true, -1.0, true)
+	var frame := PackedVector2Array(house)
+	frame.append(house[0])
+	ci.draw_polyline(frame, INK, 6.0, true)
+	ci.draw_polyline(frame, Color.WHITE, 3.0, true)
+	for x in [-50.0, 0.0, 50.0]:
+		ci.draw_line(p + Vector2(x, 0) * k, p + Vector2(x, -100.0 - (50.0 - absf(x)) * 1.4) * k, Color.WHITE, 3.0, true)
+	ci.draw_line(p + Vector2(-100, -100) * k, p + Vector2(100, -100) * k, Color.WHITE, 3.0, true)
+	if lv >= 4:
+		_sparkle(ci, p + Vector2(60, -130) * k, 7.0 * k * (0.6 + 0.4 * sin(_t * 2.6)), Color.WHITE)
+
+
+func _draw_spring(ci: Control) -> void:
+	if not _spot_open(TSProfile.CAMP_SPRING):
+		return
+	var lv := _lv(TSProfile.CAMP_SPRING)
+	var p := SPRING
+	var k := _depth_scale(p.y)
+	if lv == 0:
+		_ellipse(ci, p, 40.0 * k, 10.0 * k, WATER, false)
+		return
+	if lv >= 4:
+		for j in 11:
+			var x := -110.0 + j * 22.0
+			_post(ci, p + Vector2(x, -16) * k, p + Vector2(x, -90 - (j % 3) * 10) * k, 7.0 * k, Color(0.56, 0.8, 0.48))
+	_ellipse(ci, p, 100.0 * k, 28.0 * k, Color(0.62, 0.88, 0.94))
+	for j in 12:
+		var a := TAU * float(j) / 12.0
+		_ellipse(ci, p + Vector2(cos(a) * 104.0, sin(a) * 30.0) * k, 16.0 * k, 10.0 * k, Color(0.74, 0.72, 0.8))
+	if lv >= 2:
+		for j in 3:
+			var age := fposmod(_t * 0.4 + float(j) / 3.0, 1.0)
+			ci.draw_arc(p + Vector2(-40 + j * 40 + sin(age * 6.0) * 10.0, -20 - age * 80.0) * k, (10.0 + age * 14.0) * k, 0.0, TAU, 14, Color(1, 1, 1, 0.6 * (1.0 - age)), 4.0, true)
+	if lv >= 3:
+		var duck := p + Vector2(30.0 + sin(_t * 0.7) * 30.0, -6.0) * k
+		_ellipse(ci, duck, 14.0 * k, 9.0 * k, BUTTER)
+		ci.draw_circle(duck + Vector2(8, -12) * k, 8.0 * k, BUTTER, true, -1.0, true)
+		ci.draw_circle(duck + Vector2(15, -12) * k, 3.5 * k, Color(1.0, 0.6, 0.3), true, -1.0, true)
+
+
+func _draw_observatory(ci: Control) -> void:
+	if not _spot_open(TSProfile.CAMP_OBSERVATORY):
+		return
+	var lv := _lv(TSProfile.CAMP_OBSERVATORY)
+	var p := OBSERVATORY
+	var k := _depth_scale(p.y)
+	_ellipse(ci, p + Vector2(0, 8) * k, 100.0 * k, 16.0 * k, SHADOW, false)
+	if lv == 0:
+		for c in [Vector2(-40, 0), Vector2(10, -6), Vector2(50, 2), Vector2(-10, -26)]:
+			_ellipse(ci, p + c * k, 26.0 * k, 16.0 * k, Color(0.78, 0.76, 0.84))
+		return
+	_box(ci, Rect2(p + Vector2(-80, -110) * k, Vector2(160, 110) * k), Color(0.96, 0.94, 1.0))
+	ci.draw_rect(Rect2(p + Vector2(-16, -60) * k, Vector2(32, 60) * k), Color(0.5, 0.4, 0.5))
+	if lv >= 2:
+		var dome := _half_circle(p + Vector2(0, -110) * k, 84.0 * k)
+		_blob(ci, Array(dome), Color(0.62, 0.66, 0.9))
+		ci.draw_line(p + Vector2(0, -112) * k, p + Vector2(0, -190) * k, Color(0.3, 0.3, 0.5), 10.0 * k, true)
+	if lv >= 3:
+		_post(ci, p + Vector2(0, -150) * k, p + Vector2(70, -240) * k, 14.0 * k, CHROME)
+	if lv >= 4:
+		_post(ci, p + Vector2(-70, -110) * k, p + Vector2(-70, -230) * k, 3.0 * k, INK)
+		var wave := sin(_t * 2.5) * 6.0
+		_blob(ci, [p + Vector2(-70, -230) * k, p + Vector2(-10, -222 + wave) * k, p + Vector2(-70, -190) * k], Color(0.36, 0.42, 0.82))
+		_sparkle(ci, p + Vector2(-52, -212) * k, 7.0 * k, BUTTER)
+
+
+func _draw_oven(ci: Control) -> void:
+	if not _spot_open(TSProfile.CAMP_OVEN):
+		return
+	var lv := _lv(TSProfile.CAMP_OVEN)
+	var p := OVEN
+	var k := _depth_scale(p.y)
+	_ellipse(ci, p + Vector2(0, 8) * k, 90.0 * k, 14.0 * k, SHADOW, false)
+	var clay := Color(0.88, 0.58, 0.44)
+	if lv == 0:
+		_ellipse(ci, p + Vector2(0, -14) * k, 50.0 * k, 26.0 * k, clay.darkened(0.15))
+		return
+	if lv >= 2:
+		_box(ci, Rect2(p + Vector2(20, -150) * k, Vector2(24, 70) * k), clay.darkened(0.1))
+		for j in 3:
+			var age := fposmod(_t * 0.3 + float(j) / 3.0, 1.0)
+			ci.draw_circle(p + Vector2(32 + sin(age * 5.0) * 10.0, -160 - age * 80.0) * k, (8.0 + age * 14.0) * k, Color(0.9, 0.9, 0.94, 0.6 * (1.0 - age)), true, -1.0, true)
+	_blob(ci, Array(_half_circle(p, 80.0 * k)), clay)
+	_blob(ci, Array(_half_circle(p, 34.0 * k)), Color(0.32, 0.22, 0.24))
+	ci.draw_circle(p + Vector2(0, -12) * k, 12.0 * k, Color(1.0, 0.6, 0.3, 0.6 + 0.3 * sin(_t * 9.0)), true, -1.0, true)
+	if lv >= 3:
+		_box(ci, Rect2(p + Vector2(-130, -30) * k, Vector2(60, 30) * k), WOOD)
+		for j in 2:
+			_ellipse(ci, p + Vector2(-114 + j * 28, -38) * k, 14.0 * k, 9.0 * k, Color(0.86, 0.62, 0.36))
+	if lv >= 4:
+		_box(ci, Rect2(p + Vector2(90, -60) * k, Vector2(70, 60) * k), WOOD.lightened(0.1))
+		for j in 2:
+			_ellipse(ci, p + Vector2(108 + j * 34, -66) * k, 16.0 * k, 6.0 * k, Color(0.96, 0.74, 0.42))
+			_ellipse(ci, p + Vector2(108 + j * 34, -70) * k, 12.0 * k, 4.0 * k, Color(0.9, 0.36, 0.5), false)
+
+
+func _draw_statue(ci: Control) -> void:
+	if not _spot_open(TSProfile.CAMP_STATUE):
+		return
+	var lv := _lv(TSProfile.CAMP_STATUE)
+	var p := STATUE
+	var k := _depth_scale(p.y)
+	_ellipse(ci, p + Vector2(0, 8) * k, 70.0 * k, 14.0 * k, SHADOW, false)
+	var stone := GOLD if lv >= 4 else Color(0.8, 0.8, 0.86)
+	var base := p
+	if lv >= 3:
+		_box(ci, Rect2(p + Vector2(-56, -40) * k, Vector2(112, 40) * k), Color(0.92, 0.9, 0.96))
+		base = p + Vector2(0, -40) * k
+	if lv <= 1:
+		_blob(ci, [base + Vector2(-50, 0) * k, base + Vector2(50, 0) * k, base + Vector2(40, -90) * k, base + Vector2(0, -120) * k, base + Vector2(-44, -84) * k], stone)
+		if lv == 1:
+			ci.draw_arc(base + Vector2(0, -60) * k, 24.0 * k, PI * 0.2, PI * 0.8, 10, INK, 3.0, true)
+			ci.draw_line(base + Vector2(-20, -100) * k, base + Vector2(-8, -84) * k, INK, 3.0, true)
+		return
+	# A critter, carved: round, with ears and a smile.
+	var c := base + Vector2(0, -58) * k
+	for side in [-1.0, 1.0]:
+		_blob(ci, [c + Vector2(side * 22, -48) * k, c + Vector2(side * 46, -78) * k, c + Vector2(side * 50, -30) * k], stone)
+	ci.draw_circle(c, 60.0 * k, INK, true, -1.0, true)
+	ci.draw_circle(c, 56.0 * k, stone, true, -1.0, true)
+	for side in [-1.0, 1.0]:
+		ci.draw_circle(c + Vector2(side * 18, -8) * k, 5.0 * k, INK, true, -1.0, true)
+	ci.draw_arc(c + Vector2(0, 6) * k, 12.0 * k, PI * 0.15, PI * 0.85, 10, INK, 3.0, true)
+	if lv >= 4:
+		_sparkle(ci, c + Vector2(40, -50) * k, 8.0 * k * (0.6 + 0.4 * sin(_t * 3.0)), Color.WHITE)
 
 
 func _draw_crater_lip() -> void:
