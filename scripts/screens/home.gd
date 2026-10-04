@@ -504,7 +504,7 @@ func _fill_part_card() -> void:
 		var left := TSProfile.part_build_seconds_left(i)
 		costs.add_child(_cost_chip("clock", fmt_time(left) + " left", false))
 		costs.add_child(_cost_chip("skip", "%d skips" % TSProfile.time_skips, false))
-		note.text = "Each time skip takes a minute off. Get them from chests and the Battle Pass." if TSProfile.time_skips == 0 else ""
+		note.text = "Each time skip takes a minute off. Get them from the Battle Pass." if TSProfile.time_skips == 0 else ""
 		var need := TSProfile.time_skips_to_finish(i)
 		var one: Button = _part["skip_one"]
 		var all: Button = _part["skip_all"]
@@ -877,7 +877,6 @@ func _open_chest(i: int) -> void:
 	coin_pill.label.text = TSProfile.fmt_coins(before)
 	(_chest["title"] as Label).text = "%s Chest" % TSChests.DISPLAY_NAMES[reward["rarity"]]
 	(_chest["mats"] as Label).text = "+%d" % int(reward.get("materials", 0))
-	(_chest["skips"] as Label).text = "+%d" % int(reward.get("skips", 0))
 	(_chest["mats_row"] as Control).modulate.a = 0.0
 	_refresh_materials()
 	TSUI.reveal(_chest["root"], _chest["panel"])
@@ -1146,11 +1145,6 @@ func _build_dialogs() -> void:
 	mats_row.add_child(TSIcon.make("materials", 44))
 	var mats := TSUI.label("", 28)
 	mats_row.add_child(mats)
-	mats_row.add_child(TSUI.spacer(10))
-	mats_row.add_child(TSIcon.make("skip", 44))
-	var skips := TSUI.label("", 28)
-	mats_row.add_child(skips)
-	_chest["skips"] = skips
 	cbox.add_child(mats_row)
 	_chest["mats"] = mats
 	_chest["mats_row"] = mats_row

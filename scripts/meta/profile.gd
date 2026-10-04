@@ -677,8 +677,8 @@ const MATERIALS_PER_WIN := 30
 const MATERIALS_PER_DAILY := 50
 
 static var materials: int = 0
-## Time skips: each takes TIME_SKIP_SECONDS off a build under way. From chests
-## and the Battle Pass.
+## Time skips: each takes TIME_SKIP_SECONDS off a build under way. From the
+## Battle Pass.
 const TIME_SKIP_SECONDS := 60
 static var time_skips: int = 0
 ## Steps under way: part index -> {"end": unix time it is done, "critter": the builder}.

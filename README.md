@@ -137,8 +137,8 @@ once; with every critter busy, nothing new starts. While a step is under
 way its node is a clock filling round, the time left under it, its critter
 hopping beside it; when it is done, a bouncing tick to tap and collect. A
 build can be sped up with **time skips** -- each takes a minute off, one at
-a time or as many as it takes, from 3 in a common chest, 10 rare and 30
-legendary, and 3 a Battle Pass tier (5 premium) -- or finished early for
+a time or as many as it takes, from the Battle Pass (3 a tier, 5
+premium) -- or finished early for
 20 coins a minute left. Materials
 (`TSProfile.PART_MATERIALS`: 20 a level in the first wave, 40, 60 and 80 in the
 next three, 100 on the ship -- 19,000 for the whole camp and ship) come from

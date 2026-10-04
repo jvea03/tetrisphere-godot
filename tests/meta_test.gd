@@ -155,7 +155,10 @@ func _test_building() -> void:
 	_check("a time skip takes a minute off", TSProfile.use_time_skips(p, 1) == 1 and TSProfile.time_skips == 4 and TSProfile.part_build_seconds_left(p) <= left - 60)
 	_check("and no more are used than it takes to finish (%d needed)" % TSProfile.time_skips_to_finish(p), TSProfile.use_time_skips(p, 99) == 2 and TSProfile.is_part_build_done(p) and TSProfile.time_skips == 2)
 	TSProfile.finish_part_build(p)
-	_check("chests and the Battle Pass give time skips", int(TSChests.SKIP_PAYOUT[TSChests.COMMON]) > 0 and int(TSProfile.battle_pass_free_reward(2).get("skips", 0)) > 0)
+	TSChests.slots[0] = {"rarity": TSChests.LEGENDARY, "unlock_end": 1}
+	var skips_before := TSProfile.time_skips
+	var opened := TSChests.open(0)
+	_check("the Battle Pass gives time skips; chests don't", int(TSProfile.battle_pass_free_reward(2).get("skips", 0)) > 0 and not opened.is_empty() and not opened.has("skips") and TSProfile.time_skips == skips_before)
 	TSProfile.start_part_build(p)
 	var coins := TSProfile.coin_count
 	var skip := TSProfile.part_build_skip_cost(p)
