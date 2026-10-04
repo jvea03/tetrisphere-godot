@@ -197,6 +197,8 @@ func _reward_card(tier: int, current: int, reward: Dictionary, premium: bool) ->
 		h.add_child(_item("part", int(reward["part"]), TSProfile.part_name(int(reward["part"]))))
 	if int(reward.get("coins", 0)) > 0:
 		h.add_child(_item("coin", 0, "x%s" % TSProfile.fmt_coins(int(reward["coins"]))))
+	if int(reward.get("materials", 0)) > 0:
+		h.add_child(_item("materials", 0, "x%d" % int(reward["materials"])))
 	if int(reward.get("bomb", 0)) > 0:
 		h.add_child(_item("bomb", 0, "x%d" % int(reward["bomb"])))
 	if (not premium and not reached) or (premium and not TSProfile.battle_pass_purchased):
@@ -283,6 +285,8 @@ func _quest_row(q: Dictionary) -> Control:
 	var pts := TSUI.hbox(4)
 	pts.add_child(TSIcon.make("star", 30))
 	pts.add_child(TSUI.label("+%d" % int(q["points"]), 22))
+	pts.add_child(TSIcon.make("materials", 30))
+	pts.add_child(TSUI.label("+%d" % TSProfile.quest_materials(int(q["points"])), 22))
 	row.add_child(pts)
 	if done and not claimed:
 		var b := TSUI.button("Collect", TSUI.GREEN, 22, Vector2(130, 56), 4)
@@ -321,7 +325,7 @@ func _open_buy() -> void:
 	box.add_child(TSUI.title("Premium Pass", 44))
 	var season := TSProfile.season_rewards()
 	var lines := PackedStringArray()
-	lines.append("A bigger reward on every tier: more coins and bombs.")
+	lines.append("A bigger reward on every tier: more coins, bombs and building materials.")
 	for t in season["paid_critters"]:
 		var c := int(season["paid_critters"][t])
 		lines.append("%s at tier %d%s." % [TSProfile.critter_name(c), t, " -- only here" if TSProfile.is_critter_pass_exclusive(c) else ""])
@@ -338,11 +342,13 @@ func _open_buy() -> void:
 	if tier > 0:
 		var coins := 0
 		var bombs := 0
+		var mats := 0
 		for t in range(1, tier + 1):
 			var r := TSProfile.battle_pass_paid_reward(t)
 			coins += int(r.get("coins", 0))
 			bombs += int(r.get("bomb", 0))
-		box.add_child(TSUI.wrap(TSUI.label("You are on tier %d, so buying now unlocks right away: %s coins and %d bombs." % [tier, TSProfile.fmt_coins(coins), bombs], 22, TSFX.COL_GAIN, HORIZONTAL_ALIGNMENT_CENTER), 540))
+			mats += int(r.get("materials", 0))
+		box.add_child(TSUI.wrap(TSUI.label("You are on tier %d, so buying now unlocks right away: %s coins, %d bombs and %d building materials." % [tier, TSProfile.fmt_coins(coins), bombs, mats], 22, TSFX.COL_GAIN, HORIZONTAL_ALIGNMENT_CENTER), 540))
 	var confirm := TSUI.button("Buy Pass  ·  %s" % _price(), COL_PREMIUM_RIM, 30, Vector2(0, 84))
 	confirm.pressed.connect(func():
 		TSUI.conceal(_buy["root"])

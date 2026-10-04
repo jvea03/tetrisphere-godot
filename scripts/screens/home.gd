@@ -36,6 +36,8 @@ var _part_index := -1
 var camp_badge: Button       # the Camp level, under the wallet
 var camp_label: Label
 var camp_bar: ProgressBar
+var materials_pill: Button   # building materials, beside the Camp level
+var materials_label: Label
 var _launch_btn: Button      # shown at a season's end when the ship is ready
 
 var _chest_slots: Array = [] # per slot: {btn, plate, art, pill, pill_label, band}
@@ -107,6 +109,13 @@ func build() -> void:
 
 func _tick() -> void:
 	_update_node_area()
+	# A build under way: its card counts down, and closes once it is done (its
+	# node then shows a tick to collect it).
+	if _part_index >= 0 and _part["root"].visible and TSProfile.is_part_building(_part_index):
+		if TSProfile.is_part_build_done(_part_index):
+			TSUI.conceal(_part["root"])
+		else:
+			_fill_part_card()
 	_refresh_chest_tray()
 	_refresh_sale_icon()
 	_tick_boards()
@@ -178,7 +187,28 @@ func _build_camp_badge(parent: Control) -> void:
 	for st in ["normal", "hover", "pressed", "focus"]:
 		camp_badge.add_theme_stylebox_override(st, face)
 	camp_badge.pressed.connect(_on_camp_badge_pressed)
-	parent.add_child(camp_badge)
+	# Building materials, beside the Camp level.
+	var row := TSUI.hbox(10)
+	row.alignment = BoxContainer.ALIGNMENT_END
+	parent.add_child(row)
+	materials_pill = Button.new()
+	materials_pill.focus_mode = Control.FOCUS_NONE
+	materials_pill.custom_minimum_size = Vector2(118, 58)
+	for st in ["normal", "hover", "pressed", "focus"]:
+		materials_pill.add_theme_stylebox_override(st, face)
+	materials_pill.pressed.connect(func(): TSUI.note(self, materials_pill, "Building materials: win levels, open chests, finish quests and climb the Battle Pass for more"))
+	row.add_child(materials_pill)
+	var crate := TSIcon.make("materials", 42)
+	crate.position = Vector2(8, 7)
+	crate.size = Vector2(42, 42)
+	crate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	materials_pill.add_child(crate)
+	materials_label = TSUI.label("0", 24)
+	materials_label.position = Vector2(52, 12)
+	materials_label.size = Vector2(60, 32)
+	materials_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	materials_pill.add_child(materials_label)
+	row.add_child(camp_badge)
 	var tent := TSIcon.make("part", 44, TSProfile.CAMP_TENT)
 	tent.position = Vector2(10, 6)
 	tent.size = Vector2(44, 44)
@@ -199,10 +229,17 @@ func _build_camp_badge(parent: Control) -> void:
 	_refresh_camp_badge()
 
 
+func _refresh_materials() -> void:
+	if materials_label != null:
+		materials_label.text = TSProfile.fmt_coins(TSProfile.materials)
+
+
 func _refresh_camp_badge() -> void:
 	if camp_badge == null:
 		return
 	camp_badge.visible = TSNav.collection_unlocked()
+	materials_pill.visible = camp_badge.visible
+	_refresh_materials()
 	var lv := TSProfile.camp_level()
 	camp_label.text = "Camp Lv %d" % lv
 	camp_bar.value = TSProfile.camp_level_progress()
@@ -363,6 +400,15 @@ func _build_part_card() -> void:
 	var note := TSUI.wrap(TSUI.label("", 22, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER), 500)
 	box.add_child(note)
 	_part["note"] = note
+	# What the next step takes: coins, materials, time -- and who builds it.
+	var costs := TSUI.hbox(22)
+	costs.alignment = BoxContainer.ALIGNMENT_CENTER
+	box.add_child(costs)
+	_part["costs"] = costs
+	var builder := TSUI.hbox(8)
+	builder.alignment = BoxContainer.ALIGNMENT_CENTER
+	box.add_child(builder)
+	_part["builder"] = builder
 	var go := TSUI.button("", TSUI.GREEN, 28, Vector2(0, 76))
 	go.pressed.connect(_on_part_pressed)
 	box.add_child(go)
@@ -372,14 +418,37 @@ func _build_part_card() -> void:
 	box.add_child(close)
 
 
+## A node was tapped: a finished build is collected on the spot; anything else
+## opens its card.
 func _open_part(i: int) -> void:
 	_part_index = i
+	if TSProfile.is_part_build_done(i):
+		_finish_build(i)
+		return
 	_fill_part_card()
 	TSUI.reveal(_part["root"], _part["panel"])
 
 
-## The card for _part_index: what it is now, what the next step makes it, and
-## the button -- Build / Fix / Upgrade for its price, or Get Coins when short.
+## "45s", "2m 05s", "1h 20m".
+static func fmt_time(seconds: int) -> String:
+	if seconds < 60:
+		return "%ds" % seconds
+	if seconds < 3600:
+		return "%dm %02ds" % [seconds / 60, seconds % 60]
+	return "%dh %02dm" % [seconds / 3600, (seconds % 3600) / 60]
+
+
+func _cost_chip(icon: String, text: String, short: bool) -> Control:
+	var h := TSUI.hbox(6)
+	h.add_child(TSIcon.make(icon, 36))
+	h.add_child(TSUI.label(text, 24, TSUI.RED_DOT if short else TSUI.INK))
+	return h
+
+
+## The card for _part_index: what it is now and what the next step makes it;
+## under way, who is building it, how long is left and Finish Now; otherwise
+## what the step takes (coins, materials, time, a free critter) and the
+## button -- Build / Fix / Upgrade, or why it can't start.
 func _fill_part_card() -> void:
 	var i := _part_index
 	var level := TSProfile.part_level_of(i)
@@ -402,22 +471,61 @@ func _fill_part_card() -> void:
 	info.add_child(_part_stars(level))
 	var note: Label = _part["note"]
 	var go: Button = _part["go"]
+	var costs: HBoxContainer = _part["costs"]
+	var builder: HBoxContainer = _part["builder"]
+	for c in costs.get_children() + builder.get_children():
+		c.queue_free()
+	go.disabled = false
 	if TSProfile.is_part_max_level(i):
 		note.text = "Fully upgraded!"
 		go.text = "Max Level"
 		go.disabled = true
 		TSUI.restyle(go, TSUI.GREY)
 		return
-	var cost := TSProfile.part_next_cost(i)
-	var verb := "Upgrade" if built else ("Build" if camp else "Fix")
-	note.text = ("Next: %s" % TSProfile.part_stage(i, level + 1)) if built else ("Build it to make camp more homely." if camp else "Fix it to get your ship flying again.")
-	go.disabled = false
-	if TSProfile.coin_count >= cost:
-		go.text = "%s  ·  %s coins" % [verb, TSProfile.fmt_coins(cost)]
-		TSUI.restyle(go, TSUI.GREEN)
-	else:
-		go.text = "Get Coins  ·  need %s" % TSProfile.fmt_coins(cost - TSProfile.coin_count)
+	var next := TSProfile.part_stage(i, level + 1)
+	if TSProfile.is_part_building(i):
+		# Under way: who, how long, and Finish Now.
+		var who := TSProfile.part_builder(i)
+		builder.add_child(TSIcon.make("critter", 56, who))
+		builder.add_child(TSUI.label("%s is building: %s" % [TSProfile.critter_name(who), next], 22))
+		var left := TSProfile.part_build_seconds_left(i)
+		costs.add_child(_cost_chip("clock", fmt_time(left) + " left", false))
+		note.text = ""
+		var skip := TSProfile.part_build_skip_cost(i)
+		go.text = "Finish Now  ·  %s coins" % TSProfile.fmt_coins(skip)
 		TSUI.restyle(go, TSUI.GOLD)
+		return
+	var verb := "Upgrade" if built else ("Build" if camp else "Fix")
+	note.text = ("Next: %s" % next) if built else ("Build it to make camp more homely." if camp else "Fix it to get your ship flying again.")
+	var cost := TSProfile.part_next_cost(i)
+	var mats := TSProfile.part_next_materials(i)
+	costs.add_child(_cost_chip("coin", TSProfile.fmt_coins(cost), TSProfile.coin_count < cost))
+	costs.add_child(_cost_chip("materials", str(mats), TSProfile.materials < mats))
+	costs.add_child(_cost_chip("clock", fmt_time(TSProfile.part_build_seconds(i)), false))
+	var free := TSProfile.free_builders()
+	if not free.is_empty():
+		builder.add_child(TSIcon.make("critter", 44, int(free[0])))
+	builder.add_child(TSUI.label("%d of %d critters free to build" % [free.size(), TSProfile.builder_count()], 20, TSUI.MUTED))
+	match TSProfile.part_build_block(i):
+		"":
+			go.text = "%s  ·  %s" % [verb, fmt_time(TSProfile.part_build_seconds(i))]
+			TSUI.restyle(go, TSUI.GREEN)
+		"coins":
+			go.text = "Get Coins  ·  need %s" % TSProfile.fmt_coins(cost - TSProfile.coin_count)
+			TSUI.restyle(go, TSUI.GOLD)
+		"materials":
+			go.text = "Need %d more materials" % (mats - TSProfile.materials)
+			go.disabled = true
+			TSUI.restyle(go, TSUI.GREY)
+			note.text = "Earn building materials by winning levels, opening chests, finishing quests and climbing the Battle Pass."
+		"builder":
+			go.text = "Every critter is busy"
+			go.disabled = true
+			TSUI.restyle(go, TSUI.GREY)
+			note.text = "Each critter builds one thing at a time. Wait for a build to finish, or get more critters in the Collection."
+		_:
+			go.disabled = true
+			TSUI.restyle(go, TSUI.GREY)
 
 
 ## Five stars, one filled per fifth of the climb (all gold at max).
@@ -434,18 +542,52 @@ func _part_stars(level: int) -> Control:
 
 func _on_part_pressed() -> void:
 	var i := _part_index
-	if TSProfile.coin_count < TSProfile.part_next_cost(i):
-		TSUI.conceal(_part["root"])
-		SceneFlow.slide("res://scenes/shop.tscn", -1)
-		return
 	var before := TSProfile.coin_count
-	var camp_before := TSProfile.camp_level()
-	if not TSProfile.improve_part(i):
+	if TSProfile.is_part_building(i):
+		# Finish Now: coins for the time left.
+		if TSProfile.coin_count < TSProfile.part_build_skip_cost(i):
+			TSUI.conceal(_part["root"])
+			SceneFlow.slide("res://scenes/shop.tscn", -1)
+			return
+		var camp_before := TSProfile.camp_level()
+		if TSProfile.skip_part_build(i):
+			coin_pill.spend(before, TSProfile.coin_count)
+			_built(i, camp_before)
+		return
+	match TSProfile.part_build_block(i):
+		"coins":
+			TSUI.conceal(_part["root"])
+			SceneFlow.slide("res://scenes/shop.tscn", -1)
+			return
+		"":
+			pass
+		_:
+			return
+	var who := int(TSProfile.free_builders()[0])
+	if not TSProfile.start_part_build(i):
 		return
 	coin_pill.spend(before, TSProfile.coin_count)
+	_refresh_materials()
+	TSSfx.play("tap")
+	TSHaptics.light()
+	TSUI.conceal(_part["root"])
+	TSUI.note(self, materials_pill, "%s started on the %s!" % [TSProfile.critter_name(who), TSProfile.part_name(i).to_lower()])
+
+
+## A finished build, collected from its node: the part goes up a level.
+func _finish_build(i: int) -> void:
+	var camp_before := TSProfile.camp_level()
+	if TSProfile.finish_part_build(i):
+		_built(i, camp_before)
+
+
+## A part has gone up a level (its build finished): the fanfare, the scene and
+## badge catch up, and a new Camp level gets its banner.
+func _built(i: int, camp_before: int) -> void:
 	TSSfx.play("upgrade")
 	TSHaptics.medium()
-	TSFX.sparkle_burst(self, _part["tile"])
+	var at := _world.get_global_rect().position + _world.node_screen_position(i)
+	TSFX.sparkle_burst_at(self, Rect2(at - Vector2(50, 50), Vector2(100, 100)))
 	_world.refresh_parts()
 	_refresh_camp_badge()
 	if TSProfile.can_launch() and _launch_btn == null:
@@ -462,7 +604,8 @@ func _on_part_pressed() -> void:
 			var wave: Array = TSProfile.CAMP_WAVES[camp_now - 1]
 			_camp_banner("Camp Lv %d!" % camp_now, "%d new spots to build" % wave.size(), int(wave[0]))
 		return
-	_fill_part_card()
+	if _part["root"].visible:
+		_fill_part_card()
 
 
 ## A Camp level reached: the banner, and the world glides to what it opened --
@@ -696,6 +839,9 @@ func _open_chest(i: int) -> void:
 	_chest_coins_before = before
 	coin_pill.label.text = TSProfile.fmt_coins(before)
 	(_chest["title"] as Label).text = "%s Chest" % TSChests.DISPLAY_NAMES[reward["rarity"]]
+	(_chest["mats"] as Label).text = "+%d building materials" % int(reward.get("materials", 0))
+	(_chest["mats_row"] as Control).modulate.a = 0.0
+	_refresh_materials()
 	TSUI.reveal(_chest["root"], _chest["panel"])
 	_play_chest_open(str(reward["rarity"]), int(reward["coins"]))
 
@@ -756,6 +902,7 @@ func _finish_chest_open() -> void:
 	face.scale = Vector2.ONE
 	(_chest["amount"] as Label).modulate.a = 1.0
 	(_chest["amount"] as Label).text = "+%s coins" % TSProfile.fmt_coins(_chest_coins)
+	(_chest["mats_row"] as Control).modulate.a = 1.0
 	var done: Button = _chest["done"]
 	done.disabled = false
 	done.create_tween().tween_property(done, "modulate:a", 1.0, 0.2)
@@ -956,6 +1103,14 @@ func _build_dialogs() -> void:
 	var amount := TSUI.outlined(TSUI.label("+0 coins", 40, TSUI.GOLD, HORIZONTAL_ALIGNMENT_CENTER), TSUI.INK, 10)
 	cbox.add_child(amount)
 	_chest["amount"] = amount
+	var mats_row := TSUI.hbox(8)
+	mats_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	mats_row.add_child(TSIcon.make("materials", 44))
+	var mats := TSUI.label("", 28)
+	mats_row.add_child(mats)
+	cbox.add_child(mats_row)
+	_chest["mats"] = mats
+	_chest["mats_row"] = mats_row
 	var done := TSUI.button("Collect", TSUI.GREEN, 30)
 	done.pressed.connect(_close_chest)
 	cbox.add_child(done)

@@ -26,6 +26,8 @@ const UNLOCK_SECONDS := {COMMON: 5 * 60, RARE: 60 * 60, LEGENDARY: 24 * 60 * 60}
 const TIMER_DISCOUNT_PERCENT := 10
 const DROP_WEIGHTS := {COMMON: 60, RARE: 30, LEGENDARY: 10}
 const COIN_PAYOUT := {COMMON: [200, 500], RARE: [2000, 6000], LEGENDARY: [8000, 12000]}
+## Building materials for the camp and the ship (TSProfile.materials).
+const MATERIAL_PAYOUT := {COMMON: [8, 12], RARE: [20, 30], LEGENDARY: [50, 70]}
 
 ## {} for an empty slot, or {"rarity", "unlock_end"}: 0 until the timer
 ## starts, then the unix time it finishes.
@@ -132,7 +134,7 @@ static func start_unlock(i: int) -> bool:
 	return true
 
 
-## Opens a ready chest: grants and returns {"rarity", "coins"}.
+## Opens a ready chest: grants and returns {"rarity", "coins", "materials"}.
 static func open(i: int) -> Dictionary:
 	if not is_ready(i):
 		return {}
@@ -140,10 +142,12 @@ static func open(i: int) -> Dictionary:
 	var range_: Array = COIN_PAYOUT[rarity]
 	var coins := TSProfile.boost_earned_coins(randi_range(int(range_[0]), int(range_[1])))
 	TSProfile.coin_count += coins
+	var mats := randi_range(int(MATERIAL_PAYOUT[rarity][0]), int(MATERIAL_PAYOUT[rarity][1]))
+	TSProfile.add_materials(mats)
 	slots[i] = {}
 	TSProfile.record_quest_event("chest")
 	TSProfile.save()
-	return {"rarity": rarity, "coins": coins}
+	return {"rarity": rarity, "coins": coins, "materials": mats}
 
 
 static func _roll_rarity() -> String:

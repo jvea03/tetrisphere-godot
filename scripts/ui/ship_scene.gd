@@ -192,6 +192,7 @@ var _nodes: Control             # the build nodes and edge arrows, over the worl
 var _node_hits: Array = []      # [rect, part] for the nodes drawn last frame
 var _edge_hits: Array = []      # [rect, part] for the edge arrows
 var _glide_to = null            # an offset the world is gliding to, or null
+var _builder_icons := {}        # part -> the TSIcon of the critter building it
 
 var _offset := Vector2.ZERO     # where the world sits on screen
 const ZOOM := 0.85              # the world drawn a little small, so more of the camp shows
@@ -502,13 +503,44 @@ func _side_of(p: Vector2, inner: Rect2) -> Vector2:
 	return Vector2(0.0, signf(past.y))
 
 
-## One node: a hammer (build or fix) or an arrow (upgrade) on a green disc
-## when the coins are there (grey when not), its price on a pill below.
+## One node. Ready to start: a hammer (build or fix) or an arrow (upgrade) on
+## a disc -- green when the coins, materials and a free critter are all there,
+## grey when not -- its price in coins and materials on a pill below. Under
+## way: a ring filling round a clock, the time left below, its builder
+## beside it (_sync_builders). Done: a bouncing green tick to collect it.
 func _draw_node(i: int, p: Vector2) -> void:
 	var ci := _nodes
+	var font := TSToon.hand_font()
+	var r := NODE_R
+	if TSProfile.is_part_building(i):
+		var done := TSProfile.is_part_build_done(i)
+		if done:
+			p.y -= absf(sin(_t * 5.0)) * 8.0
+		_ellipse(ci, p + Vector2(0.0, r + 6.0), r * 0.8, 7.0, SHADOW, false)
+		ci.draw_circle(p, r + 4.0, INK, true, -1.0, true)
+		ci.draw_circle(p, r, Color(0.56, 0.87, 0.58) if done else Color(1.0, 0.98, 0.93), true, -1.0, true)
+		var text := "Done!"
+		if done:
+			var tick := PackedVector2Array([p + Vector2(-13, 0), p + Vector2(-3, 11), p + Vector2(15, -12)])
+			ci.draw_polyline(tick, INK, 11.0, true)
+			ci.draw_polyline(tick, Color.WHITE, 6.0, true)
+		else:
+			var left := TSProfile.part_build_seconds_left(i)
+			var frac := 1.0 - float(left) / float(maxi(1, TSProfile.part_build_seconds(i)))
+			ci.draw_arc(p, r - 6.0, -PI * 0.5, -PI * 0.5 + TAU * frac, 32, Color(0.56, 0.87, 0.58), 8.0, true)
+			ci.draw_line(p, p + Vector2(0, -r * 0.5), INK, 3.0, true)
+			ci.draw_line(p, p + Vector2(r * 0.35, 0).rotated(_t * 2.0), INK, 3.0, true)
+			text = _short_time(left)
+		var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 20).x
+		var pill := Rect2(p + Vector2(-(tw + 20.0) * 0.5, r + 2.0), Vector2(tw + 20.0, 28.0))
+		_round_rect(ci, pill, 14.0, Color(0.56, 0.87, 0.58) if done else Color(1.0, 0.98, 0.93), INK)
+		ci.draw_string(font, pill.position + Vector2(10.0, 21.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, INK)
+		_node_hits.append([Rect2(p - Vector2(r + 8.0, r + 8.0), Vector2(2.0 * r + 16.0, 2.0 * r + 46.0)), i])
+		return
 	var cost := TSProfile.part_next_cost(i)
-	var can := TSProfile.coin_count >= cost
-	var r := NODE_R * (1.0 + 0.06 * sin(_t * 5.0) if can else 1.0)
+	var mats := TSProfile.part_next_materials(i)
+	var can := TSProfile.part_build_block(i) == ""
+	r = NODE_R * (1.0 + 0.06 * sin(_t * 5.0) if can else 1.0)
 	_ellipse(ci, p + Vector2(0.0, r + 6.0), r * 0.8, 7.0, SHADOW, false)
 	ci.draw_circle(p, r + 4.0, INK, true, -1.0, true)
 	ci.draw_circle(p, r, Color(0.56, 0.87, 0.58) if can else Color(0.86, 0.84, 0.86), true, -1.0, true)
@@ -517,16 +549,71 @@ func _draw_node(i: int, p: Vector2) -> void:
 		_hammer(ci, p, r * 0.62)
 	else:
 		_up_arrow(ci, p, r * 0.62)
-	# The price.
-	var font := TSToon.hand_font()
-	var text := TSProfile.fmt_coins(cost)
-	var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 20).x
-	var pill := Rect2(p + Vector2(-(tw + 34.0) * 0.5, r + 2.0), Vector2(tw + 34.0, 28.0))
+	# The price: coins, then materials.
+	var coins := TSProfile.fmt_coins(cost)
+	var m := str(mats)
+	var cw := font.get_string_size(coins, HORIZONTAL_ALIGNMENT_LEFT, -1, 20).x
+	var mw := font.get_string_size(m, HORIZONTAL_ALIGNMENT_LEFT, -1, 20).x
+	var width := 27.0 + cw + 30.0 + mw + 10.0
+	var pill := Rect2(p + Vector2(-width * 0.5, r + 2.0), Vector2(width, 28.0))
 	_round_rect(ci, pill, 14.0, Color(1.0, 0.98, 0.93), INK)
 	ci.draw_circle(pill.position + Vector2(15.0, 14.0), 8.0, BUTTER, true, -1.0, true)
 	ci.draw_arc(pill.position + Vector2(15.0, 14.0), 8.0, 0.0, TAU, 16, INK, 2.0, true)
-	ci.draw_string(font, pill.position + Vector2(27.0, 21.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, INK if can else Color(INK, 0.5))
+	var short_coins := TSProfile.coin_count < cost
+	var short_mats := TSProfile.materials < mats
+	ci.draw_string(font, pill.position + Vector2(27.0, 21.0), coins, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color(0.9, 0.3, 0.36) if short_coins else INK)
+	var mx := pill.position.x + 27.0 + cw + 18.0
+	_crate(ci, Vector2(mx, pill.position.y + 14.0))
+	ci.draw_string(font, Vector2(mx + 12.0, pill.position.y + 21.0), m, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color(0.9, 0.3, 0.36) if short_mats else INK)
 	_node_hits.append([Rect2(p - Vector2(r + 8.0, r + 8.0), Vector2(2.0 * r + 16.0, 2.0 * r + 46.0)), i])
+
+
+## A tiny materials mark for a price pill: two crossed planks.
+func _crate(ci: CanvasItem, c: Vector2) -> void:
+	for turn in [-0.5, 0.5]:
+		var d := Vector2(9.0, 0.0).rotated(turn)
+		ci.draw_line(c - d, c + d, INK, 7.0, true)
+		ci.draw_line(c - d, c + d, Color(0.82, 0.6, 0.4), 4.0, true)
+
+
+## "45s", "12m", "1h 20m": short enough for a node's pill.
+static func _short_time(s: int) -> String:
+	if s < 60:
+		return "%ds" % s
+	if s < 3600:
+		return "%dm %02ds" % [s / 60, s % 60] if s < 600 else "%dm" % ceili(s / 60.0)
+	return "%dh %02dm" % [s / 3600, (s % 3600) / 60]
+
+
+## Each build under way shows its critter working beside its node: the
+## builder's portrait, hopping as it hammers. (Kept in step every frame,
+## outside drawing.)
+func _sync_builders() -> void:
+	var inner := _area().grow(-NODE_R - 6.0)
+	var shown := {}
+	if nodes_enabled and _launch_start == -1.0:
+		for i in TSProfile.part_builds.keys():
+			var p := node_screen_position(int(i))
+			if not inner.has_point(p):
+				continue
+			var c := TSProfile.part_builder(int(i))
+			var icon: TSIcon = _builder_icons.get(i)
+			if icon == null or int(icon.get_meta("critter", -1)) != c:
+				if icon != null:
+					icon.queue_free()
+				icon = TSIcon.make("critter", 40, c)
+				icon.size = Vector2(40, 40)
+				icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				icon.set_meta("critter", c)
+				_nodes.add_child(icon)
+				_builder_icons[i] = icon
+			var hop := 0.0 if TSProfile.is_part_build_done(int(i)) else absf(sin(_t * 6.0 + float(i))) * 6.0
+			icon.position = p + Vector2(NODE_R + 2.0, -10.0 - hop)
+			shown[i] = true
+	for i in _builder_icons.keys():
+		if not shown.has(i):
+			(_builder_icons[i] as TSIcon).queue_free()
+			_builder_icons.erase(i)
 
 
 ## Nodes past an edge of the open area: an arrow at that edge, with how many,
@@ -632,6 +719,7 @@ func _process(delta: float) -> void:
 	_sort()
 	for p in _painters:
 		(p as Control).queue_redraw()
+	_sync_builders()
 	_nodes.queue_redraw()
 
 

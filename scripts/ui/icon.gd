@@ -171,6 +171,7 @@ func _draw() -> void:
 		"calendar": _draw_calendar()
 		"pass": _draw_pass()
 		"hunt": _draw_hunt()
+		"materials": _draw_materials()
 		"tag": _draw_tag()
 		"cog": _draw_cog()
 		"home": _draw_home()
@@ -603,6 +604,21 @@ func _draw_pass() -> void:
 	_poly([Vector2(0.7, 0.5), Vector2(0.78, 0.92), Vector2(0.64, 0.84), Vector2(0.56, 0.94), Vector2(0.52, 0.56)], PINK)
 	_circle(Vector2(0.5, 0.42), 0.3, _col(GOLD))
 	_poly(_star_pts(Vector2(0.5, 0.44), 0.18, 0.08), WHITE)
+
+
+## Building materials: a grey stone block with two wooden planks crossed over
+## it, a nail in each.
+func _draw_materials() -> void:
+	var wood := _col(Color(0.82, 0.6, 0.4))
+	_rrect(Rect2(0.2, 0.5, 0.6, 0.32), 0.05, Color(0.76, 0.74, 0.82))
+	_line([Vector2(0.24, 0.66), Vector2(0.76, 0.66)], Color(INK, 0.35), 0.6)
+	_line([Vector2(0.5, 0.52), Vector2(0.5, 0.64)], Color(INK, 0.35), 0.6)
+	for turn in [-0.42, 0.42]:
+		var pts: Array = []
+		for c in [Vector2(-0.4, -0.08), Vector2(0.4, -0.08), Vector2(0.4, 0.08), Vector2(-0.4, 0.08)]:
+			pts.append(Vector2(0.5, 0.42) + (c as Vector2).rotated(turn))
+		_poly(pts, wood)
+		_circle(Vector2(0.5, 0.42) + Vector2(0.28, 0.0).rotated(turn), 0.025, INK, false)
 
 
 func _draw_hunt() -> void:

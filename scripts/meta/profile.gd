@@ -644,24 +644,174 @@ static func _fill_parts() -> void:
 		part_level.append(0)
 
 
-## Builds or fixes a broken part, or upgrades one, for coins.
-static func improve_part(i: int) -> bool:
-	if i < 0 or i >= PART_COUNT or is_part_max_level(i) or not is_part_available(i):
+# -- building: materials, build time and builders -----------------------------
+# Every step (build, fix or upgrade) costs coins and building materials, and
+# takes time -- longer for each level, and longer in each later wave, longest
+# on the ship. A critter builds it: each owned critter works on one thing at a
+# time, so more critters means more at once. When the time is up the step is
+# finished from its node on Home (or finished early for coins). Materials come
+# from level wins, chests, quests and the Battle Pass.
+
+## Materials for a step: this much times the level it builds up to, by wave
+## (CAMP_WAVES), with the ship last.
+const PART_MATERIALS := [2, 4, 6, 8]
+const SHIP_MATERIALS := 10
+## Build time for a step, in seconds: this times the level it builds up to.
+const PART_BUILD_SECONDS := [30, 120, 300, 600]
+const SHIP_BUILD_SECONDS := 1200
+## Finishing a build early: coins a minute of what is left (at least one minute's).
+const BUILD_SKIP_COINS_PER_MINUTE := 20
+## Materials a win pays (the Daily Egg pays more).
+const MATERIALS_PER_WIN := 3
+const MATERIALS_PER_DAILY := 5
+
+static var materials: int = 0
+## Steps under way: part index -> {"end": unix time it is done, "critter": the builder}.
+static var part_builds: Dictionary = {}
+
+
+static func _now_unix() -> int:
+	return int(Time.get_unix_time_from_system())
+
+
+## A step's tier for its materials and time: the camp spot's wave, or 4 for the ship.
+static func _build_tier(i: int) -> int:
+	return camp_wave_of(i) if is_camp(i) else PART_MATERIALS.size()
+
+
+static func part_next_materials(i: int) -> int:
+	var t := _build_tier(i)
+	var base: int = PART_MATERIALS[t] if t < PART_MATERIALS.size() else SHIP_MATERIALS
+	return base * (part_level_of(i) + 1)
+
+
+static func part_build_seconds(i: int) -> int:
+	var t := _build_tier(i)
+	var base: int = PART_BUILD_SECONDS[t] if t < PART_BUILD_SECONDS.size() else SHIP_BUILD_SECONDS
+	return base * (part_level_of(i) + 1)
+
+
+static func add_materials(n: int) -> void:
+	materials = maxi(0, materials + n)
+
+
+static func is_part_building(i: int) -> bool:
+	return part_builds.has(i)
+
+
+static func part_build_seconds_left(i: int) -> int:
+	if not part_builds.has(i):
+		return 0
+	return maxi(0, int(part_builds[i]["end"]) - _now_unix())
+
+
+static func is_part_build_done(i: int) -> bool:
+	return part_builds.has(i) and part_build_seconds_left(i) <= 0
+
+
+## The critter building a part, or -1.
+static func part_builder(i: int) -> int:
+	return int(part_builds[i]["critter"]) if part_builds.has(i) else -1
+
+
+## The critters free to build: owned, and not already on a build -- the avatar first.
+static func free_builders() -> Array:
+	var busy := {}
+	for b in part_builds.values():
+		busy[int(b["critter"])] = true
+	var out: Array = []
+	for c in [avatar()] + range(CRITTER_COUNT):
+		if is_critter_unlocked(c) and not busy.has(c) and not out.has(c):
+			out.append(c)
+	return out
+
+
+static func builder_count() -> int:
+	var n := 0
+	for c in CRITTER_COUNT:
+		if is_critter_unlocked(c):
+			n += 1
+	return n
+
+
+## Why a step can't start now: "" if it can, else "locked", "max", "busy" (it
+## is already being built), "builder" (every critter is busy), "materials" or
+## "coins".
+static func part_build_block(i: int) -> String:
+	if i < 0 or i >= PART_COUNT or not is_part_available(i):
+		return "locked"
+	if is_part_max_level(i):
+		return "max"
+	if is_part_building(i):
+		return "busy"
+	if free_builders().is_empty():
+		return "builder"
+	if materials < part_next_materials(i):
+		return "materials"
+	if coin_count < part_next_cost(i):
+		return "coins"
+	return ""
+
+
+## Starts the next step on a part: pays its coins and materials and puts a
+## free critter on it until its build time is up.
+static func start_part_build(i: int) -> bool:
+	if part_build_block(i) != "":
 		return false
-	var cost := part_next_cost(i)
+	coin_count -= part_next_cost(i)
+	materials -= part_next_materials(i)
+	part_builds[i] = {"end": _now_unix() + part_build_seconds(i), "critter": int(free_builders()[0])}
+	save()
+	return true
+
+
+## A finished build: the part goes up a level and its critter is free again.
+static func finish_part_build(i: int) -> bool:
+	if not is_part_build_done(i):
+		return false
+	_complete_build(i)
+	save()
+	return true
+
+
+static func _complete_build(i: int) -> void:
+	part_builds.erase(i)
+	_fill_parts()
+	part_level[i] = mini(part_level[i] + 1, PART_MAX_LEVEL)
+
+
+## Coins to finish a build now: BUILD_SKIP_COINS_PER_MINUTE a minute left.
+static func part_build_skip_cost(i: int) -> int:
+	var minutes := maxi(1, ceili(part_build_seconds_left(i) / 60.0))
+	return minutes * BUILD_SKIP_COINS_PER_MINUTE
+
+
+static func skip_part_build(i: int) -> bool:
+	if not is_part_building(i):
+		return false
+	var cost := 0 if is_part_build_done(i) else part_build_skip_cost(i)
 	if coin_count < cost:
 		return false
-	_fill_parts()
 	coin_count -= cost
-	part_level[i] += 1
+	_complete_build(i)
+	save()
+	return true
+
+
+## Starts and at once finishes a step, paying for it as usual (tests, and
+## anything that skips the wait).
+static func improve_part(i: int) -> bool:
+	if not start_part_build(i):
+		return false
+	_complete_build(i)
 	save()
 	return true
 
 
 ## Builds, fixes or upgrades a part for free (a pass reward) -- a gift, even
-## before the ship opens. False if it is maxed.
+## before the ship opens. False if it is maxed or being built.
 static func grant_part_level(i: int) -> bool:
-	if i < 0 or i >= PART_COUNT or is_part_max_level(i):
+	if i < 0 or i >= PART_COUNT or is_part_max_level(i) or is_part_building(i):
 		return false
 	_fill_parts()
 	part_level[i] += 1
@@ -751,6 +901,7 @@ static func launch_ship() -> int:
 		return 0
 	var reward := boost_earned_coins(launch_reward())
 	coin_count += reward
+	part_builds.clear()   # a new planet: every builder is free
 	for i in PART_COUNT:
 		part_level[i] = 0
 	planet_number += 1
@@ -1691,8 +1842,10 @@ const BATTLE_PASS_FREE_COINS_BASE := 500
 const BATTLE_PASS_PAID_COINS_BASE := 1000
 const BATTLE_PASS_COINS_STEP := 100
 
+## Building materials on every tier: 5 + the tier on the free track, 10 + twice
+## the tier on the premium one.
 static func battle_pass_free_reward(tier: int) -> Dictionary:
-	var r := {"coins": BATTLE_PASS_FREE_COINS_BASE + BATTLE_PASS_COINS_STEP * (tier - 1)}
+	var r := {"coins": BATTLE_PASS_FREE_COINS_BASE + BATTLE_PASS_COINS_STEP * (tier - 1), "materials": 5 + tier}
 	var critters: Dictionary = season_rewards()["free_critters"]
 	if critters.has(tier):
 		r["critter"] = critters[tier]
@@ -1705,7 +1858,7 @@ static func battle_pass_free_reward(tier: int) -> Dictionary:
 ## 1 a tier, 3 on every 5th, 5 on the 10th and 20th -- unless the tier hands
 ## out a critter or a ship part.
 static func battle_pass_paid_reward(tier: int) -> Dictionary:
-	var r := {"coins": BATTLE_PASS_PAID_COINS_BASE + BATTLE_PASS_COINS_STEP * (tier - 1)}
+	var r := {"coins": BATTLE_PASS_PAID_COINS_BASE + BATTLE_PASS_COINS_STEP * (tier - 1), "materials": 10 + 2 * tier}
 	var season := season_rewards()
 	if season["paid_critters"].has(tier):
 		r["critter"] = season["paid_critters"][tier]
@@ -1722,6 +1875,7 @@ static func battle_pass_paid_reward(tier: int) -> Dictionary:
 
 static func _apply_reward(reward: Dictionary) -> void:
 	coin_count += boost_earned_coins(int(reward.get("coins", 0)))
+	add_materials(int(reward.get("materials", 0)))
 	if reward.has("critter"):
 		grant_critter(int(reward["critter"]))
 	if reward.has("part"):
@@ -1885,8 +2039,14 @@ static func claim_quest(week_key: String, index: int) -> int:
 		return -1
 	claimed[index] = true
 	var credited := add_battle_pass_xp(int(defs[index]["points"]))
+	add_materials(quest_materials(int(defs[index]["points"])))
 	save()
 	return credited
+
+
+## Building materials a quest pays along with its stars: as many as its stars.
+static func quest_materials(points: int) -> int:
+	return points
 
 
 static func has_unclaimed_quests() -> bool:
@@ -1995,6 +2155,13 @@ static func ensure_loaded() -> void:
 	var cu: Array = g.call("critter_unlocked", [])
 	var cl: Array = g.call("critter_level", [])
 	var pl: Array = g.call("camp_and_ship", [])   # the camp-first list (an older ship-only one is ignored)
+	materials = maxi(0, int(g.call("materials", 0)))
+	part_builds = {}
+	var pb: Variant = g.call("part_builds", {})
+	if pb is Dictionary:
+		for k in pb:
+			if int(k) >= 0 and int(k) < PART_COUNT and (pb[k] is Dictionary) and (pb[k] as Dictionary).has("end"):
+				part_builds[int(k)] = {"end": int(pb[k]["end"]), "critter": int(pb[k].get("critter", 0))}
 	planet_number = maxi(1, int(g.call("planet_number", 1)))
 	launched_season = int(g.call("launched_season", 0))
 	_blank_collection()
@@ -2094,6 +2261,8 @@ static func save() -> void:
 	s.call("critter_level", critter_level)
 	s.call("new_critters", new_critters)
 	s.call("camp_and_ship", part_level)
+	s.call("part_builds", part_builds)
+	s.call("materials", materials)
 	s.call("planet_number", planet_number)
 	s.call("launched_season", launched_season)
 	s.call("has_club", has_club)

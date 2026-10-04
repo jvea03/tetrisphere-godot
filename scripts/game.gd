@@ -67,6 +67,7 @@ var lose_ad_used := false   # the lose card's ad life, once per ball
 var _win_ad_due := false    # this win falls on an interstitial
 var _win_stars := 0
 var _win_coins := 0
+var _win_materials := 0       # building materials the win paid
 var _win_chest := ""
 var _win_bonus := ""
 const FIRST_ATTEMPT_STAR_BONUS := 2
@@ -1664,6 +1665,8 @@ func _pay_win() -> void:
 	var bonus := FIRST_ATTEMPT_STAR_BONUS if is_first_attempt else 0
 	_win_stars = TSProfile.add_stars(lives, bonus, difficulty)
 	_win_coins = TSProfile.coin_count - before
+	_win_materials = TSProfile.MATERIALS_PER_DAILY if is_daily else TSProfile.MATERIALS_PER_WIN
+	TSProfile.add_materials(_win_materials)
 	_win_chest = "" if is_daily else TSChests.record_win()
 	_win_ad_due = false if is_daily else _roll_interstitial()
 	if is_daily:
@@ -1833,6 +1836,7 @@ func _show_win_card() -> void:
 	rewards.add_child(row)
 	var coin_amount := TSUI.label("0", 34)
 	row.add_child(_reward_stack("coin", coin_amount))
+	row.add_child(_reward_stack("materials", TSUI.label("+%d" % _win_materials, 34)))
 	if TSProfile.stars_open():
 		var star_amount := TSUI.label("+%d" % _win_stars, 34)
 		row.add_child(_reward_stack("star", star_amount))

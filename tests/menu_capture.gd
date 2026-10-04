@@ -41,6 +41,11 @@ func _ready() -> void:
 		var lv := int(args_all[args_all.find("lv") + 1])
 		for i in TSProfile.PART_COUNT:
 			TSProfile.part_level[i] = lv if TSProfile.is_camp(i) else 0
+	TSProfile.materials = 120
+	if args_all.has("building"):
+		# `-- home building camp`: a build counting down, and one done to collect.
+		var now := int(Time.get_unix_time_from_system())
+		TSProfile.part_builds = {TSProfile.CAMP_TENT: {"end": now + 95, "critter": 8}, TSProfile.CAMP_GARDEN: {"end": now - 5, "critter": 2}}
 	if args_all.has("at"):
 		var spot := int(args_all[args_all.find("at") + 1])
 		var t := get_tree()

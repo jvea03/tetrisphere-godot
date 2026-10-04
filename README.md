@@ -124,10 +124,25 @@ spaceship has crash-landed nose-first in a heap of dirt, and the critters
 have made camp around it. Everything there looks however far you have got
 with it, and it is all built right there: from level 5 (when the Collection
 unlocks) a **build node** floats over every spot with a step left -- a
-hammer to build or fix it, an arrow to upgrade it, its price on a pill
-underneath, green when you can afford it. Tap one for its card (what it is
-now, what the next step makes it, and Build / Fix / Upgrade, or Get Coins
-when you are short). Nodes beyond the open middle of Home are gathered into
+hammer to build or fix it, an arrow to upgrade it, its price in coins and
+**building materials** on a pill underneath, green when it can start. Tap
+one for its card: what it is now, what the next step makes it, what the step
+takes -- coins, materials and **build time** -- and which critter will build
+it. Every step takes time, longer at each level and in each later wave
+(`TSProfile.PART_BUILD_SECONDS`: 30 s a level in the first wave, 2, 5 and 10
+minutes in the next three, 20 minutes a level on the ship -- 80 minutes for
+a ship part's last upgrade). **A critter builds it**: each critter you own
+works on one thing at a time, so the more critters, the more you build at
+once; with every critter busy, nothing new starts. While a step is under
+way its node is a clock filling round, the time left under it, its critter
+hopping beside it; when it is done, a bouncing tick to tap and collect. A
+build can also be finished early for 20 coins a minute left. Materials
+(`TSProfile.PART_MATERIALS`: 2 a level in the first wave, 4, 6 and 8 in the
+next three, 10 on the ship -- 1,900 for the whole camp and ship) come from
+every level won (3, or 5 for the Daily Egg), every chest (8-12 common, 20-30
+rare, 50-70 legendary), every quest (as many as its stars) and every Battle
+Pass tier (5 + the tier free, 10 + twice the tier premium); the count shows
+beside the Camp level on Home. Nodes beyond the open middle of Home are gathered into
 an arrow at its edge, with a count, that glides the world over to them; the
 first time the nodes appear, a walkthrough points at the campfire's hammer.
 None of this counts toward the Collection level, which is critters only.
@@ -645,7 +660,7 @@ stepped through frame by frame.
 | `tests/demo.tscn` | Visual QA — boots the real game and plays a greedy opening. |
 | `tests/meta_test.gd` | The menus' systems on a throwaway profile: stars and coins, chests, the Battle Pass, quests, streaks, the collection, clubs, the Eggsperience, purchases, sales, level progression. |
 | `tests/flow_test.tscn` | The game screen's side of them: level start, parking and resuming a ball, the Any Piece and Rocks, booster buys, the lose card's refill, a win's payout, the Daily Egg. |
-| `tests/home_test.tscn` | Home's camp and ship build nodes: only the camp's at first, building and upgrading through a node's card, no collection points from it, the ship's nodes once the camp is done, Get Coins when short. |
+| `tests/home_test.tscn` | Home's camp and ship build nodes: the first wave's only, builds started from a node's card (coins, materials, a critter, a timer) and collected from the node, Finish Now, the Camp level through the waves, the ship's nodes at Camp Lv 5, and why a build can't start. |
 | `tests/menu_capture.tscn`, `tests/card_capture.tscn` | Visual QA -- open any menu screen, or the pause / win / lose / out-of-booster card, on a throwaway profile with everything unlocked. |
 
 ## Checking it
@@ -670,8 +685,8 @@ projects cells through the rendered camera:
 Godot.exe --path . res://tests/tap_test.tscn
 ```
 
-The menus' systems (98 checks), the game screen's flow through them (34
-checks) and Home's camp and ship build nodes (13 checks), all passing. None
+The menus' systems (111 checks), the game screen's flow through them (34
+checks) and Home's camp and ship build nodes (17 checks), all passing. None
 touches the real save:
 
 ```

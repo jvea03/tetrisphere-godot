@@ -14,6 +14,7 @@ func _initialize() -> void:
 	_test_battle_pass()
 	_test_quests()
 	_test_streaks()
+	_test_building()
 	_test_collection()
 	_test_clubs()
 	_test_hunt()
@@ -128,8 +129,42 @@ func _test_streaks() -> void:
 	_check("the 7th day in a row pays %d bombs" % TSProfile.STREAK_REWARD_BOMBS, TSProfile.login_streak_count == 7 and TSProfile.bomb_count == bombs + TSProfile.STREAK_REWARD_BOMBS)
 
 
+func _test_building() -> void:
+	TSProfile.coin_count = 1000000
+	TSProfile.materials = 0
+	TSProfile.part_builds = {}
+	var p := TSProfile.CAMP_FIRE
+	_check("a build needs materials", TSProfile.part_build_block(p) == "materials" and not TSProfile.start_part_build(p))
+	TSProfile.materials = 100
+	var mats := TSProfile.part_next_materials(p)
+	var secs := TSProfile.part_build_seconds(p)
+	_check("with materials it starts (%d materials, %ds)" % [mats, secs], TSProfile.start_part_build(p) and TSProfile.materials == 100 - mats and TSProfile.is_part_building(p) and TSProfile.part_level_of(p) == 0)
+	_check("a critter is put on it, and isn't free for another", TSProfile.part_builder(p) == TSProfile.avatar() and not TSProfile.free_builders().has(TSProfile.avatar()))
+	var owned := TSProfile.builder_count()
+	_check("with every critter busy, nothing else can start (%d critter)" % owned, owned > 1 or TSProfile.part_build_block(TSProfile.CAMP_TENT) == "builder")
+	_check("it isn't done before its time", not TSProfile.is_part_build_done(p) and not TSProfile.finish_part_build(p))
+	TSProfile.part_builds[p]["end"] = TSProfile._now_unix() - 1
+	_check("once the time is up it finishes, a level up, and the critter is free", TSProfile.finish_part_build(p) and TSProfile.part_level_of(p) == 1 and not TSProfile.is_part_building(p) and TSProfile.free_builders().has(TSProfile.avatar()))
+	_check("each level takes longer and more materials", TSProfile.part_build_seconds(p) == secs * 2 and TSProfile.part_next_materials(p) == mats * 2)
+	_check("later waves take longer still", TSProfile.part_build_seconds(TSProfile.CAMP_HAMMOCK) > TSProfile.part_build_seconds(TSProfile.CAMP_WELL) and TSProfile.part_build_seconds(TSProfile.PART_ENGINE) > TSProfile.part_build_seconds(TSProfile.CAMP_STATUE))
+	TSProfile.start_part_build(p)
+	var coins := TSProfile.coin_count
+	var skip := TSProfile.part_build_skip_cost(p)
+	_check("finishing early costs %d coins" % skip, skip > 0 and TSProfile.skip_part_build(p) and TSProfile.coin_count == coins - skip and TSProfile.part_level_of(p) == 2)
+	# Where materials come from.
+	var before := TSProfile.materials
+	TSProfile.claim_battle_pass_free(1)
+	_check("the Battle Pass pays materials", TSProfile.battle_pass_free_reward(1).has("materials") and (TSProfile.materials > before or not TSProfile.can_claim_battle_pass_free(1)))
+	_check("quests pay materials", TSProfile.quest_materials(10) > 0)
+	_check("chests pay materials", int(TSChests.MATERIAL_PAYOUT[TSChests.COMMON][0]) > 0)
+	_check("wins pay materials", TSProfile.MATERIALS_PER_WIN > 0)
+	TSProfile.part_level[p] = 0
+	TSProfile.part_builds = {}
+
+
 func _test_collection() -> void:
 	TSProfile.coin_count = 1000000
+	TSProfile.materials = 1000000
 	var lvl := TSProfile.collection_level()
 	_check("buying a critter", TSProfile.unlock_critter(5) and TSProfile.is_critter_unlocked(5))
 	_check("levelling it", TSProfile.level_up_critter(5) and TSProfile.critter_level_of(5) == 2)
