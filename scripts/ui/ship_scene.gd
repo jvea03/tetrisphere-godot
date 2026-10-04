@@ -3,6 +3,8 @@ extends Control
 
 ## The lift-off animation (launch) has finished: the ship is out of sight.
 signal launched
+## A camp spot's or ship part's build node was tapped (TSProfile.PARTS index).
+signal part_tapped(part: int)
 
 ## Home's backdrop: a little planet, seen in three-quarter view, where a
 ## cartoon spaceship has crash-landed nose-first in a heap of dirt (its
@@ -15,11 +17,18 @@ signal launched
 ## flying it (dizzily), fixing the engine up a ladder, digging the nose out,
 ## fishing in a crater pond, toasting a marshmallow, and so on down to the
 ## silly ones. A lone critter just strolls about. Nearer things are drawn
-## bigger and in front, each on its own soft shadow. The ship's six parts
-## (TSProfile.PARTS) look as they are in the Collection -- broken, fixed or
+## bigger and in front, each on its own soft shadow. The camp spots and ship parts
+## (TSProfile.PARTS) look as far as they are built -- broken, fixed or
 ## upgraded, from a smoking engine to rainbow thrusters. Everything is drawn
 ## in code, in the menus' hand-drawn style, and animated from one clock in
 ## _process.
+##
+## Build nodes float over every camp spot (and, once the camp is finished,
+## every ship part) that has a step left: a hammer to build or fix it, an
+## arrow to upgrade it, with the price under it. Tapping one fires
+## `part_tapped`; Home opens the card that spends the coins. Nodes off the
+## open part of Home (`node_area`) are gathered into an arrow at its edge,
+## which glides the world over to them.
 
 const W := 2600.0                # the world, in the menus' 720-wide units
 const H := 2300.0                # deep enough to scroll the far south up into view
@@ -141,6 +150,29 @@ var _launch_start := -1.0       # when lift-off began (see launch), or -1
 var _pad_layer: Control         # behind the ship: scaffolding, launch pad, gantry
 var _scatter: Array = []        # ground decoration: [kind, position, size]
 
+## Where the build nodes on the ground float, in world coordinates (above each
+## camp spot, and the solar panels' stand), by TSProfile.PARTS index.
+const GROUND_NODES := {0: FIRE + Vector2(0.0, -150.0), 1: TENT + Vector2(0.0, -230.0), 2: BENCH + Vector2(0.0, -190.0), 3: GARDEN + Vector2(0.0, -150.0), 4: WELL + Vector2(0.0, -210.0), 5: LOOKOUT + Vector2(0.0, -330.0), 14: SOLAR + Vector2(0.0, -190.0)}
+## The ship parts' nodes ring the ship (too many to sit on the hull itself):
+## each at its own angle round SHIP_MIDDLE, in ship coordinates (0 towards the
+## nose, 90 the belly), on an oval SHIP_RING across, with a dotted line in to
+## where its part is (SHIP_SPOTS).
+const SHIP_MIDDLE := Vector2(270.0, 180.0)
+const SHIP_RING := Vector2(270.0, 190.0)
+const SHIP_SLOTS := {12: 0.0, 7: 45.0, 13: 90.0, 11: 135.0, 6: 180.0, 10: 225.0, 9: 270.0, 8: 315.0}
+const SHIP_SPOTS := {6: NOZZLE, 7: PATCH, 8: DOME, 9: ANTENNA_UP, 10: FIN_TIP, 11: Vector2(256.0, 204.0), 12: Vector2(466.0, 200.0), 13: Vector2(270.0, 262.0)}
+const NODE_R := 32.0            # a node's circle, on screen
+const EDGE_INSET := 44.0        # how far inside node_area an edge arrow sits
+
+## Home turns the nodes on (once the camp is open to the player) and says
+## which part of the screen its menus leave open, in this control's space.
+var nodes_enabled := false
+var node_area := Rect2()
+var _nodes: Control             # the build nodes and edge arrows, over the world
+var _node_hits: Array = []      # [rect, part] for the nodes drawn last frame
+var _edge_hits: Array = []      # [rect, part] for the edge arrows
+var _glide_to = null            # an offset the world is gliding to, or null
+
 var _offset := Vector2.ZERO     # where the world sits on screen
 const ZOOM := 0.85              # the world drawn a little small, so more of the camp shows
 var _velocity := Vector2.ZERO   # a flick's glide
@@ -206,6 +238,12 @@ func _ready() -> void:
 		var add := CanvasItemMaterial.new()
 		add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 		_lights.material = add
+	# The build nodes: on screen, over the world (and its night tint).
+	_nodes = Control.new()
+	_nodes.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_nodes.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_nodes.draw.connect(_draw_nodes)
+	add_child(_nodes)
 	_home_view()
 	_process(0.0)
 
@@ -312,6 +350,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			_dragging = true
 			_drag_moved = 0.0
 			_velocity = Vector2.ZERO
+			_glide_to = null
 			_press_at = touch.position
 		elif _dragging:
 			_dragging = false
@@ -328,12 +367,214 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _poke(at: Vector2) -> void:
+	for hit in _node_hits:
+		if (hit[0] as Rect2).has_point(at):
+			TSSfx.play("tap")
+			part_tapped.emit(int(hit[1]))
+			return
+	for hit in _edge_hits:
+		if (hit[0] as Rect2).has_point(at):
+			TSSfx.play("tap")
+			glide_to_part(int(hit[1]))
+			return
 	for c in _crew:
 		var icon: TSIcon = c["icon"]
 		if icon.get_global_rect().has_point(at):
 			c["hop"] = _t
 			TSSfx.play("tap")
 			return
+
+
+# -- build nodes ------------------------------------------------------------------
+
+## Which parts show a node now: camp spots with a step left and -- only once
+## the camp is finished -- ship parts with one left. None during lift-off.
+func _node_parts() -> Array:
+	var out: Array = []
+	if not nodes_enabled or _launch_start != -1.0:
+		return out
+	for i in TSProfile.PART_COUNT:
+		if TSProfile.is_part_available(i) and not TSProfile.is_part_max_level(i):
+			out.append(i)
+	return out
+
+
+## Where a part's node floats, in world coordinates.
+func _node_world(i: int) -> Vector2:
+	if GROUND_NODES.has(i):
+		return GROUND_NODES[i]
+	var a := deg_to_rad(float(SHIP_SLOTS[i]))
+	return _xf * (SHIP_MIDDLE + Vector2(cos(a) * SHIP_RING.x, sin(a) * SHIP_RING.y))
+
+
+## Where a part's node is on screen (this control's space).
+func node_screen_position(i: int) -> Vector2:
+	return _world.position + _node_world(i) * ZOOM
+
+
+## The open part of Home the nodes keep to.
+func _area() -> Rect2:
+	return node_area if node_area.has_area() else Rect2(Vector2.ZERO, _view_size())
+
+
+## Glides the world over so a part's node sits in the middle of the open area
+## (for a ship part, the ship and its whole ring of nodes).
+func glide_to_part(i: int) -> void:
+	var at := _xf * SHIP_MIDDLE if SHIP_SLOTS.has(i) else _node_world(i)
+	var o := _area().get_center() - at * ZOOM
+	var view := _view_size()
+	_glide_to = Vector2(clampf(o.x, view.x - W * ZOOM, 0.0), clampf(o.y, view.y - H * ZOOM, 0.0))
+	_velocity = Vector2.ZERO
+
+
+## The part levels have changed (a node was spent): the scene catches up --
+## and if enough of the ship is fixed, it is righted or set on its pad.
+func refresh_parts() -> void:
+	for i in TSProfile.PART_COUNT:
+		_levels[i] = TSProfile.part_level_of(i)
+	if launch_stage() != _stage:
+		_set_pose()
+		_pad_layer.set_meta("depth", _ship_depth - 2.0)
+		_ship_layer.set_meta("depth", _ship_depth)
+		_props_layer.set_meta("depth", _ship_depth + 1.0)
+		_glass_layer.set_meta("depth", _ship_depth + 3.0)
+
+
+func _draw_nodes() -> void:
+	_node_hits.clear()
+	_edge_hits.clear()
+	var parts := _node_parts()
+	if parts.is_empty():
+		return
+	var area := _area()
+	var inner := area.grow(-NODE_R - 6.0)
+	var off := {}   # side -> [how many, the nearest part, its distance]
+	# The ship's dotted lines first, under every node.
+	for i in parts:
+		if SHIP_SPOTS.has(i) and inner.has_point(node_screen_position(i)):
+			_leader(node_screen_position(i), _world.position + _xf * (SHIP_SPOTS[i] as Vector2) * ZOOM)
+	for i in parts:
+		var p := node_screen_position(i)
+		if inner.has_point(p):
+			_draw_node(i, p + Vector2(0.0, sin(_t * 2.4 + float(i)) * 4.0))
+			continue
+		var side := _side_of(p, inner)
+		var d := p.distance_to(inner.get_center())
+		if not off.has(side):
+			off[side] = [0, i, d]
+		off[side][0] += 1
+		if d < float(off[side][2]):
+			off[side][1] = i
+			off[side][2] = d
+	for side in off:
+		_draw_edge_arrow(side, area, int(off[side][0]), int(off[side][1]))
+
+
+## Which edge of the open area a point past it lies beyond (the farther-out one).
+func _side_of(p: Vector2, inner: Rect2) -> Vector2:
+	var past := Vector2(minf(p.x - inner.position.x, 0.0) + maxf(p.x - inner.end.x, 0.0), minf(p.y - inner.position.y, 0.0) + maxf(p.y - inner.end.y, 0.0))
+	if absf(past.x) >= absf(past.y):
+		return Vector2(signf(past.x), 0.0)
+	return Vector2(0.0, signf(past.y))
+
+
+## One node: a hammer (build or fix) or an arrow (upgrade) on a green disc
+## when the coins are there (grey when not), its price on a pill below.
+func _draw_node(i: int, p: Vector2) -> void:
+	var ci := _nodes
+	var cost := TSProfile.part_next_cost(i)
+	var can := TSProfile.coin_count >= cost
+	var r := NODE_R * (1.0 + 0.06 * sin(_t * 5.0) if can else 1.0)
+	_ellipse(ci, p + Vector2(0.0, r + 6.0), r * 0.8, 7.0, SHADOW, false)
+	ci.draw_circle(p, r + 4.0, INK, true, -1.0, true)
+	ci.draw_circle(p, r, Color(0.56, 0.87, 0.58) if can else Color(0.86, 0.84, 0.86), true, -1.0, true)
+	ci.draw_arc(p + Vector2(-4.0, -5.0), r * 0.62, PI * 1.05, PI * 1.55, 10, Color(1, 1, 1, 0.55), 4.0, true)
+	if TSProfile.part_level_of(i) == 0:
+		_hammer(ci, p, r * 0.62)
+	else:
+		_up_arrow(ci, p, r * 0.62)
+	# The price.
+	var font := TSToon.hand_font()
+	var text := TSProfile.fmt_coins(cost)
+	var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 20).x
+	var pill := Rect2(p + Vector2(-(tw + 34.0) * 0.5, r + 2.0), Vector2(tw + 34.0, 28.0))
+	_round_rect(ci, pill, 14.0, Color(1.0, 0.98, 0.93), INK)
+	ci.draw_circle(pill.position + Vector2(15.0, 14.0), 8.0, BUTTER, true, -1.0, true)
+	ci.draw_arc(pill.position + Vector2(15.0, 14.0), 8.0, 0.0, TAU, 16, INK, 2.0, true)
+	ci.draw_string(font, pill.position + Vector2(27.0, 21.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, INK if can else Color(INK, 0.5))
+	_node_hits.append([Rect2(p - Vector2(r + 8.0, r + 8.0), Vector2(2.0 * r + 16.0, 2.0 * r + 46.0)), i])
+
+
+## Nodes past an edge of the open area: an arrow at that edge, with how many,
+## that glides the world to the nearest.
+func _draw_edge_arrow(side: Vector2, area: Rect2, count: int, nearest: int) -> void:
+	var ci := _nodes
+	# Left and right arrows sit high, in the sky, clear of the ship's ring of
+	# nodes; up is top middle, down the bottom right corner.
+	var p := Vector2(area.get_center().x, area.position.y + EDGE_INSET)
+	if side.x < 0.0:
+		p = Vector2(area.position.x + EDGE_INSET, area.position.y + EDGE_INSET + 30.0)
+	elif side.x > 0.0:
+		p = Vector2(area.end.x - EDGE_INSET, area.position.y + EDGE_INSET + 30.0)
+	elif side.y > 0.0:
+		p = area.end - Vector2(EDGE_INSET, EDGE_INSET)
+	p += side * (3.0 + 3.0 * sin(_t * 4.0))
+	var r := 28.0
+	ci.draw_circle(p, r + 4.0, INK, true, -1.0, true)
+	ci.draw_circle(p, r, BUTTER, true, -1.0, true)
+	var tip := p + side * r * 0.55
+	var back := p - side * r * 0.35
+	var across := Vector2(-side.y, side.x) * r * 0.5
+	ci.draw_colored_polygon(PackedVector2Array([tip, back + across, back - across]), INK)
+	# How many are that way.
+	var badge := p + Vector2(r * 0.75, -r * 0.75)
+	ci.draw_circle(badge, 13.0, INK, true, -1.0, true)
+	ci.draw_circle(badge, 10.5, Color(1.0, 0.45, 0.5), true, -1.0, true)
+	var font := TSToon.hand_font()
+	var n := str(count)
+	ci.draw_string(font, badge + Vector2(-font.get_string_size(n, HORIZONTAL_ALIGNMENT_LEFT, -1, 18).x * 0.5, 6.0), n, HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color.WHITE)
+	_edge_hits.append([Rect2(p - Vector2(r + 10.0, r + 10.0), Vector2(2.0 * r + 20.0, 2.0 * r + 20.0)), nearest])
+
+
+## A dotted line from a ship node in to its part, ending in a small ring.
+func _leader(from: Vector2, to: Vector2) -> void:
+	var d := to - from
+	var n := int(d.length() / 14.0)
+	for k in range(2, n):
+		_nodes.draw_circle(from + d * float(k) / float(n), 3.0, Color(INK, 0.55), true, -1.0, true)
+	_nodes.draw_arc(to, 9.0, 0.0, TAU, 20, Color(1, 1, 1, 0.9), 4.0, true)
+	_nodes.draw_arc(to, 9.0, 0.0, TAU, 20, Color(INK, 0.6), 2.0, true)
+
+
+func _hammer(ci: CanvasItem, c: Vector2, s: float) -> void:
+	var handle_a := c + Vector2(-0.75, 0.75) * s
+	var handle_b := c + Vector2(0.25, -0.25) * s
+	ci.draw_line(handle_a, handle_b, INK, s * 0.42, true)
+	ci.draw_line(handle_a, handle_b, WOOD, s * 0.24, true)
+	var head := [Vector2(-0.15, -0.95), Vector2(0.95, 0.15), Vector2(0.55, 0.55), Vector2(-0.55, -0.55)]
+	var pts := PackedVector2Array()
+	for h in head:
+		pts.append(c + (h as Vector2) * s * 0.75 + Vector2(0.18, -0.18) * s)
+	ci.draw_colored_polygon(pts, CHROME)
+	pts.append(pts[0])
+	ci.draw_polyline(pts, INK, 3.0, true)
+
+
+func _up_arrow(ci: CanvasItem, c: Vector2, s: float) -> void:
+	var pts := PackedVector2Array([c + Vector2(0.0, -1.0) * s, c + Vector2(0.85, 0.0) * s, c + Vector2(0.35, 0.0) * s, c + Vector2(0.35, 0.9) * s, c + Vector2(-0.35, 0.9) * s, c + Vector2(-0.35, 0.0) * s, c + Vector2(-0.85, 0.0) * s])
+	ci.draw_colored_polygon(pts, Color.WHITE)
+	pts.append(pts[0])
+	ci.draw_polyline(pts, INK, 3.5, true)
+
+
+func _round_rect(ci: CanvasItem, r: Rect2, radius: float, fill: Color, line: Color) -> void:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = fill
+	sb.border_color = line
+	sb.set_border_width_all(3)
+	sb.set_corner_radius_all(int(radius))
+	sb.anti_aliasing = true
+	ci.draw_style_box(sb, r)
 
 
 # -- the crew ------------------------------------------------------------------
@@ -344,6 +585,11 @@ func _process(delta: float) -> void:
 		_offset += _velocity * delta
 		_velocity = _velocity.lerp(Vector2.ZERO, minf(1.0, delta * 5.0))
 		_clamp_offset()
+	if _glide_to != null and not _dragging:
+		_offset = _offset.lerp(_glide_to, minf(1.0, delta * 6.0))
+		_clamp_offset()
+		if _offset.distance_to(_glide_to) < 1.0:
+			_glide_to = null
 	_world.position = _offset.round()
 	# Lift-off: a rumble on the pad, then the climb, crew and all.
 	_xf = _pose
@@ -362,6 +608,7 @@ func _process(delta: float) -> void:
 	_sort()
 	for p in _painters:
 		(p as Control).queue_redraw()
+	_nodes.queue_redraw()
 
 
 # Draw order: farther back first, so nearer things stand in front.

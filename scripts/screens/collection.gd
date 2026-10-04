@@ -1,21 +1,15 @@
 extends TSScreen
 
-## The Collection (Duckdoku's CollectionScreen, with ducks as critters and
-## ships as the crash site: a camp to build and the crashed spaceship to fix).
-## A feature card shows the selected critter, camp spot or ship part, big,
-## with its title, level stars and one button. Critters: Buy while locked,
-## Upgrade while there is a level to gain, Max Level at the top; tapping an
-## owned critter makes it your avatar -- the one sealed in the egg. Camp spots
-## and ship parts start broken: Build or Fix, then Upgrade up to Max Level,
-## and every step shows at the crash site on Home. The camp comes first: the
-## ship waits until every camp spot is done. Every level counts toward the
-## collection level, and each collection level adds 1% to the coins a win
-## pays.
+## The Collection (Duckdoku's CollectionScreen, with ducks as critters). A
+## feature card shows the selected critter, big, with its title, level stars
+## and one button: Buy while locked, Upgrade while there is a level to gain,
+## Max Level at the top; tapping an owned critter makes it your avatar -- the
+## one sealed in the egg. Every critter level counts toward the collection
+## level, and each collection level adds 1% to the coins a win pays. (The camp
+## and the ship are built from their nodes on Home, and don't count.)
 
 const TILE := 120.0
 const TUTORIAL_CRITTER := 5 # Blueberry: the Common one the walkthrough's gift buys
-const BROKEN_TINT := Color(0.86, 0.84, 0.86)   # a broken part's tile
-const SHIP_PINK := Color(1.0, 0.74, 0.82)       # a fixed part's tile
 
 var _level_label: Label
 var _bonus_label: Label
@@ -23,17 +17,12 @@ var _level_bar: ProgressBar
 var _feature: VBoxContainer
 var _feature_tile: Control
 var _feature_btn: Button
-var _tabs: PanelContainer
 var _critter_grid: GridContainer
-var _part_grid: GridContainer
 var _critter_scroll: ScrollContainer
-var _part_scroll: ScrollContainer
 var _level_card: PanelContainer
 var _info: Dictionary
 var _tutorial: TSTutorial
-var _tab := 0             # 0 critters, 1 the camp, 2 the ship
 var _sel_critter := -1
-var _sel_part := {"camp": -1, "ship": -1}   # the selected spot on each tab
 var _last_coins := -1
 
 
@@ -66,22 +55,14 @@ func build() -> void:
 	_feature_btn = TSUI.button("", TSUI.GREEN, 28, Vector2(0, 76))
 	_feature_btn.pressed.connect(_on_feature_pressed)
 
-	_tabs = TSUI.tabs(["Critters", "Camp", "Ship"], func(i: int):
-		_tab = i
-		TSUI.style_tabs(_tabs, i)
-		_refresh())
-	content.add_child(_tabs)
 	_critter_grid = _grid()
 	_critter_scroll = TSUI.scroll(_critter_grid)
 	content.add_child(_critter_scroll)
-	_part_grid = _grid()
-	_part_scroll = TSUI.scroll(_part_grid)
-	content.add_child(_part_scroll)
 
 	_info = TSUI.dialog(self, 580)
 	var ibox: VBoxContainer = _info["box"]
 	ibox.add_child(TSUI.title("Your Collection", 40))
-	ibox.add_child(TSUI.wrap(TSUI.label("Buy and upgrade critters with coins, build up your camp, then fix and upgrade your crashed ship. Every level counts toward your Collection level, and each Collection level adds +1% to the coins every win pays.\n\nTap a critter to make it yours: it's the one sealed in the egg. Everything you build, fix or upgrade shows at the crash site on Home. Finish the camp first -- the ship opens once every camp spot is fully upgraded.", 22), 520))
+	ibox.add_child(TSUI.wrap(TSUI.label("Buy and upgrade critters with coins. Every critter level counts toward your Collection level, and each Collection level adds +1% to the coins every win pays.\n\nTap a critter to make it yours: it's the one sealed in the egg. Your camp and ship are built on Home -- tap the hammers at the crash site.", 22), 520))
 	var ok := TSUI.button("Got it", TSUI.PINK, 26)
 	ok.pressed.connect(func(): TSUI.conceal(_info["root"]))
 	ibox.add_child(ok)
@@ -110,33 +91,9 @@ func _refresh() -> void:
 	_level_bar.value = TSProfile.collection_level_progress()
 	if _sel_critter < 0:
 		_sel_critter = TSProfile.avatar()
-	for group in ["camp", "ship"]:
-		if int(_sel_part[group]) < 0:
-			_sel_part[group] = _first_unfinished(group)
 	_build_feature()
 	_build_critters()
-	_build_parts()
-	_critter_scroll.visible = _tab == 0
-	_part_scroll.visible = _tab != 0
 	TSUI.juice(self)
-
-
-## The tab's group of parts: "camp" or "ship".
-func _group() -> String:
-	return "ship" if _tab == 2 else "camp"
-
-
-## The first spot in a group still to be built or fixed, else the first one.
-static func _first_unfinished(group: String) -> int:
-	var first := -1
-	for i in TSProfile.PART_COUNT:
-		if str(TSProfile.PARTS[i]["group"]) != group:
-			continue
-		if first < 0:
-			first = i
-		if not TSProfile.is_part_fixed(i):
-			return i
-	return first
 
 
 # -- the feature card -------------------------------------------------------------------
@@ -146,10 +103,7 @@ func _build_feature() -> void:
 		_feature_btn.get_parent().remove_child(_feature_btn)
 	for c in _feature.get_children():
 		c.queue_free()
-	if _tab != 0:
-		_build_part_feature(int(_sel_part[_group()]))
-	else:
-		_build_critter_feature(_sel_critter)
+	_build_critter_feature(_sel_critter)
 	_feature.add_child(_feature_btn)
 
 
@@ -186,49 +140,6 @@ func _build_critter_feature(i: int) -> void:
 	_feature_btn.disabled = maxed or TSProfile.coin_count < cost
 
 
-## A camp spot or ship part: broken, or built / fixed at some stage, what the
-## next step adds, and the Build / Fix / Upgrade button. Ship parts wait for
-## the camp to be finished.
-func _build_part_feature(i: int) -> void:
-	var level := TSProfile.part_level_of(i)
-	var fixed := level >= 1
-	var camp := TSProfile.is_camp(i)
-	var art := TSIcon.make("part", 170, i, "" if fixed else "broken")
-	var info := _feature_row(SHIP_PINK.lerp(Color.WHITE, 0.55) if fixed else BROKEN_TINT, TSUI.INK if fixed else TSUI.RED_DOT, false, art, false)
-	info.add_child(TSUI.wrap(TSUI.label(TSProfile.part_name(i), 32)))
-	var tags := TSUI.hbox(8)
-	if fixed:
-		tags.add_child(TSUI.pill(TSProfile.part_stage(i, level).to_upper(), TSUI.SKY, 18))
-	else:
-		tags.add_child(TSUI.pill("UNBUILT" if camp else "BROKEN", TSUI.RED_DOT, 18, Color.WHITE))
-	info.add_child(tags)
-	if not camp and TSProfile.is_ship_ready():
-		var when := "Launch it now from Home!" if TSProfile.can_launch() else ("Launched this season." if TSProfile.has_launched_this_season() else "It can launch at the season's end, in %d days." % TSProfile.days_to_launch_window())
-		info.add_child(TSUI.wrap(TSUI.label("Ship ready! " + when, 20, TSFX.COL_GAIN)))
-	if fixed:
-		info.add_child(TSUI.label("Lv %d/%d" % [level, TSProfile.PART_MAX_LEVEL], 22, TSFX.COL_GAIN))
-		info.add_child(_stars(level, TSProfile.PART_MAX_LEVEL, 26.0))
-	else:
-		var why := "build it to make camp more homely" if camp else "fix it to get your ship flying again"
-		info.add_child(TSUI.wrap(TSUI.label("%s -- %s." % [TSProfile.part_stage(i, 0), why], 20, TSUI.MUTED)))
-	if TSProfile.is_part_max_level(i):
-		info.add_child(TSUI.label("Fully upgraded!", 20, TSUI.MUTED))
-		_feature_btn.text = "Max Level"
-		_feature_btn.disabled = true
-		return
-	if not TSProfile.is_part_available(i):
-		info.add_child(TSUI.wrap(TSUI.label("Finish the camp first: every camp spot to Lv %d." % TSProfile.CAMP_LEVEL_FOR_SHIP, 20, TSUI.MUTED)))
-		_feature_btn.text = "Camp first  ·  %d/%d done" % [TSProfile.camp_spots_done(), TSProfile.camp_spot_count()]
-		_feature_btn.disabled = true
-		return
-	if fixed:
-		info.add_child(TSUI.wrap(TSUI.label("Next: " + TSProfile.part_stage(i, level + 1), 20, TSUI.MUTED)))
-	var cost := TSProfile.part_next_cost(i)
-	var verb := "Upgrade" if fixed else ("Build" if camp else "Fix")
-	_feature_btn.text = "%s  ·  %s coins" % [verb, TSProfile.fmt_coins(cost)]
-	_feature_btn.disabled = TSProfile.coin_count < cost
-
-
 ## The feature card's big tile and, beside it, the column the caller fills.
 func _feature_row(bg: Color, border: Color, glow: bool, art: TSIcon, silhouette: bool) -> VBoxContainer:
 	var row := TSUI.hbox(16)
@@ -253,22 +164,18 @@ func _feature_row(bg: Color, border: Color, glow: bool, art: TSIcon, silhouette:
 
 
 func _on_feature_pressed() -> void:
-	var ok := false
 	var before := TSProfile.collection_level()
-	if _tab != 0:
-		ok = TSProfile.improve_part(int(_sel_part[_group()]))
-	else:
-		if not TSProfile.is_critter_unlocked(_sel_critter) and TSProfile.is_critter_pass_exclusive(_sel_critter):
-			SceneFlow.go("res://scenes/battle_pass.tscn")
-			return
-		ok = TSProfile.level_up_critter(_sel_critter) if TSProfile.is_critter_unlocked(_sel_critter) else TSProfile.unlock_critter(_sel_critter)
+	if not TSProfile.is_critter_unlocked(_sel_critter) and TSProfile.is_critter_pass_exclusive(_sel_critter):
+		SceneFlow.go("res://scenes/battle_pass.tscn")
+		return
+	var ok := TSProfile.level_up_critter(_sel_critter) if TSProfile.is_critter_unlocked(_sel_critter) else TSProfile.unlock_critter(_sel_critter)
 	if ok:
 		TSSfx.play("upgrade")
 		TSFX.sparkle_burst(self, _feature_tile)
 	_refresh()
 	if ok and TSProfile.collection_level() > before:
 		_level_up_banner()
-	if ok and _tab == 0 and _sel_critter == TUTORIAL_CRITTER:
+	if ok and _sel_critter == TUTORIAL_CRITTER:
 		_tutorial.gate_passed()
 
 
@@ -313,15 +220,6 @@ func _build_critters() -> void:
 		_critter_grid.add_child(_tile(i))
 
 
-## The tab's camp spots or ship parts, in a fixed order.
-func _build_parts() -> void:
-	for c in _part_grid.get_children():
-		c.queue_free()
-	for i in TSProfile.PART_COUNT:
-		if str(TSProfile.PARTS[i]["group"]) == _group():
-			_part_grid.add_child(_part_tile(i))
-
-
 func _tile(i: int) -> Control:
 	var owned := TSProfile.is_critter_unlocked(i)
 	var bg: Color = TSProfile.critter_color(i).lerp(Color.WHITE, 0.55) if owned else TSUI.CARD
@@ -340,28 +238,6 @@ func _tile(i: int) -> Control:
 		if i == TUTORIAL_CRITTER:
 			_tutorial.gate_passed())
 	return _tile_column(b, i, TSProfile.critter_name(i), owned)
-
-
-func _part_tile(i: int) -> Control:
-	var level := TSProfile.part_level_of(i)
-	var fixed := level >= 1
-	var selected := i == int(_sel_part[_group()])
-	var open := TSProfile.is_part_available(i)
-	var art := TSIcon.make("part", TILE * 0.8, i, "" if fixed else "broken")
-	var b := _tile_button(SHIP_PINK.lerp(Color.WHITE, 0.55) if fixed else BROKEN_TINT, TSUI.INK if selected else (TSUI.GREY if fixed or not open else TSUI.RED_DOT), selected, art, false)
-	if fixed:
-		_badge(b, "Lv %d" % level, TSUI.INK, Vector2(TILE - 60, 4))
-	elif not open:
-		var lock := TSIcon.make("lock", 34)
-		lock.position = Vector2(4, 4)
-		lock.size = Vector2(34, 34)
-		b.add_child(lock)
-	else:
-		_badge(b, "BUILD" if TSProfile.is_camp(i) else "FIX", TSUI.RED_DOT, Vector2(4, 4))
-	b.pressed.connect(func():
-		_sel_part[_group()] = i
-		_refresh())
-	return _tile_column(b, i, TSProfile.part_name(i), true)
 
 
 func _tile_button(bg: Color, border: Color, selected: bool, art: TSIcon, silhouette: bool) -> Button:
@@ -429,7 +305,7 @@ func _maybe_start_tutorial() -> void:
 	_tutorial.finished.connect(func():
 		TSProfile.collection_tutorial_seen = true
 		TSProfile.save(), CONNECT_ONE_SHOT)
-	var steps := [{"rect": _feature.get_global_rect(), "text": "This is your Collection: critters, your camp and your ship. They boost the coins you earn."}]
+	var steps := [{"rect": _feature.get_global_rect(), "text": "This is your Collection: your critters. Their levels boost the coins you earn."}]
 	if gift > 0:
 		steps.append({"rect": wallet.get_global_rect(), "text": "Here's %s coins -- enough for your first critter." % TSProfile.fmt_coins(gift)})
 	var buying := not TSProfile.is_critter_unlocked(TUTORIAL_CRITTER) and TSProfile.coin_count >= TSProfile.critter_unlock_cost(TUTORIAL_CRITTER)
@@ -438,7 +314,6 @@ func _maybe_start_tutorial() -> void:
 		steps.append({"rect": func() -> Rect2: return _feature_btn.get_global_rect(), "text": "Tap Buy to adopt it.", "gate": true})
 	steps.append({"rect": func() -> Rect2: return _feature.get_global_rect(), "text": "It's yours! Tap an owned critter to seal it in the egg, and upgrade it here." if buying else "Tap an owned critter to seal it in the egg, and upgrade it here."})
 	steps.append({"rect": func() -> Rect2: return _level_card.get_global_rect(), "text": "Each Collection level adds +1% coins on every win."})
-	steps.append({"rect": func() -> Rect2: return _tabs.get_global_rect(), "text": "Build up your camp on the next tab, then fix your crashed ship on the one after. Everything shows at Home, and counts toward your level too."})
 	_tutorial.start(steps)
 
 

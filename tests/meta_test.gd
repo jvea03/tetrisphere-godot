@@ -140,8 +140,10 @@ func _test_collection() -> void:
 	_check("every camp spot and ship part starts broken", all_broken and TSProfile.parts_fixed() == 0 and TSProfile.PART_COUNT == 15 and TSProfile.camp_spot_count() == 6)
 	_check("the ship waits for the camp: no fixing the engine yet", not TSProfile.is_ship_open() and not TSProfile.improve_part(TSProfile.PART_ENGINE))
 	var coins := TSProfile.coin_count
+	var points_before_camp := TSProfile.collection_points()
 	var build_cost := TSProfile.part_next_cost(TSProfile.CAMP_FIRE)
 	_check("building the campfire costs %s" % TSProfile.fmt_coins(build_cost), TSProfile.improve_part(TSProfile.CAMP_FIRE) and TSProfile.part_stage(TSProfile.CAMP_FIRE, 1) == "Little Fire" and TSProfile.coin_count == coins - build_cost)
+	_check("and doesn't count toward the collection level", TSProfile.collection_points() == points_before_camp)
 	_check("each upgrade costs one more multiple of the first step", TSProfile.part_next_cost(TSProfile.CAMP_FIRE) == build_cost * 2)
 	for p in TSProfile.PART_COUNT:
 		if TSProfile.is_camp(p):
@@ -152,6 +154,7 @@ func _test_collection() -> void:
 	_check("then the engine can be fixed, for %s" % TSProfile.fmt_coins(fix_cost), TSProfile.improve_part(TSProfile.PART_ENGINE) and TSProfile.part_stage(TSProfile.PART_ENGINE, 1) == "Running")
 	while TSProfile.improve_part(TSProfile.PART_ENGINE):
 		pass
+	_check("neither does the camp or the ship, all the way up", TSProfile.collection_points() == points_before_camp)
 	_check("a part tops out at level %d (%s)" % [TSProfile.PART_MAX_LEVEL, TSProfile.part_stage(TSProfile.PART_ENGINE, TSProfile.PART_MAX_LEVEL)], TSProfile.part_level_of(TSProfile.PART_ENGINE) == TSProfile.PART_MAX_LEVEL and TSProfile.is_part_max_level(TSProfile.PART_ENGINE))
 	var pass_part := TSProfile.battle_pass_paid_reward(30)
 	_check("the Battle Pass's tier 30 is a free ship-part fix or upgrade", pass_part.has("part") and TSProfile.grant_part_level(TSProfile.PART_HULL) and TSProfile.part_level_of(TSProfile.PART_HULL) == 1)

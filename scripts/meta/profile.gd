@@ -236,6 +236,7 @@ static var slide_tutorial_seen: bool = false # the sliding walkthrough, once, at
 static var club_intro_seen: bool = false
 static var collection_tutorial_seen: bool = false
 static var daily_callout_seen: bool = false
+static var camp_callout_seen: bool = false   # Home's one-time pointer to the camp's build nodes
 static var home_tutorial_seen: bool = false
 static var collection_gift_claimed: bool = false
 static var _loaded: bool = false
@@ -319,14 +320,15 @@ static var critter_level: Array = [] # 0 while locked, 1..CRITTER_MAX_LEVEL once
 ## Collection: their tiles wear a "NEW" badge.
 static var new_critters: Array = []
 
-# -- the camp and the ship (Collection's Camp and Ship tabs) ----------------------
+# -- the camp and the ship (built and upgraded from Home's nodes) ----------------
 # The crash site on Home: a camp the critters live in, and the crashed
 # spaceship. Every spot starts broken (level 0); coins build or fix it (level
-# 1), then upgrade it up to PART_MAX_LEVEL, and every stage shows at the crash
-# site (TSShipScene) -- cold ashes to a bonfire, a smoking engine to rainbow
-# thrusters. The camp comes first: the ship can't be touched until every camp
-# spot reaches CAMP_LEVEL_FOR_SHIP. Every level counts toward the collection
-# level. `stages` names what each level looks like, broken first; `fix` is the
+# 1), then upgrade it up to PART_MAX_LEVEL, from the node floating over it on
+# Home, and every stage shows at the crash site (TSShipScene) -- cold ashes to
+# a bonfire, a smoking engine to rainbow thrusters. The camp comes first: the
+# ship's nodes don't appear until every camp spot reaches CAMP_LEVEL_FOR_SHIP.
+# None of it counts toward the collection level, which is critters only.
+# `stages` names what each level looks like, broken first; `fix` is the
 # price of the first step, and each upgrade after costs one more multiple of
 # it. Camp spots are cheaper than ship parts.
 const PARTS := [
@@ -564,10 +566,8 @@ static func improve_part(i: int) -> bool:
 	if coin_count < cost:
 		return false
 	coin_count -= cost
-	var level_before := collection_level()
 	part_level[i] += 1
 	save()
-	_note_collection_level(level_before)
 	return true
 
 
@@ -576,9 +576,7 @@ static func improve_part(i: int) -> bool:
 static func grant_part_level(i: int) -> bool:
 	if i < 0 or i >= PART_COUNT or is_part_max_level(i):
 		return false
-	var level_before := collection_level()
 	part_level[i] += 1
-	_note_collection_level(level_before)
 	return true
 
 
@@ -595,8 +593,7 @@ static func parts_fixed() -> int:
 # (its last LAUNCH_WINDOW_DAYS) a ship with every part fixed can take off. The
 # launch pays LAUNCH_REWARD_BASE plus LAUNCH_REWARD_PER_LEVEL for every ship
 # part level -- so upgrades make it pay more -- and carries the critters to a
-# new planet, where the camp and the ship start again from scratch. The part
-# levels left behind are banked, so the collection level never drops. One
+# new planet, where the camp and the ship start again from scratch. One
 # launch per season.
 const LAUNCH_WINDOW_DAYS := 3
 const LAUNCH_REWARD_BASE := 5000
@@ -604,7 +601,6 @@ const LAUNCH_REWARD_PER_LEVEL := 500
 
 static var planet_number: int = 1          # which planet the critters are on (1, 2, ...)
 static var launched_season: int = 0        # the season of the last launch
-static var banked_part_points: int = 0     # collection points from planets left behind
 static var launch_window_forced := false   # tests and captures only: the window is open
 
 
@@ -667,8 +663,6 @@ static func launch_ship() -> int:
 		return 0
 	var reward := boost_earned_coins(launch_reward())
 	coin_count += reward
-	for lvl in part_level:
-		banked_part_points += int(lvl) * COLLECTION_POINTS_PER_PART_LEVEL
 	for i in PART_COUNT:
 		part_level[i] = 0
 	planet_number += 1
@@ -726,10 +720,9 @@ static func claim_collection_gift() -> int:
 	return COLLECTION_GIFT_COINS
 
 
-## Collection level: every level across every owned critter and ship part counts
-## (a part level is worth 10 points, a critter level 5-20 by rarity); each
-## collection level past the first adds 1% to the coins a win pays.
-const COLLECTION_POINTS_PER_PART_LEVEL := 10
+## Collection level: every level across every owned critter counts (5-20
+## points a level by rarity) -- the camp and the ship don't; each collection
+## level past the first adds 1% to the coins a win pays.
 const COLLECTION_POINTS_FIRST_LEVEL := 50
 const COLLECTION_POINTS_LEVEL_STEP := 5
 const COLLECTION_COIN_BONUS_PERCENT := 1
@@ -739,9 +732,7 @@ static func collection_points() -> int:
 	var total := 0
 	for i in CRITTER_COUNT:
 		total += critter_level_of(i) * int(CRITTER_RARITY_POINTS[critter_rarity(i)])
-	for lvl in part_level:
-		total += int(lvl) * COLLECTION_POINTS_PER_PART_LEVEL
-	return total + banked_part_points   # plus the planets left behind (see launch_ship)
+	return total
 
 
 static func collection_coin_bonus_percent() -> int:
@@ -1907,6 +1898,7 @@ static func ensure_loaded() -> void:
 	club_intro_seen = bool(g.call("club_intro_seen", false))
 	collection_tutorial_seen = bool(g.call("collection_tutorial_seen", false))
 	daily_callout_seen = bool(g.call("daily_callout_seen", false))
+	camp_callout_seen = bool(g.call("camp_callout_seen", false))
 	home_tutorial_seen = bool(g.call("home_tutorial_seen", false))
 	collection_gift_claimed = bool(g.call("collection_gift_claimed", false))
 	music_enabled = bool(g.call("music_enabled", true))
@@ -1917,7 +1909,6 @@ static func ensure_loaded() -> void:
 	var pl: Array = g.call("camp_and_ship", [])   # the camp-first list (an older ship-only one is ignored)
 	planet_number = maxi(1, int(g.call("planet_number", 1)))
 	launched_season = int(g.call("launched_season", 0))
-	banked_part_points = maxi(0, int(g.call("banked_part_points", 0)))
 	_blank_collection()
 	for i in CRITTER_COUNT:
 		if i < cu.size():
@@ -2005,6 +1996,7 @@ static func save() -> void:
 	s.call("club_intro_seen", club_intro_seen)
 	s.call("collection_tutorial_seen", collection_tutorial_seen)
 	s.call("daily_callout_seen", daily_callout_seen)
+	s.call("camp_callout_seen", camp_callout_seen)
 	s.call("home_tutorial_seen", home_tutorial_seen)
 	s.call("collection_gift_claimed", collection_gift_claimed)
 	s.call("music_enabled", music_enabled)
@@ -2016,7 +2008,6 @@ static func save() -> void:
 	s.call("camp_and_ship", part_level)
 	s.call("planet_number", planet_number)
 	s.call("launched_season", launched_season)
-	s.call("banked_part_points", banked_part_points)
 	s.call("has_club", has_club)
 	s.call("club_name", club_name)
 	s.call("club_is_owner", club_is_owner)

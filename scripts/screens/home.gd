@@ -30,6 +30,9 @@ var sale_timer: Label
 var tray: PanelContainer
 var tutorial: TSTutorial
 var _world: TSShipScene      # the crash site behind everything
+var _gap: Control            # the open stretch of Home the crash site shows through
+var _part: Dictionary        # the build / upgrade card for a camp spot or ship part
+var _part_index := -1
 var _launch_btn: Button      # shown at a season's end when the ship is ready
 
 var _chest_slots: Array = [] # per slot: {btn, plate, art, pill, pill_label, band}
@@ -83,6 +86,9 @@ func build() -> void:
 	elif daily_btn.visible and not TSProfile.daily_callout_seen:
 		_start_daily_callout()
 		walkthrough = true
+	elif _world.nodes_enabled and not TSProfile.camp_callout_seen:
+		_start_camp_callout()
+		walkthrough = true
 	TSProfile.settle_boards()
 	TSProfile.save()
 	var results := not walkthrough and not TSProfile.pending_board_prizes.is_empty()
@@ -97,6 +103,7 @@ func build() -> void:
 
 
 func _tick() -> void:
+	_update_node_area()
 	_refresh_chest_tray()
 	_refresh_sale_icon()
 	_tick_boards()
@@ -223,9 +230,16 @@ func _build_showcase() -> void:
 	gap.custom_minimum_size = Vector2(0, 340)
 	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	content.add_child(gap)
+	_gap = gap
 	_world = TSShipScene.new()
 	add_child(_world)
 	move_child(_world, 1)   # just over the paper, under everything else
+	# Build nodes over the camp (and, once it is finished, the ship), from when
+	# the Collection unlocks; they keep to the gap, clear of the side tiles.
+	_world.nodes_enabled = TSNav.collection_unlocked()
+	_world.part_tapped.connect(_open_part)
+	gap.resized.connect(_update_node_area)
+	_update_node_area.call_deferred()
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	content.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	(content.get_parent() as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -240,6 +254,173 @@ func _build_showcase() -> void:
 		var beat := _launch_btn.create_tween().set_loops()
 		beat.tween_property(_launch_btn, "scale", Vector2.ONE * 1.06, 0.5).set_trans(Tween.TRANS_SINE)
 		beat.tween_property(_launch_btn, "scale", Vector2.ONE, 0.5).set_trans(Tween.TRANS_SINE)
+
+
+## The open part of Home, in the crash site's space: the gap between the top
+## bar and the chest tray, right of the side tiles.
+func _update_node_area() -> void:
+	if not is_instance_valid(_gap) or not is_instance_valid(_world):
+		return
+	var g := _gap.get_global_rect()
+	var top := g.position.y
+	if is_instance_valid(avatar_btn):
+		top = minf(top, avatar_btn.get_global_rect().end.y + 12.0)
+	var left := g.position.x
+	if is_instance_valid(side):
+		for t in side.get_children():
+			if (t as Control).visible:
+				left = maxf(left, (t as Control).get_global_rect().end.x + 12.0)
+	var r := Rect2(Vector2(left, top), Vector2(g.end.x - left, g.end.y - top))
+	r.position -= _world.get_global_rect().position
+	_world.node_area = r
+
+
+# -- the camp and ship build card ----------------------------------------------------
+
+func _build_part_card() -> void:
+	_part = TSUI.dialog(self, 560)
+	var box: VBoxContainer = _part["box"]
+	var title := TSUI.title("", 40)
+	box.add_child(title)
+	_part["title"] = title
+	var row := TSUI.hbox(16)
+	box.add_child(row)
+	var tile := PanelContainer.new()
+	tile.custom_minimum_size = Vector2(170, 170)
+	row.add_child(tile)
+	_part["tile"] = tile
+	var art := TSIcon.make("part", 150)
+	tile.add_child(art)
+	_part["art"] = art
+	var info := TSUI.vbox(8)
+	TSUI.expand(info)
+	info.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_child(info)
+	_part["info"] = info
+	var note := TSUI.wrap(TSUI.label("", 22, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER), 500)
+	box.add_child(note)
+	_part["note"] = note
+	var go := TSUI.button("", TSUI.GREEN, 28, Vector2(0, 76))
+	go.pressed.connect(_on_part_pressed)
+	box.add_child(go)
+	_part["go"] = go
+	var close := TSUI.button("Close", TSUI.GREY, 24, Vector2(0, 60))
+	close.pressed.connect(func(): TSUI.conceal(_part["root"]))
+	box.add_child(close)
+
+
+func _open_part(i: int) -> void:
+	_part_index = i
+	_fill_part_card()
+	TSUI.reveal(_part["root"], _part["panel"])
+
+
+## The card for _part_index: what it is now, what the next step makes it, and
+## the button -- Build / Fix / Upgrade for its price, or Get Coins when short.
+func _fill_part_card() -> void:
+	var i := _part_index
+	var level := TSProfile.part_level_of(i)
+	var built := level >= 1
+	var camp := TSProfile.is_camp(i)
+	(_part["title"] as Label).text = TSProfile.part_name(i)
+	var face := TSUI.sb(Color(1.0, 0.74, 0.82).lerp(Color.WHITE, 0.55) if built else Color(0.86, 0.84, 0.86), 30, 5, 4, 8)
+	face.border_color = TSUI.INK if built else TSUI.RED_DOT
+	(_part["tile"] as PanelContainer).add_theme_stylebox_override("panel", face)
+	(_part["art"] as TSIcon).set_icon("part", i, "" if built else "broken")
+	var info: VBoxContainer = _part["info"]
+	for c in info.get_children():
+		c.queue_free()
+	if built:
+		info.add_child(TSUI.pill(TSProfile.part_stage(i, level).to_upper(), TSUI.SKY, 18))
+		info.add_child(TSUI.label("Lv %d/%d" % [level, TSProfile.PART_MAX_LEVEL], 24, TSFX.COL_GAIN))
+	else:
+		info.add_child(TSUI.pill("UNBUILT" if camp else "BROKEN", TSUI.RED_DOT, 18, Color.WHITE))
+		info.add_child(TSUI.label(TSProfile.part_stage(i, 0), 22, TSUI.MUTED))
+	info.add_child(_part_stars(level))
+	var note: Label = _part["note"]
+	var go: Button = _part["go"]
+	if TSProfile.is_part_max_level(i):
+		note.text = "Fully upgraded!"
+		go.text = "Max Level"
+		go.disabled = true
+		TSUI.restyle(go, TSUI.GREY)
+		return
+	var cost := TSProfile.part_next_cost(i)
+	var verb := "Upgrade" if built else ("Build" if camp else "Fix")
+	note.text = ("Next: %s" % TSProfile.part_stage(i, level + 1)) if built else ("Build it to make camp more homely." if camp else "Fix it to get your ship flying again.")
+	go.disabled = false
+	if TSProfile.coin_count >= cost:
+		go.text = "%s  ·  %s coins" % [verb, TSProfile.fmt_coins(cost)]
+		TSUI.restyle(go, TSUI.GREEN)
+	else:
+		go.text = "Get Coins  ·  need %s" % TSProfile.fmt_coins(cost - TSProfile.coin_count)
+		TSUI.restyle(go, TSUI.GOLD)
+
+
+## Five stars, one filled per fifth of the climb (all gold at max).
+func _part_stars(level: int) -> Control:
+	var row := TSUI.hbox(2)
+	var filled := ceili(5.0 * level / TSProfile.PART_MAX_LEVEL)
+	for k in 5:
+		var s := TSIcon.make("star", 26)
+		if k >= filled:
+			s.tint = Color(0.86, 0.84, 0.84)
+		row.add_child(s)
+	return row
+
+
+func _on_part_pressed() -> void:
+	var i := _part_index
+	if TSProfile.coin_count < TSProfile.part_next_cost(i):
+		TSUI.conceal(_part["root"])
+		SceneFlow.slide("res://scenes/shop.tscn", -1)
+		return
+	var before := TSProfile.coin_count
+	var ship_was_open := TSProfile.is_ship_open()
+	if not TSProfile.improve_part(i):
+		return
+	coin_pill.spend(before, TSProfile.coin_count)
+	TSSfx.play("upgrade")
+	TSHaptics.medium()
+	TSFX.sparkle_burst(self, _part["tile"])
+	_world.refresh_parts()
+	if TSProfile.can_launch() and _launch_btn == null:
+		# The last ship part fixed in the launch window: Home reopens with LAUNCH!
+		TSUI.conceal(_part["root"])
+		SceneFlow.go(SceneFlow.HOME)
+		return
+	if not ship_was_open and TSProfile.is_ship_open():
+		TSUI.conceal(_part["root"])
+		_camp_done_banner()
+		return
+	_fill_part_card()
+
+
+## The camp is finished: the ship's nodes appear, and the world glides over
+## to the first of them.
+func _camp_done_banner() -> void:
+	var banner := TSUI.card(TSUI.CARD, 30, 24, 6)
+	banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	banner.top_level = true
+	banner.z_index = 80
+	var v := TSUI.vbox(4)
+	banner.add_child(v)
+	v.add_child(TSUI.title("Camp complete!", 42))
+	v.add_child(TSUI.label("Now fix up your ship", 26, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER))
+	add_child(banner)
+	banner.reset_size()
+	var area := get_viewport_rect().size
+	banner.global_position = Vector2((area.x - banner.size.x) / 2.0, area.y * 0.36)
+	banner.pivot_offset = banner.size / 2.0
+	banner.scale = Vector2(0.5, 0.5)
+	var t := banner.create_tween().set_parallel(true)
+	t.tween_property(banner, "scale", Vector2.ONE, 0.4).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	t.chain().tween_interval(1.8)
+	t.chain().tween_property(banner, "modulate:a", 0.0, 0.35)
+	t.chain().tween_callback(banner.queue_free)
+	TSFX.confetti(self)
+	TSHaptics.heavy()
+	_world.glide_to_part(TSProfile.PART_ENGINE)
 
 
 ## Lift-off: the ship roars away with its crew aboard; then the reward and the
@@ -259,7 +440,7 @@ func _on_launched() -> void:
 	var card := TSUI.dialog(self, 600)
 	var box: VBoxContainer = card["box"]
 	box.add_child(TSUI.title("Lift-off!", 48))
-	box.add_child(TSUI.wrap(TSUI.label("Your critters flew to Planet %d! A new crash site means a new camp to build and a new ship to fix -- everything you levelled up still counts toward your Collection." % TSProfile.planet_number, 24, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER), 540))
+	box.add_child(TSUI.wrap(TSUI.label("Your critters flew to Planet %d! A new crash site means a new camp to build and a new ship to fix." % TSProfile.planet_number, 24, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER), 540))
 	box.add_child(TSUI.label("+%s coins" % TSProfile.fmt_coins(coins), 36, TSFX.COL_GAIN, HORIZONTAL_ALIGNMENT_CENTER))
 	var go := TSUI.button("Explore Planet %d" % TSProfile.planet_number, TSUI.GREEN, 28, Vector2(0, 76))
 	go.pressed.connect(func(): SceneFlow.go(SceneFlow.HOME))
@@ -724,6 +905,7 @@ func _build_dialogs() -> void:
 
 	_build_settings()
 	_build_profile()
+	_build_part_card()
 	TSUI.juice(self)
 
 
@@ -891,12 +1073,30 @@ func _start_daily_callout() -> void:
 	tutorial.start([{"rect": daily_btn.get_global_rect(), "text": "The Daily Egg is here! A new egg every day -- crack it for coins and a streak."}])
 
 
+## The first visit once the camp's nodes appear: the world glides to the
+## campfire and the walkthrough points at its hammer.
+func _start_camp_callout() -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if not is_inside_tree():
+		return
+	_world.glide_to_part(TSProfile.CAMP_FIRE)
+	await get_tree().create_timer(0.8).timeout
+	if not is_inside_tree():
+		return
+	tutorial.finished.connect(func():
+		TSProfile.camp_callout_seen = true
+		TSProfile.save(), CONNECT_ONE_SHOT)
+	var at := _world.get_global_rect().position + _world.node_screen_position(TSProfile.CAMP_FIRE)
+	tutorial.start([{"rect": Rect2(at - Vector2(48, 48), Vector2(96, 120)), "text": "Build your camp! Tap a hammer to build, then tap its arrow to upgrade. Finish the camp to start fixing your ship."}])
+
+
 ## Android back: close whatever is open; with nothing open, Home quits.
 func on_back_requested() -> bool:
 	if _chest["root"].visible:
 		_close_chest()
 		return true
-	for d in [_sale, _skip, _settings, _profile, _results]:
+	for d in [_sale, _skip, _settings, _profile, _results, _part]:
 		if d["root"].visible:
 			TSUI.conceal(d["root"])
 			return true

@@ -6,14 +6,21 @@
 # or `-- game 22` for the game screen on a given level (`-- game 10 ties` or
 # `-- game 13 geodes` to see that lesson), or `-- home all` for
 # Home with every critter owned (add `max` or `broken` for the ship's parts),
-# or `-- settings` for Home's Settings pop-up.
+# or `-- settings` for Home's Settings pop-up. `-- home camp` glides Home to
+# the camp's build nodes, `-- home ship` finishes the camp and glides to the
+# ship's, and `-- home camp card` opens the tent's build card.
 extends Node
+
+
+static func args_has(a: String) -> bool:
+	return OS.get_cmdline_user_args().has(a)
 
 
 func _ready() -> void:
 	TSProfile.use_test_profile(30)
 	TSProfile.home_tutorial_seen = true
 	TSProfile.daily_callout_seen = true
+	TSProfile.camp_callout_seen = not args_has("callout")   # `-- home broken callout`: the first-visit camp pointer
 	TSProfile.collection_tutorial_seen = true
 	TSProfile.club_intro_seen = true
 	TSProfile.coin_count = 48250
@@ -35,6 +42,18 @@ func _ready() -> void:
 		TSProfile.part_level = []
 		for i in TSProfile.PART_COUNT:
 			TSProfile.part_level.append(0)
+	elif last_arg == "ship":
+		# The camp finished, so the ship's build nodes show; a few parts done.
+		TSProfile.part_level = [4, 4, 4, 4, 4, 4, 2, 1, 0, 3, 0, 1, 0, 0, 1]
+	if args_has("camp") or args_has("ship") or args_has("card"):
+		# `-- home camp` glides to the camp's nodes (`ship`, the ship's);
+		# `card` opens the tent's build card too.
+		var tree := get_tree()
+		var part := TSProfile.CAMP_TENT if not args_has("ship") else TSProfile.PART_HULL
+		tree.create_timer(0.8).timeout.connect(func():
+			tree.current_scene._world.glide_to_part(part)
+			if args_has("card"):
+				tree.current_scene._open_part(part))
 	TSProfile.record_login()
 	TSProfile.battle_pass_xp = 140
 	TSProfile.add_stars(3, 2, 1)

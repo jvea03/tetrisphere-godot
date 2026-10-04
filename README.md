@@ -102,10 +102,10 @@ wallet, Settings, the side tiles for the login streak, Daily Egg, Battle Pass,
 Eggsperience and any running sale, the chest tray, the level plate and PLAY) with
 its pop-ups -- Settings (How to Play, sound and haptics toggles, Restore
 Purchases and a Privacy Policy link, which opens the policy page in the
-browser), Profile, chest opening, finish-a-chest-now, pop-up sales, leaderboard results, and
-the Home and Daily Egg walkthroughs; **Battle Pass** (30 tiers of free and
+browser), Profile, the camp and ship build card, chest opening, finish-a-chest-now, pop-up sales, leaderboard results, and
+the Home, Daily Egg and camp walkthroughs; **Battle Pass** (30 tiers of free and
 premium rewards, buy a tier for coins, Daily/Weekly quests, buy-pass pop-up);
-**Collection** (critters to buy and upgrade to Lv 10; the camp to build and the ship to fix, each up to Lv 4, the ship once the camp is done; titles
+**Collection** (critters to buy and upgrade to Lv 10; titles
 and stars, rarity, collection level, the first-visit walkthrough with its
 coin gift); **Shop** (weekly featured sale, No Ads pass, bundles, bomb, Any Piece and Rocks packs,
 coin packs with a free daily pack); **Leaderboard** (Daily / Weekly /
@@ -122,14 +122,25 @@ Ranks, Clubs) slides between the tab screens.
 view, a world about 3.6 screens wide (`scripts/ui/ship_scene.gd`). A
 spaceship has crash-landed nose-first in a heap of dirt, and the critters
 have made camp around it. Everything there looks however far you have got
-with it in the Collection, where **the camp comes first**: its six spots --
+with it, and it is all built right there: from level 5 (when the Collection
+unlocks) a **build node** floats over every spot with a step left -- a
+hammer to build or fix it, an arrow to upgrade it, its price on a pill
+underneath, green when you can afford it. Tap one for its card (what it is
+now, what the next step makes it, and Build / Fix / Upgrade, or Get Coins
+when you are short). Nodes beyond the open middle of Home are gathered into
+an arrow at its edge, with a count, that glides the world over to them; the
+first time the nodes appear, a walkthrough points at the campfire's hammer.
+None of this counts toward the Collection level, which is critters only.
+**The camp comes first**: its six spots --
 campfire, tent, workbench, garden, well and lookout -- start as makings
 (cold ashes, a torn tarp, loose planks, bare dirt, a pile of stones, a pile
 of logs), are built, then upgraded three times, up to a bonfire with a
 cooking pot, a cabin tent with string lights, a workbench under a striped
 awning, a garden of pumpkins with a sunflower, a roofed well with flower
-boxes and a flagged lookout tower. Once every camp spot is fully upgraded
-(`TSProfile.CAMP_LEVEL_FOR_SHIP`), the ship's nine parts open -- engine,
+boxes and a flagged lookout tower. The ship's nodes don't appear until every
+camp spot is fully upgraded (`TSProfile.CAMP_LEVEL_FOR_SHIP`) -- a "Camp
+complete!" banner, and the world glides to the ship, its nine nodes ringed
+round it, each with a dotted line in to its part. The parts -- engine,
 hull, cockpit, antenna, fins, portholes, nose cone, landing legs and solar
 panels -- broken until fixed (a smoking engine, a scorched hull, cracked
 glass, a bent antenna and fin, boarded portholes, the nose buried in dirt,
@@ -166,8 +177,7 @@ the gantry and the pad. In the last 3 days of each season
 with its pilot, peeker and antenna swinger aboard, and pays 5,000 coins plus
 500 per ship part level (up to 23,000 fully upgraded). The critters land on
 a new planet, in new colours, with a fresh camp and ship to build for the
-new season; the part levels left behind are banked, so the Collection
-level never drops. One launch per season.
+new season. One launch per season.
 
 **Progression** is Duckdoku's difficulty curve, level for level: the same
 five tiers (Beginner, Intermediate, Hard, Expert, Extreme) in the same order
@@ -620,6 +630,7 @@ stepped through frame by frame.
 | `tests/demo.tscn` | Visual QA — boots the real game and plays a greedy opening. |
 | `tests/meta_test.gd` | The menus' systems on a throwaway profile: stars and coins, chests, the Battle Pass, quests, streaks, the collection, clubs, the Eggsperience, purchases, sales, level progression. |
 | `tests/flow_test.tscn` | The game screen's side of them: level start, parking and resuming a ball, the Any Piece and Rocks, booster buys, the lose card's refill, a win's payout, the Daily Egg. |
+| `tests/home_test.tscn` | Home's camp and ship build nodes: only the camp's at first, building and upgrading through a node's card, no collection points from it, the ship's nodes once the camp is done, Get Coins when short. |
 | `tests/menu_capture.tscn`, `tests/card_capture.tscn` | Visual QA -- open any menu screen, or the pause / win / lose / out-of-booster card, on a throwaway profile with everything unlocked. |
 
 ## Checking it
@@ -644,17 +655,22 @@ projects cells through the rendered camera:
 Godot.exe --path . res://tests/tap_test.tscn
 ```
 
-The menus' systems (88 checks) and the game screen's flow through them (28
-checks), all passing. Neither touches the real save:
+The menus' systems (95 checks), the game screen's flow through them (34
+checks) and Home's camp and ship build nodes (10 checks), all passing. None
+touches the real save:
 
 ```
 Godot.exe --headless --path . --script res://tests/meta_test.gd
 Godot.exe --path . res://tests/flow_test.tscn
+Godot.exe --path . res://tests/home_test.tscn
 ```
 
 To look at a menu screen without playing up to it (`home`, `battle_pass`,
 `collection`, `shop`, `leaderboard`, `clubs`, `clubs_in`, `streak`, `hunt`,
-`game`, optionally with a level: `game 22`; `home all` owns every critter),
+`game`, optionally with a level: `game 22`; `home all` owns every critter;
+`home camp` glides to the camp's build nodes, `home ship` finishes the camp
+and shows the ship's, `home camp card` opens a build card, `home broken
+callout` shows the first-visit camp walkthrough; `settings`),
 or at an in-game card (`pause`,
 `win`, `lose`, or an empty booster: `bomb`, `swap`, `rocks`; or `any` to hold the Any Piece):
 
