@@ -98,6 +98,7 @@ var _touch_ms := 0
 var _slide_drag := Vector2.ZERO      # drag not yet turned into a slide step
 var _last_tap_ms := -100000
 var _last_tap_pos := Vector2.ZERO
+var _drop_cell := Vector2i(-1, -1)   # the cell under a double-tap, where an armed bomb falls
 
 var _lbl_level: Label
 var _btn_bomb: Button       # the bomb booster, bottom centre
@@ -830,6 +831,10 @@ func _drop() -> void:
 	var offsets := current_offsets()
 	var landing := cursor
 	var bomb_was_armed := bomb_armed and TSProfile.bomb_count > 0
+	# A bomb falls exactly where the double-tap was, not on the aimed piece's
+	# anchor (a wide piece is centred on the tap, and kept clear of the poles).
+	if bomb_was_armed and _drop_cell.x >= 0:
+		landing = _drop_cell
 	var landing_at := _screen_of_cell(landing)   # before the drop changes the surface there
 
 	var res: Dictionary
@@ -1455,7 +1460,9 @@ func _tap(pos: Vector2) -> void:
 	var now := Time.get_ticks_msec()
 	if now - _last_tap_ms <= int(DOUBLE_TAP_TIME * 1000.0) and pos.distance_to(_last_tap_pos) <= DOUBLE_TAP_DIST:
 		_last_tap_ms = -100000   # a third tap starts over rather than dropping again
+		_drop_cell = _cell_at(pos)
 		_drop()
+		_drop_cell = Vector2i(-1, -1)
 		return
 	_last_tap_ms = now
 	_last_tap_pos = pos

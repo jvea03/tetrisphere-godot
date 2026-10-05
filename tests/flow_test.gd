@@ -215,6 +215,23 @@ func _run() -> void:
 	_tutorial._finish()
 	_check("and it is marked seen", TSProfile.bomb_tutorial_seen)
 
+	# A bomb falls on the very cell double-tapped, wherever the piece was aimed.
+	TSProfile.bomb_count += 1
+	_toggle_bomb()
+	var spot := Vector2i(board.wrap_col(cursor.x + 2), cursor.y)
+	var tap_at := _screen_of(spot)
+	var want := _cell_at(tap_at)
+	_bomb_landed = Vector2i(-9, -9)
+	_touch(tap_at, true)
+	_touch(tap_at, false)
+	_touch(tap_at, true)
+	_touch(tap_at, false)
+	for _i in 120:
+		await get_tree().process_frame
+		if not _rocks_flying:
+			break
+	_check("an armed bomb falls on the cell double-tapped (%s)" % want, want.x >= 0 and _bomb_landed == want)
+
 	print("")
 	print("ALL PASSED" if _failures == 0 else "%d FAILED" % _failures)
 	get_tree().quit(0 if _failures == 0 else 1)
@@ -265,3 +282,10 @@ func _touchable(cell: Vector2i) -> bool:
 	if _on_booster_button(at) or _pause_btn.get_global_rect().has_point(at):
 		return false
 	return _cell_at(at) == cell
+
+
+var _bomb_landed := Vector2i(-9, -9)
+
+func _bomb_lands(cell: Vector2i, at: Vector2) -> void:
+	_bomb_landed = cell
+	super(cell, at)
