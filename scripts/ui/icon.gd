@@ -606,11 +606,31 @@ func _draw_calendar() -> void:
 	_draw_shell(0, Vector2(0.5, 0.62), 0.17)
 
 
+## The Battle Pass: an autumn maple leaf, orange with red-gold veins and a
+## curling stem, for the season.
 func _draw_pass() -> void:
-	_poly([Vector2(0.3, 0.5), Vector2(0.22, 0.92), Vector2(0.36, 0.84), Vector2(0.44, 0.94), Vector2(0.48, 0.56)], PINK)
-	_poly([Vector2(0.7, 0.5), Vector2(0.78, 0.92), Vector2(0.64, 0.84), Vector2(0.56, 0.94), Vector2(0.52, 0.56)], PINK)
-	_circle(Vector2(0.5, 0.42), 0.3, _col(GOLD))
-	_poly(_star_pts(Vector2(0.5, 0.44), 0.18, 0.08), WHITE)
+	var leaf := [
+		Vector2(0.50, 0.04), Vector2(0.57, 0.21), Vector2(0.67, 0.15), Vector2(0.64, 0.32),
+		Vector2(0.82, 0.22), Vector2(0.77, 0.38), Vector2(0.94, 0.42), Vector2(0.79, 0.52),
+		Vector2(0.84, 0.63), Vector2(0.67, 0.60), Vector2(0.69, 0.74), Vector2(0.55, 0.64),
+		Vector2(0.53, 0.70), Vector2(0.47, 0.70), Vector2(0.45, 0.64), Vector2(0.31, 0.74),
+		Vector2(0.33, 0.60), Vector2(0.16, 0.63), Vector2(0.21, 0.52), Vector2(0.06, 0.42),
+		Vector2(0.23, 0.38), Vector2(0.18, 0.22), Vector2(0.36, 0.32), Vector2(0.33, 0.15),
+		Vector2(0.43, 0.21),
+	]
+	# the stem, behind
+	draw_polyline(_pts([Vector2(0.5, 0.62), Vector2(0.49, 0.78), Vector2(0.45, 0.9), Vector2(0.39, 0.95)]), INK, _w() * 2.4, true)
+	draw_polyline(_pts([Vector2(0.5, 0.62), Vector2(0.49, 0.78), Vector2(0.45, 0.9), Vector2(0.39, 0.95)]), _fill(Color(0.62, 0.38, 0.24)), _w() * 1.2, true)
+	_poly(leaf, _col(Color(1.0, 0.56, 0.22)))
+	if silhouette:
+		return
+	# a warmer heart, then the veins out to each point
+	var heart: Array = []
+	for p in leaf:
+		heart.append(Vector2(0.5, 0.5) + ((p as Vector2) - Vector2(0.5, 0.5)) * 0.55)
+	_poly(heart, Color(1.0, 0.72, 0.3), false)
+	for tip in [Vector2(0.5, 0.1), Vector2(0.88, 0.42), Vector2(0.12, 0.42), Vector2(0.76, 0.26), Vector2(0.24, 0.26), Vector2(0.66, 0.7), Vector2(0.34, 0.7)]:
+		_line([Vector2(0.5, 0.62), tip], Color(0.86, 0.3, 0.2), 0.55)
 
 
 ## A time skip: a sky-blue clock with a fast-forward mark on its face.
