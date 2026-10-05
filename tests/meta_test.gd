@@ -227,8 +227,8 @@ func _test_collection() -> void:
 		pass
 	_check("neither does the camp or the ship, all the way up", TSProfile.collection_points() == points_before_camp)
 	_check("a part tops out at level %d (%s)" % [TSProfile.PART_MAX_LEVEL, TSProfile.part_stage(TSProfile.PART_ENGINE, TSProfile.PART_MAX_LEVEL)], TSProfile.part_level_of(TSProfile.PART_ENGINE) == TSProfile.PART_MAX_LEVEL and TSProfile.is_part_max_level(TSProfile.PART_ENGINE))
-	var pass_part := TSProfile.battle_pass_paid_reward(30)
-	_check("the Battle Pass's tier 30 is a free ship-part fix or upgrade", pass_part.has("part") and TSProfile.grant_part_level(TSProfile.PART_HULL) and TSProfile.part_level_of(TSProfile.PART_HULL) == 1)
+	var pass_part := TSProfile.battle_pass_paid_reward(25)
+	_check("the Battle Pass's tier 25 is a free ship-part fix or upgrade", pass_part.has("part") and TSProfile.grant_part_level(TSProfile.PART_HULL) and TSProfile.part_level_of(TSProfile.PART_HULL) == 1)
 	# The launch: every ship part fixed, at the season's end, once a season.
 	_check("the ship isn't ready to launch with parts still broken", not TSProfile.is_ship_ready() and not TSProfile.can_launch())
 	for p in TSProfile.PART_COUNT:
@@ -252,6 +252,7 @@ func _test_collection() -> void:
 	_check("the collection level rises with it (%d -> %d)" % [lvl, TSProfile.collection_level()], TSProfile.collection_level() > lvl)
 	_check("a critter tops out at level %d" % TSProfile.CRITTER_MAX_LEVEL, not TSProfile.level_up_critter(5) and TSProfile.is_critter_max_level(5))
 	_check("pass-only critters are marked", TSProfile.is_critter_pass_exclusive(52) and TSProfile.critter_name(52) == "Camper" and int(TSProfile.season_rewards()["paid_critters"][1]) == 52)
+	_check("the Turkey is premium tier 30, pass-only", int(TSProfile.battle_pass_paid_reward(30).get("critter", -1)) == 82 and TSProfile.critter_name(82) == "Turkey" and TSProfile.is_critter_pass_exclusive(82))
 	TSProfile.set_avatar_critter(5)
 	_check("an owned critter becomes the avatar", TSProfile.avatar() == 5)
 

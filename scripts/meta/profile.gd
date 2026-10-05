@@ -370,7 +370,7 @@ const CRITTERS := [
 	{"name": "Whiskers", "art": 79, "color": Color(0.99, 0.96, 0.91), "rarity": Rarity.RARE},
 	{"name": "Surfer", "art": 80, "color": Color(0.72, 0.91, 0.98), "rarity": Rarity.COMMON},
 	{"name": "Tourist", "art": 81, "color": Color(0.91, 0.67, 0.47), "rarity": Rarity.COMMON},
-	{"name": "Turkey", "art": 82, "color": Color(0.80, 0.55, 0.37), "rarity": Rarity.RARE},
+	{"name": "Turkey", "art": 82, "color": Color(0.80, 0.55, 0.37), "rarity": Rarity.LEGENDARY},
 	{"name": "Drizzle", "art": 83, "color": Color(0.88, 0.94, 0.98), "rarity": Rarity.COMMON},
 	{"name": "Puddles", "art": 84, "color": Color(0.99, 0.95, 0.91), "rarity": Rarity.COMMON},
 	{"name": "Bookworm", "art": 85, "color": Color(0.99, 0.96, 0.91), "rarity": Rarity.RARE},
@@ -2001,10 +2001,11 @@ static func purchase_battle_pass() -> bool:
 ## and wrap. Each season's paid tier-1 critter is pass-only.
 const BATTLE_PASS_SEASON_ONE := 739 # epoch_day / BATTLE_PASS_DAYS for the first season
 const BATTLE_PASS_SEASON_REWARDS := [
-	{"free_critters": {15: 49, 30: 12}, "paid_critters": {1: 52}, "paid_parts": {30: PART_ENGINE}}, # Party, Knight; Camper; the engine
-	{"free_critters": {15: 31, 30: 70}, "paid_critters": {1: 52}, "paid_parts": {30: PART_COCKPIT}}, # Autumn, Snowman; Camper; the cockpit
+	{"free_critters": {15: 49, 30: 12}, "paid_critters": {1: 52, 30: 82}, "paid_parts": {25: PART_ENGINE}}, # Party, Knight; Camper, Turkey; the engine
+	{"free_critters": {15: 31, 30: 70}, "paid_critters": {1: 52, 30: 82}, "paid_parts": {25: PART_COCKPIT}}, # Autumn, Snowman; Camper, Turkey; the cockpit
 ]
-const BATTLE_PASS_EXCLUSIVE_CRITTERS := [52]   # the Camper, toasting marshmallows by the fire
+## Pass-only: the Camper (premium tier 1) and the Turkey (premium tier 30).
+const BATTLE_PASS_EXCLUSIVE_CRITTERS := [52, 82]
 
 
 static func battle_pass_season_number() -> int:

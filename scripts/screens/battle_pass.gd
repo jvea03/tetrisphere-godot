@@ -205,7 +205,7 @@ func _reward_card(tier: int, current: int, reward: Dictionary, premium: bool) ->
 	if int(reward.get("coins", 0)) > 0:
 		h.add_child(_item("coin", 0, "x%s" % TSProfile.fmt_coins(int(reward["coins"]))))
 	if int(reward.get("materials", 0)) > 0:
-		h.add_child(_item("materials", 0, "x%d" % int(reward["materials"])))
+		h.add_child(_item("materials", 0, "x%s" % TSProfile.fmt_coins(int(reward["materials"]))))
 	if int(reward.get("skips", 0)) > 0:
 		h.add_child(_item("skip", 0, "x%d" % int(reward["skips"])))
 	if int(reward.get("bomb", 0)) > 0:
