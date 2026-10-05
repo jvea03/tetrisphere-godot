@@ -55,7 +55,6 @@ func build() -> void:
 	title.offset_top = 10.0
 	banner.add_child(title)
 	title.add_child(TSUI.outlined(TSUI.label("Season %d" % TSProfile.battle_pass_season_number(), 40, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER), TSUI.INK, 10))
-	title.add_child(TSUI.outlined(TSUI.label("Exclusive critter + ship upgrade", 22, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER), TSUI.INK, 6))
 	content.add_child(banner)
 	_progress_label = TSUI.label("", 24, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER)
 	content.add_child(_progress_label)
@@ -195,7 +194,7 @@ func _reward_card(tier: int, current: int, reward: Dictionary, premium: bool) ->
 	var stack := MarginContainer.new()
 	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	card.add_child(stack)
-	var h := TSUI.hbox(2)
+	var h := TSUI.hbox(12)
 	h.alignment = BoxContainer.ALIGNMENT_CENTER
 	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(h)
@@ -335,7 +334,7 @@ func _open_buy() -> void:
 	box.add_child(TSUI.title("Premium Pass", 44))
 	var season := TSProfile.season_rewards()
 	var lines := PackedStringArray()
-	lines.append("A bigger reward on every tier: more coins, bombs, building materials and time skips.")
+	lines.append("A bigger reward on every tier: more coins or building materials, bombs, and more time skips every 5th tier.")
 	for t in season["paid_critters"]:
 		var c := int(season["paid_critters"][t])
 		lines.append("%s at tier %d%s." % [TSProfile.critter_name(c), t, " -- only here" if TSProfile.is_critter_pass_exclusive(c) else ""])

@@ -110,7 +110,8 @@ its pop-ups -- Settings (How to Play, sound and haptics toggles, Restore
 Purchases and a Privacy Policy link, which opens the policy page in the
 browser), Profile, the camp and ship build card, chest opening, finish-a-chest-now, pop-up sales, leaderboard results, and
 the Home, Daily Egg and camp walkthroughs; **Battle Pass** (30 tiers of free and
-premium rewards, buy a tier for coins, Daily/Weekly quests, buy-pass pop-up);
+premium rewards -- coins and materials taking turns tier by tier, time skips every
+5th tier, the Camper as the premium tier-1 exclusive -- buy a tier for coins, Daily/Weekly quests, buy-pass pop-up);
 **Collection** (104 critters to buy and upgrade to Lv 10, split into yours
 and those still to collect with their prices; the selected one on a stage
 over a turning sunburst, sparkling for Epic and Legendary; titles
@@ -148,7 +149,7 @@ once; with every critter busy, nothing new starts. While a step is under
 way its node is a clock filling round, the time left under it, its critter
 hopping beside it; when it is done, a bouncing tick to tap and collect. A
 build can be sped up with **time skips** -- each takes a minute off, one at
-a time or as many as it takes, from the Battle Pass (3 a tier, 5
+a time or as many as it takes, from the Battle Pass (every 5th tier: 5 free, 10
 premium) -- or finished early for
 20 coins a minute left. Materials
 (`TSProfile.PART_MATERIALS`: 20 a level in the first wave, 40, 60 and 80 in the

@@ -340,7 +340,7 @@ const CRITTERS := [
 	{"name": "Party", "art": 48, "color": Color(0.99, 0.82, 0.86), "rarity": Rarity.RARE},
 	{"name": "Buff", "art": 50, "color": Color(0.93, 0.65, 0.39), "rarity": Rarity.COMMON},
 	{"name": "Camo", "art": 51, "color": Color(0.99, 0.90, 0.73), "rarity": Rarity.RARE},
-	{"name": "Camper", "art": 52, "color": Color(0.99, 0.72, 0.41), "rarity": Rarity.COMMON},
+	{"name": "Camper", "art": 52, "color": Color(0.99, 0.72, 0.41), "rarity": Rarity.EPIC},
 	{"name": "Pirate", "art": 53, "color": Color(0.99, 0.93, 0.86), "rarity": Rarity.RARE},
 	{"name": "Imp", "art": 54, "color": Color(0.83, 0.67, 0.87), "rarity": Rarity.EPIC},
 	{"name": "Shadow", "art": 55, "color": Color(0.36, 0.29, 0.31), "rarity": Rarity.LEGENDARY},
@@ -2001,10 +2001,10 @@ static func purchase_battle_pass() -> bool:
 ## and wrap. Each season's paid tier-1 critter is pass-only.
 const BATTLE_PASS_SEASON_ONE := 739 # epoch_day / BATTLE_PASS_DAYS for the first season
 const BATTLE_PASS_SEASON_REWARDS := [
-	{"free_critters": {15: 49, 30: 12}, "paid_critters": {1: 58}, "paid_parts": {30: PART_ENGINE}}, # Party, Knight; Wizard; the engine
-	{"free_critters": {15: 31, 30: 70}, "paid_critters": {1: 103}, "paid_parts": {30: PART_COCKPIT}}, # Autumn, Snowman; Rainbow; the cockpit
+	{"free_critters": {15: 49, 30: 12}, "paid_critters": {1: 52}, "paid_parts": {30: PART_ENGINE}}, # Party, Knight; Camper; the engine
+	{"free_critters": {15: 31, 30: 70}, "paid_critters": {1: 52}, "paid_parts": {30: PART_COCKPIT}}, # Autumn, Snowman; Camper; the cockpit
 ]
-const BATTLE_PASS_EXCLUSIVE_CRITTERS := [58, 103]
+const BATTLE_PASS_EXCLUSIVE_CRITTERS := [52]   # the Camper, toasting marshmallows by the fire
 
 
 static func battle_pass_season_number() -> int:
@@ -2021,16 +2021,26 @@ static func is_critter_pass_exclusive(i: int) -> bool:
 	return BATTLE_PASS_EXCLUSIVE_CRITTERS.has(i)
 
 
-## Free track: 500 coins at tier 1, +100 a tier, 2 bombs every 5th tier
+## Free track: coins on the odd tiers, 500 at tier 1 and +100 a tier; 2 bombs every 5th tier
 ## (unless that tier hands out a critter).
 const BATTLE_PASS_FREE_COINS_BASE := 500
 const BATTLE_PASS_PAID_COINS_BASE := 1000
 const BATTLE_PASS_COINS_STEP := 100
 
-## Building materials on every tier: 50 + 10 a tier on the free track, 100 + 20
-## a tier on the premium one -- and time skips, 3 a tier free and 5 premium.
+## Every tier pays coins or building materials, taking turns: coins on the odd
+## tiers, materials on the even ones (100 + 20 a tier free, 200 + 40 premium).
+## Time skips come only on every 5th tier: 5 free, 10 premium.
+const BATTLE_PASS_SKIP_EVERY := 5
+
+static func _pass_currency(tier: int, coins: int, materials: int, skips: int) -> Dictionary:
+	var r := {"coins": coins} if tier % 2 == 1 else {"materials": materials}
+	if tier % BATTLE_PASS_SKIP_EVERY == 0:
+		r["skips"] = skips
+	return r
+
+
 static func battle_pass_free_reward(tier: int) -> Dictionary:
-	var r := {"coins": BATTLE_PASS_FREE_COINS_BASE + BATTLE_PASS_COINS_STEP * (tier - 1), "materials": 50 + 10 * tier, "skips": 3}
+	var r := _pass_currency(tier, BATTLE_PASS_FREE_COINS_BASE + BATTLE_PASS_COINS_STEP * (tier - 1), 100 + 20 * tier, 5)
 	var critters: Dictionary = season_rewards()["free_critters"]
 	if critters.has(tier):
 		r["critter"] = critters[tier]
@@ -2039,11 +2049,11 @@ static func battle_pass_free_reward(tier: int) -> Dictionary:
 	return r
 
 
-## Premium track: 1000 coins at tier 1, +100 a tier, and bombs every tier --
+## Premium track: coins on the odd tiers, 1000 at tier 1 and +100 a tier, and bombs every tier --
 ## 1 a tier, 3 on every 5th, 5 on the 10th and 20th -- unless the tier hands
 ## out a critter or a ship part.
 static func battle_pass_paid_reward(tier: int) -> Dictionary:
-	var r := {"coins": BATTLE_PASS_PAID_COINS_BASE + BATTLE_PASS_COINS_STEP * (tier - 1), "materials": 100 + 20 * tier, "skips": 5}
+	var r := _pass_currency(tier, BATTLE_PASS_PAID_COINS_BASE + BATTLE_PASS_COINS_STEP * (tier - 1), 200 + 40 * tier, 10)
 	var season := season_rewards()
 	if season["paid_critters"].has(tier):
 		r["critter"] = season["paid_critters"][tier]

@@ -161,7 +161,7 @@ func _test_building() -> void:
 	TSChests.slots[0] = {"rarity": TSChests.LEGENDARY, "unlock_end": 1}
 	var skips_before := TSProfile.time_skips
 	var opened := TSChests.open(0)
-	_check("the Battle Pass gives time skips; chests don't", int(TSProfile.battle_pass_free_reward(2).get("skips", 0)) > 0 and not opened.is_empty() and not opened.has("skips") and TSProfile.time_skips == skips_before)
+	_check("the Battle Pass gives time skips; chests don't", int(TSProfile.battle_pass_free_reward(5).get("skips", 0)) > 0 and not TSProfile.battle_pass_free_reward(4).has("skips") and not opened.is_empty() and not opened.has("skips") and TSProfile.time_skips == skips_before)
 
 	# The mine under the ship: fills by the hour with the Collection level, up to two hours.
 	TSProfile.mine_since = TSProfile._now_unix() - 3600
@@ -180,7 +180,7 @@ func _test_building() -> void:
 	# Where materials come from.
 	var before := TSProfile.materials
 	TSProfile.claim_battle_pass_free(1)
-	_check("the Battle Pass pays materials", TSProfile.battle_pass_free_reward(1).has("materials") and (TSProfile.materials > before or not TSProfile.can_claim_battle_pass_free(1)))
+	_check("the Battle Pass takes turns: coins on odd tiers, materials on even", TSProfile.battle_pass_free_reward(1).has("coins") and not TSProfile.battle_pass_free_reward(1).has("materials") and TSProfile.battle_pass_free_reward(2).has("materials") and not TSProfile.battle_pass_free_reward(2).has("coins") and TSProfile.battle_pass_paid_reward(2).has("materials") and (TSProfile.materials > before or not TSProfile.can_claim_battle_pass_free(1)))
 	_check("quests pay materials", TSProfile.quest_materials(10) > 0)
 	_check("chests pay materials", int(TSChests.MATERIAL_PAYOUT[TSChests.COMMON][0]) > 0)
 	_check("wins pay materials", TSProfile.MATERIALS_PER_WIN > 0)
@@ -251,7 +251,7 @@ func _test_collection() -> void:
 		TSProfile.level_up_critter(5)
 	_check("the collection level rises with it (%d -> %d)" % [lvl, TSProfile.collection_level()], TSProfile.collection_level() > lvl)
 	_check("a critter tops out at level %d" % TSProfile.CRITTER_MAX_LEVEL, not TSProfile.level_up_critter(5) and TSProfile.is_critter_max_level(5))
-	_check("pass-only critters are marked", TSProfile.is_critter_pass_exclusive(58))
+	_check("pass-only critters are marked", TSProfile.is_critter_pass_exclusive(52) and TSProfile.critter_name(52) == "Camper" and int(TSProfile.season_rewards()["paid_critters"][1]) == 52)
 	TSProfile.set_avatar_critter(5)
 	_check("an owned critter becomes the avatar", TSProfile.avatar() == 5)
 
