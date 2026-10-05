@@ -286,12 +286,14 @@ const CRITTER_RARITY_COST := [5000, 15000, 40000, 100000]
 const CRITTER_RARITY_POINTS := [5, 8, 12, 20]
 const CRITTER_UNLOCK_COST := 5000
 
-## {name, art: its sticker number, color, rarity}.
+## {name, art: its sticker number, color, rarity, hidden}. A hidden critter is
+## saved for a later release: it is not in the Collection (unless already
+## owned), can't be bought, and never stands in for a club mate or rival.
 const CRITTERS := [
 	{"name": "Blu", "art": 49, "color": Color(0.78, 0.91, 0.98), "rarity": Rarity.COMMON},
 	{"name": "Gardy", "art": 0, "color": Color(0.99, 0.84, 0.71), "rarity": Rarity.COMMON},
-	{"name": "Ghosty", "art": 1, "color": Color(0.98, 0.96, 0.98), "rarity": Rarity.EPIC},
-	{"name": "Ginger", "art": 2, "color": Color(0.80, 0.53, 0.33), "rarity": Rarity.RARE},
+	{"name": "Ghosty", "art": 1, "color": Color(0.98, 0.96, 0.98), "rarity": Rarity.EPIC, "hidden": true},
+	{"name": "Ginger", "art": 2, "color": Color(0.80, 0.53, 0.33), "rarity": Rarity.RARE, "hidden": true},
 	{"name": "Goldie", "art": 3, "color": Color(0.99, 0.85, 0.33), "rarity": Rarity.LEGENDARY},
 	{"name": "Grad", "art": 4, "color": Color(0.99, 0.93, 0.85), "rarity": Rarity.COMMON},
 	{"name": "Granny", "art": 5, "color": Color(0.99, 0.80, 0.65), "rarity": Rarity.RARE},
@@ -303,13 +305,13 @@ const CRITTERS := [
 	{"name": "Knight", "art": 11, "color": Color(0.99, 0.80, 0.68), "rarity": Rarity.EPIC},
 	{"name": "Knitter", "art": 12, "color": Color(0.99, 0.95, 0.90), "rarity": Rarity.COMMON},
 	{"name": "Postie", "art": 13, "color": Color(0.80, 0.91, 0.97), "rarity": Rarity.COMMON},
-	{"name": "Mermaid", "art": 14, "color": Color(0.99, 0.82, 0.71), "rarity": Rarity.EPIC},
+	{"name": "Mermaid", "art": 14, "color": Color(0.99, 0.82, 0.71), "rarity": Rarity.EPIC, "hidden": true},
 	{"name": "Mama", "art": 15, "color": Color(0.99, 0.79, 0.65), "rarity": Rarity.RARE},
 	{"name": "Rawr", "art": 16, "color": Color(0.99, 0.86, 0.42), "rarity": Rarity.EPIC},
 	{"name": "Popcorn", "art": 17, "color": Color(0.99, 0.92, 0.82), "rarity": Rarity.COMMON},
 	{"name": "Nurse", "art": 18, "color": Color(0.99, 0.85, 0.86), "rarity": Rarity.COMMON},
-	{"name": "Panda", "art": 19, "color": Color(0.98, 0.98, 0.97), "rarity": Rarity.RARE},
-	{"name": "Pie", "art": 20, "color": Color(0.99, 0.75, 0.49), "rarity": Rarity.COMMON},
+	{"name": "Panda", "art": 19, "color": Color(0.98, 0.98, 0.97), "rarity": Rarity.RARE, "hidden": true},
+	{"name": "Pie", "art": 20, "color": Color(0.99, 0.75, 0.49), "rarity": Rarity.COMMON, "hidden": true},
 	{"name": "Dino", "art": 21, "color": Color(0.75, 0.91, 0.61), "rarity": Rarity.RARE},
 	{"name": "Director", "art": 22, "color": Color(0.99, 0.84, 0.74), "rarity": Rarity.COMMON},
 	{"name": "Doc", "art": 23, "color": Color(0.78, 0.93, 0.98), "rarity": Rarity.COMMON},
@@ -317,7 +319,7 @@ const CRITTERS := [
 	{"name": "Donkey", "art": 25, "color": Color(0.77, 0.72, 0.72), "rarity": Rarity.COMMON},
 	{"name": "Donut", "art": 26, "color": Color(0.99, 0.75, 0.49), "rarity": Rarity.RARE},
 	{"name": "Dragon", "art": 27, "color": Color(0.99, 0.93, 0.77), "rarity": Rarity.LEGENDARY},
-	{"name": "Elf", "art": 28, "color": Color(0.99, 0.84, 0.74), "rarity": Rarity.RARE},
+	{"name": "Elf", "art": 28, "color": Color(0.99, 0.84, 0.74), "rarity": Rarity.RARE, "hidden": true},
 	{"name": "Fairy", "art": 29, "color": Color(0.99, 0.83, 0.85), "rarity": Rarity.EPIC},
 	{"name": "Autumn", "art": 30, "color": Color(0.99, 0.67, 0.24), "rarity": Rarity.RARE},
 	{"name": "Firework", "art": 31, "color": Color(0.18, 0.28, 0.53), "rarity": Rarity.EPIC},
@@ -330,7 +332,7 @@ const CRITTERS := [
 	{"name": "Scrubby", "art": 38, "color": Color(0.76, 0.92, 0.98), "rarity": Rarity.COMMON},
 	{"name": "Builder", "art": 39, "color": Color(0.99, 0.78, 0.62), "rarity": Rarity.COMMON},
 	{"name": "Moo", "art": 40, "color": Color(0.99, 0.97, 0.92), "rarity": Rarity.COMMON},
-	{"name": "Cupid", "art": 41, "color": Color(0.99, 0.85, 0.88), "rarity": Rarity.EPIC},
+	{"name": "Cupid", "art": 41, "color": Color(0.99, 0.85, 0.88), "rarity": Rarity.EPIC, "hidden": true},
 	{"name": "Gent", "art": 42, "color": Color(0.76, 0.92, 0.98), "rarity": Rarity.COMMON},
 	{"name": "Artist", "art": 43, "color": Color(0.99, 0.94, 0.87), "rarity": Rarity.COMMON},
 	{"name": "Baby", "art": 44, "color": Color(0.99, 0.99, 0.99), "rarity": Rarity.COMMON},
@@ -341,12 +343,12 @@ const CRITTERS := [
 	{"name": "Buff", "art": 50, "color": Color(0.93, 0.65, 0.39), "rarity": Rarity.COMMON},
 	{"name": "Camo", "art": 51, "color": Color(0.99, 0.90, 0.73), "rarity": Rarity.RARE},
 	{"name": "Camper", "art": 52, "color": Color(0.99, 0.72, 0.41), "rarity": Rarity.EPIC},
-	{"name": "Pirate", "art": 53, "color": Color(0.99, 0.93, 0.86), "rarity": Rarity.RARE},
-	{"name": "Imp", "art": 54, "color": Color(0.83, 0.67, 0.87), "rarity": Rarity.EPIC},
-	{"name": "Shadow", "art": 55, "color": Color(0.36, 0.29, 0.31), "rarity": Rarity.LEGENDARY},
+	{"name": "Pirate", "art": 53, "color": Color(0.99, 0.93, 0.86), "rarity": Rarity.RARE, "hidden": true},
+	{"name": "Imp", "art": 54, "color": Color(0.83, 0.67, 0.87), "rarity": Rarity.EPIC, "hidden": true},
+	{"name": "Shadow", "art": 55, "color": Color(0.36, 0.29, 0.31), "rarity": Rarity.LEGENDARY, "hidden": true},
 	{"name": "Flurry", "art": 56, "color": Color(0.83, 0.93, 0.98), "rarity": Rarity.RARE},
 	{"name": "Witch", "art": 57, "color": Color(0.99, 0.93, 0.80), "rarity": Rarity.EPIC},
-	{"name": "Wizard", "art": 58, "color": Color(0.83, 0.93, 0.98), "rarity": Rarity.LEGENDARY},
+	{"name": "Wizard", "art": 58, "color": Color(0.83, 0.93, 0.98), "rarity": Rarity.LEGENDARY, "hidden": true},
 	{"name": "Wrench", "art": 59, "color": Color(0.99, 0.86, 0.41), "rarity": Rarity.COMMON},
 	{"name": "Mayor", "art": 60, "color": Color(0.99, 0.85, 0.73), "rarity": Rarity.RARE},
 	{"name": "Boss", "art": 61, "color": Color(0.99, 0.85, 0.74), "rarity": Rarity.COMMON},
@@ -355,12 +357,12 @@ const CRITTERS := [
 	{"name": "Sharky", "art": 64, "color": Color(0.86, 0.93, 0.98), "rarity": Rarity.RARE},
 	{"name": "Pearl", "art": 65, "color": Color(0.87, 0.87, 0.88), "rarity": Rarity.EPIC},
 	{"name": "Skier", "art": 66, "color": Color(0.99, 0.81, 0.65), "rarity": Rarity.COMMON},
-	{"name": "Sledder", "art": 67, "color": Color(0.99, 0.97, 0.93), "rarity": Rarity.COMMON},
+	{"name": "Sledder", "art": 67, "color": Color(0.99, 0.97, 0.93), "rarity": Rarity.COMMON, "hidden": true},
 	{"name": "S'more", "art": 68, "color": Color(0.99, 0.82, 0.66), "rarity": Rarity.RARE},
 	{"name": "Boarder", "art": 69, "color": Color(0.80, 0.92, 0.98), "rarity": Rarity.COMMON},
-	{"name": "Snowman", "art": 70, "color": Color(0.99, 0.99, 0.99), "rarity": Rarity.RARE},
-	{"name": "Frost Queen", "art": 71, "color": Color(0.82, 0.95, 0.99), "rarity": Rarity.LEGENDARY},
-	{"name": "Blossom", "art": 72, "color": Color(0.99, 0.86, 0.87), "rarity": Rarity.RARE},
+	{"name": "Snowman", "art": 70, "color": Color(0.99, 0.99, 0.99), "rarity": Rarity.RARE, "hidden": true},
+	{"name": "Frost Queen", "art": 71, "color": Color(0.82, 0.95, 0.99), "rarity": Rarity.LEGENDARY, "hidden": true},
+	{"name": "Blossom", "art": 72, "color": Color(0.99, 0.86, 0.87), "rarity": Rarity.RARE, "hidden": true},
 	{"name": "Berry", "art": 73, "color": Color(0.99, 0.31, 0.29), "rarity": Rarity.RARE},
 	{"name": "Sunny", "art": 74, "color": Color(0.99, 0.91, 0.48), "rarity": Rarity.RARE},
 	{"name": "Shades", "art": 75, "color": Color(0.99, 0.96, 0.91), "rarity": Rarity.COMMON},
@@ -368,29 +370,29 @@ const CRITTERS := [
 	{"name": "Violet", "art": 77, "color": Color(0.98, 0.80, 0.85), "rarity": Rarity.RARE},
 	{"name": "Super Pup", "art": 78, "color": Color(0.99, 0.96, 0.90), "rarity": Rarity.RARE},
 	{"name": "Whiskers", "art": 79, "color": Color(0.99, 0.96, 0.91), "rarity": Rarity.RARE},
-	{"name": "Surfer", "art": 80, "color": Color(0.72, 0.91, 0.98), "rarity": Rarity.COMMON},
+	{"name": "Surfer", "art": 80, "color": Color(0.72, 0.91, 0.98), "rarity": Rarity.COMMON, "hidden": true},
 	{"name": "Tourist", "art": 81, "color": Color(0.91, 0.67, 0.47), "rarity": Rarity.COMMON},
 	{"name": "Turkey", "art": 82, "color": Color(0.80, 0.55, 0.37), "rarity": Rarity.LEGENDARY},
 	{"name": "Drizzle", "art": 83, "color": Color(0.88, 0.94, 0.98), "rarity": Rarity.COMMON},
 	{"name": "Puddles", "art": 84, "color": Color(0.99, 0.95, 0.91), "rarity": Rarity.COMMON},
-	{"name": "Bookworm", "art": 85, "color": Color(0.99, 0.96, 0.91), "rarity": Rarity.RARE},
+	{"name": "Bookworm", "art": 85, "color": Color(0.99, 0.96, 0.91), "rarity": Rarity.RARE, "hidden": true},
 	{"name": "Hood", "art": 86, "color": Color(0.99, 0.95, 0.90), "rarity": Rarity.RARE},
 	{"name": "Rosie", "art": 87, "color": Color(0.99, 0.83, 0.85), "rarity": Rarity.RARE},
 	{"name": "Rudy", "art": 88, "color": Color(0.84, 0.61, 0.45), "rarity": Rarity.EPIC},
 	{"name": "Jogger", "art": 89, "color": Color(0.83, 0.93, 0.98), "rarity": Rarity.COMMON},
 	{"name": "Sailor", "art": 90, "color": Color(0.99, 0.96, 0.91), "rarity": Rarity.COMMON},
-	{"name": "Santa", "art": 91, "color": Color(0.99, 0.98, 0.96), "rarity": Rarity.LEGENDARY},
+	{"name": "Santa", "art": 91, "color": Color(0.99, 0.98, 0.96), "rarity": Rarity.LEGENDARY, "hidden": true},
 	{"name": "Labby", "art": 92, "color": Color(0.80, 0.90, 0.63), "rarity": Rarity.COMMON},
 	{"name": "Diver", "art": 93, "color": Color(0.73, 0.89, 0.98), "rarity": Rarity.COMMON},
 	{"name": "Piggy", "art": 94, "color": Color(0.99, 0.80, 0.84), "rarity": Rarity.COMMON},
-	{"name": "Pilgrim", "art": 95, "color": Color(0.99, 0.81, 0.67), "rarity": Rarity.RARE},
-	{"name": "Captain", "art": 96, "color": Color(0.76, 0.92, 0.98), "rarity": Rarity.EPIC},
-	{"name": "Polar", "art": 97, "color": Color(0.99, 0.96, 0.93), "rarity": Rarity.RARE},
+	{"name": "Pilgrim", "art": 95, "color": Color(0.99, 0.81, 0.67), "rarity": Rarity.RARE, "hidden": true},
+	{"name": "Captain", "art": 96, "color": Color(0.76, 0.92, 0.98), "rarity": Rarity.EPIC, "hidden": true},
+	{"name": "Polar", "art": 97, "color": Color(0.99, 0.96, 0.93), "rarity": Rarity.RARE, "hidden": true},
 	{"name": "Groovy", "art": 98, "color": Color(0.97, 0.90, 0.35), "rarity": Rarity.EPIC},
 	{"name": "Patch", "art": 99, "color": Color(0.99, 0.55, 0.16), "rarity": Rarity.COMMON},
 	{"name": "Mischief", "art": 100, "color": Color(0.86, 0.67, 0.92), "rarity": Rarity.RARE},
 	{"name": "Princess", "art": 101, "color": Color(0.99, 0.89, 0.80), "rarity": Rarity.LEGENDARY},
-	{"name": "Bunny", "art": 102, "color": Color(0.99, 0.96, 0.93), "rarity": Rarity.RARE},
+	{"name": "Bunny", "art": 102, "color": Color(0.99, 0.96, 0.93), "rarity": Rarity.RARE, "hidden": true},
 	{"name": "Rainbow", "art": 103, "color": Color(0.80, 0.94, 0.99), "rarity": Rarity.LEGENDARY},
 ]
 const CRITTER_COUNT := 104
@@ -571,6 +573,16 @@ static func critter_rarity(i: int) -> int:
 	return int(CRITTERS[i]["rarity"])
 
 
+static func is_critter_hidden(i: int) -> bool:
+	return bool(CRITTERS[i].get("hidden", false))
+
+
+## In the Collection: every critter not held back for later, and any held-back
+## one already owned.
+static func is_critter_listed(i: int) -> bool:
+	return not is_critter_hidden(i) or is_critter_unlocked(i)
+
+
 static func is_critter_unlocked(i: int) -> bool:
 	return i >= 0 and i < critter_unlocked.size() and bool(critter_unlocked[i])
 
@@ -592,7 +604,7 @@ static func critter_level_up_cost(i: int) -> int:
 
 
 static func unlock_critter(i: int) -> bool:
-	if is_critter_unlocked(i) or coin_count < critter_unlock_cost(i):
+	if is_critter_unlocked(i) or is_critter_hidden(i) or coin_count < critter_unlock_cost(i):
 		return false
 	coin_count -= critter_unlock_cost(i)
 	var level_before := collection_level()
@@ -1109,7 +1121,11 @@ static func avatar() -> int:
 
 ## A critter portrait for someone else -- a club mate, a rival -- picked by seed.
 static func npc_critter(seed_value: int) -> int:
-	return posmod(seed_value, CRITTER_COUNT)
+	var shown: Array = []
+	for i in CRITTER_COUNT:
+		if not is_critter_hidden(i):
+			shown.append(i)
+	return int(shown[posmod(seed_value, shown.size())])
 
 
 ## The Collection walkthrough hands over one Common critter's worth of coins.
@@ -2001,8 +2017,8 @@ static func purchase_battle_pass() -> bool:
 ## and wrap. Each season's paid tier-1 critter is pass-only.
 const BATTLE_PASS_SEASON_ONE := 739 # epoch_day / BATTLE_PASS_DAYS for the first season
 const BATTLE_PASS_SEASON_REWARDS := [
-	{"free_critters": {15: 49, 30: 12}, "paid_critters": {1: 52, 30: 82}, "paid_parts": {25: PART_ENGINE}}, # Party, Knight; Camper, Turkey; the engine
-	{"free_critters": {15: 31, 30: 70}, "paid_critters": {1: 52, 30: 82}, "paid_parts": {25: PART_COCKPIT}}, # Autumn, Snowman; Camper, Turkey; the cockpit
+	{"free_critters": {15: 31, 30: 12}, "paid_critters": {1: 52, 30: 82}, "paid_parts": {25: PART_ENGINE}}, # Autumn, Knight; Camper, Turkey; the engine
+	{"free_critters": {15: 31, 30: 99}, "paid_critters": {1: 52, 30: 82}, "paid_parts": {25: PART_COCKPIT}}, # Autumn, Patch; Camper, Turkey; the cockpit
 ]
 ## Pass-only: the Camper (premium tier 1) and the Turkey (premium tier 30).
 const BATTLE_PASS_EXCLUSIVE_CRITTERS := [52, 82]

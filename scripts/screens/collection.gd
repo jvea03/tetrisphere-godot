@@ -122,7 +122,7 @@ func _refresh() -> void:
 	_bonus_label.text = "+%d%% materials" % TSProfile.collection_material_bonus_percent()
 	_level_bar.max_value = TSProfile.collection_points_for_level(lvl)
 	_level_bar.value = TSProfile.collection_level_progress()
-	_count_label.text = "%d of %d critters collected" % [_owned_count(), TSProfile.CRITTER_COUNT]
+	_count_label.text = "%d of %d critters collected" % [_owned_count(), _listed_count()]
 	if _sel_critter < 0:
 		_sel_critter = TSProfile.avatar()
 	_build_feature()
@@ -303,17 +303,26 @@ func _build_critters() -> void:
 	order.sort_custom(func(a: int, b: int) -> bool:
 		return _key(TSProfile.is_critter_unlocked(a), TSProfile.critter_rarity(a), TSProfile.critter_name(a)) < _key(TSProfile.is_critter_unlocked(b), TSProfile.critter_rarity(b), TSProfile.critter_name(b)))
 	for i in order:
-		(_owned_grid if TSProfile.is_critter_unlocked(i) else _locked_grid).add_child(_tile(i))
+		if TSProfile.is_critter_listed(i):
+			(_owned_grid if TSProfile.is_critter_unlocked(i) else _locked_grid).add_child(_tile(i))
 	var owned := _owned_count()
 	_owned_head.text = "Your critters  %d" % owned
-	_locked_head.text = "Still to collect  %d" % (TSProfile.CRITTER_COUNT - owned)
-	_locked_head.get_parent().get_parent().visible = owned < TSProfile.CRITTER_COUNT
+	_locked_head.text = "Still to collect  %d" % (_listed_count() - owned)
+	_locked_head.get_parent().get_parent().visible = owned < _listed_count()
 
 
 func _owned_count() -> int:
 	var n := 0
 	for i in TSProfile.CRITTER_COUNT:
 		n += int(TSProfile.is_critter_unlocked(i))
+	return n
+
+
+## The critters in the Collection: all but those held back for a later release.
+func _listed_count() -> int:
+	var n := 0
+	for i in TSProfile.CRITTER_COUNT:
+		n += int(TSProfile.is_critter_listed(i))
 	return n
 
 

@@ -253,6 +253,17 @@ func _test_collection() -> void:
 	_check("a critter tops out at level %d" % TSProfile.CRITTER_MAX_LEVEL, not TSProfile.level_up_critter(5) and TSProfile.is_critter_max_level(5))
 	_check("pass-only critters are marked", TSProfile.is_critter_pass_exclusive(52) and TSProfile.critter_name(52) == "Camper" and int(TSProfile.season_rewards()["paid_critters"][1]) == 52)
 	_check("the Turkey is premium tier 30, pass-only", int(TSProfile.battle_pass_paid_reward(30).get("critter", -1)) == 82 and TSProfile.critter_name(82) == "Turkey" and TSProfile.is_critter_pass_exclusive(82))
+	_check("the Autumn critter is free tier 15", TSProfile.critter_name(int(TSProfile.battle_pass_free_reward(15).get("critter", 0))) == "Autumn")
+	var santa := -1
+	for i in TSProfile.CRITTER_COUNT:
+		if TSProfile.critter_name(i) == "Santa":
+			santa = i
+	TSProfile.coin_count = 1000000
+	_check("a held-back critter isn't listed or for sale", santa >= 0 and TSProfile.is_critter_hidden(santa) and not TSProfile.is_critter_listed(santa) and not TSProfile.unlock_critter(santa))
+	var npc_hidden := false
+	for s in 300:
+		npc_hidden = npc_hidden or TSProfile.is_critter_hidden(TSProfile.npc_critter(s))
+	_check("club mates and rivals are never held-back critters", not npc_hidden)
 	TSProfile.set_avatar_critter(5)
 	_check("an owned critter becomes the avatar", TSProfile.avatar() == 5)
 

@@ -111,9 +111,9 @@ Purchases and a Privacy Policy link, which opens the policy page in the
 browser), Profile, the camp and ship build card, chest opening, finish-a-chest-now, pop-up sales, leaderboard results, and
 the Home, Daily Egg and camp walkthroughs; **Battle Pass** (30 tiers of free and
 premium rewards -- coins and materials taking turns tier by tier, time skips every
-5th tier, the Camper at premium tier 1 and the Turkey at tier 30 (both pass-only), a ship part at
+5th tier, the Autumn critter at free tier 15, the Camper at premium tier 1 and the Turkey at tier 30 (both pass-only), a ship part at
 tier 25 -- buy a tier for coins, Daily/Weekly quests, buy-pass pop-up);
-**Collection** (104 critters to buy and upgrade to Lv 10, split into yours
+**Collection** (82 critters to buy -- 22 more held back for later releases, `"hidden"` in `TSProfile.CRITTERS` -- and upgrade to Lv 10, split into yours
 and those still to collect with their prices; the selected one on a stage
 over a turning sunburst, sparkling for Epic and Legendary; titles
 and stars, rarity, collection level, the first-visit walkthrough with its
