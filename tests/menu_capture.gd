@@ -86,6 +86,12 @@ func _ready() -> void:
 	TSChests.win_progress = 2
 	TSSales.roll()
 	TSSales.mark_popup_shown()
+	if args_has("midweek"):
+		# `-- hunt midweek`: the Eggsperience on Day 3, Days 1 and 2 claimed.
+		TSHunt.roll()
+		TSHunt.start_day -= 2
+		TSHunt.claimed[0] = true
+		TSHunt.claimed[1] = true
 	if args_has("claimed"):
 		# `-- shop claimed`: today's free coins taken, so the pack offers its ads.
 		TSProfile.roll_starter_claims()
