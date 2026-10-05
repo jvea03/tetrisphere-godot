@@ -49,6 +49,7 @@ func _test_wins_and_stars() -> void:
 	before = TSProfile.coin_count
 	TSProfile.add_stars(1, 0, TSLevels.DIFF_EXTREME)
 	_check("Extreme pays double", TSProfile.coin_count - before == roundi(2 * TSProfile.coins_per_star() * (1.0 + TSProfile.camp_coin_bonus_percent() / 100.0)))
+	_check("wallet totals shorten from 100,000", TSProfile.fmt_wallet(99999) == "99,999" and TSProfile.fmt_wallet(100000) == "100k" and TSProfile.fmt_wallet(254321) == "254k" and TSProfile.fmt_wallet(1000000) == "1M" and TSProfile.fmt_wallet(1250000) == "1.2M")
 	_check("the Camp level adds 1%% coins a level (+%d%% at Lv %d)" % [TSProfile.camp_coin_bonus_percent(), TSProfile.camp_level()], TSProfile.camp_coin_bonus_percent() == TSProfile.camp_level())
 	_check("the Collection level adds materials to a win, not coins", TSProfile.win_materials(false) == roundi(TSProfile.MATERIALS_PER_WIN * (1.0 + TSProfile.collection_material_bonus_percent() / 100.0)))
 

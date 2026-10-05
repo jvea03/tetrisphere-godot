@@ -244,7 +244,7 @@ func _build_camp_badge(parent: Control) -> void:
 
 func _refresh_materials() -> void:
 	if materials_label != null:
-		materials_label.text = TSProfile.fmt_coins(TSProfile.materials)
+		materials_label.text = TSProfile.fmt_wallet(TSProfile.materials)
 
 
 func _refresh_camp_badge() -> void:

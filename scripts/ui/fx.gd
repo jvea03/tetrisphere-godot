@@ -37,12 +37,12 @@ static func count_label(label: Label, from_value: int, to_value: int, duration :
 	if not is_instance_valid(label):
 		return
 	if from_value == to_value:
-		label.text = TSProfile.fmt_coins(to_value)
+		label.text = TSProfile.fmt_wallet(to_value)
 		return
-	label.text = TSProfile.fmt_coins(from_value)
+	label.text = TSProfile.fmt_wallet(from_value)
 	label.create_tween().tween_method(func(v: float):
 		if is_instance_valid(label):
-			label.text = TSProfile.fmt_coins(int(round(v))), float(from_value), float(to_value), duration).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+			label.text = TSProfile.fmt_wallet(int(round(v))), float(from_value), float(to_value), duration).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 
 
 const MEDAL_COLORS := [Color(1.0, 0.82, 0.3), Color(0.84, 0.86, 0.9), Color(0.92, 0.66, 0.46)]

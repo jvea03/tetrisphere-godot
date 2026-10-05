@@ -28,7 +28,7 @@ func _init(tappable := false) -> void:
 
 
 func sync() -> void:
-	label.text = TSProfile.fmt_coins(TSProfile.coin_count)
+	label.text = TSProfile.fmt_wallet(TSProfile.coin_count)
 
 
 func receive(from: Rect2, before: int, after: int) -> void:

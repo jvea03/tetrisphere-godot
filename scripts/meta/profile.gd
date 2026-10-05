@@ -1702,6 +1702,19 @@ static func win_coin_payout(stars_earned: int, difficulty: int = 0) -> int:
 	return boost_earned_coins(roundi(base * difficulty_coin_multiplier(difficulty)))
 
 
+## A wallet total, short enough for its pill: "99,999" in full, then "100k",
+## "254k", and from a million "1.2M".
+static func fmt_wallet(n: int) -> String:
+	if absi(n) >= 1000000:
+		@warning_ignore("integer_division")
+		var tenths := n / 100000   # rounded down, as the k are
+		return ("%dM" % (tenths / 10)) if tenths % 10 == 0 else ("%d.%dM" % [tenths / 10, absi(tenths % 10)])
+	if absi(n) >= 100000:
+		@warning_ignore("integer_division")
+		return "%dk" % (n / 1000)
+	return fmt_coins(n)
+
+
 ## "180,030" -- every coin figure the player reads goes through this.
 static func fmt_coins(n: int) -> String:
 	var s := str(absi(n))

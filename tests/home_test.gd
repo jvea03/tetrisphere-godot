@@ -96,7 +96,7 @@ func _run() -> void:
 	var held := TSProfile.mine_stored()
 	mats = TSProfile.materials
 	_collect_mine()
-	_check("the mine's node empties it into materials (+%d)" % held, held > 0 and TSProfile.materials == mats + held and materials_label.text == TSProfile.fmt_coins(TSProfile.materials))
+	_check("the mine's node empties it into materials (+%d)" % held, held > 0 and TSProfile.materials == mats + held and materials_label.text == TSProfile.fmt_wallet(TSProfile.materials))
 
 	# The reasons a build can't start.
 	TSProfile.materials = 0
