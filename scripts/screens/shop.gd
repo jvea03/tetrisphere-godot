@@ -353,22 +353,12 @@ func _booster_card(id: String) -> Control:
 	return card
 
 
-## A heap of `icon`s, more for a bigger amount (`unit` the smallest pack's),
-## centred in its card.
-func _heap(icon: String, amount: int, unit: float, px: float) -> Control:
-	var n := clampi(int(log(float(amount) / unit) / log(2.5)) + 1, 1, 5)
-	var box := Control.new()
-	box.custom_minimum_size = Vector2(px + 44.0, px + 30.0)
-	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	for k in n:
-		var c := TSIcon.make(icon, px)
-		c.position = Vector2(22.0 + float(k % 3 - 1) * 22.0 * float(n > 1), 22.0 - float(k / 3) * 22.0 - float(k) * 2.0)
-		c.size = Vector2(px, px)
-		box.add_child(c)
-	var centre := CenterContainer.new()
-	centre.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	centre.add_child(box)
-	return centre
+## A pack's picture (TSIcon's coin_pack or material_pack, by its size: 0 the
+## free one, 5 the biggest), centred in its card.
+func _pack_art(icon: String, tier: int) -> Control:
+	var art := TSIcon.make(icon, 118, tier)
+	art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	return art
 
 
 ## A ribbon over a card's art ("MOST POPULAR", "BEST VALUE"), or a blank of
@@ -393,7 +383,7 @@ func _free_card(p: Dictionary) -> Control:
 	var left := _starter_left(mats)
 	var claims := TSProfile.starter_material_claims if mats else TSProfile.starter_coin_claims
 	v.add_child(_ribbon("FREE" if claims == 0 else "", TSUI.RED_DOT))
-	v.add_child(_heap("materials" if mats else "coin", int(p["materials" if mats else "coins"]), float(p["materials" if mats else "coins"]) / 2.5, 56.0))
+	v.add_child(_pack_art("material_pack" if mats else "coin_pack", 0))
 	v.add_child(TSUI.label(TSProfile.fmt_coins(int(p["materials" if mats else "coins"])), 28, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER))
 	v.add_child(TSUI.label("materials" if mats else "coins", 18, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	v.add_child(TSUI.label("Back tomorrow" if left <= 0 else ("Free now, %d more later" % (left - 1) if claims == 0 else ("%d more today" % left if TSProfile.no_ads else "%d ad%s left today" % [left, "" if left == 1 else "s"])), 16, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
@@ -424,7 +414,7 @@ func _pack_card(p: Dictionary, kind: String, base: float) -> Control:
 	elif at == packs.size() - 1:
 		ribbon = "BEST VALUE"
 	v.add_child(_ribbon(ribbon, TSUI.CORAL if at == 3 else TSUI.GOLD_DARK))
-	v.add_child(_heap("coin" if kind == "coins" else "materials", amount, float(packs[1][kind]) / 2.5, 56.0))
+	v.add_child(_pack_art("coin_pack" if kind == "coins" else "material_pack", at))
 	v.add_child(TSUI.label(TSProfile.fmt_coins(amount), 28, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER))
 	var more := roundi((_per_dollar(p, kind) / base - 1.0) * 100.0) if base > 0.0 else 0
 	v.add_child(TSUI.label("+%d%% more" % more if more >= 5 else kind, 17, TSFX.COL_GAIN if more >= 5 else TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER))

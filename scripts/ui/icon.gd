@@ -176,6 +176,8 @@ func _draw() -> void:
 		"pass": _draw_pass()
 		"hunt": _draw_hunt()
 		"materials": _draw_materials()
+		"coin_pack": _draw_coin_pack(index)
+		"material_pack": _draw_material_pack(index)
 		"skip": _draw_skip()
 		"tag": _draw_tag()
 		"cog": _draw_cog()
@@ -633,6 +635,186 @@ func _draw_materials() -> void:
 			pts.append(Vector2(0.5, 0.42) + (c as Vector2).rotated(turn))
 		_poly(pts, wood)
 		_circle(Vector2(0.5, 0.42) + Vector2(0.28, 0.0).rotated(turn), 0.025, INK, false)
+
+
+# -- shop packs: a picture for each size of coin and materials pack -------------
+
+const SACK := Color(0.86, 0.68, 0.46)
+const WOOD := Color(0.82, 0.6, 0.4)
+const WOOD_DARK := Color(0.64, 0.44, 0.3)
+const STONE := Color(0.76, 0.74, 0.82)
+
+
+## A small coin, face on.
+func _mini_coin(c: Vector2, r: float) -> void:
+	_circle(c, r, GOLD)
+	_poly(_star_pts(c + Vector2(0.0, r * 0.05), r * 0.5, r * 0.22), GOLD_DARK, false)
+	draw_arc(_u(c), r * 0.72 * _s, PI * 1.1, PI * 1.5, 8, Color(1, 1, 1, 0.85), _w() * 0.6, true)
+
+
+## A stack of `n` coins seen from the side, standing on `base`.
+func _coin_stack(base: Vector2, rx: float, n: int) -> void:
+	var step := rx * 0.34
+	var ry := rx * 0.36
+	var top := base.y - float(n) * step
+	# the stack's side, one band, its coins' edges ridged across it
+	var side: Array = [Vector2(base.x - rx, top)]
+	for k in 13:
+		var a := PI * float(k) / 12.0
+		side.append(Vector2(base.x - cos(a) * rx, base.y + sin(a) * ry))
+	side.append(Vector2(base.x + rx, top))
+	_poly(side, Color(1.0, 0.72, 0.24))
+	for k in range(1, n):
+		var y := base.y - float(k) * step
+		draw_arc(_u(Vector2(base.x, y)), rx * _s, 0.15, PI - 0.15, 16, Color(GOLD_DARK.darkened(0.2), 0.8), _w() * 0.5, true)
+	_ellipse(Vector2(base.x, top), rx, ry, GOLD)
+	_poly(_star_pts(Vector2(base.x, top), rx * 0.32, rx * 0.14), Color(1.0, 0.72, 0.24), false)
+
+
+## Coins tumbling: face-on coins at these spots, each [x, y, r].
+func _coins(spots: Array) -> void:
+	for s in spots:
+		_mini_coin(Vector2(s[0], s[1]), s[2])
+
+
+## A four-point sparkle.
+func _sparkle(c: Vector2, r: float, colour := Color(1.0, 0.95, 0.6)) -> void:
+	_poly(_star_pts(c, r, r * 0.3, 4, 0.0), colour, false)
+
+
+## A gem: a cut diamond shape.
+func _gem(c: Vector2, r: float, colour: Color) -> void:
+	_poly([c + Vector2(-r, -r * 0.3), c + Vector2(-r * 0.5, -r * 0.8), c + Vector2(r * 0.5, -r * 0.8), c + Vector2(r, -r * 0.3), c + Vector2(0.0, r)], colour)
+	_line([c + Vector2(-r, -r * 0.3), c + Vector2(r, -r * 0.3)], INK, 0.5)
+
+
+## A sack of coins, tied with a ribbon, its mouth heaped with them.
+func _sack(c: Vector2, s: float, heap: int) -> void:
+	var body := [Vector2(-0.2, -0.2), Vector2(-0.34, 0.02), Vector2(-0.36, 0.24), Vector2(-0.26, 0.36), Vector2(0.26, 0.36), Vector2(0.36, 0.24), Vector2(0.34, 0.02), Vector2(0.2, -0.2)]
+	var pts: Array = []
+	for p in body:
+		pts.append(c + (p as Vector2) * s)
+	_poly(pts, SACK)
+	_ellipse(c + Vector2(0.0, -0.22) * s, 0.24 * s, 0.07 * s, SACK.darkened(0.2))
+	for k in heap:
+		var x := (float(k) - float(heap - 1) * 0.5) * 0.12
+		_mini_coin(c + Vector2(x, -0.28 - 0.04 * float(k % 2)) * s, 0.09 * s)
+	_rrect(Rect2(c + Vector2(-0.2, -0.17) * s, Vector2(0.4, 0.06) * s), 0.02 * s, Color(0.9, 0.36, 0.42))
+	_circle(c + Vector2(0.0, 0.1) * s, 0.12 * s, GOLD)
+	_poly(_star_pts(c + Vector2(0.0, 0.105) * s, 0.07 * s, 0.03 * s), GOLD_DARK, false)
+
+
+## An open chest overflowing with coins (lilac and gem-studded when `grand`).
+func _treasure(c: Vector2, s: float, grand: bool) -> void:
+	var body := Color(0.86, 0.64, 0.44) if not grand else Color(0.8, 0.64, 1.0)
+	var trim := Color(1.0, 0.84, 0.44)
+	# the lid thrown back, behind
+	_poly([c + Vector2(-0.36, -0.06) * s, c + Vector2(-0.3, -0.36) * s, c + Vector2(0.3, -0.36) * s, c + Vector2(0.36, -0.06) * s], body.lightened(0.12))
+	_rrect(Rect2(c + Vector2(-0.3, -0.36) * s, Vector2(0.6, 0.07) * s), 0.02 * s, trim)
+	# the heap, then the chest's front over its foot
+	_ellipse(c + Vector2(0.0, -0.04) * s, 0.36 * s, 0.14 * s, GOLD)
+	_coins([[c.x - 0.18 * s, c.y - 0.1 * s, 0.08 * s], [c.x + 0.02 * s, c.y - 0.14 * s, 0.08 * s], [c.x + 0.2 * s, c.y - 0.08 * s, 0.08 * s], [c.x - 0.06 * s, c.y - 0.04 * s, 0.07 * s]])
+	if grand:
+		_gem(c + Vector2(0.12, -0.2) * s, 0.06 * s, Color(1.0, 0.5, 0.66))
+		_gem(c + Vector2(-0.24, -0.16) * s, 0.05 * s, Color(0.5, 0.82, 1.0))
+	_rrect(Rect2(c + Vector2(-0.38, -0.02) * s, Vector2(0.76, 0.36) * s), 0.05 * s, body)
+	_rrect(Rect2(c + Vector2(-0.38, -0.02) * s, Vector2(0.76, 0.08) * s), 0.03 * s, trim)
+	_rrect(Rect2(c + Vector2(-0.06, 0.02) * s, Vector2(0.12, 0.16) * s), 0.03 * s, trim)
+
+
+## The coin packs, smallest (0, the free one) to biggest (5): a stack, two
+## stacks, a pouch, a sack spilling over, an open chest brimming, and a grand
+## chest heaped with coins and gems, sparkling.
+func _draw_coin_pack(tier: int) -> void:
+	match clampi(tier, 0, 5):
+		0:
+			_coin_stack(Vector2(0.42, 0.78), 0.2, 3)
+			_mini_coin(Vector2(0.68, 0.6), 0.16)
+		1:
+			_coin_stack(Vector2(0.3, 0.8), 0.17, 4)
+			_coin_stack(Vector2(0.62, 0.84), 0.17, 2)
+			_mini_coin(Vector2(0.72, 0.42), 0.15)
+		2:
+			_sack(Vector2(0.48, 0.58), 0.8, 3)
+			_coins([[0.8, 0.82, 0.09], [0.2, 0.84, 0.08]])
+		3:
+			_sack(Vector2(0.44, 0.52), 0.95, 5)
+			_coins([[0.74, 0.84, 0.1], [0.86, 0.72, 0.08], [0.6, 0.9, 0.08], [0.16, 0.86, 0.08]])
+		4:
+			_treasure(Vector2(0.5, 0.52), 1.0, false)
+			_coins([[0.2, 0.9, 0.08], [0.78, 0.9, 0.09], [0.9, 0.76, 0.07]])
+		5:
+			_treasure(Vector2(0.5, 0.5), 1.08, true)
+			_coins([[0.14, 0.88, 0.08], [0.3, 0.93, 0.07], [0.72, 0.92, 0.08], [0.88, 0.84, 0.09]])
+			_sparkle(Vector2(0.12, 0.2), 0.08)
+			_sparkle(Vector2(0.88, 0.18), 0.06)
+			_sparkle(Vector2(0.5, 0.04), 0.05)
+
+
+## A plank from a to b, `w` wide, with a line of grain.
+func _plank(a: Vector2, b: Vector2, w: float) -> void:
+	var n := (b - a).normalized().orthogonal() * w * 0.5
+	_poly([a + n, b + n, b - n, a - n], WOOD)
+	_line([a.lerp(b, 0.15), a.lerp(b, 0.75)], Color(WOOD_DARK, 0.6), 0.5)
+
+
+func _stone(c: Vector2, r: float) -> void:
+	_ellipse(c, r, r * 0.72, STONE)
+	draw_arc(_u(c + Vector2(-r * 0.25, -r * 0.2)), r * 0.4 * _s, PI * 1.1, PI * 1.6, 8, Color(1, 1, 1, 0.7), _w() * 0.6, true)
+
+
+## A slatted wooden crate.
+func _crate_box(r: Rect2) -> void:
+	_rrect(r, 0.03, WOOD)
+	for k in 2:
+		var y := r.position.y + r.size.y * (0.34 + 0.33 * float(k))
+		_line([Vector2(r.position.x + 0.02, y), Vector2(r.end.x - 0.02, y)], Color(WOOD_DARK, 0.7), 0.6)
+	_line([r.position + Vector2(0.03, 0.03), r.end - Vector2(0.03, 0.03)], WOOD_DARK, 0.9)
+
+
+## The materials packs, smallest (0, the free one) to biggest (5): a couple of
+## planks and a stone, a bundle tied with rope, a crate, a crate overflowing,
+## a wheelbarrow heaped up, and a sparkling stack of crates, planks and stone.
+func _draw_material_pack(tier: int) -> void:
+	match clampi(tier, 0, 5):
+		0:
+			_stone(Vector2(0.66, 0.74), 0.16)
+			_plank(Vector2(0.14, 0.7), Vector2(0.62, 0.42), 0.12)
+			_plank(Vector2(0.2, 0.84), Vector2(0.7, 0.6), 0.12)
+		1:
+			_stone(Vector2(0.78, 0.8), 0.14)
+			for k in 3:
+				var y := 0.46 + 0.1 * float(k)
+				_plank(Vector2(0.12, y + 0.08), Vector2(0.8, y - 0.1), 0.11)
+			for x in [0.34, 0.6]:
+				_line([Vector2(x, 0.36), Vector2(x, 0.72)], Color(0.9, 0.36, 0.42), 1.4)
+		2:
+			_plank(Vector2(0.3, 0.44), Vector2(0.62, 0.12), 0.12)
+			_crate_box(Rect2(0.18, 0.4, 0.64, 0.48))
+		3:
+			_plank(Vector2(0.22, 0.4), Vector2(0.4, 0.06), 0.11)
+			_plank(Vector2(0.52, 0.4), Vector2(0.78, 0.1), 0.11)
+			_stone(Vector2(0.5, 0.36), 0.13)
+			_crate_box(Rect2(0.16, 0.38, 0.6, 0.48))
+			_stone(Vector2(0.84, 0.82), 0.12)
+		4:
+			# a wheelbarrow, heaped
+			_stone(Vector2(0.36, 0.34), 0.13)
+			_stone(Vector2(0.58, 0.32), 0.12)
+			_plank(Vector2(0.18, 0.4), Vector2(0.72, 0.2), 0.1)
+			_poly([Vector2(0.1, 0.4), Vector2(0.86, 0.4), Vector2(0.74, 0.7), Vector2(0.2, 0.7)], Color(0.56, 0.74, 1.0))
+			_line([Vector2(0.74, 0.62), Vector2(0.96, 0.76)], WOOD_DARK, 1.4)
+			_line([Vector2(0.3, 0.7), Vector2(0.3, 0.88)], INK, 1.2)
+			_circle(Vector2(0.62, 0.8), 0.1, Color(0.4, 0.36, 0.42))
+			_circle(Vector2(0.62, 0.8), 0.035, STONE, false)
+		5:
+			_crate_box(Rect2(0.08, 0.5, 0.42, 0.4))
+			_crate_box(Rect2(0.48, 0.5, 0.42, 0.4))
+			_crate_box(Rect2(0.28, 0.16, 0.42, 0.36))
+			_plank(Vector2(0.04, 0.48), Vector2(0.4, 0.3), 0.09)
+			_stone(Vector2(0.84, 0.42), 0.12)
+			_sparkle(Vector2(0.12, 0.18), 0.08)
+			_sparkle(Vector2(0.88, 0.16), 0.06)
 
 
 func _draw_hunt() -> void:
