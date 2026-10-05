@@ -115,7 +115,7 @@ premium rewards, buy a tier for coins, Daily/Weekly quests, buy-pass pop-up);
 and those still to collect with their prices; the selected one on a stage
 over a turning sunburst, sparkling for Epic and Legendary; titles
 and stars, rarity, collection level, the first-visit walkthrough with its
-coin gift); **Shop** (colour-coded sections with jump chips, free daily packs first; weekly featured sale with its percent off, No Ads pass, bundles (Value, Mega and the sale add
+coin gift); **Shop** (colour-coded sections with jump chips; weekly featured sale with its percent off, No Ads pass, bundles (Value, Mega and the sale add
 building materials), bomb, Any Piece and Rocks packs,
 coin packs and building-materials packs, each with a free daily pack --
 claimed free once, then twice more a day for an ad each, payers too, and

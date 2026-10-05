@@ -1,13 +1,13 @@
 extends TSScreen
 
 ## The Shop (Duckdoku's ShopScreen), in colour-coded sections that chips along
-## the top jump to: the free daily packs of coins and materials first (one
-## free claim each, then two more for an ad each -- no ad with No Ads), the
-## weekly featured sale, the No Ads pass, three bundles, coin packs and
-## building-materials packs (with how much more each gives for the money, the
-## popular one and the best value flagged), and booster packs bought with
-## coins. Every real-money item goes through Billing, simulated until the
-## store plugins and product ids exist.
+## the top jump to: the weekly featured sale, the No Ads pass, three bundles,
+## coin packs and building-materials packs -- each led by a free daily pack
+## (one free claim, then two more for an ad each, no ad with No Ads), the rest
+## showing how much more each gives for the money, the popular one and the
+## best value flagged -- and booster packs bought with coins. Every
+## real-money item goes through Billing, simulated until the store plugins
+## and product ids exist.
 
 const FEATURED_SALES := [
 	{"name": "Hatcher's Hoard", "coins": 130000, "bomb": 15, "materials": 2000, "price": "$4.99", "orig_price": "$9.99", "product_id": "featured_hatchers_hoard"},
@@ -71,7 +71,6 @@ func build() -> void:
 
 ## The sections, top to bottom: [id, title, colour, icon].
 const SECTIONS := [
-	["free", "Free Daily", Color(0.5, 0.84, 0.6), "gift"],
 	["deals", "Featured Sale", Color(1.0, 0.54, 0.58), "tag"],
 	["noads", "Remove Ads", Color(0.74, 0.62, 0.98), "noads"],
 	["bundles", "Bundles", Color(0.56, 0.74, 1.0), "chest"],
@@ -79,7 +78,7 @@ const SECTIONS := [
 	["materials", "Materials", Color(0.86, 0.64, 0.44), "materials"],
 	["boosters", "Boosters", Color(1.0, 0.6, 0.72), "bomb"],
 ]
-const CHIPS := [["free", "Free"], ["deals", "Deals"], ["coins", "Coins"], ["materials", "Materials"], ["boosters", "Boosters"]]
+const CHIPS := [["deals", "Deals"], ["coins", "Coins"], ["materials", "Materials"], ["boosters", "Boosters"]]
 
 
 func _refresh() -> void:
@@ -103,11 +102,6 @@ func _refresh() -> void:
 		_sections[id] = _header(sec[1], sec[2], sec[3], trailing, id)
 		_list.add_child(_sections[id])
 		match id:
-			"free":
-				var row := TSUI.hbox(12)
-				row.add_child(_free_card(COIN_PACKS[0]))
-				row.add_child(_free_card(MATERIAL_PACKS[0]))
-				_list.add_child(row)
 			"deals":
 				var sale: Dictionary = FEATURED_SALES[(int(Time.get_unix_time_from_system() + 3 * 86400) / (7 * 86400)) % FEATURED_SALES.size()]
 				_list.add_child(_featured_card(sale))
@@ -119,9 +113,9 @@ func _refresh() -> void:
 					bundles.add_child(_bundle_card(b))
 				_list.add_child(bundles)
 			"coins":
-				_pack_rows(COIN_PACKS.slice(1), "coins")
+				_pack_rows(COIN_PACKS, "coins")
 			"materials":
-				_pack_rows(MATERIAL_PACKS.slice(1), "materials")
+				_pack_rows(MATERIAL_PACKS, "materials")
 			"boosters":
 				for bid in TSProfile.BOOSTERS:
 					_list.add_child(_booster_card(bid))
@@ -152,7 +146,7 @@ func _build_chips() -> void:
 			b.add_theme_stylebox_override(st, face)
 		b.pressed.connect(_jump_to.bind(id))
 		_chips.add_child(b)
-		if id == "free" and _free_waiting():
+		if _free_waiting(id):
 			TSUI.dot(b, 18.0).visible = true
 	TSUI.juice(_chips)
 
@@ -167,10 +161,15 @@ func _jump_to(id: String) -> void:
 	create_tween().tween_property(_scroll, "scroll_vertical", maxi(0, to), 0.35).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
 
-## True while a daily pack's first (free) claim is still there today.
-func _free_waiting() -> bool:
+## True while a section's daily pack (coins or materials) still has its
+## free claim today.
+func _free_waiting(id: String) -> bool:
 	TSProfile.roll_starter_claims()
-	return TSProfile.starter_coin_claims == 0 or TSProfile.starter_material_claims == 0
+	if id == "coins":
+		return TSProfile.starter_coin_claims == 0
+	if id == "materials":
+		return TSProfile.starter_material_claims == 0
+	return false
 
 
 ## A section's heading: its icon, its name in white, and on the right what
@@ -184,21 +183,20 @@ func _header(text: String, color: Color, icon: String, trailing: String, id: Str
 	if id == "materials":
 		row.add_child(TSIcon.make("materials", 34))
 		row.add_child(TSUI.outlined(TSUI.label(TSProfile.fmt_coins(TSProfile.materials), 24, Color.WHITE), TSUI.INK, 6))
-	if id == "free":
-		row.add_child(TSUI.outlined(TSUI.label("Resets daily", 20, Color.WHITE), TSUI.INK, 6))
 	if trailing != "":
 		row.add_child(TSIcon.make("clock", 32))
 		row.add_child(TSUI.outlined(TSUI.label(trailing, 22, Color.WHITE), TSUI.INK, 6))
 	return bar
 
 
-## Paid packs three to a row, the last row's cards widening to fill it.
+## A section's packs three to a row -- its free daily pack first, as it
+## always was -- the last row's cards widening to fill it.
 func _pack_rows(packs: Array, kind: String) -> void:
-	var base := _per_dollar(packs[0], kind)
+	var base := _per_dollar(packs[1], kind)   # the smallest paid pack
 	for start in range(0, packs.size(), 3):
 		var row := TSUI.hbox(12)
 		for p in packs.slice(start, start + 3):
-			row.add_child(_pack_card(p, kind, base))
+			row.add_child(_free_card(p) if p.get("starter", false) else _pack_card(p, kind, base))
 		_list.add_child(row)
 
 
@@ -395,8 +393,8 @@ func _free_card(p: Dictionary) -> Control:
 	var left := _starter_left(mats)
 	var claims := TSProfile.starter_material_claims if mats else TSProfile.starter_coin_claims
 	v.add_child(_ribbon("FREE" if claims == 0 else "", TSUI.RED_DOT))
-	v.add_child(_heap("materials" if mats else "coin", int(p["materials" if mats else "coins"]), float(p["materials" if mats else "coins"]) / 2.5, 62.0))
-	v.add_child(TSUI.outlined(TSUI.label(TSProfile.fmt_coins(int(p["materials" if mats else "coins"])), 32, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER), Color.WHITE, 6))
+	v.add_child(_heap("materials" if mats else "coin", int(p["materials" if mats else "coins"]), float(p["materials" if mats else "coins"]) / 2.5, 56.0))
+	v.add_child(TSUI.label(TSProfile.fmt_coins(int(p["materials" if mats else "coins"])), 28, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER))
 	v.add_child(TSUI.label("materials" if mats else "coins", 18, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	v.add_child(TSUI.label("Back tomorrow" if left <= 0 else ("Free now, %d more later" % (left - 1) if claims == 0 else ("%d more today" % left if TSProfile.no_ads else "%d ad%s left today" % [left, "" if left == 1 else "s"])), 16, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	v.add_child(TSUI.spacer(0, true))
@@ -405,11 +403,6 @@ func _free_card(p: Dictionary) -> Control:
 		_last_btn = b
 		_on_starter(p))
 	b.disabled = left <= 0
-	if claims > 0 and left > 0 and not TSProfile.no_ads:
-		var ad := TSIcon.make("ad", 30)
-		ad.position = Vector2(12, 16)
-		ad.size = Vector2(30, 30)
-		b.add_child(ad)
 	v.add_child(b)
 	return card
 
