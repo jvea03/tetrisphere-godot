@@ -63,6 +63,10 @@ func add_header(title_text: String, back: bool, with_wallet := true, info: Calla
 	var t := TSUI.title(title_text, 44)
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT if back else HORIZONTAL_ALIGNMENT_LEFT
 	TSUI.expand(t)
+	# A long title ("7-Day Eggsperience") shrinks to fit beside the buttons
+	# rather than pushing the screen wider than the phone.
+	t.clip_text = true
+	t.resized.connect(_fit_title.bind(t))
 	header_row.add_child(t)
 	if with_wallet:
 		wallet = TSCoinPill.new()
@@ -72,6 +76,17 @@ func add_header(title_text: String, back: bool, with_wallet := true, info: Calla
 		i.pressed.connect(info)
 		header_row.add_child(i)
 	return header_row
+
+
+## The biggest title size, up to 44, whose text fits the label's width.
+func _fit_title(t: Label) -> void:
+	var font := t.get_theme_font("font")
+	var outline := t.get_theme_constant("outline_size")
+	var fs := 44
+	while fs > 26 and font.get_string_size(t.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x + outline > t.size.x:
+		fs -= 2
+	if t.get_theme_font_size("font_size") != fs:
+		t.add_theme_font_size_override("font_size", fs)
 
 
 func go_home() -> void:
