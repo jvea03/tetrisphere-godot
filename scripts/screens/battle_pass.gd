@@ -6,6 +6,7 @@ extends TSScreen
 ## holds the Daily and Weekly quests. The premium track is a real-money
 ## product through Billing (simulated here); a tier can be bought for coins.
 
+const BANNER := preload("res://icons/battle_pass_banner.png")
 const COL_PREMIUM := Color(1.0, 0.94, 0.8)
 const COL_PREMIUM_RIM := Color(0.74, 0.56, 1.0)
 
@@ -34,21 +35,28 @@ func build() -> void:
 	timer_pill.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_timer = timer_pill.get_meta("label")
 	content.add_child(timer_pill)
-	# hero: the season's premium critter and ship-part upgrade
-	var season := TSProfile.season_rewards()
-	var hero := TSUI.card(Color(0.84, 0.76, 1.0), 30, 12, 4)
-	var hero_row := TSUI.hbox(10)
-	hero_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	hero.add_child(hero_row)
-	for t in season["paid_critters"]:
-		hero_row.add_child(TSIcon.make("critter", 150, int(season["paid_critters"][t])))
-	var hero_text := TSUI.vbox(2)
-	hero_text.add_child(TSUI.outlined(TSUI.label("Season %d" % TSProfile.battle_pass_season_number(), 40, Color.WHITE), TSUI.INK, 10))
-	hero_text.add_child(TSUI.label("Exclusive critter + ship upgrade", 22, TSUI.INK))
-	hero_row.add_child(hero_text)
-	for t in season["paid_parts"]:
-		hero_row.add_child(TSIcon.make("part", 110, int(season["paid_parts"][t])))
-	content.add_child(hero)
+	# The season's banner: the critters' autumn feast, its title in the sky
+	# over them, inked round like the cards.
+	var banner := TextureRect.new()
+	banner.texture = BANNER
+	banner.expand_mode = TextureRect.EXPAND_FIT_HEIGHT_PROPORTIONAL
+	banner.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var rim := Panel.new()
+	var rim_style := TSUI.sb(Color.TRANSPARENT, 30, TSUI.BORDER)
+	rim_style.draw_center = false
+	rim.add_theme_stylebox_override("panel", rim_style)
+	rim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	banner.add_child(rim)
+	var title := TSUI.vbox(0)
+	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	title.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	title.offset_top = 10.0
+	banner.add_child(title)
+	title.add_child(TSUI.outlined(TSUI.label("Season %d" % TSProfile.battle_pass_season_number(), 40, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER), TSUI.INK, 10))
+	title.add_child(TSUI.outlined(TSUI.label("Exclusive critter + ship upgrade", 22, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER), TSUI.INK, 6))
+	content.add_child(banner)
 	_progress_label = TSUI.label("", 24, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER)
 	content.add_child(_progress_label)
 	_progress = TSUI.bar(TSUI.GOLD, 30)

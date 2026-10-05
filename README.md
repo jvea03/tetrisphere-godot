@@ -88,7 +88,9 @@ art drawn in code (`scripts/ui/icon.gd`) -- none of Duckdoku's art is copied. Th
 one exception is the critters: 104 stickers, `icons/critters/NNN.png`, cut
 from the sheets in `art/critter_sheets/` by `tools/cut_critters.gd` (rerun it
 if a sheet changes; `TSProfile.CRITTERS` names each one, its rarity, its
-sticker and its body colour).
+sticker and its body colour), and the Battle Pass banner,
+`icons/battle_pass_banner.png`, baked from `art/battle_pass_banner.webp` by
+`tools/make_banner.gd`.
 
 | Duckdoku | Tetrisphere |
 | --- | --- |
