@@ -503,11 +503,11 @@ func _side_of(p: Vector2, inner: Rect2) -> Vector2:
 	return Vector2(0.0, signf(past.y))
 
 
-## One node. Ready to start: a hammer (build or fix) or an arrow (upgrade) on
-## a disc -- green when the coins, materials and a free critter are all there,
-## grey when not -- its price in coins and materials on a pill below. Under
-## way: a ring filling round a clock, the time left below, its builder
-## beside it (_sync_builders). Done: a bouncing green tick to collect it.
+## One node. Ready to start: a plus on a disc -- green when the coins,
+## materials and a free critter are all there, grey when not (its card has
+## the price). Under way: a ring filling round a clock, the time left below,
+## its builder beside it (_sync_builders). Done: a bouncing green tick to
+## collect it.
 func _draw_node(i: int, p: Vector2) -> void:
 	var ci := _nodes
 	var font := TSToon.hand_font()
@@ -537,43 +537,14 @@ func _draw_node(i: int, p: Vector2) -> void:
 		ci.draw_string(font, pill.position + Vector2(10.0, 21.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, INK)
 		_node_hits.append([Rect2(p - Vector2(r + 8.0, r + 8.0), Vector2(2.0 * r + 16.0, 2.0 * r + 46.0)), i])
 		return
-	var cost := TSProfile.part_next_cost(i)
-	var mats := TSProfile.part_next_materials(i)
 	var can := TSProfile.part_build_block(i) == ""
 	r = NODE_R * (1.0 + 0.06 * sin(_t * 5.0) if can else 1.0)
 	_ellipse(ci, p + Vector2(0.0, r + 6.0), r * 0.8, 7.0, SHADOW, false)
 	ci.draw_circle(p, r + 4.0, INK, true, -1.0, true)
 	ci.draw_circle(p, r, Color(0.56, 0.87, 0.58) if can else Color(0.86, 0.84, 0.86), true, -1.0, true)
 	ci.draw_arc(p + Vector2(-4.0, -5.0), r * 0.62, PI * 1.05, PI * 1.55, 10, Color(1, 1, 1, 0.55), 4.0, true)
-	if TSProfile.part_level_of(i) == 0:
-		_hammer(ci, p, r * 0.62)
-	else:
-		_up_arrow(ci, p, r * 0.62)
-	# The price: coins, then materials.
-	var coins := TSProfile.fmt_coins(cost)
-	var m := str(mats)
-	var cw := font.get_string_size(coins, HORIZONTAL_ALIGNMENT_LEFT, -1, 20).x
-	var mw := font.get_string_size(m, HORIZONTAL_ALIGNMENT_LEFT, -1, 20).x
-	var width := 27.0 + cw + 30.0 + mw + 10.0
-	var pill := Rect2(p + Vector2(-width * 0.5, r + 2.0), Vector2(width, 28.0))
-	_round_rect(ci, pill, 14.0, Color(1.0, 0.98, 0.93), INK)
-	ci.draw_circle(pill.position + Vector2(15.0, 14.0), 8.0, BUTTER, true, -1.0, true)
-	ci.draw_arc(pill.position + Vector2(15.0, 14.0), 8.0, 0.0, TAU, 16, INK, 2.0, true)
-	var short_coins := TSProfile.coin_count < cost
-	var short_mats := TSProfile.materials < mats
-	ci.draw_string(font, pill.position + Vector2(27.0, 21.0), coins, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color(0.9, 0.3, 0.36) if short_coins else INK)
-	var mx := pill.position.x + 27.0 + cw + 18.0
-	_crate(ci, Vector2(mx, pill.position.y + 14.0))
-	ci.draw_string(font, Vector2(mx + 12.0, pill.position.y + 21.0), m, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color(0.9, 0.3, 0.36) if short_mats else INK)
-	_node_hits.append([Rect2(p - Vector2(r + 8.0, r + 8.0), Vector2(2.0 * r + 16.0, 2.0 * r + 46.0)), i])
-
-
-## A tiny materials mark for a price pill: two crossed planks.
-func _crate(ci: CanvasItem, c: Vector2) -> void:
-	for turn in [-0.5, 0.5]:
-		var d := Vector2(9.0, 0.0).rotated(turn)
-		ci.draw_line(c - d, c + d, INK, 7.0, true)
-		ci.draw_line(c - d, c + d, Color(0.82, 0.6, 0.4), 4.0, true)
+	_plus(ci, p, r * 0.5)
+	_node_hits.append([Rect2(p - Vector2(r + 8.0, r + 8.0), Vector2(2.0 * r + 16.0, 2.0 * r + 16.0)), i])
 
 
 ## "45s", "12m", "1h 20m": short enough for a node's pill.
@@ -657,25 +628,12 @@ func _leader(from: Vector2, to: Vector2) -> void:
 	_nodes.draw_arc(to, 9.0, 0.0, TAU, 20, Color(INK, 0.6), 2.0, true)
 
 
-func _hammer(ci: CanvasItem, c: Vector2, s: float) -> void:
-	var handle_a := c + Vector2(-0.75, 0.75) * s
-	var handle_b := c + Vector2(0.25, -0.25) * s
-	ci.draw_line(handle_a, handle_b, INK, s * 0.42, true)
-	ci.draw_line(handle_a, handle_b, WOOD, s * 0.24, true)
-	var head := [Vector2(-0.15, -0.95), Vector2(0.95, 0.15), Vector2(0.55, 0.55), Vector2(-0.55, -0.55)]
-	var pts := PackedVector2Array()
-	for h in head:
-		pts.append(c + (h as Vector2) * s * 0.75 + Vector2(0.18, -0.18) * s)
-	ci.draw_colored_polygon(pts, CHROME)
-	pts.append(pts[0])
-	ci.draw_polyline(pts, INK, 3.0, true)
-
-
-func _up_arrow(ci: CanvasItem, c: Vector2, s: float) -> void:
-	var pts := PackedVector2Array([c + Vector2(0.0, -1.0) * s, c + Vector2(0.85, 0.0) * s, c + Vector2(0.35, 0.0) * s, c + Vector2(0.35, 0.9) * s, c + Vector2(-0.35, 0.9) * s, c + Vector2(-0.35, 0.0) * s, c + Vector2(-0.85, 0.0) * s])
-	ci.draw_colored_polygon(pts, Color.WHITE)
-	pts.append(pts[0])
-	ci.draw_polyline(pts, INK, 3.5, true)
+## A chunky white plus, inked round.
+func _plus(ci: CanvasItem, c: Vector2, s: float) -> void:
+	for d in [Vector2(s, 0.0), Vector2(0.0, s)]:
+		ci.draw_line(c - d, c + d, INK, s * 0.62, true)
+	for d in [Vector2(s, 0.0), Vector2(0.0, s)]:
+		ci.draw_line(c - d, c + d, Color.WHITE, s * 0.38, true)
 
 
 func _round_rect(ci: CanvasItem, r: Rect2, radius: float, fill: Color, line: Color) -> void:

@@ -128,8 +128,8 @@ spaceship has crash-landed nose-first in a heap of dirt, and the critters
 have made camp around it. Everything there looks however far you have got
 with it, and it is all built right there: from level 5 (when the Collection
 unlocks) a **build node** floats over every spot with a step left -- a
-hammer to build or fix it, an arrow to upgrade it, its price in coins and
-**building materials** on a pill underneath, green when it can start. Tap
+plus sign, green when it can start (coins, **building materials** and a free
+critter all there), grey when not. Tap
 one for its card: what it is now, what the next step makes it, what the step
 takes -- coins, materials and **build time** -- and which critter will build
 it. Every step takes time, longer at each level and in each later wave
@@ -151,7 +151,7 @@ rare, 500-700 legendary), every quest (ten for every star) and every Battle
 Pass tier (50 + 10 a tier free, 100 + 20 a tier premium); the count shows
 beside the Camp level on Home. Nodes beyond the open middle of Home are gathered into
 an arrow at its edge, with a count, that glides the world over to them; the
-first time the nodes appear, a walkthrough points at the campfire's hammer.
+first time the nodes appear, a walkthrough points at the campfire's plus.
 None of this counts toward the Collection level, which is critters only.
 **The camp comes first**: twenty spots in four waves of five
 (`TSProfile.CAMP_WAVES`), so no more than five build nodes show at once. A

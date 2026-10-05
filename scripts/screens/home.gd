@@ -1335,7 +1335,7 @@ func _start_daily_callout() -> void:
 
 
 ## The first visit once the camp's nodes appear: the world glides to the
-## campfire and the walkthrough points at its hammer.
+## campfire and the walkthrough points at its plus.
 func _start_camp_callout() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -1349,7 +1349,7 @@ func _start_camp_callout() -> void:
 		TSProfile.camp_callout_seen = true
 		TSProfile.save(), CONNECT_ONE_SHOT)
 	var at := _world.get_global_rect().position + _world.node_screen_position(TSProfile.CAMP_FIRE)
-	tutorial.start([{"rect": Rect2(at - Vector2(48, 48), Vector2(96, 120)), "text": "Build your camp! Tap a hammer to build, then its arrow to upgrade. Each finished set of spots raises your Camp level -- Camp Lv 5 opens your ship."}])
+	tutorial.start([{"rect": Rect2(at - Vector2(48, 48), Vector2(96, 96)), "text": "Build your camp! Tap a plus to build or upgrade. Each finished set of spots raises your Camp level -- Camp Lv 5 opens your ship."}])
 
 
 ## Android back: close whatever is open; with nothing open, Home quits.
