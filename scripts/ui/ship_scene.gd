@@ -114,8 +114,8 @@ const OVEN := Vector2(1080.0, 1860.0)
 const STATUE := Vector2(470.0, 1950.0)
 ## The materials mine: a cart under the ship that fills by itself
 ## (TSProfile.mine_stored), its node floating just over it.
-const MINE := Vector2(1300.0, 930.0)
-const MINE_NODE := MINE + Vector2(0.0, -80.0)
+const MINE := Vector2(1300.0, 985.0)
+const MINE_NODE := MINE + Vector2(0.0, -90.0)
 const MINE_HIT := -1             # the mine's entry in _node_hits
 const LEAF := Color(0.48, 0.78, 0.5)
 
