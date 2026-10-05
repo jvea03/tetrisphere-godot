@@ -86,6 +86,10 @@ func _ready() -> void:
 	TSChests.win_progress = 2
 	TSSales.roll()
 	TSSales.mark_popup_shown()
+	if args_has("claimed"):
+		# `-- shop claimed`: today's free coins taken, so the pack offers its ads.
+		TSProfile.roll_starter_claims()
+		TSProfile.starter_coin_claims = 1
 	var args := OS.get_cmdline_user_args()
 	var screen: String = args[0] if args.size() > 0 else "home"
 	if screen == "home" and args.size() > 1 and args[1] == "all":
@@ -115,6 +119,13 @@ func _ready() -> void:
 			TSProfile.tie_tutorial_seen = false
 		get_tree().change_scene_to_file.call_deferred(SceneFlow.GAME)
 		return
+	if args_all.has("scroll"):
+		# `-- shop scroll 1400`: the screen's list scrolled that far down.
+		var px := int(args_all[args_all.find("scroll") + 1])
+		var ts := get_tree()
+		ts.create_timer(0.6).timeout.connect(func():
+			for s in ts.current_scene.find_children("*", "ScrollContainer", true, false):
+				(s as ScrollContainer).scroll_vertical = px)
 	if args_has("bottom"):
 		# `-- shop bottom`: the screen's list scrolled to its end.
 		var t := get_tree()

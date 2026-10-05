@@ -1,10 +1,12 @@
 extends TSScreen
 
-## The Shop (Duckdoku's ShopScreen): a featured sale that rotates weekly, the
-## No Ads pass, three bundles, booster packs bought with coins, coin packs and
-## building-materials packs --
-## the first of each a free daily pack (one free claim, then two more for an ad
-## each -- no ad with No Ads). Every real-money item goes through Billing, simulated until the
+## The Shop (Duckdoku's ShopScreen), in colour-coded sections that chips along
+## the top jump to: the free daily packs of coins and materials first (one
+## free claim each, then two more for an ad each -- no ad with No Ads), the
+## weekly featured sale, the No Ads pass, three bundles, coin packs and
+## building-materials packs (with how much more each gives for the money, the
+## popular one and the best value flagged), and booster packs bought with
+## coins. Every real-money item goes through Billing, simulated until the
 ## store plugins and product ids exist.
 
 const FEATURED_SALES := [
@@ -37,6 +39,9 @@ const STARTER_PACK_LIMIT := 3 # per day: 1 free + 2 ads
 const NO_ADS_PRICE := "$4.99"
 
 var _list: VBoxContainer
+var _scroll: ScrollContainer
+var _chips: HBoxContainer
+var _sections := {}   # section id -> its heading, for the chips
 var _last_coins := -1
 var _last_btn: Control
 var _ad: Dictionary
@@ -50,12 +55,31 @@ func tab_id() -> String:
 
 func build() -> void:
 	add_header("Shop", false)
-	_list = TSUI.vbox(18)
-	content.add_child(TSUI.scroll(_list))
+	# Chips that jump the list to each section, the free one flagged while a
+	# free claim is waiting.
+	_chips = TSUI.hbox(8)
+	_chips.alignment = BoxContainer.ALIGNMENT_CENTER
+	content.add_child(_chips)
+	_list = TSUI.vbox(16)
+	_scroll = TSUI.scroll(_list)
+	content.add_child(_scroll)
 	_ad = TSUI.dialog(self, 560)
 	Billing.purchase_result.connect(_on_purchase_result)
 	Billing.prices_updated.connect(_refresh)
 	_refresh()
+
+
+## The sections, top to bottom: [id, title, colour, icon].
+const SECTIONS := [
+	["free", "Free Daily", Color(0.5, 0.84, 0.6), "gift"],
+	["deals", "Featured Sale", Color(1.0, 0.54, 0.58), "tag"],
+	["noads", "Remove Ads", Color(0.74, 0.62, 0.98), "noads"],
+	["bundles", "Bundles", Color(0.56, 0.74, 1.0), "chest"],
+	["coins", "Coins", Color(1.0, 0.76, 0.3), "coin"],
+	["materials", "Materials", Color(0.86, 0.64, 0.44), "materials"],
+	["boosters", "Boosters", Color(1.0, 0.6, 0.72), "bomb"],
+]
+const CHIPS := [["free", "Free"], ["deals", "Deals"], ["coins", "Coins"], ["materials", "Materials"], ["boosters", "Boosters"]]
 
 
 func _refresh() -> void:
@@ -70,52 +94,118 @@ func _refresh() -> void:
 	_last_coins = now
 	for c in _list.get_children():
 		c.queue_free()
-	var sale: Dictionary = FEATURED_SALES[(int(Time.get_unix_time_from_system() + 3 * 86400) / (7 * 86400)) % FEATURED_SALES.size()]
-	_list.add_child(_header("Featured Sale", TSUI.CORAL, "%s left" % TSUI.fmt_duration(TSProfile.seconds_until_weekly_reset())))
-	_list.add_child(_featured_card(sale))
-	_list.add_child(_header("Remove Ads", TSUI.SKY, ""))
-	_list.add_child(_no_ads_card())
-	_list.add_child(_header("Bundles", TSUI.SKY, ""))
-	var bundles := TSUI.hbox(12)
-	for b in BUNDLES:
-		bundles.add_child(_bundle_card(b))
-	_list.add_child(bundles)
-	_list.add_child(_header("Boosters", TSUI.SKY, ""))
-	for id in TSProfile.BOOSTERS:
-		_list.add_child(_booster_card(id))
-	_list.add_child(_header("Coins", TSUI.SKY, ""))
-	var grid := GridContainer.new()
-	grid.columns = 3
-	grid.add_theme_constant_override("h_separation", 12)
-	grid.add_theme_constant_override("v_separation", 12)
-	for p in COIN_PACKS:
-		grid.add_child(_coin_card(p))
-	_list.add_child(grid)
-	_list.add_child(_header("Materials", TSUI.SKY, "", "materials"))
-	var mgrid := GridContainer.new()
-	mgrid.columns = 3
-	mgrid.add_theme_constant_override("h_separation", 12)
-	mgrid.add_theme_constant_override("v_separation", 12)
-	for p in MATERIAL_PACKS:
-		mgrid.add_child(_material_card(p))
-	_list.add_child(mgrid)
+	_sections.clear()
+	for sec in SECTIONS:
+		var id: String = sec[0]
+		var trailing := ""
+		if id == "deals":
+			trailing = "%s left" % TSUI.fmt_duration(TSProfile.seconds_until_weekly_reset())
+		_sections[id] = _header(sec[1], sec[2], sec[3], trailing, id)
+		_list.add_child(_sections[id])
+		match id:
+			"free":
+				var row := TSUI.hbox(12)
+				row.add_child(_free_card(COIN_PACKS[0]))
+				row.add_child(_free_card(MATERIAL_PACKS[0]))
+				_list.add_child(row)
+			"deals":
+				var sale: Dictionary = FEATURED_SALES[(int(Time.get_unix_time_from_system() + 3 * 86400) / (7 * 86400)) % FEATURED_SALES.size()]
+				_list.add_child(_featured_card(sale))
+			"noads":
+				_list.add_child(_no_ads_card())
+			"bundles":
+				var bundles := TSUI.hbox(12)
+				for b in BUNDLES:
+					bundles.add_child(_bundle_card(b))
+				_list.add_child(bundles)
+			"coins":
+				_pack_rows(COIN_PACKS.slice(1), "coins")
+			"materials":
+				_pack_rows(MATERIAL_PACKS.slice(1), "materials")
+			"boosters":
+				for bid in TSProfile.BOOSTERS:
+					_list.add_child(_booster_card(bid))
 	_list.add_child(TSUI.spacer(12))
+	_build_chips()
 	TSUI.juice(_list)
 
 
-func _header(text: String, color: Color, trailing: String, note := "") -> Control:
+func _build_chips() -> void:
+	for c in _chips.get_children():
+		c.queue_free()
+	for chip in CHIPS:
+		var id: String = chip[0]
+		var b := Button.new()
+		b.text = chip[1]
+		b.focus_mode = Control.FOCUS_NONE
+		b.custom_minimum_size = Vector2(0, 46)
+		b.add_theme_font_size_override("font_size", 20)
+		b.add_theme_color_override("font_color", TSUI.INK)
+		b.add_theme_color_override("font_pressed_color", TSUI.INK)
+		b.add_theme_color_override("font_hover_color", TSUI.INK)
+		var colour: Color = Color.WHITE
+		for sec in SECTIONS:
+			if sec[0] == id:
+				colour = (sec[2] as Color).lerp(Color.WHITE, 0.45)
+		var face := TSUI.sb(colour, 99, 2, 3, 14)
+		for st in ["normal", "hover", "pressed", "focus"]:
+			b.add_theme_stylebox_override(st, face)
+		b.pressed.connect(_jump_to.bind(id))
+		_chips.add_child(b)
+		if id == "free" and _free_waiting():
+			TSUI.dot(b, 18.0).visible = true
+	TSUI.juice(_chips)
+
+
+## Glides the list so a section's heading sits at the top.
+func _jump_to(id: String) -> void:
+	var head: Control = _sections.get(id)
+	if head == null:
+		return
+	TSSfx.play("tap")
+	var to := mini(int(head.position.y), int(_scroll.get_v_scroll_bar().max_value - _scroll.size.y))
+	create_tween().tween_property(_scroll, "scroll_vertical", maxi(0, to), 0.35).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
+
+## True while a daily pack's first (free) claim is still there today.
+func _free_waiting() -> bool:
+	TSProfile.roll_starter_claims()
+	return TSProfile.starter_coin_claims == 0 or TSProfile.starter_material_claims == 0
+
+
+## A section's heading: its icon, its name in white, and on the right what
+## matters there (the sale's time left, the materials you have).
+func _header(text: String, color: Color, icon: String, trailing: String, id: String) -> Control:
 	var bar := TSUI.card(color, 20, 10, 3)
 	var row := TSUI.hbox(8)
 	bar.add_child(row)
+	row.add_child(TSIcon.make(icon, 38))
 	row.add_child(TSUI.expand(TSUI.outlined(TSUI.label(text, 30, Color.WHITE), TSUI.INK, 8)))
-	if note == "materials":
-		# How many you have, as the coins show in the wallet.
+	if id == "materials":
 		row.add_child(TSIcon.make("materials", 34))
 		row.add_child(TSUI.outlined(TSUI.label(TSProfile.fmt_coins(TSProfile.materials), 24, Color.WHITE), TSUI.INK, 6))
+	if id == "free":
+		row.add_child(TSUI.outlined(TSUI.label("Resets daily", 20, Color.WHITE), TSUI.INK, 6))
 	if trailing != "":
 		row.add_child(TSIcon.make("clock", 32))
 		row.add_child(TSUI.outlined(TSUI.label(trailing, 22, Color.WHITE), TSUI.INK, 6))
 	return bar
+
+
+## Paid packs three to a row, the last row's cards widening to fill it.
+func _pack_rows(packs: Array, kind: String) -> void:
+	var base := _per_dollar(packs[0], kind)
+	for start in range(0, packs.size(), 3):
+		var row := TSUI.hbox(12)
+		for p in packs.slice(start, start + 3):
+			row.add_child(_pack_card(p, kind, base))
+		_list.add_child(row)
+
+
+## What a pack gives per dollar at its listed price, for the "+% more" tags.
+static func _per_dollar(p: Dictionary, kind: String) -> float:
+	var dollars := str(p["price"]).trim_prefix("$").to_float()
+	return float(p[kind]) / dollars if dollars > 0.0 else 0.0
 
 
 func _price(item: Dictionary) -> String:
@@ -131,40 +221,55 @@ func _buy_button(text: String, on_press: Callable) -> Button:
 	return b
 
 
+## The week's sale: its haul piled up -- chest, bomb and materials -- under a
+## percent-off sticker, what's in it as a list, and the old price struck
+## through beside the new.
 func _featured_card(item: Dictionary) -> Control:
 	var card := TSUI.card(Color(1.0, 0.9, 0.78), 28, 14, 4)
-	var row := TSUI.hbox(14)
+	var row := TSUI.hbox(10)
 	card.add_child(row)
 	var art := Control.new()
-	art.custom_minimum_size = Vector2(230, 200)
-	var chest := TSIcon.make("chest", 170, 0, "legendary")
-	chest.position = Vector2(0, 20)
-	chest.size = Vector2(170, 170)
-	art.add_child(chest)
-	var bomb := TSIcon.make("bomb", 110)
-	bomb.position = Vector2(120, 80)
-	bomb.size = Vector2(110, 110)
-	art.add_child(bomb)
+	art.custom_minimum_size = Vector2(220, 210)
+	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var pieces := [["chest", 160, Vector2(0, 34), "legendary"], ["materials", 84, Vector2(4, 126), ""], ["bomb", 100, Vector2(118, 104), ""]]
+	for pc in pieces:
+		var ic := TSIcon.make(pc[0], pc[1], 0, pc[3])
+		ic.position = pc[2]
+		ic.size = Vector2(pc[1], pc[1])
+		art.add_child(ic)
+	var dollars := str(item["price"]).trim_prefix("$").to_float()
+	var was := str(item["orig_price"]).trim_prefix("$").to_float()
+	if was > dollars and dollars > 0.0:
+		var off := TSUI.pill("%d%% OFF" % roundi((1.0 - dollars / was) * 100.0), TSUI.RED_DOT, 22, Color.WHITE)
+		off.position = Vector2(108, 8)
+		off.rotation = 0.18
+		art.add_child(off)
 	row.add_child(art)
-	var v := TSUI.vbox(8)
+	var v := TSUI.vbox(6)
 	TSUI.expand(v)
 	v.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_child(v)
 	v.add_child(TSUI.title(item["name"], 34))
-	var extra := " + %s materials" % TSProfile.fmt_coins(int(item["materials"])) if item.has("materials") else ""
-	v.add_child(TSUI.wrap(TSUI.label("%s coins + %d bombs%s!" % [TSProfile.fmt_coins(int(item["coins"])), int(item["bomb"]), extra], 22)))
+	var lines := [["coin", "%s coins" % TSProfile.fmt_coins(int(item["coins"]))], ["bomb", "%d bombs" % int(item["bomb"])]]
+	if item.has("materials"):
+		lines.append(["materials", "%s materials" % TSProfile.fmt_coins(int(item["materials"]))])
+	for l in lines:
+		var line := TSUI.hbox(6)
+		line.add_child(TSIcon.make(l[0], 28))
+		line.add_child(TSUI.label(l[1], 22))
+		v.add_child(line)
 	var buy_row := TSUI.hbox(8)
-	var was := RichTextLabel.new()
-	was.bbcode_enabled = true
-	was.fit_content = true
-	was.autowrap_mode = TextServer.AUTOWRAP_OFF
-	was.custom_minimum_size = Vector2(80, 0)
-	was.add_theme_font_override("normal_font", TSToon.hand_font())
-	was.add_theme_font_size_override("normal_font_size", 22)
-	was.add_theme_color_override("default_color", TSUI.MUTED)
-	was.text = "[s]%s[/s]" % item["orig_price"]
-	was.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	buy_row.add_child(was)
+	var struck := RichTextLabel.new()
+	struck.bbcode_enabled = true
+	struck.fit_content = true
+	struck.autowrap_mode = TextServer.AUTOWRAP_OFF
+	struck.custom_minimum_size = Vector2(80, 0)
+	struck.add_theme_font_override("normal_font", TSToon.hand_font())
+	struck.add_theme_font_size_override("normal_font_size", 22)
+	struck.add_theme_color_override("default_color", TSUI.MUTED)
+	struck.text = "[s]%s[/s]" % item["orig_price"]
+	struck.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	buy_row.add_child(struck)
 	buy_row.add_child(TSUI.expand(_buy_button(_price(item), func(): Billing.purchase(item["product_id"]))))
 	v.add_child(buy_row)
 	return card
@@ -196,23 +301,27 @@ func _no_ads_card() -> Control:
 	return card
 
 
+## A bundle on a card tinted like its chest, the biggest flagged best value:
+## its chest, then what's in it, each with its own icon.
 func _bundle_card(b: Dictionary) -> Control:
-	var card := TSUI.card(TSUI.CARD, 24, 10, 3)
+	var tint: Color = {"common": TSUI.PEACH, "rare": TSUI.SKY, "legendary": TSUI.LILAC}.get(b["chest"], TSUI.CARD)
+	var card := TSUI.card(tint.lerp(Color.WHITE, 0.72), 24, 10, 3)
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var v := TSUI.vbox(6)
+	var v := TSUI.vbox(5)
 	card.add_child(v)
+	v.add_child(_ribbon("BEST VALUE" if b == BUNDLES[-1] else "", TSUI.GOLD_DARK))
 	v.add_child(TSUI.label("%s Bundle" % b["name"], 22, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER))
-	var art := TSIcon.make("chest", 96, 0, b["chest"])
+	var art := TSIcon.make("chest", 92, 0, b["chest"])
 	art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	v.add_child(art)
-	var lines := ["%s coins" % TSProfile.fmt_coins(int(b["coins"])), "%d bombs" % int(b["bomb"])]
+	var lines := [["coin", TSProfile.fmt_coins(int(b["coins"]))], ["bomb", "%d" % int(b["bomb"])]]
 	if b.has("materials"):
-		lines.append("%s materials" % TSProfile.fmt_coins(int(b["materials"])))
-	for text in lines:
+		lines.append(["materials", TSProfile.fmt_coins(int(b["materials"]))])
+	for l in lines:
 		var line := TSUI.hbox(4)
 		line.alignment = BoxContainer.ALIGNMENT_CENTER
-		line.add_child(TSIcon.make("check", 20))
-		line.add_child(TSUI.label(text, 18))
+		line.add_child(TSIcon.make(l[0], 26))
+		line.add_child(TSUI.label(l[1], 20))
 		v.add_child(line)
 	v.add_child(TSUI.spacer(0, true))   # every bundle's button along the bottom
 	v.add_child(_buy_button(_price(b), func(): Billing.purchase(b["product_id"])))
@@ -246,60 +355,87 @@ func _booster_card(id: String) -> Control:
 	return card
 
 
-func _coin_card(p: Dictionary) -> Control:
-	var card := TSUI.card(TSUI.CARD, 24, 10, 3)
+## A heap of `icon`s, more for a bigger amount (`unit` the smallest pack's),
+## centred in its card.
+func _heap(icon: String, amount: int, unit: float, px: float) -> Control:
+	var n := clampi(int(log(float(amount) / unit) / log(2.5)) + 1, 1, 5)
+	var box := Control.new()
+	box.custom_minimum_size = Vector2(px + 44.0, px + 30.0)
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for k in n:
+		var c := TSIcon.make(icon, px)
+		c.position = Vector2(22.0 + float(k % 3 - 1) * 22.0 * float(n > 1), 22.0 - float(k / 3) * 22.0 - float(k) * 2.0)
+		c.size = Vector2(px, px)
+		box.add_child(c)
+	var centre := CenterContainer.new()
+	centre.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	centre.add_child(box)
+	return centre
+
+
+## A ribbon over a card's art ("MOST POPULAR", "BEST VALUE"), or a blank of
+## the same height so a row's cards line up.
+func _ribbon(text: String, colour: Color) -> Control:
+	if text == "":
+		return TSUI.spacer(26)
+	var pill := TSUI.pill(text, colour, 15, Color.WHITE)
+	pill.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	return pill
+
+
+## A daily pack, free: on mint, its heap, its amount large, what's left today
+## and a pink Claim (or Watch Ad) button.
+func _free_card(p: Dictionary) -> Control:
+	var mats := p.has("materials")
+	var card := TSUI.card(Color(0.86, 0.97, 0.88), 24, 10, 4)
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var v := TSUI.vbox(4)
 	card.add_child(v)
-	var coins := int(p["coins"])
-	var stack := Control.new()
-	stack.custom_minimum_size = Vector2(0, 90)
-	var n := clampi(int(log(float(coins) / 1000.0) / log(2.5)) + 1, 1, 5)
-	for k in n:
-		var c := TSIcon.make("coin", 56)
-		c.position = Vector2(40 + (k % 3) * 22 - (n - 1) * 6, 30 - (k / 3) * 22 - k * 3)
-		c.size = Vector2(56, 56)
-		stack.add_child(c)
-	v.add_child(stack)
-	v.add_child(TSUI.label("%s coins" % TSProfile.fmt_coins(coins), 22, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER))
-	if p.get("starter", false):
-		TSProfile.roll_starter_claims()
-		var left := _starter_left()
-		var claims := TSProfile.starter_coin_claims
-		v.add_child(TSUI.label("Back tomorrow" if left <= 0 else ("Free today" if claims == 0 else ("%d more today" % left if TSProfile.no_ads else "%d ad%s left" % [left, "" if left == 1 else "s"])), 16, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
-		var b := _buy_button(_starter_button_text(claims, left), _on_starter.bind(p))
-		b.disabled = left <= 0
-		v.add_child(b)
-		return card
-	v.add_child(_buy_button(_price(p), func(): Billing.purchase(p["product_id"])))
+	TSProfile.roll_starter_claims()
+	var left := _starter_left(mats)
+	var claims := TSProfile.starter_material_claims if mats else TSProfile.starter_coin_claims
+	v.add_child(_ribbon("FREE" if claims == 0 else "", TSUI.RED_DOT))
+	v.add_child(_heap("materials" if mats else "coin", int(p["materials" if mats else "coins"]), float(p["materials" if mats else "coins"]) / 2.5, 62.0))
+	v.add_child(TSUI.outlined(TSUI.label(TSProfile.fmt_coins(int(p["materials" if mats else "coins"])), 32, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER), Color.WHITE, 6))
+	v.add_child(TSUI.label("materials" if mats else "coins", 18, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(TSUI.label("Back tomorrow" if left <= 0 else ("Free now, %d more later" % (left - 1) if claims == 0 else ("%d more today" % left if TSProfile.no_ads else "%d ad%s left today" % [left, "" if left == 1 else "s"])), 16, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(TSUI.spacer(0, true))
+	var b := TSUI.button(_starter_button_text(claims, left), TSUI.PINK if left > 0 else TSUI.GREY, 24, Vector2(0, 62), 5)
+	b.pressed.connect(func():
+		_last_btn = b
+		_on_starter(p))
+	b.disabled = left <= 0
+	if claims > 0 and left > 0 and not TSProfile.no_ads:
+		var ad := TSIcon.make("ad", 30)
+		ad.position = Vector2(12, 16)
+		ad.size = Vector2(30, 30)
+		b.add_child(ad)
+	v.add_child(b)
 	return card
 
 
-## A materials pack: a heap of the materials icon, bigger for bigger packs.
-func _material_card(p: Dictionary) -> Control:
+## A paid coins or materials pack: its heap, its amount, how much more it
+## gives for the money than the smallest pack, and its price. The middle
+## pack is the popular one; the biggest, the best value.
+func _pack_card(p: Dictionary, kind: String, base: float) -> Control:
 	var card := TSUI.card(TSUI.CARD, 24, 10, 3)
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var v := TSUI.vbox(4)
 	card.add_child(v)
-	var amount := int(p["materials"])
-	var stack := Control.new()
-	stack.custom_minimum_size = Vector2(0, 90)
-	var n := clampi(int(log(float(amount) / 100.0) / log(2.5)) + 1, 1, 5)
-	for k in n:
-		var c := TSIcon.make("materials", 58)
-		c.position = Vector2(38 + (k % 3) * 22 - (n - 1) * 6, 28 - (k / 3) * 22 - k * 3)
-		c.size = Vector2(58, 58)
-		stack.add_child(c)
-	v.add_child(stack)
-	v.add_child(TSUI.label("%s materials" % TSProfile.fmt_coins(amount), 22, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER))
-	if p.get("starter", false):
-		var left := _starter_left(true)
-		var claims := TSProfile.starter_material_claims
-		v.add_child(TSUI.label("Back tomorrow" if left <= 0 else ("Free today" if claims == 0 else ("%d more today" % left if TSProfile.no_ads else "%d ad%s left" % [left, "" if left == 1 else "s"])), 16, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
-		var b := _buy_button(_starter_button_text(claims, left), _on_starter.bind(p))
-		b.disabled = left <= 0
-		v.add_child(b)
-		return card
+	var amount := int(p[kind])
+	var packs: Array = COIN_PACKS if kind == "coins" else MATERIAL_PACKS
+	var at := packs.find(p)
+	var ribbon := ""
+	if at == 3:
+		ribbon = "MOST POPULAR"
+	elif at == packs.size() - 1:
+		ribbon = "BEST VALUE"
+	v.add_child(_ribbon(ribbon, TSUI.CORAL if at == 3 else TSUI.GOLD_DARK))
+	v.add_child(_heap("coin" if kind == "coins" else "materials", amount, float(packs[1][kind]) / 2.5, 56.0))
+	v.add_child(TSUI.label(TSProfile.fmt_coins(amount), 28, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER))
+	var more := roundi((_per_dollar(p, kind) / base - 1.0) * 100.0) if base > 0.0 else 0
+	v.add_child(TSUI.label("+%d%% more" % more if more >= 5 else kind, 17, TSFX.COL_GAIN if more >= 5 else TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(TSUI.spacer(0, true))
 	v.add_child(_buy_button(_price(p), func(): Billing.purchase(p["product_id"])))
 	return card
 
