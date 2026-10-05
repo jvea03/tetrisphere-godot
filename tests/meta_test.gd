@@ -44,11 +44,13 @@ func _test_wins_and_stars() -> void:
 	before = TSProfile.coin_count
 	stars = TSProfile.add_stars(3, 2, 0)
 	_check("a win pays hearts left + bonus as stars (5)", stars == 5)
-	_check("each star pays %d coins" % TSProfile.coins_per_star(), TSProfile.coin_count - before == 5 * TSProfile.coins_per_star() * (1.0 + TSProfile.collection_coin_bonus_percent() / 100.0))
+	_check("each star pays %d coins" % TSProfile.coins_per_star(), TSProfile.coin_count - before == 5 * TSProfile.coins_per_star() * (1.0 + TSProfile.camp_coin_bonus_percent() / 100.0))
 	_check("stars climb the Battle Pass", TSProfile.battle_pass_xp == xp + 5)
 	before = TSProfile.coin_count
 	TSProfile.add_stars(1, 0, TSLevels.DIFF_EXTREME)
-	_check("Extreme pays double", TSProfile.coin_count - before == 2 * TSProfile.coins_per_star())
+	_check("Extreme pays double", TSProfile.coin_count - before == roundi(2 * TSProfile.coins_per_star() * (1.0 + TSProfile.camp_coin_bonus_percent() / 100.0)))
+	_check("the Camp level adds 1%% coins a level (+%d%% at Lv %d)" % [TSProfile.camp_coin_bonus_percent(), TSProfile.camp_level()], TSProfile.camp_coin_bonus_percent() == TSProfile.camp_level())
+	_check("the Collection level adds materials to a win, not coins", TSProfile.win_materials(false) == roundi(TSProfile.MATERIALS_PER_WIN * (1.0 + TSProfile.collection_material_bonus_percent() / 100.0)))
 
 
 func _test_chests() -> void:

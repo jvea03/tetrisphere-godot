@@ -648,10 +648,10 @@ func _built(i: int, camp_before: int) -> void:
 	if camp_now > camp_before:
 		TSUI.conceal(_part["root"])
 		if TSProfile.is_ship_open():
-			_camp_banner("Camp Lv %d!" % camp_now, "Camp complete -- now fix up your ship", TSProfile.PART_ENGINE)
+			_camp_banner("Camp Lv %d!" % camp_now, "+%d%% coins on every win\nCamp complete -- now fix up your ship" % TSProfile.camp_coin_bonus_percent(), TSProfile.PART_ENGINE)
 		else:
 			var wave: Array = TSProfile.CAMP_WAVES[camp_now - 1]
-			_camp_banner("Camp Lv %d!" % camp_now, "%d new spots to build" % wave.size(), int(wave[0]))
+			_camp_banner("Camp Lv %d!" % camp_now, "+%d%% coins on every win\n%d new spots to build" % [TSProfile.camp_coin_bonus_percent(), wave.size()], int(wave[0]))
 		return
 	if _part["root"].visible:
 		_fill_part_card()

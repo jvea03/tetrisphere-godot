@@ -700,6 +700,13 @@ static func camp_level() -> int:
 	return lv
 
 
+## Every Camp level adds 1% to the coins a win pays.
+const CAMP_COIN_BONUS_PERCENT := 1
+
+static func camp_coin_bonus_percent() -> int:
+	return camp_level() * CAMP_COIN_BONUS_PERCENT
+
+
 ## How far into the current Camp level: the open wave's steps taken, out of
 ## its five spots' worth (0..1). 1 once the camp is finished.
 static func camp_level_progress() -> float:
@@ -1119,10 +1126,11 @@ static func claim_collection_gift() -> int:
 
 ## Collection level: every level across every owned critter counts (5-20
 ## points a level by rarity) -- the camp and the ship don't; each collection
-## level past the first adds 1% to the coins a win pays.
+## level past the first adds 1% to the building materials a win pays (and
+## the mine under the ship fills faster). Coins grow with the Camp level.
 const COLLECTION_POINTS_FIRST_LEVEL := 50
 const COLLECTION_POINTS_LEVEL_STEP := 5
-const COLLECTION_COIN_BONUS_PERCENT := 1
+const COLLECTION_MATERIAL_BONUS_PERCENT := 1
 
 
 static func collection_points() -> int:
@@ -1132,8 +1140,14 @@ static func collection_points() -> int:
 	return total
 
 
-static func collection_coin_bonus_percent() -> int:
-	return (collection_level() - 1) * COLLECTION_COIN_BONUS_PERCENT
+static func collection_material_bonus_percent() -> int:
+	return (collection_level() - 1) * COLLECTION_MATERIAL_BONUS_PERCENT
+
+
+## The materials a win pays (the Daily Egg more), collection bonus included.
+static func win_materials(daily: bool) -> int:
+	var base := MATERIALS_PER_DAILY if daily else MATERIALS_PER_WIN
+	return roundi(base * (1.0 + collection_material_bonus_percent() / 100.0))
 
 
 static func collection_points_for_level(level: int) -> int:
@@ -1682,9 +1696,9 @@ static func difficulty_coin_multiplier(difficulty: int) -> float:
 	return float(DIFFICULTY_COIN_MULTIPLIER[difficulty])
 
 
-## The coins a win pays for `stars_earned` stars, collection bonus included.
+## The coins a win pays for `stars_earned` stars, camp bonus included.
 static func win_coin_payout(stars_earned: int, difficulty: int = 0) -> int:
-	var base := stars_earned * coins_per_star() * (1.0 + collection_coin_bonus_percent() / 100.0)
+	var base := stars_earned * coins_per_star() * (1.0 + camp_coin_bonus_percent() / 100.0)
 	return boost_earned_coins(roundi(base * difficulty_coin_multiplier(difficulty)))
 
 

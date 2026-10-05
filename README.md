@@ -165,7 +165,9 @@ wave's spots appear (until then the ground there is bare) when every spot
 in the wave before is fully upgraded, and each finished wave raises the
 **Camp level**, shown under the wallet on Home with a bar for the open
 wave: Camp Lv 1 to start, a banner and a glide to the new spots at each
-level, Lv 5 with the camp done. Each spot starts as its makings, is built,
+level, Lv 5 with the camp done. Every Camp level adds 1% to the coins a win
+pays (Lv 1 +1%, up to +5%); the Collection level adds 1% a level to the
+materials instead. Each spot starts as its makings, is built,
 then upgraded three times: the campfire, tent, workbench, garden and well
 first (cold ashes to a bonfire with a cooking pot, a torn tarp to a cabin
 tent with string lights, loose planks to a workbench under a striped

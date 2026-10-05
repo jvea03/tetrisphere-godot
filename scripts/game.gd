@@ -1665,7 +1665,7 @@ func _pay_win() -> void:
 	var bonus := FIRST_ATTEMPT_STAR_BONUS if is_first_attempt else 0
 	_win_stars = TSProfile.add_stars(lives, bonus, difficulty)
 	_win_coins = TSProfile.coin_count - before
-	_win_materials = TSProfile.MATERIALS_PER_DAILY if is_daily else TSProfile.MATERIALS_PER_WIN
+	_win_materials = TSProfile.win_materials(is_daily)
 	TSProfile.add_materials(_win_materials)
 	_win_chest = "" if is_daily else TSChests.record_win()
 	_win_ad_due = false if is_daily else _roll_interstitial()

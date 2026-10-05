@@ -5,7 +5,7 @@ extends TSScreen
 ## and one button: Buy while locked, Upgrade while there is a level to gain,
 ## Max Level at the top; tapping an owned critter makes it your avatar -- the
 ## one sealed in the egg. Every critter level counts toward the collection
-## level, and each collection level adds 1% to the coins a win pays. (The camp
+## level, and each collection level adds 1% to the materials a win pays. (The camp
 ## and the ship are built from their nodes on Home, and don't count.)
 
 const TILE := 120.0
@@ -62,7 +62,7 @@ func build() -> void:
 	_info = TSUI.dialog(self, 580)
 	var ibox: VBoxContainer = _info["box"]
 	ibox.add_child(TSUI.title("Your Collection", 40))
-	ibox.add_child(TSUI.wrap(TSUI.label("Buy and upgrade critters with coins. Every critter level counts toward your Collection level, and each Collection level adds +1% to the coins every win pays.\n\nTap a critter to make it yours: it's the one sealed in the egg. Your camp and ship are built on Home -- tap the hammers at the crash site.", 22), 520))
+	ibox.add_child(TSUI.wrap(TSUI.label("Buy and upgrade critters with coins. Every critter level counts toward your Collection level, and each Collection level adds +1% to the building materials every win pays (and fills the mine under the ship faster). Your Camp level adds +1% coins per level.\n\nTap a critter to make it yours: it's the one sealed in the egg. Your camp and ship are built on Home -- tap the plus signs at the crash site.", 22), 520))
 	var ok := TSUI.button("Got it", TSUI.PINK, 26)
 	ok.pressed.connect(func(): TSUI.conceal(_info["root"]))
 	ibox.add_child(ok)
@@ -86,7 +86,7 @@ func _refresh() -> void:
 	_last_coins = TSProfile.coin_count
 	var lvl := TSProfile.collection_level()
 	_level_label.text = "Collection Level %d" % lvl
-	_bonus_label.text = "+%d%% coins" % TSProfile.collection_coin_bonus_percent()
+	_bonus_label.text = "+%d%% materials" % TSProfile.collection_material_bonus_percent()
 	_level_bar.max_value = TSProfile.collection_points_for_level(lvl)
 	_level_bar.value = TSProfile.collection_level_progress()
 	if _sel_critter < 0:
@@ -187,7 +187,7 @@ func _level_up_banner() -> void:
 	var v := TSUI.vbox(4)
 	banner.add_child(v)
 	v.add_child(TSUI.title("Collection Level %d!" % TSProfile.collection_level(), 42))
-	v.add_child(TSUI.label("+%d%% coins on every win" % TSProfile.collection_coin_bonus_percent(), 26, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(TSUI.label("+%d%% materials on every win" % TSProfile.collection_material_bonus_percent(), 26, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER))
 	add_child(banner)
 	banner.reset_size()
 	var area := get_viewport_rect().size
@@ -313,7 +313,7 @@ func _maybe_start_tutorial() -> void:
 		steps.append({"rect": func() -> Rect2: return _tile_rect(TUTORIAL_CRITTER), "text": "Tap Blueberry.", "gate": true})
 		steps.append({"rect": func() -> Rect2: return _feature_btn.get_global_rect(), "text": "Tap Buy to adopt it.", "gate": true})
 	steps.append({"rect": func() -> Rect2: return _feature.get_global_rect(), "text": "It's yours! Tap an owned critter to seal it in the egg, and upgrade it here." if buying else "Tap an owned critter to seal it in the egg, and upgrade it here."})
-	steps.append({"rect": func() -> Rect2: return _level_card.get_global_rect(), "text": "Each Collection level adds +1% coins on every win."})
+	steps.append({"rect": func() -> Rect2: return _level_card.get_global_rect(), "text": "Each Collection level adds +1% building materials on every win."})
 	_tutorial.start(steps)
 
 
