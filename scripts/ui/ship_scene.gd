@@ -118,6 +118,13 @@ const MINE := Vector2(1300.0, 985.0)
 const MINE_NODE := MINE + Vector2(0.0, -90.0)
 const MINE_HIT := -1             # the mine's entry in _node_hits
 const LEAF := Color(0.48, 0.78, 0.5)
+## The season the crash site is dressed for: "autumn" warms the grass to
+## gold, plants orange and red trees along the horizon and round the meadow,
+## strews fallen leaves and little pumpkins, and sets leaves drifting down.
+## "" for the plain planet.
+const SEASON := "autumn"
+const AUTUMN_LEAVES := [Color(1.0, 0.56, 0.22), Color(0.94, 0.36, 0.26), Color(1.0, 0.78, 0.3), Color(0.86, 0.46, 0.2)]
+const AUTUMN_GROUND := Color(0.9, 0.76, 0.46)   # the grass, gone gold
 
 ## The jobs, in the order critters take them.
 const JOBS := [
@@ -172,6 +179,8 @@ var _pose := Transform2D()      # _xf before any lift-off
 var _launch_start := -1.0       # when lift-off began (see launch), or -1
 var _pad_layer: Control         # behind the ship: scaffolding, launch pad, gantry
 var _scatter: Array = []        # ground decoration: [kind, position, size]
+var _trees: Array = []          # autumn trees in the meadow: [position, size, colour index]
+var _falling: Array = []        # drifting leaves: [x, y, fall speed, sway phase, colour index, size]
 
 ## Where the build nodes on the ground float, in world coordinates (above each
 ## camp spot, and the solar panels' stand), by TSProfile.PARTS index.
@@ -215,6 +224,10 @@ func _ready() -> void:
 	for i in TSProfile.PART_COUNT:
 		_levels.append(TSProfile.part_level_of(i))
 	_planet = PLANETS[(TSProfile.planet_number - 1) % PLANETS.size()]
+	if SEASON == "autumn":
+		_planet = _planet.duplicate()
+		_planet["ground"] = (_planet["ground"] as Color).lerp(AUTUMN_GROUND, 0.6)
+		_planet["ground_dark"] = (_planet["ground_dark"] as Color).lerp(AUTUMN_GROUND.darkened(0.14), 0.6)
 	_sky = TSToon.sky_for_level(TSProfile.last_level)
 	_set_pose()
 	_make_scenery()
@@ -249,6 +262,14 @@ func _ready() -> void:
 			[_draw_dock, DOCK], [_draw_playground, PLAYGROUND], [_draw_treehouse, TREEHOUSE], [_draw_stall, STALL], [_draw_greenhouse, GREENHOUSE],
 			[_draw_spring, SPRING], [_draw_observatory, OBSERVATORY], [_draw_oven, OVEN], [_draw_statue, STATUE], [_draw_mine, MINE]]:
 		_spot_layer(spot[0], (spot[1] as Vector2).y)
+	for tree in _trees:
+		var layer := Control.new()
+		layer.size = Vector2(W, H)
+		layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		layer.draw.connect(func(): _draw_tree(layer, tree))
+		layer.set_meta("depth", (tree[0] as Vector2).y)
+		_world.add_child(layer)
+		_painters.append(layer)
 	if _jobs.has("crater"):
 		_lip_layer = _layer(_draw_crater_lip, CRATER.y + 1.0)
 	# The time of day, as on the player's current level (TSToon.SKIES): the
@@ -319,9 +340,27 @@ func _make_scenery() -> void:
 			clear = clear and p.distance_to(q) > 170.0
 		if not clear:
 			continue
-		var kind: String = ["crater", "pebble", "sprout", "sprout", "pebble"][rng.randi() % 5]
+		var kinds := ["crater", "pebble", "leaves", "leaves", "pumpkin", "pebble"] if SEASON == "autumn" else ["crater", "pebble", "sprout", "sprout", "pebble"]
+		var kind: String = kinds[rng.randi() % kinds.size()]
 		_scatter.append([kind, p, rng.randf_range(0.7, 1.3)])
 	_scatter.sort_custom(func(a: Array, b: Array) -> bool: return (a[1] as Vector2).y < (b[1] as Vector2).y)
+	if SEASON != "autumn":
+		return
+	# Autumn trees round the meadow, clear of everything built or worked at.
+	var tries := 0
+	while _trees.size() < 9 and tries < 400:
+		tries += 1
+		var p := Vector2(rng.randf_range(80.0, W - 80.0), rng.randf_range(_horizon(W * 0.5) + 120.0, H - 120.0))
+		var clear := true
+		for q in keep_clear:
+			clear = clear and p.distance_to(q) > 240.0
+		for t in _trees:
+			clear = clear and p.distance_to(t[0]) > 300.0
+		if clear:
+			_trees.append([p, rng.randf_range(0.85, 1.15), rng.randi() % AUTUMN_LEAVES.size()])
+	# Leaves drifting down all over.
+	for n in 70:
+		_falling.append([rng.randf_range(0.0, W), rng.randf_range(0.0, H), rng.randf_range(28.0, 55.0), rng.randf() * TAU, rng.randi() % AUTUMN_LEAVES.size(), rng.randf_range(9.0, 15.0)])
 
 
 ## The avatar first, then every other critter the player owns.
@@ -1194,6 +1233,11 @@ func _draw_ground() -> void:
 		band.append(Vector2(x, _horizon(x) + 26.0))
 	ci.draw_colored_polygon(band, _planet["ground_dark"])
 	ci.draw_polyline(rim, INK, 5.0, true)
+	if SEASON == "autumn":
+		# A line of autumn trees along the horizon, paled by the distance.
+		for n in 16:
+			var x := 70.0 + float(n) * 165.0 + sin(float(n) * 2.3) * 40.0
+			_canopy(ci, Vector2(x, _horizon(x) + 4.0), 0.5 + 0.08 * sin(float(n) * 1.7), n, 0.3)
 	for item in _scatter:
 		var p: Vector2 = item[1]
 		var k: float = float(item[2]) * _depth_scale(p.y)
@@ -1206,6 +1250,15 @@ func _draw_ground() -> void:
 			"sprout":
 				ci.draw_line(p, p + Vector2(0, -20.0 * k), Color(0.36, 0.62, 0.44), 4.0, true)
 				ci.draw_circle(p + Vector2(0, -23.0 * k), 6.5 * k, Color(1.0, 0.62, 0.74), true, -1.0, true)
+			"leaves":
+				for n in 3:
+					_leaf(ci, p + Vector2(float(n - 1) * 16.0, float(n % 2) * 6.0) * k, 11.0 * k, float(n) * 1.9 + p.x, AUTUMN_LEAVES[(int(p.x) + n) % AUTUMN_LEAVES.size()])
+			"pumpkin":
+				_ellipse(ci, p + Vector2(0, 3.0 * k), 22.0 * k, 5.0 * k, SHADOW, false)
+				_ellipse(ci, p + Vector2(0, -12.0 * k), 22.0 * k, 16.0 * k, Color(1.0, 0.6, 0.24))
+				for dx in [-8.0, 8.0]:
+					ci.draw_line(p + Vector2(dx, -25.0) * k, p + Vector2(dx, 1.0) * k, Color(INK, 0.3), 2.0, true)
+				ci.draw_line(p + Vector2(0, -27.0) * k, p + Vector2(3.0, -35.0) * k, Color(0.4, 0.6, 0.32), 5.0 * k, true)
 	# The crater pond.
 	_ellipse(ci, POND, 170.0, 42.0, WATER)
 	var shimmer := sin(_t * 1.5) * 10.0
@@ -2025,8 +2078,10 @@ func _draw_treehouse(ci: Control) -> void:
 		return
 	for c in [Vector2(-80, -250), Vector2(70, -270), Vector2(0, -300), Vector2(-30, -240), Vector2(40, -230)]:
 		ci.draw_circle(p + c * k, 58.0 * k, INK, true, -1.0, true)
-	for c in [Vector2(-80, -250), Vector2(70, -270), Vector2(0, -300), Vector2(-30, -240), Vector2(40, -230)]:
-		ci.draw_circle(p + c * k, 54.0 * k, LEAF, true, -1.0, true)
+	var clumps := [Vector2(-80, -250), Vector2(70, -270), Vector2(0, -300), Vector2(-30, -240), Vector2(40, -230)]
+	for n in clumps.size():
+		var leaf: Color = AUTUMN_LEAVES[n % AUTUMN_LEAVES.size()] if SEASON == "autumn" else LEAF   # its tree turns with the season
+		ci.draw_circle(p + clumps[n] * k, 54.0 * k, leaf, true, -1.0, true)
 	_box(ci, Rect2(p + Vector2(-80, -150) * k, Vector2(160, 14) * k), WOOD)
 	if lv >= 2:
 		_box(ci, Rect2(p + Vector2(-50, -216) * k, Vector2(100, 66) * k), Color(1.0, 0.86, 0.66))
@@ -2272,8 +2327,63 @@ func _draw_crater_lip() -> void:
 
 
 # Over everything: smoke, tools, lines and fun.
+# -- autumn -----------------------------------------------------------------------
+
+## A fallen or falling leaf: a pointed oval with a midrib, `s` long.
+func _leaf(ci: CanvasItem, c: Vector2, s: float, rot: float, colour: Color) -> void:
+	var shape := [Vector2(0, -1), Vector2(0.55, -0.3), Vector2(0.45, 0.4), Vector2(0, 0.8), Vector2(-0.45, 0.4), Vector2(-0.55, -0.3)]
+	var pts := PackedVector2Array()
+	for v in shape:
+		pts.append(c + (v as Vector2).rotated(rot) * s)
+	ci.draw_colored_polygon(pts, colour)
+	pts.append(pts[0])
+	ci.draw_polyline(pts, INK, 2.0, true)
+	ci.draw_line(c + Vector2(0, -0.8).rotated(rot) * s, c + Vector2(0, 1.2).rotated(rot) * s, Color(INK, 0.5), 1.5, true)
+
+
+## A tree's crown: clumps of autumn leaves in turn, `pale` toward the sky for
+## a far one. Its foot is at `foot`.
+func _canopy(ci: CanvasItem, foot: Vector2, k: float, colour: int, pale := 0.0) -> void:
+	var haze: Color = _sky["bottom"]
+	var clumps := [[Vector2(0, -150), 52.0], [Vector2(-44, -112), 46.0], [Vector2(44, -112), 46.0], [Vector2(-18, -86), 40.0], [Vector2(22, -84), 38.0]]
+	ci.draw_line(foot, foot + Vector2(0, -90) * k, INK.lerp(haze, pale), 20.0 * k, true)
+	ci.draw_line(foot, foot + Vector2(0, -90) * k, WOOD.lerp(haze, pale), 13.0 * k, true)
+	for n in clumps.size():
+		var at: Vector2 = foot + (clumps[n][0] as Vector2) * k
+		var r: float = float(clumps[n][1]) * k
+		ci.draw_circle(at, r + 3.0, INK.lerp(haze, pale), true, -1.0, true)
+	for n in clumps.size():
+		var at: Vector2 = foot + (clumps[n][0] as Vector2) * k
+		var r: float = float(clumps[n][1]) * k
+		var leaf: Color = AUTUMN_LEAVES[(colour + n) % AUTUMN_LEAVES.size()]
+		ci.draw_circle(at, r, leaf.lerp(haze, pale), true, -1.0, true)
+		ci.draw_arc(at + Vector2(-r * 0.3, -r * 0.3), r * 0.5, PI * 1.1, PI * 1.6, 8, Color(1, 1, 1, 0.35 * (1.0 - pale)), 4.0 * k, true)
+
+
+## A tree in the meadow: its shadow, then its trunk and crown, with a few of
+## its leaves already down at its foot.
+func _draw_tree(ci: Control, tree: Array) -> void:
+	var p: Vector2 = tree[0]
+	var k: float = float(tree[1]) * _depth_scale(p.y)
+	_ellipse(ci, p + Vector2(0, 6) * k, 110.0 * k, 22.0 * k, SHADOW, false)
+	for n in 4:
+		_leaf(ci, p + Vector2(-70.0 + float(n) * 46.0, 10.0 + float(n % 2) * 8.0) * k, 11.0 * k, float(n) * 2.1, AUTUMN_LEAVES[(int(tree[2]) + n) % AUTUMN_LEAVES.size()])
+	_canopy(ci, p, k * 1.3, int(tree[2]))
+
+
+## Leaves drifting down all over the world, swaying and turning as they fall.
+func _draw_falling_leaves(ci: CanvasItem) -> void:
+	for leaf in _falling:
+		var y := fposmod(float(leaf[1]) + _t * float(leaf[2]), H)
+		var phase: float = leaf[3]
+		var x := fposmod(float(leaf[0]) + sin(_t * 0.9 + phase) * 46.0 + _t * 10.0, W)
+		_leaf(ci, Vector2(x, y), float(leaf[5]), sin(_t * 1.6 + phase) * 1.2 + phase, AUTUMN_LEAVES[int(leaf[4])])
+
+
 func _draw_overlay() -> void:
 	var ci := _overlay
+	if SEASON == "autumn" and _launch_start < 0.0:
+		_draw_falling_leaves(ci)
 	var nozzle := _xf * NOZZLE
 	# Smoke puffs from the engine while it is broken.
 	for k in (6 if _lv(TSProfile.PART_ENGINE) == 0 else 0):
