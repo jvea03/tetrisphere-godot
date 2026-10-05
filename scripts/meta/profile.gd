@@ -745,7 +745,7 @@ static func _fill_parts() -> void:
 # on the ship. A critter builds it: each owned critter works on one thing at a
 # time, so more critters means more at once. When the time is up the step is
 # finished from its node on Home (or finished early for coins). Materials come
-# from level wins, chests, quests and the Battle Pass.
+# from level wins, chests, quests, the Battle Pass and the mine under the ship.
 
 ## Materials for a step: this much times the level it builds up to, by wave
 ## (CAMP_WAVES), with the ship last.
@@ -792,6 +792,46 @@ static func part_build_seconds(i: int) -> int:
 
 static func add_materials(n: int) -> void:
 	materials = maxi(0, materials + n)
+
+
+## The materials mine under the ship fills by itself -- more an hour the
+## higher the Collection level -- up to MINE_CAP_SECONDS' worth, then waits
+## to be emptied from its node on Home.
+const MINE_BASE_PER_HOUR := 20
+const MINE_PER_LEVEL_PER_HOUR := 5
+const MINE_CAP_SECONDS := 7200
+static var mine_since: int = 0   # unix time it was last emptied (0: not started yet)
+
+
+static func mine_per_hour() -> int:
+	return MINE_BASE_PER_HOUR + MINE_PER_LEVEL_PER_HOUR * collection_level()
+
+
+## How long it has been filling, up to the cap. (Starts it the first time.)
+static func mine_seconds() -> int:
+	if mine_since <= 0:
+		mine_since = _now_unix()
+	return clampi(_now_unix() - mine_since, 0, MINE_CAP_SECONDS)
+
+
+static func mine_stored() -> int:
+	@warning_ignore("integer_division")
+	return mine_per_hour() * mine_seconds() / 3600
+
+
+static func is_mine_full() -> bool:
+	return mine_seconds() >= MINE_CAP_SECONDS
+
+
+## Empties the mine into materials; how many it held (0: nothing yet).
+static func collect_mine() -> int:
+	var n := mine_stored()
+	if n <= 0:
+		return 0
+	add_materials(n)
+	mine_since = _now_unix()
+	save()
+	return n
 
 
 static func is_part_building(i: int) -> bool:
@@ -2277,6 +2317,7 @@ static func ensure_loaded() -> void:
 	var cl: Array = g.call("critter_level", [])
 	var pl: Array = g.call("camp_and_ship", [])   # the camp-first list (an older ship-only one is ignored)
 	materials = maxi(0, int(g.call("materials", 0)))
+	mine_since = maxi(0, int(g.call("mine_since", 0)))
 	time_skips = maxi(0, int(g.call("time_skips", 0)))
 	part_builds = {}
 	var pb: Variant = g.call("part_builds", {})
@@ -2387,6 +2428,7 @@ static func save() -> void:
 	s.call("camp_and_ship", part_level)
 	s.call("part_builds", part_builds)
 	s.call("materials", materials)
+	s.call("mine_since", mine_since)
 	s.call("time_skips", time_skips)
 	s.call("planet_number", planet_number)
 	s.call("launched_season", launched_season)

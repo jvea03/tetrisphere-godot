@@ -91,6 +91,13 @@ func _run() -> void:
 	_check("Finish Now pays coins and finishes the upgrade at once", TSProfile.part_level_of(TSProfile.CAMP_FIRE) == 3 and TSProfile.coin_count < coins)
 	_check("none of it counts toward the collection level", TSProfile.collection_points() == points)
 
+	# The mine under the ship: a node of its own; tapping it empties it.
+	TSProfile.mine_since = TSProfile._now_unix() - 7200
+	var held := TSProfile.mine_stored()
+	mats = TSProfile.materials
+	_collect_mine()
+	_check("the mine's node empties it into materials (+%d)" % held, held > 0 and TSProfile.materials == mats + held and materials_label.text == TSProfile.fmt_coins(TSProfile.materials))
+
 	# The reasons a build can't start.
 	TSProfile.materials = 0
 	_open_part(TSProfile.CAMP_TENT)

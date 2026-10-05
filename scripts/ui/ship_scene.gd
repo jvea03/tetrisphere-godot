@@ -5,6 +5,7 @@ extends Control
 signal launched
 ## A camp spot's or ship part's build node was tapped (TSProfile.PARTS index).
 signal part_tapped(part: int)
+signal mine_tapped
 
 ## Home's backdrop: a little planet, seen in three-quarter view, where a
 ## cartoon spaceship has crash-landed nose-first in a heap of dirt (its
@@ -111,6 +112,11 @@ const SPRING := Vector2(1560.0, 1900.0)
 const OBSERVATORY := Vector2(2420.0, 1960.0)
 const OVEN := Vector2(1080.0, 1860.0)
 const STATUE := Vector2(470.0, 1950.0)
+## The materials mine: a cart under the ship that fills by itself
+## (TSProfile.mine_stored), its node floating just over it.
+const MINE := Vector2(1300.0, 930.0)
+const MINE_NODE := MINE + Vector2(0.0, -80.0)
+const MINE_HIT := -1             # the mine's entry in _node_hits
 const LEAF := Color(0.48, 0.78, 0.5)
 
 ## The jobs, in the order critters take them.
@@ -131,7 +137,7 @@ const FEET := {
 }
 ## The walkers: [from x, to x, feet y, speed].
 const PATHS := {
-	"walk": [1040.0, 1460.0, 930.0, 0.07], "carry": [1640.0, 1960.0, 1180.0, 0.06],
+	"walk": [600.0, 900.0, 1300.0, 0.07], "carry": [1640.0, 1960.0, 1180.0, 0.06],
 	"stroll": [1480.0, 1960.0, 1580.0, 0.05],
 }
 const CHASE := Vector2(840.0, 1420.0)       # the middle of the bug chase's loop
@@ -176,10 +182,10 @@ const GROUND_NODES := {0: FIRE + Vector2(0.0, -150.0), 1: TENT + Vector2(0.0, -2
 ## The ship parts' nodes ring the ship (too many to sit on the hull itself):
 ## each at its own angle round SHIP_MIDDLE, in ship coordinates (0 towards the
 ## nose, 90 the belly), on an oval SHIP_RING across, with a dotted line in to
-## where its part is (SHIP_SPOTS).
+## where its part is (SHIP_SPOTS). The belly's gap is the mine's (MINE_NODE).
 const SHIP_MIDDLE := Vector2(270.0, 180.0)
 const SHIP_RING := Vector2(270.0, 190.0)
-const SHIP_SLOTS := {12: 0.0, 7: 45.0, 13: 90.0, 11: 135.0, 6: 180.0, 10: 225.0, 9: 270.0, 8: 315.0}
+const SHIP_SLOTS := {12: 10.0, 13: 55.0, 11: 125.0, 6: 160.0, 10: 200.0, 9: 240.0, 7: 280.0, 8: 320.0}
 const SHIP_SPOTS := {6: NOZZLE, 7: PATCH, 8: DOME, 9: ANTENNA_UP, 10: FIN_TIP, 11: Vector2(256.0, 204.0), 12: Vector2(466.0, 200.0), 13: Vector2(270.0, 262.0)}
 const NODE_R := 32.0            # a node's circle, on screen
 const EDGE_INSET := 44.0        # how far inside node_area an edge arrow sits
@@ -241,7 +247,7 @@ func _ready() -> void:
 	for spot in [[_draw_campfire, FIRE], [_draw_tent, TENT], [_draw_bench, BENCH], [_draw_garden, GARDEN], [_draw_well, WELL], [_draw_lookout, LOOKOUT], [_draw_solar, SOLAR],
 			[_draw_hammock, HAMMOCK], [_draw_picnic, PICNIC], [_draw_clothesline, CLOTHESLINE], [_draw_mailbox, MAILBOX], [_draw_windmill, WINDMILL],
 			[_draw_dock, DOCK], [_draw_playground, PLAYGROUND], [_draw_treehouse, TREEHOUSE], [_draw_stall, STALL], [_draw_greenhouse, GREENHOUSE],
-			[_draw_spring, SPRING], [_draw_observatory, OBSERVATORY], [_draw_oven, OVEN], [_draw_statue, STATUE]]:
+			[_draw_spring, SPRING], [_draw_observatory, OBSERVATORY], [_draw_oven, OVEN], [_draw_statue, STATUE], [_draw_mine, MINE]]:
 		_spot_layer(spot[0], (spot[1] as Vector2).y)
 	if _jobs.has("crater"):
 		_lip_layer = _layer(_draw_crater_lip, CRATER.y + 1.0)
@@ -395,7 +401,10 @@ func _poke(at: Vector2) -> void:
 	for hit in _node_hits:
 		if (hit[0] as Rect2).has_point(at):
 			TSSfx.play("tap")
-			part_tapped.emit(int(hit[1]))
+			if int(hit[1]) == MINE_HIT:
+				mine_tapped.emit()
+			else:
+				part_tapped.emit(int(hit[1]))
 			return
 	for hit in _edge_hits:
 		if (hit[0] as Rect2).has_point(at):
@@ -468,11 +477,16 @@ func refresh_parts() -> void:
 func _draw_nodes() -> void:
 	_node_hits.clear()
 	_edge_hits.clear()
+	var area := _area()
+	var inner := area.grow(-NODE_R - 6.0)
+	# The mine under the ship, whenever the nodes are out.
+	if nodes_enabled and _launch_start == -1.0:
+		var mp := _world.position + MINE_NODE * ZOOM
+		if inner.has_point(mp):
+			_draw_mine_node(mp + Vector2(0.0, sin(_t * 2.4) * 4.0))
 	var parts := _node_parts()
 	if parts.is_empty():
 		return
-	var area := _area()
-	var inner := area.grow(-NODE_R - 6.0)
 	var off := {}   # side -> [how many, the nearest part, its distance]
 	# The ship's dotted lines first, under every node.
 	for i in parts:
@@ -545,6 +559,37 @@ func _draw_node(i: int, p: Vector2) -> void:
 	ci.draw_arc(p + Vector2(-4.0, -5.0), r * 0.62, PI * 1.05, PI * 1.55, 10, Color(1, 1, 1, 0.55), 4.0, true)
 	_plus(ci, p, r * 0.5)
 	_node_hits.append([Rect2(p - Vector2(r + 8.0, r + 8.0), Vector2(2.0 * r + 16.0, 2.0 * r + 16.0)), i])
+
+
+## The mine's node: a ring filling round a heap of materials as the mine fills
+## up (two hours to full), what it holds on a pill below. Full, it turns gold
+## and bounces. Tapping it empties the mine.
+func _draw_mine_node(p: Vector2) -> void:
+	var ci := _nodes
+	var font := TSToon.hand_font()
+	var r := NODE_R
+	var full := TSProfile.is_mine_full()
+	var frac := float(TSProfile.mine_seconds()) / float(TSProfile.MINE_CAP_SECONDS)
+	if full:
+		p.y -= absf(sin(_t * 5.0)) * 8.0
+	_ellipse(ci, p + Vector2(0.0, r + 6.0), r * 0.8, 7.0, SHADOW, false)
+	ci.draw_circle(p, r + 4.0, INK, true, -1.0, true)
+	ci.draw_circle(p, r, BUTTER if full else Color(1.0, 0.98, 0.93), true, -1.0, true)
+	ci.draw_arc(p, r - 6.0, -PI * 0.5, -PI * 0.5 + TAU * frac, 32, Color(0.56, 0.87, 0.58), 8.0, true)
+	# A heap: a stone behind two crossed planks.
+	ci.draw_circle(p + Vector2(5.0, -4.0), 9.0, INK, true, -1.0, true)
+	ci.draw_circle(p + Vector2(5.0, -4.0), 6.5, Color(0.74, 0.72, 0.78), true, -1.0, true)
+	for turn in [-0.5, 0.5]:
+		var d := Vector2(12.0, 0.0).rotated(turn)
+		var at := p + Vector2(-2.0, 4.0)
+		ci.draw_line(at - d, at + d, INK, 9.0, true)
+		ci.draw_line(at - d, at + d, Color(0.82, 0.6, 0.4), 5.0, true)
+	var text := ("Full! +%d" if full else "+%d") % TSProfile.mine_stored()
+	var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 20).x
+	var pill := Rect2(p + Vector2(-(tw + 20.0) * 0.5, r + 2.0), Vector2(tw + 20.0, 28.0))
+	_round_rect(ci, pill, 14.0, BUTTER if full else Color(1.0, 0.98, 0.93), INK)
+	ci.draw_string(font, pill.position + Vector2(10.0, 21.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, INK)
+	_node_hits.append([Rect2(p - Vector2(r + 8.0, r + 8.0), Vector2(2.0 * r + 16.0, 2.0 * r + 46.0)), MINE_HIT])
 
 
 ## "45s", "12m", "1h 20m": short enough for a node's pill.
@@ -2149,6 +2194,37 @@ func _draw_oven(ci: Control) -> void:
 		for j in 2:
 			_ellipse(ci, p + Vector2(108 + j * 34, -66) * k, 16.0 * k, 6.0 * k, Color(0.96, 0.74, 0.42))
 			_ellipse(ci, p + Vector2(108 + j * 34, -70) * k, 12.0 * k, 4.0 * k, Color(0.9, 0.36, 0.5), false)
+
+
+## The mine under the ship: a mine cart on its wheels, a pickaxe leaning on
+## it, heaping up with planks and stones as the mine fills.
+func _draw_mine(ci: Control) -> void:
+	var k := _depth_scale(MINE.y)
+	var c := MINE
+	_ellipse(ci, c + Vector2(0, 4) * k, 84.0 * k, 14.0 * k, SHADOW, false)
+	# The pickaxe, leaning on its far side.
+	ci.draw_line(c + Vector2(66, 0) * k, c + Vector2(92, -96) * k, INK, 9.0 * k, true)
+	ci.draw_line(c + Vector2(66, 0) * k, c + Vector2(92, -96) * k, WOOD, 5.0 * k, true)
+	ci.draw_arc(c + Vector2(98, -70) * k, 30.0 * k, PI * 1.2, PI * 1.75, 12, INK, 10.0 * k, true)
+	ci.draw_arc(c + Vector2(98, -70) * k, 30.0 * k, PI * 1.2, PI * 1.75, 12, CHROME, 5.0 * k, true)
+	# The load, heaping as the mine fills (empty until the nodes are out).
+	var fill := float(TSProfile.mine_seconds()) / float(TSProfile.MINE_CAP_SECONDS) if nodes_enabled else 0.0
+	if fill > 0.05:
+		var heap := 34.0 * fill
+		for s in [[-34.0, Color(0.74, 0.72, 0.78)], [24.0, Color(0.74, 0.72, 0.78)], [-6.0, Color(0.66, 0.64, 0.7)]]:
+			_ellipse(ci, c + Vector2(s[0], -64.0 - heap * 0.5) * k, 22.0 * k, (10.0 + heap * 0.6) * k, s[1])
+		for x in [-24.0, 14.0]:
+			var a := c + Vector2(x - 20.0, -66.0 - heap * 0.7) * k
+			var b := c + Vector2(x + 22.0, -70.0 - heap * 1.1) * k
+			ci.draw_line(a, b, INK, 11.0 * k, true)
+			ci.draw_line(a, b, Color(0.86, 0.66, 0.46), 7.0 * k, true)
+	# The cart: a tub wider at the top, bands round it, on two wheels.
+	_blob(ci, [c + Vector2(-64, -70) * k, c + Vector2(64, -70) * k, c + Vector2(50, -18) * k, c + Vector2(-50, -18) * k], Color(0.56, 0.6, 0.7))
+	for y in [-56.0, -32.0]:
+		ci.draw_line(c + Vector2(-58.0 + (y + 70.0) * 0.25, y) * k, c + Vector2(58.0 - (y + 70.0) * 0.25, y) * k, Color(INK, 0.4), 3.0, true)
+	for x in [-34.0, 34.0]:
+		_ellipse(ci, c + Vector2(x, -14) * k, 16.0 * k, 16.0 * k, Color(0.4, 0.36, 0.42))
+		_ellipse(ci, c + Vector2(x, -14) * k, 5.0 * k, 5.0 * k, CHROME)
 
 
 func _draw_statue(ci: Control) -> void:

@@ -43,6 +43,7 @@ func _ready() -> void:
 			TSProfile.part_level[i] = lv if TSProfile.is_camp(i) else 0
 	TSProfile.materials = 1200
 	TSProfile.time_skips = 12
+	TSProfile.mine_since = int(Time.get_unix_time_from_system()) - (7200 if args_has("full") else 4000)   # the mine under the ship part full (`full`: full)
 	if args_all.has("building"):
 		# `-- home building camp`: a build counting down, and one done to collect.
 		var now := int(Time.get_unix_time_from_system())

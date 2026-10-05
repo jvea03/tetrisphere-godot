@@ -338,6 +338,7 @@ func _build_showcase() -> void:
 	# the Collection unlocks; they keep to the gap, clear of the side tiles.
 	_world.nodes_enabled = TSNav.collection_unlocked()
 	_world.part_tapped.connect(_open_part)
+	_world.mine_tapped.connect(_collect_mine)
 	gap.resized.connect(_update_node_area)
 	_update_node_area.call_deferred()
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -428,6 +429,17 @@ func _build_part_card() -> void:
 	var close := TSUI.button("Close", TSUI.GREY, 24, Vector2(0, 60))
 	close.pressed.connect(func(): TSUI.conceal(_part["root"]))
 	box.add_child(close)
+
+
+## Empties the mine under the ship into the materials pill.
+func _collect_mine() -> void:
+	var n := TSProfile.collect_mine()
+	if n <= 0:
+		return
+	TSSfx.play("coin")
+	_refresh_materials()
+	TSFX.pop_coin_change(self, materials_pill, n)
+	TSFX.sparkle_burst(self, materials_pill)
 
 
 ## A node was tapped: a finished build is collected on the spot; anything else

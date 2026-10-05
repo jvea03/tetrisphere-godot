@@ -159,6 +159,17 @@ func _test_building() -> void:
 	var skips_before := TSProfile.time_skips
 	var opened := TSChests.open(0)
 	_check("the Battle Pass gives time skips; chests don't", int(TSProfile.battle_pass_free_reward(2).get("skips", 0)) > 0 and not opened.is_empty() and not opened.has("skips") and TSProfile.time_skips == skips_before)
+
+	# The mine under the ship: fills by the hour with the Collection level, up to two hours.
+	TSProfile.mine_since = TSProfile._now_unix() - 3600
+	var rate := TSProfile.mine_per_hour()
+	_check("an hour in, the mine holds an hour's worth (%d)" % rate, TSProfile.mine_stored() == rate and not TSProfile.is_mine_full())
+	TSProfile.mine_since = TSProfile._now_unix() - 5 * 3600
+	_check("it stops filling at two hours' worth", TSProfile.mine_stored() == rate * 2 and TSProfile.is_mine_full())
+	var mats_before := TSProfile.materials
+	_check("emptying it pays its materials and starts it over", TSProfile.collect_mine() == rate * 2 and TSProfile.materials == mats_before + rate * 2 and TSProfile.mine_stored() == 0)
+	_check("an empty mine pays nothing", TSProfile.collect_mine() == 0)
+	_check("a higher Collection level fills it faster", TSProfile.MINE_PER_LEVEL_PER_HOUR > 0 and rate == TSProfile.MINE_BASE_PER_HOUR + TSProfile.MINE_PER_LEVEL_PER_HOUR * TSProfile.collection_level())
 	TSProfile.start_part_build(p)
 	var coins := TSProfile.coin_count
 	var skip := TSProfile.part_build_skip_cost(p)

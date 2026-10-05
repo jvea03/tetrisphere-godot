@@ -153,6 +153,12 @@ beside the Camp level on Home. Nodes beyond the open middle of Home are gathered
 an arrow at its edge, with a count, that glides the world over to them; the
 first time the nodes appear, a walkthrough points at the campfire's plus.
 None of this counts toward the Collection level, which is critters only.
+**The mine.** Under the ship stands a mine cart that fills with building
+materials by itself: 20 an hour plus 5 more for every Collection level, up
+to two hours' worth, heaping up as it goes. Its node over the cart shows a
+ring filling round, what it holds on a pill ("+50"), and turns gold and
+bounces once full ("Full! +90"); tap it to empty the cart into your materials.
+(The ship's ring of nodes leaves its belly free for it.)
 **The camp comes first**: twenty spots in four waves of five
 (`TSProfile.CAMP_WAVES`), so no more than five build nodes show at once. A
 wave's spots appear (until then the ground there is bare) when every spot
