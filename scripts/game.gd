@@ -79,8 +79,7 @@ var selected := -1          # the piece on the ball picked for sliding (TSBoard.
 
 var _camera: Camera3D
 var _ghost_root: Node3D
-var _eyes: Node3D
-var _creature: Node3D     # core + eyes: the character you are digging out
+var _creature: TSCreature # core + face: the character you are digging out
 var _env: Environment
 var _key_light: DirectionalLight3D
 var _sky_mat: ShaderMaterial   # the background: a sky for the time of day (TSToon.SKIES)
@@ -204,49 +203,10 @@ func _build_environment() -> void:
 	paper.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_camera.add_child(paper)
 
-	# The prize buried under the shell. Reference frame shows a wide-eyed
-	# creature sealed inside, not an inert trophy, so the core gets a face.
-	# Core and eyes hang off one node so the creature can escape as a whole.
-	_creature = Node3D.new()
+	# The prize buried under the shell: the player's avatar critter (Collection)
+	# as a wide-eyed creature sealed inside, with moods of its own (TSCreature).
+	_creature = TSCreature.new(TSProfile.critter_color(TSProfile.avatar()))
 	add_child(_creature)
-	var core := MeshInstance3D.new()
-	var sm := SphereMesh.new()
-	sm.radius = TSBoardView.CORE_RADIUS * 0.99
-	sm.height = TSBoardView.CORE_RADIUS * 1.98
-	sm.radial_segments = 48
-	sm.rings = 24
-	core.mesh = sm
-	# The player's avatar critter (Collection), with a faint glow of its own.
-	core.material_override = TSToon.material(TSProfile.critter_color(TSProfile.avatar()), 1.0, 0.12)
-	_creature.add_child(core)
-
-	# The face rides around the core to stay toward the viewer, so it reads
-	# through whichever hole the player has opened rather than only one side.
-	# Big shiny eyes and pink cheeks: -z faces the viewer, +z runs into the core.
-	_eyes = Node3D.new()
-	_creature.add_child(_eyes)
-	for side in [-1.0, 1.0]:
-		_eyes.add_child(_make_eye_part(Vector3(side * 0.80, 0.35, -0.05), 0.75, Vector3.ONE, Color(1.0, 1.0, 1.0), 0.1, true))
-		_eyes.add_child(_make_eye_part(Vector3(side * 0.74, 0.30, -0.55), 0.40, Vector3.ONE, TSToon.INK, 0.0, false))
-		# Two sparkles in each eye, the big one catching the light.
-		_eyes.add_child(_make_eye_part(Vector3(side * 0.74 - 0.13, 0.47, -0.92), 0.13, Vector3.ONE, Color.WHITE, 1.0, false))
-		_eyes.add_child(_make_eye_part(Vector3(side * 0.74 + 0.12, 0.17, -0.92), 0.06, Vector3.ONE, Color.WHITE, 1.0, false))
-		# Blush, pressed flat against the curve of the core.
-		_eyes.add_child(_make_eye_part(Vector3(side * 1.45, -0.50, 0.35), 0.36, Vector3(1.0, 0.55, 0.35), Color(1.0, 0.58, 0.68), 0.25, false))
-
-
-func _make_eye_part(offset: Vector3, radius: float, squash: Vector3, tint: Color, glow: float, inked: bool) -> MeshInstance3D:
-	var part := MeshInstance3D.new()
-	var mesh := SphereMesh.new()
-	mesh.radius = radius
-	mesh.height = radius * 2.0
-	mesh.radial_segments = 16
-	mesh.rings = 8
-	part.mesh = mesh
-	part.position = offset
-	part.scale = squash
-	part.material_override = TSToon.material(tint, 1.0, glow, false, inked)
-	return part
 
 
 # Portrait phone layout, in 720-wide logical pixels. The top block hangs from
@@ -547,6 +507,7 @@ func _start(seed_value: int, baked: Dictionary = {}) -> void:
 	_escaping = false
 	_creature.position = Vector3.ZERO
 	_creature.scale = Vector3.ONE * _creature_scale()
+	_creature.react(TSCreature.Mood.IDLE)
 	cursor = Vector2i(0, TSBoard.ROWS / 2)
 	best_clear = 0
 	best_chain = 0
@@ -566,6 +527,7 @@ func _start(seed_value: int, baked: Dictionary = {}) -> void:
 	_face(_piece_centre())
 	_close_cards()
 	view.rebuild()
+	_update_creature()
 	_refresh_piece()
 	_refresh_hud()
 	TSProfile.record_quest_event("match")
@@ -590,6 +552,8 @@ func _resume() -> void:
 	state = State.PLAYING
 	_escaping = false
 	_creature.scale = Vector3.ONE * _creature_scale()
+	_creature.react(TSCreature.Mood.IDLE)
+	_update_creature()
 	selected = TSBoard.HOLE
 	bomb_armed = false
 	_rocks_flying = false
@@ -888,6 +852,7 @@ func _drop() -> void:
 		if int(res["chain"]) == 0:
 			lives -= 1
 			TSSfx.play("miss")
+			_creature.react(TSCreature.Mood.SCARED)
 			TSHaptics.medium()
 			if lives <= 0:
 				lose_reason = "OUT OF LIVES"
@@ -896,6 +861,8 @@ func _drop() -> void:
 			# chain is called out as it floats up.
 			TSSfx.play("chain" if int(res["chain"]) >= 2 else "match")
 			TSHaptics.light()
+			if int(res["chain"]) >= 2:
+				_creature.react(TSCreature.Mood.HAPPY)
 	_finish_drop(res, false)
 
 
@@ -935,6 +902,7 @@ func _bomb_lands(cell: Vector2i, at: Vector2) -> void:
 		return
 	var res := board.detonate(cell, 2)
 	_bomb_blast(at)
+	_creature.react(TSCreature.Mood.SCARED, 1.0)   # startled
 	TSSfx.play("bomb")
 	TSHaptics.heavy()
 	if _tutorial.on_step("blast"):
@@ -945,6 +913,7 @@ func _bomb_lands(cell: Vector2i, at: Vector2) -> void:
 ## Everything after a drop's (or a bomb's) clear: the quests, the chain
 ## call-out, a bomb earned, the next piece dealt, and a win or a loss.
 func _finish_drop(res: Dictionary, bomb_was_armed: bool) -> void:
+	_update_creature()
 	if int(res["pieces"]) > 0:
 		TSProfile.record_quest_event("clear", int(res["pieces"]))
 
@@ -1354,8 +1323,7 @@ func _process(delta: float) -> void:
 	_camera.position = dir * _cam_dist
 	_camera.look_at(Vector3.ZERO, Vector3.UP)
 
-	_eyes.position = dir * (TSBoardView.CORE_RADIUS * 0.99)
-	_eyes.look_at(_camera.position, Vector3.UP)
+	_creature.face_toward(dir, _camera.position)
 
 
 # Turn the ball so a point on it (in columns and rows) faces the camera.
@@ -1627,12 +1595,27 @@ func _creature_scale() -> float:
 	return float(TSLevels.DIFFICULTIES[difficulty]["scale"])
 
 
+## After every drop: how near the most-dug way out is to open and which way
+## it lies, and whether it is down to the last heart -- the creature's moods
+## go by them (it pushes harder the nearer it is, and scares more easily).
+func _update_creature() -> void:
+	var k := _escape_size()
+	var best := board.best_escape_patch(k)
+	var at: Vector2i = best["at"]
+	var open := int(best["open"])
+	var mid := Vector2i(board.wrap_col(at.x + k / 2), at.y + k / 2)
+	_creature.hope = clampf(float(open) / float(k * k), 0.0, 1.0)
+	_creature.hole_dir = TSBoardView.cell_transform(mid.x, mid.y, 0.0).origin.normalized() if open > 0 else Vector3.ZERO
+	_creature.nervous = lives <= 1
+
+
 # The win: a hole big enough is open, so the creature shrinks to fit and flies
 # out through it. The camera turns to face the hole, and the win card waits
 # until the creature is clear. The rewards are paid at once, before the
 # celebration, so leaving mid-animation cannot lose them (as in Duckdoku).
 func _win() -> void:
 	state = State.WON
+	_creature.react(TSCreature.Mood.HAPPY, 9999.0)
 	_escaping = true
 	_pay_win()
 	# A slide can open the hole; let go of the held piece.
@@ -1721,6 +1704,7 @@ func _restart() -> void:
 
 func _lose() -> void:
 	state = State.LOST
+	_creature.react(TSCreature.Mood.SCARED, 9999.0)
 	TSSfx.play("lose")
 	TSHaptics.heavy()
 	_refresh_lose_card()
@@ -1952,6 +1936,8 @@ func _revive(count: int) -> void:
 	lives = count
 	lose_reason = ""
 	state = State.PLAYING
+	_creature.react(TSCreature.Mood.HAPPY)   # saved!
+	_update_creature()
 	is_first_attempt = false
 	TSUI.conceal(_lose_card["root"])
 	_refresh_piece()

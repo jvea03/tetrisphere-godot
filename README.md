@@ -327,7 +327,12 @@ A cute, hand-drawn style, all in `scripts/toon.gd` (`TSToon`):
   to the core), so the egg looks whole and you cannot see in through the
   top or bottom. They are scenery only: not part of the board, and taps on
   them do nothing. A wide-eyed creature is sealed in the core, and it is the
-  one you are rescuing.
+  one you are rescuing. It is never still (`scripts/creature.gd`): it
+  breathes, blinks, looks around, wiggles, and shoves at the shell toward
+  the most-dug way out -- harder the nearer that is to open, squinting and
+  sweating; it gasps wide-eyed when a heart is lost or a bomb goes off (and
+  gets jumpy on the last heart), cheers a chain, and hops for joy on the way
+  out.
 - **Pieces never rotate.** An orientation *is* a piece: the flat line and the
   upright line are two different pieces, in two different colours, and they
   do not match each other. Each piece is drawn as one soft, rounded bar with
