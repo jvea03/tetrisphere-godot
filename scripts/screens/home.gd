@@ -1,7 +1,8 @@
 extends TSScreen
 
 ## Home (Duckdoku's StartMenu): the avatar card (critter, collection level,
-## Profile), the wallet (a shortcut to the Shop) and Settings along the top;
+## Profile), the coins and building materials (a shortcut to the Shop) and
+## Settings in the top-right corner, with the Camp level centred under them;
 ## the side tiles -- login streak, Daily Egg, Battle Pass, Eggsperience and any
 ## running sale -- down the left; behind it all, a crash site to drag around:
 ## a spaceship crash-landed on a planet, crewed by the critters you own; the
@@ -33,10 +34,10 @@ var _world: TSShipScene      # the crash site behind everything
 var _gap: Control            # the open stretch of Home the crash site shows through
 var _part: Dictionary        # the build / upgrade card for a camp spot or ship part
 var _part_index := -1
-var camp_badge: Button       # the Camp level, under the wallet
+var camp_badge: Button       # the Camp level, centred under the wallet
 var camp_label: Label
 var camp_bar: ProgressBar
-var materials_pill: Button   # building materials, beside the Camp level
+var materials_pill: Button   # building materials, beside the coins
 var materials_label: Label
 var _launch_btn: Button      # shown at a season's end when the ship is ready
 
@@ -156,59 +157,71 @@ func _build_top_bar() -> void:
 	avatar_btn.add_child(collection_bar)
 	_refresh_avatar()
 
-	row.add_child(TSUI.spacer(0, true))
-	# The wallet and Settings, with the Camp level under them.
+	# Beside the avatar: coins and materials on one line with Settings in the
+	# top-right corner, and the Camp level under them, in the screen's middle.
 	var right := TSUI.vbox(10)
-	right.alignment = BoxContainer.ALIGNMENT_CENTER
+	TSUI.expand(right)
 	row.add_child(right)
-	var top := TSUI.hbox(14)
+	var top := TSUI.hbox(10)
+	top.alignment = BoxContainer.ALIGNMENT_END
 	right.add_child(top)
 	coin_pill = TSCoinPill.new(true)
+	coin_pill.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	coin_pill.gui_input.connect(func(e: InputEvent):
 		if (e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT) or (e is InputEventScreenTouch and e.pressed):
 			SceneFlow.slide("res://scenes/shop.tscn", -1))
 	top.add_child(coin_pill)
-	var cog := TSUI.icon_button("cog", 84)
+	_build_materials_pill(top)
+	var cog := TSUI.icon_button("cog", 76)
 	cog.pressed.connect(_open_settings)
 	cog.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	top.add_child(cog)
 	_build_camp_badge(right)
 
 
-## The Camp level (TSProfile.camp_level): a tent, "Camp Lv 2" and a bar for
-## the open wave's steps. Tapping it glides the world to the next thing to
-## build. Shown once the build nodes are.
-func _build_camp_badge(parent: Control) -> void:
-	camp_badge = Button.new()
-	camp_badge.focus_mode = Control.FOCUS_NONE
-	camp_badge.custom_minimum_size = Vector2(250, 58)
-	camp_badge.size_flags_horizontal = Control.SIZE_SHRINK_END
-	var face := TSUI.sb(TSUI.CARD, 29, 3, 3, 6)
-	for st in ["normal", "hover", "pressed", "focus"]:
-		camp_badge.add_theme_stylebox_override(st, face)
-	camp_badge.pressed.connect(_on_camp_badge_pressed)
-	# Building materials, beside the Camp level.
-	var row := TSUI.hbox(10)
-	row.alignment = BoxContainer.ALIGNMENT_END
-	parent.add_child(row)
+## Building materials: a crate and how many, beside the coins. Tapping it
+## says where more come from.
+func _build_materials_pill(parent: Control) -> void:
 	materials_pill = Button.new()
 	materials_pill.focus_mode = Control.FOCUS_NONE
-	materials_pill.custom_minimum_size = Vector2(150, 58)
+	materials_pill.custom_minimum_size = Vector2(140, 58)
+	materials_pill.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var face := TSUI.sb(TSUI.CARD, 29, 3, 3, 6)
 	for st in ["normal", "hover", "pressed", "focus"]:
 		materials_pill.add_theme_stylebox_override(st, face)
-	materials_pill.pressed.connect(func(): TSUI.note(self, materials_pill, "Building materials: win levels, open chests, finish quests and climb the Battle Pass for more"))
-	row.add_child(materials_pill)
+	materials_pill.pressed.connect(func(): TSUI.note(self, materials_pill, "Building materials: win levels, open chests, finish quests, climb the Battle Pass and empty the mine for more"))
+	parent.add_child(materials_pill)
 	var crate := TSIcon.make("materials", 42)
 	crate.position = Vector2(8, 7)
 	crate.size = Vector2(42, 42)
 	crate.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	materials_pill.add_child(crate)
 	materials_label = TSUI.label("0", 24)
-	materials_label.position = Vector2(52, 12)
-	materials_label.size = Vector2(92, 32)
+	materials_label.position = Vector2(50, 12)
+	materials_label.size = Vector2(84, 32)
 	materials_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	materials_pill.add_child(materials_label)
+
+
+## The Camp level (TSProfile.camp_level): a tent, "Camp Lv 2" and a bar for
+## the open wave's steps, centred on the screen under the coins. Tapping it
+## glides the world to the next thing to build. Shown once the build nodes are.
+func _build_camp_badge(parent: Control) -> void:
+	camp_badge = Button.new()
+	camp_badge.focus_mode = Control.FOCUS_NONE
+	camp_badge.custom_minimum_size = Vector2(250, 58)
+	var face := TSUI.sb(TSUI.CARD, 29, 3, 3, 6)
+	for st in ["normal", "hover", "pressed", "focus"]:
+		camp_badge.add_theme_stylebox_override(st, face)
+	camp_badge.pressed.connect(_on_camp_badge_pressed)
+	# A spacer before it that keeps its middle on the screen's middle.
+	var row := TSUI.hbox(0)
+	parent.add_child(row)
+	var lead := Control.new()
+	row.add_child(lead)
 	row.add_child(camp_badge)
+	parent.resized.connect(func():
+		lead.custom_minimum_size.x = maxf(0.0, get_viewport_rect().size.x * 0.5 - parent.global_position.x - camp_badge.custom_minimum_size.x * 0.5))
 	var tent := TSIcon.make("part", 44, TSProfile.CAMP_TENT)
 	tent.position = Vector2(10, 6)
 	tent.size = Vector2(44, 44)
