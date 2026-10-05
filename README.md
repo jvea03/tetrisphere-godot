@@ -115,8 +115,11 @@ premium rewards, buy a tier for coins, Daily/Weekly quests, buy-pass pop-up);
 and those still to collect with their prices; the selected one on a stage
 over a turning sunburst, sparkling for Epic and Legendary; titles
 and stars, rarity, collection level, the first-visit walkthrough with its
-coin gift); **Shop** (weekly featured sale, No Ads pass, bundles, bomb, Any Piece and Rocks packs,
-coin packs and building-materials packs, each with a free daily pack); **Leaderboard** (Daily / Weekly /
+coin gift); **Shop** (weekly featured sale, No Ads pass, bundles (Value, Mega and the sale add
+building materials), bomb, Any Piece and Rocks packs,
+coin packs and building-materials packs, each with a free daily pack --
+claimed free once, then twice more a day for an ad each, payers too, and
+with No Ads without the ad); **Leaderboard** (Daily / Weekly /
 Season, pinned own row, podium prizes); **Clubs** (join, search, create with
 a badge; club page with the Leader's note, chat, members and a weekly club
 leaderboard); **Daily Streaks** (login and Daily Egg streaks, a coin claim

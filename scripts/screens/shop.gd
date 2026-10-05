@@ -3,17 +3,17 @@ extends TSScreen
 ## The Shop (Duckdoku's ShopScreen): a featured sale that rotates weekly, the
 ## No Ads pass, three bundles, booster packs bought with coins, coin packs and
 ## building-materials packs --
-## the first of each a free daily pack (one free claim, then two for an ad
-## each). Every real-money item goes through Billing, simulated until the
+## the first of each a free daily pack (one free claim, then two more for an ad
+## each -- no ad with No Ads). Every real-money item goes through Billing, simulated until the
 ## store plugins and product ids exist.
 
 const FEATURED_SALES := [
-	{"name": "Hatcher's Hoard", "coins": 130000, "bomb": 15, "price": "$4.99", "orig_price": "$9.99", "product_id": "featured_hatchers_hoard"},
+	{"name": "Hatcher's Hoard", "coins": 130000, "bomb": 15, "materials": 2000, "price": "$4.99", "orig_price": "$9.99", "product_id": "featured_hatchers_hoard"},
 ]
 const BUNDLES := [
 	{"name": "Starter", "coins": 10000, "bomb": 4, "price": "$0.99", "product_id": "bundle_starter", "chest": "common"},
-	{"name": "Value", "coins": 50000, "bomb": 11, "price": "$2.99", "product_id": "bundle_value", "chest": "rare"},
-	{"name": "Mega", "coins": 150000, "bomb": 26, "price": "$6.99", "product_id": "bundle_mega", "chest": "legendary"},
+	{"name": "Value", "coins": 50000, "bomb": 11, "materials": 1500, "price": "$2.99", "product_id": "bundle_value", "chest": "rare"},
+	{"name": "Mega", "coins": 150000, "bomb": 26, "materials": 5000, "price": "$6.99", "product_id": "bundle_mega", "chest": "legendary"},
 ]
 const COIN_PACKS := [
 	{"coins": 1000, "price": "Free", "starter": true},
@@ -151,7 +151,8 @@ func _featured_card(item: Dictionary) -> Control:
 	v.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_child(v)
 	v.add_child(TSUI.title(item["name"], 34))
-	v.add_child(TSUI.wrap(TSUI.label("%s coins + %d bombs!" % [TSProfile.fmt_coins(int(item["coins"])), int(item["bomb"])], 22)))
+	var extra := " + %s materials" % TSProfile.fmt_coins(int(item["materials"])) if item.has("materials") else ""
+	v.add_child(TSUI.wrap(TSUI.label("%s coins + %d bombs%s!" % [TSProfile.fmt_coins(int(item["coins"])), int(item["bomb"]), extra], 22)))
 	var buy_row := TSUI.hbox(8)
 	var was := RichTextLabel.new()
 	was.bbcode_enabled = true
@@ -204,12 +205,16 @@ func _bundle_card(b: Dictionary) -> Control:
 	var art := TSIcon.make("chest", 96, 0, b["chest"])
 	art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	v.add_child(art)
-	for text in ["%s coins" % TSProfile.fmt_coins(int(b["coins"])), "%d bombs" % int(b["bomb"])]:
+	var lines := ["%s coins" % TSProfile.fmt_coins(int(b["coins"])), "%d bombs" % int(b["bomb"])]
+	if b.has("materials"):
+		lines.append("%s materials" % TSProfile.fmt_coins(int(b["materials"])))
+	for text in lines:
 		var line := TSUI.hbox(4)
 		line.alignment = BoxContainer.ALIGNMENT_CENTER
 		line.add_child(TSIcon.make("check", 20))
 		line.add_child(TSUI.label(text, 18))
 		v.add_child(line)
+	v.add_child(TSUI.spacer(0, true))   # every bundle's button along the bottom
 	v.add_child(_buy_button(_price(b), func(): Billing.purchase(b["product_id"])))
 	return card
 
@@ -261,8 +266,8 @@ func _coin_card(p: Dictionary) -> Control:
 		TSProfile.roll_starter_claims()
 		var left := _starter_left()
 		var claims := TSProfile.starter_coin_claims
-		v.add_child(TSUI.label("Back tomorrow" if left <= 0 else ("Free today" if claims == 0 else "%d ad%s left" % [left, "" if left == 1 else "s"]), 16, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
-		var b := _buy_button("Free" if claims == 0 else ("Watch Ad" if left > 0 else "Claimed"), _on_starter.bind(p))
+		v.add_child(TSUI.label("Back tomorrow" if left <= 0 else ("Free today" if claims == 0 else ("%d more today" % left if TSProfile.no_ads else "%d ad%s left" % [left, "" if left == 1 else "s"])), 16, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+		var b := _buy_button(_starter_button_text(claims, left), _on_starter.bind(p))
 		b.disabled = left <= 0
 		v.add_child(b)
 		return card
@@ -290,8 +295,8 @@ func _material_card(p: Dictionary) -> Control:
 	if p.get("starter", false):
 		var left := _starter_left(true)
 		var claims := TSProfile.starter_material_claims
-		v.add_child(TSUI.label("Back tomorrow" if left <= 0 else ("Free today" if claims == 0 else "%d ad%s left" % [left, "" if left == 1 else "s"]), 16, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
-		var b := _buy_button("Free" if claims == 0 else ("Watch Ad" if left > 0 else "Claimed"), _on_starter.bind(p))
+		v.add_child(TSUI.label("Back tomorrow" if left <= 0 else ("Free today" if claims == 0 else ("%d more today" % left if TSProfile.no_ads else "%d ad%s left" % [left, "" if left == 1 else "s"])), 16, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+		var b := _buy_button(_starter_button_text(claims, left), _on_starter.bind(p))
 		b.disabled = left <= 0
 		v.add_child(b)
 		return card
@@ -299,19 +304,29 @@ func _material_card(p: Dictionary) -> Control:
 	return card
 
 
-## Payers are never shown ads, so for them a daily pack is its one free claim.
+## Claims of a daily pack left today. Everyone gets the ad claims -- they're
+## asked for, never pushed, so payers too -- and the No Ads pass skips the ads.
 func _starter_left(materials := false) -> int:
 	TSProfile.roll_starter_claims()
-	var limit := 1 if TSProfile.is_payer else STARTER_PACK_LIMIT
-	return maxi(limit - (TSProfile.starter_material_claims if materials else TSProfile.starter_coin_claims), 0)
+	return maxi(STARTER_PACK_LIMIT - (TSProfile.starter_material_claims if materials else TSProfile.starter_coin_claims), 0)
 
 
-## A daily pack (coins or materials): the first claim is free, the rest an ad each.
+## A daily pack's button: Free first, then Watch Ad (or Claim, with No Ads).
+static func _starter_button_text(claims: int, left: int) -> String:
+	if claims == 0:
+		return "Free"
+	if left <= 0:
+		return "Claimed"
+	return "Claim" if TSProfile.no_ads else "Watch Ad"
+
+
+## A daily pack (coins or materials): the first claim is free, the rest an ad
+## each (no ad with the No Ads pass).
 func _on_starter(p: Dictionary) -> void:
 	var mats := p.has("materials")
 	if _starter_left(mats) <= 0:
 		return
-	if (TSProfile.starter_material_claims if mats else TSProfile.starter_coin_claims) == 0:
+	if (TSProfile.starter_material_claims if mats else TSProfile.starter_coin_claims) == 0 or TSProfile.no_ads:
 		_grant_starter(p)
 		_celebrate()
 		_refresh()

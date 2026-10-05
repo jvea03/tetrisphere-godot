@@ -34,9 +34,9 @@ const PRODUCTS := {
 	"materials_12000": {"materials": 12000, "consumable": true},
 	"materials_32000": {"materials": 32000, "consumable": true},
 	"bundle_starter": {"coins": 10000, "bomb": 4, "consumable": true},
-	"bundle_value": {"coins": 50000, "bomb": 11, "consumable": true},
-	"bundle_mega": {"coins": 150000, "bomb": 26, "consumable": true},
-	"featured_hatchers_hoard": {"coins": 130000, "bomb": 15, "consumable": true},
+	"bundle_value": {"coins": 50000, "bomb": 11, "materials": 1500, "consumable": true},
+	"bundle_mega": {"coins": 150000, "bomb": 26, "materials": 5000, "consumable": true},
+	"featured_hatchers_hoard": {"coins": 130000, "bomb": 15, "materials": 2000, "consumable": true},
 	NO_ADS: {"no_ads": true, "consumable": false},
 	"battle_pass": {"battle_pass": true, "consumable": true}, # one season; consumed so next season can buy again
 	# Pop-up sales (TSSales.OFFERS) -- Home only, never in the Shop.
