@@ -275,47 +275,125 @@ static func set_toggle(name: String, on: bool) -> void:
 	save()
 
 # -- critters (Collection) ---------------------------------------------------
-# Each critter is drawn by TSIcon from its colour and accessory, so there are
-# no art files. Rarity sets its price, its level-up base and how many
-# collection points each level is worth. Critter 0, Milky -- the creature
-# from the first ball -- starts owned.
+# Each critter is a sticker, icons/critters/NNN.png (cut from the sheets in
+# art/critter_sheets/ by tools/cut_critters.gd); its colour is the sticker's
+# body colour, for its Collection tile and the egg's glowing core. Rarity sets
+# its price, its level-up base and how many collection points each level is
+# worth. Critter 0, Blu -- the creature from the first ball -- starts owned.
 enum Rarity { COMMON, RARE, EPIC, LEGENDARY }
 const RARITY_NAMES := ["Common", "Rare", "Epic", "Legendary"]
 const CRITTER_RARITY_COST := [5000, 15000, 40000, 100000]
 const CRITTER_RARITY_POINTS := [5, 8, 12, 20]
 const CRITTER_UNLOCK_COST := 5000
 
-## {name, color, accessory, rarity}. Accessories are TSIcon's: "", "sprout",
-## "freckles", "bow", "flower", "bear", "cat", "bunny", "frog", "bee", "dino",
-## "horns", "halo", "crown", "party", "ghost", "glasses", "star", "cloud",
-## "pumpkin", "beanie", "rainbow".
+## {name, art: its sticker number, color, rarity}.
 const CRITTERS := [
-	{"name": "Milky", "color": Color(1.00, 0.97, 0.93), "acc": "", "rarity": Rarity.COMMON},
-	{"name": "Peachy", "color": Color(1.00, 0.78, 0.66), "acc": "", "rarity": Rarity.COMMON},
-	{"name": "Minty", "color": Color(0.66, 0.92, 0.76), "acc": "sprout", "rarity": Rarity.COMMON},
-	{"name": "Lemon", "color": Color(1.00, 0.92, 0.52), "acc": "freckles", "rarity": Rarity.COMMON},
-	{"name": "Bubblegum", "color": Color(1.00, 0.72, 0.84), "acc": "bow", "rarity": Rarity.RARE},
-	{"name": "Blueberry", "color": Color(0.64, 0.76, 1.00), "acc": "", "rarity": Rarity.COMMON},
-	{"name": "Lilac", "color": Color(0.82, 0.72, 0.98), "acc": "flower", "rarity": Rarity.RARE},
-	{"name": "Mocha", "color": Color(0.80, 0.64, 0.52), "acc": "bear", "rarity": Rarity.COMMON},
-	{"name": "Kitty", "color": Color(0.82, 0.82, 0.86), "acc": "cat", "rarity": Rarity.RARE},
-	{"name": "Bunbun", "color": Color(1.00, 0.93, 0.95), "acc": "bunny", "rarity": Rarity.RARE},
-	{"name": "Froggy", "color": Color(0.58, 0.86, 0.50), "acc": "frog", "rarity": Rarity.RARE},
-	{"name": "Buzzy", "color": Color(1.00, 0.84, 0.30), "acc": "bee", "rarity": Rarity.EPIC},
-	{"name": "Dino", "color": Color(0.54, 0.82, 0.64), "acc": "dino", "rarity": Rarity.EPIC},
-	{"name": "Imp", "color": Color(1.00, 0.56, 0.56), "acc": "horns", "rarity": Rarity.EPIC},
-	{"name": "Angel", "color": Color(1.00, 1.00, 0.98), "acc": "halo", "rarity": Rarity.EPIC},
-	{"name": "Royal", "color": Color(1.00, 0.86, 0.48), "acc": "crown", "rarity": Rarity.LEGENDARY},
-	{"name": "Party", "color": Color(1.00, 0.66, 0.80), "acc": "party", "rarity": Rarity.RARE},
-	{"name": "Ghosty", "color": Color(0.88, 0.92, 1.00), "acc": "ghost", "rarity": Rarity.EPIC},
-	{"name": "Nerdy", "color": Color(1.00, 0.74, 0.50), "acc": "glasses", "rarity": Rarity.COMMON},
-	{"name": "Starry", "color": Color(0.44, 0.46, 0.80), "acc": "star", "rarity": Rarity.LEGENDARY},
-	{"name": "Cloudy", "color": Color(0.84, 0.94, 1.00), "acc": "cloud", "rarity": Rarity.RARE},
-	{"name": "Pumpkin", "color": Color(1.00, 0.66, 0.34), "acc": "pumpkin", "rarity": Rarity.EPIC},
-	{"name": "Snowy", "color": Color(0.90, 0.96, 1.00), "acc": "beanie", "rarity": Rarity.EPIC},
-	{"name": "Rainbow", "color": Color(1.00, 0.80, 0.90), "acc": "rainbow", "rarity": Rarity.LEGENDARY},
+	{"name": "Blu", "art": 49, "color": Color(0.78, 0.91, 0.98), "rarity": Rarity.COMMON},
+	{"name": "Gardy", "art": 0, "color": Color(0.99, 0.84, 0.71), "rarity": Rarity.COMMON},
+	{"name": "Ghosty", "art": 1, "color": Color(0.98, 0.96, 0.98), "rarity": Rarity.EPIC},
+	{"name": "Ginger", "art": 2, "color": Color(0.80, 0.53, 0.33), "rarity": Rarity.RARE},
+	{"name": "Goldie", "art": 3, "color": Color(0.99, 0.85, 0.33), "rarity": Rarity.LEGENDARY},
+	{"name": "Grad", "art": 4, "color": Color(0.99, 0.93, 0.85), "rarity": Rarity.COMMON},
+	{"name": "Granny", "art": 5, "color": Color(0.99, 0.80, 0.65), "rarity": Rarity.RARE},
+	{"name": "Grandpa", "art": 6, "color": Color(0.99, 0.83, 0.70), "rarity": Rarity.RARE},
+	{"name": "Sprout", "art": 7, "color": Color(0.80, 0.89, 0.53), "rarity": Rarity.COMMON},
+	{"name": "Skater", "art": 8, "color": Color(0.78, 0.90, 0.97), "rarity": Rarity.RARE},
+	{"name": "King", "art": 9, "color": Color(0.99, 0.94, 0.82), "rarity": Rarity.LEGENDARY},
+	{"name": "Smooch", "art": 10, "color": Color(0.99, 0.80, 0.84), "rarity": Rarity.COMMON},
+	{"name": "Knight", "art": 11, "color": Color(0.99, 0.80, 0.68), "rarity": Rarity.EPIC},
+	{"name": "Knitter", "art": 12, "color": Color(0.99, 0.95, 0.90), "rarity": Rarity.COMMON},
+	{"name": "Postie", "art": 13, "color": Color(0.80, 0.91, 0.97), "rarity": Rarity.COMMON},
+	{"name": "Mermaid", "art": 14, "color": Color(0.99, 0.82, 0.71), "rarity": Rarity.EPIC},
+	{"name": "Mama", "art": 15, "color": Color(0.99, 0.79, 0.65), "rarity": Rarity.RARE},
+	{"name": "Rawr", "art": 16, "color": Color(0.99, 0.86, 0.42), "rarity": Rarity.EPIC},
+	{"name": "Popcorn", "art": 17, "color": Color(0.99, 0.92, 0.82), "rarity": Rarity.COMMON},
+	{"name": "Nurse", "art": 18, "color": Color(0.99, 0.85, 0.86), "rarity": Rarity.COMMON},
+	{"name": "Panda", "art": 19, "color": Color(0.98, 0.98, 0.97), "rarity": Rarity.RARE},
+	{"name": "Pie", "art": 20, "color": Color(0.99, 0.75, 0.49), "rarity": Rarity.COMMON},
+	{"name": "Dino", "art": 21, "color": Color(0.75, 0.91, 0.61), "rarity": Rarity.RARE},
+	{"name": "Director", "art": 22, "color": Color(0.99, 0.84, 0.74), "rarity": Rarity.COMMON},
+	{"name": "Doc", "art": 23, "color": Color(0.78, 0.93, 0.98), "rarity": Rarity.COMMON},
+	{"name": "Puppy", "art": 24, "color": Color(0.99, 0.96, 0.91), "rarity": Rarity.COMMON},
+	{"name": "Donkey", "art": 25, "color": Color(0.77, 0.72, 0.72), "rarity": Rarity.COMMON},
+	{"name": "Donut", "art": 26, "color": Color(0.99, 0.75, 0.49), "rarity": Rarity.RARE},
+	{"name": "Dragon", "art": 27, "color": Color(0.99, 0.93, 0.77), "rarity": Rarity.LEGENDARY},
+	{"name": "Elf", "art": 28, "color": Color(0.99, 0.84, 0.74), "rarity": Rarity.RARE},
+	{"name": "Fairy", "art": 29, "color": Color(0.99, 0.83, 0.85), "rarity": Rarity.EPIC},
+	{"name": "Autumn", "art": 30, "color": Color(0.99, 0.67, 0.24), "rarity": Rarity.RARE},
+	{"name": "Firework", "art": 31, "color": Color(0.18, 0.28, 0.53), "rarity": Rarity.EPIC},
+	{"name": "Capy", "art": 32, "color": Color(0.91, 0.65, 0.44), "rarity": Rarity.RARE},
+	{"name": "Kitty", "art": 33, "color": Color(0.99, 0.97, 0.92), "rarity": Rarity.RARE},
+	{"name": "Chick", "art": 34, "color": Color(0.99, 0.95, 0.67), "rarity": Rarity.COMMON},
+	{"name": "Choco", "art": 35, "color": Color(0.76, 0.51, 0.39), "rarity": Rarity.COMMON},
+	{"name": "Cocoa", "art": 36, "color": Color(0.99, 0.96, 0.91), "rarity": Rarity.COMMON},
+	{"name": "Cinnamon", "art": 37, "color": Color(0.99, 0.72, 0.49), "rarity": Rarity.COMMON},
+	{"name": "Scrubby", "art": 38, "color": Color(0.76, 0.92, 0.98), "rarity": Rarity.COMMON},
+	{"name": "Builder", "art": 39, "color": Color(0.99, 0.78, 0.62), "rarity": Rarity.COMMON},
+	{"name": "Moo", "art": 40, "color": Color(0.99, 0.97, 0.92), "rarity": Rarity.COMMON},
+	{"name": "Cupid", "art": 41, "color": Color(0.99, 0.85, 0.88), "rarity": Rarity.EPIC},
+	{"name": "Gent", "art": 42, "color": Color(0.76, 0.92, 0.98), "rarity": Rarity.COMMON},
+	{"name": "Artist", "art": 43, "color": Color(0.99, 0.94, 0.87), "rarity": Rarity.COMMON},
+	{"name": "Baby", "art": 44, "color": Color(0.99, 0.99, 0.99), "rarity": Rarity.COMMON},
+	{"name": "Chef", "art": 45, "color": Color(0.99, 0.78, 0.58), "rarity": Rarity.COMMON},
+	{"name": "Biker", "art": 46, "color": Color(0.78, 0.91, 0.98), "rarity": Rarity.COMMON},
+	{"name": "Explorer", "art": 47, "color": Color(0.99, 0.93, 0.86), "rarity": Rarity.RARE},
+	{"name": "Party", "art": 48, "color": Color(0.99, 0.82, 0.86), "rarity": Rarity.RARE},
+	{"name": "Buff", "art": 50, "color": Color(0.93, 0.65, 0.39), "rarity": Rarity.COMMON},
+	{"name": "Camo", "art": 51, "color": Color(0.99, 0.90, 0.73), "rarity": Rarity.RARE},
+	{"name": "Camper", "art": 52, "color": Color(0.99, 0.72, 0.41), "rarity": Rarity.COMMON},
+	{"name": "Pirate", "art": 53, "color": Color(0.99, 0.93, 0.86), "rarity": Rarity.RARE},
+	{"name": "Imp", "art": 54, "color": Color(0.83, 0.67, 0.87), "rarity": Rarity.EPIC},
+	{"name": "Shadow", "art": 55, "color": Color(0.36, 0.29, 0.31), "rarity": Rarity.LEGENDARY},
+	{"name": "Flurry", "art": 56, "color": Color(0.83, 0.93, 0.98), "rarity": Rarity.RARE},
+	{"name": "Witch", "art": 57, "color": Color(0.99, 0.93, 0.80), "rarity": Rarity.EPIC},
+	{"name": "Wizard", "art": 58, "color": Color(0.83, 0.93, 0.98), "rarity": Rarity.LEGENDARY},
+	{"name": "Wrench", "art": 59, "color": Color(0.99, 0.86, 0.41), "rarity": Rarity.COMMON},
+	{"name": "Mayor", "art": 60, "color": Color(0.99, 0.85, 0.73), "rarity": Rarity.RARE},
+	{"name": "Boss", "art": 61, "color": Color(0.99, 0.85, 0.74), "rarity": Rarity.COMMON},
+	{"name": "Dentist", "art": 62, "color": Color(0.98, 0.98, 0.98), "rarity": Rarity.COMMON},
+	{"name": "Medic", "art": 63, "color": Color(0.99, 0.83, 0.85), "rarity": Rarity.COMMON},
+	{"name": "Sharky", "art": 64, "color": Color(0.86, 0.93, 0.98), "rarity": Rarity.RARE},
+	{"name": "Pearl", "art": 65, "color": Color(0.87, 0.87, 0.88), "rarity": Rarity.EPIC},
+	{"name": "Skier", "art": 66, "color": Color(0.99, 0.81, 0.65), "rarity": Rarity.COMMON},
+	{"name": "Sledder", "art": 67, "color": Color(0.99, 0.97, 0.93), "rarity": Rarity.COMMON},
+	{"name": "S'more", "art": 68, "color": Color(0.99, 0.82, 0.66), "rarity": Rarity.RARE},
+	{"name": "Boarder", "art": 69, "color": Color(0.80, 0.92, 0.98), "rarity": Rarity.COMMON},
+	{"name": "Snowman", "art": 70, "color": Color(0.99, 0.99, 0.99), "rarity": Rarity.RARE},
+	{"name": "Frost Queen", "art": 71, "color": Color(0.82, 0.95, 0.99), "rarity": Rarity.LEGENDARY},
+	{"name": "Blossom", "art": 72, "color": Color(0.99, 0.86, 0.87), "rarity": Rarity.RARE},
+	{"name": "Berry", "art": 73, "color": Color(0.99, 0.31, 0.29), "rarity": Rarity.RARE},
+	{"name": "Sunny", "art": 74, "color": Color(0.99, 0.91, 0.48), "rarity": Rarity.RARE},
+	{"name": "Shades", "art": 75, "color": Color(0.99, 0.96, 0.91), "rarity": Rarity.COMMON},
+	{"name": "Zippy", "art": 76, "color": Color(0.78, 0.91, 0.98), "rarity": Rarity.EPIC},
+	{"name": "Violet", "art": 77, "color": Color(0.98, 0.80, 0.85), "rarity": Rarity.RARE},
+	{"name": "Super Pup", "art": 78, "color": Color(0.99, 0.96, 0.90), "rarity": Rarity.RARE},
+	{"name": "Whiskers", "art": 79, "color": Color(0.99, 0.96, 0.91), "rarity": Rarity.RARE},
+	{"name": "Surfer", "art": 80, "color": Color(0.72, 0.91, 0.98), "rarity": Rarity.COMMON},
+	{"name": "Tourist", "art": 81, "color": Color(0.91, 0.67, 0.47), "rarity": Rarity.COMMON},
+	{"name": "Turkey", "art": 82, "color": Color(0.80, 0.55, 0.37), "rarity": Rarity.RARE},
+	{"name": "Drizzle", "art": 83, "color": Color(0.88, 0.94, 0.98), "rarity": Rarity.COMMON},
+	{"name": "Puddles", "art": 84, "color": Color(0.99, 0.95, 0.91), "rarity": Rarity.COMMON},
+	{"name": "Bookworm", "art": 85, "color": Color(0.99, 0.96, 0.91), "rarity": Rarity.RARE},
+	{"name": "Hood", "art": 86, "color": Color(0.99, 0.95, 0.90), "rarity": Rarity.RARE},
+	{"name": "Rosie", "art": 87, "color": Color(0.99, 0.83, 0.85), "rarity": Rarity.RARE},
+	{"name": "Rudy", "art": 88, "color": Color(0.84, 0.61, 0.45), "rarity": Rarity.EPIC},
+	{"name": "Jogger", "art": 89, "color": Color(0.83, 0.93, 0.98), "rarity": Rarity.COMMON},
+	{"name": "Sailor", "art": 90, "color": Color(0.99, 0.96, 0.91), "rarity": Rarity.COMMON},
+	{"name": "Santa", "art": 91, "color": Color(0.99, 0.98, 0.96), "rarity": Rarity.LEGENDARY},
+	{"name": "Labby", "art": 92, "color": Color(0.80, 0.90, 0.63), "rarity": Rarity.COMMON},
+	{"name": "Diver", "art": 93, "color": Color(0.73, 0.89, 0.98), "rarity": Rarity.COMMON},
+	{"name": "Piggy", "art": 94, "color": Color(0.99, 0.80, 0.84), "rarity": Rarity.COMMON},
+	{"name": "Pilgrim", "art": 95, "color": Color(0.99, 0.81, 0.67), "rarity": Rarity.RARE},
+	{"name": "Captain", "art": 96, "color": Color(0.76, 0.92, 0.98), "rarity": Rarity.EPIC},
+	{"name": "Polar", "art": 97, "color": Color(0.99, 0.96, 0.93), "rarity": Rarity.RARE},
+	{"name": "Groovy", "art": 98, "color": Color(0.97, 0.90, 0.35), "rarity": Rarity.EPIC},
+	{"name": "Patch", "art": 99, "color": Color(0.99, 0.55, 0.16), "rarity": Rarity.COMMON},
+	{"name": "Mischief", "art": 100, "color": Color(0.86, 0.67, 0.92), "rarity": Rarity.RARE},
+	{"name": "Princess", "art": 101, "color": Color(0.99, 0.89, 0.80), "rarity": Rarity.LEGENDARY},
+	{"name": "Bunny", "art": 102, "color": Color(0.99, 0.96, 0.93), "rarity": Rarity.RARE},
+	{"name": "Rainbow", "art": 103, "color": Color(0.80, 0.94, 0.99), "rarity": Rarity.LEGENDARY},
 ]
-const CRITTER_COUNT := 24
+const CRITTER_COUNT := 104
 
 ## Once bought, a critter can be levelled up to CRITTER_MAX_LEVEL.
 const CRITTER_MAX_LEVEL := 10
@@ -479,8 +557,14 @@ static func critter_color(i: int) -> Color:
 	return CRITTERS[i]["color"]
 
 
-static func critter_accessory(i: int) -> String:
-	return str(CRITTERS[i]["acc"])
+## Its sticker. Kept once loaded: a canvas draw holds only the texture's RID,
+## so a texture nothing else holds would be freed before it shows.
+static var _critter_art := {}
+
+static func critter_art(i: int) -> Texture2D:
+	if not _critter_art.has(i):
+		_critter_art[i] = load("res://icons/critters/%03d.png" % int(CRITTERS[i]["art"]))
+	return _critter_art[i]
 
 
 static func critter_rarity(i: int) -> int:
@@ -1850,10 +1934,10 @@ static func purchase_battle_pass() -> bool:
 ## and wrap. Each season's paid tier-1 critter is pass-only.
 const BATTLE_PASS_SEASON_ONE := 739 # epoch_day / BATTLE_PASS_DAYS for the first season
 const BATTLE_PASS_SEASON_REWARDS := [
-	{"free_critters": {15: 16, 30: 11}, "paid_critters": {1: 19}, "paid_parts": {30: PART_ENGINE}}, # Party, Buzzy; Starry; the engine
-	{"free_critters": {15: 21, 30: 22}, "paid_critters": {1: 23}, "paid_parts": {30: PART_COCKPIT}}, # Pumpkin, Snowy; Rainbow; the cockpit
+	{"free_critters": {15: 49, 30: 12}, "paid_critters": {1: 58}, "paid_parts": {30: PART_ENGINE}}, # Party, Knight; Wizard; the engine
+	{"free_critters": {15: 31, 30: 70}, "paid_critters": {1: 103}, "paid_parts": {30: PART_COCKPIT}}, # Autumn, Snowman; Rainbow; the cockpit
 ]
-const BATTLE_PASS_EXCLUSIVE_CRITTERS := [19, 23]
+const BATTLE_PASS_EXCLUSIVE_CRITTERS := [58, 103]
 
 
 static func battle_pass_season_number() -> int:

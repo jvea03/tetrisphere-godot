@@ -2,12 +2,12 @@ class_name TSIcon
 extends Control
 
 ## Every picture in the menus, drawn in code in the hand-drawn style: pastel
-## fills with a round-capped ink outline. No image files. Also draws the
-## critters (a round blob with big eyes, cheeks and an accessory), little
-## eggs, the ship parts (broken or fixed) and the club badges.
+## fills with a round-capped ink outline. The critters are the one exception:
+## each is a sticker from icons/critters/. Also draws little eggs, the ship
+## parts (broken or fixed) and the club badges.
 ##
 ##   TSIcon.make("coin", 40)
-##   TSIcon.make("critter", 120, 5)       # Blueberry
+##   TSIcon.make("critter", 120, 5)       # Grad
 ##   TSIcon.make("chest", 80, 0, "rare")
 ##   TSIcon.make("part", 90, TSProfile.PART_ENGINE, "broken")
 
@@ -25,6 +25,10 @@ const WHITE := Color(1, 1, 1)
 
 var _s := 1.0
 var _o := Vector2.ZERO
+
+
+func _init() -> void:
+	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS   # a sticker shrunk to a 40px builder stays smooth
 
 
 static func make(name: String, px: float, idx: int = 0, var_name: String = "") -> TSIcon:
@@ -777,117 +781,15 @@ func _draw_plus() -> void:
 
 # -- collectibles -----------------------------------------------------------------
 
-## A critter: a soft blob with big shiny eyes, pink cheeks, a little smile
-## and its accessory. c/r in unit coordinates.
+## A critter: its sticker, filling a little more than the blob it replaced
+## (c/r in unit coordinates, r its body's radius). Locked, a faint shadow of
+## it; tinted, the sticker multiplied by the tint.
 func _draw_critter(i: int, c: Vector2, r: float) -> void:
-	var data: Dictionary = TSProfile.CRITTERS[clampi(i, 0, TSProfile.CRITTER_COUNT - 1)]
-	var body: Color = tint if tint.a > 0.0 else data["color"]
-	var acc: String = data["acc"]
-	# accessories behind the body
-	match acc:
-		"cat":
-			for side in [-1.0, 1.0]:
-				_poly([c + Vector2(side * 0.62, -0.5) * r, c + Vector2(side * 0.8, -1.12) * r, c + Vector2(side * 0.2, -0.82) * r], body)
-		"bunny":
-			for side in [-1.0, 1.0]:
-				_ellipse(c + Vector2(side * 0.38, -1.12) * r, 0.2 * r, 0.52 * r, body, true, side * 0.25)
-				if not silhouette:
-					_ellipse(c + Vector2(side * 0.38, -1.1) * r, 0.09 * r, 0.34 * r, Color(1.0, 0.72, 0.8), false, side * 0.25)
-		"bear":
-			for side in [-1.0, 1.0]:
-				_circle(c + Vector2(side * 0.68, -0.72) * r, 0.26 * r, body)
-		"frog":
-			for side in [-1.0, 1.0]:
-				_circle(c + Vector2(side * 0.46, -0.78) * r, 0.3 * r, body)
-		"dino":
-			for k in 3:
-				var x := (-0.4 + k * 0.4) * r
-				_poly([c + Vector2(x - 0.16 * r, -0.86 * r), c + Vector2(x, -1.2 * r), c + Vector2(x + 0.16 * r, -0.86 * r)], Color(1.0, 0.8, 0.4))
-		"horns":
-			for side in [-1.0, 1.0]:
-				_poly([c + Vector2(side * 0.36, -0.78) * r, c + Vector2(side * 0.62, -1.24) * r, c + Vector2(side * 0.6, -0.7) * r], Color(1.0, 0.94, 0.8))
-		"ghost":
-			pass
-	# the body: a slightly bottom-heavy blob, or a ghost with a wavy hem
-	var pts: Array = []
-	for k in 40:
-		var a := TAU * float(k) / 40.0
-		var rr := r * (1.0 + 0.06 * sin(a))
-		var p := c + Vector2(cos(a) * rr * 1.06, sin(a) * rr * 0.94)
-		if acc == "ghost" and sin(a) > 0.2:
-			p.y = c.y + r * (0.9 + 0.12 * sin(a * 6.0))
-		pts.append(p)
-	_poly(pts, body)
-	if silhouette:
-		return
-	# patterns
-	match acc:
-		"bee":
-			for yy in [0.2, 0.52]:
-				_ellipse(c + Vector2(0, yy) * r, 0.82 * r, 0.1 * r, INK, false)
-		"freckles":
-			for side in [-1.0, 1.0]:
-				for k in 3:
-					draw_circle(_u(c + Vector2(side * (0.46 + k * 0.08), 0.2 + (k % 2) * 0.06) * r), 0.025 * r * _s, Color(0.86, 0.56, 0.4), true, -1.0, true)
-		"rainbow":
-			var bands := [Color(1.0, 0.56, 0.6), Color(1.0, 0.86, 0.5), Color(0.62, 0.9, 0.66), Color(0.62, 0.8, 1.0)]
-			for k in bands.size():
-				draw_arc(_u(c + Vector2(0, 0.95) * r), (0.9 - k * 0.12) * r * _s, PI * 1.12, PI * 1.88, 24, bands[k], 0.1 * r * _s, true)
-	# face
-	var eye_y := -0.06 * r
-	for side in [-1.0, 1.0]:
-		var e := c + Vector2(side * 0.34 * r, eye_y)
-		_ellipse(e, 0.15 * r, 0.19 * r, INK, false)
-		draw_circle(_u(e + Vector2(-0.05, -0.07) * r), 0.06 * r * _s, WHITE, true, -1.0, true)
-		draw_circle(_u(e + Vector2(0.05, 0.06) * r), 0.028 * r * _s, WHITE, true, -1.0, true)
-		_ellipse(c + Vector2(side * 0.6 * r, 0.22 * r), 0.13 * r, 0.07 * r, Color(1.0, 0.58, 0.68, 0.8), false)
-	draw_arc(_u(c + Vector2(0, 0.14) * r), 0.1 * r * _s, 0.25, PI - 0.25, 12, INK, _w() * 0.8, true)
-	# accessories in front
-	match acc:
-		"sprout":
-			_line([c + Vector2(0, -0.92) * r, c + Vector2(0, -1.2) * r], Color(0.36, 0.7, 0.4))
-			_ellipse(c + Vector2(-0.16, -1.24) * r, 0.18 * r, 0.09 * r, Color(0.56, 0.86, 0.5), true, 0.5)
-			_ellipse(c + Vector2(0.16, -1.24) * r, 0.18 * r, 0.09 * r, Color(0.56, 0.86, 0.5), true, -0.5)
-		"bow":
-			_poly([c + Vector2(0.3, -0.86) * r, c + Vector2(0.62, -1.1) * r, c + Vector2(0.62, -0.72) * r], Color(1.0, 0.44, 0.6))
-			_poly([c + Vector2(0.3, -0.86) * r, c + Vector2(0.0, -1.06) * r, c + Vector2(0.04, -0.7) * r], Color(1.0, 0.44, 0.6))
-			_circle(c + Vector2(0.3, -0.86) * r, 0.08 * r, Color(1.0, 0.7, 0.8))
-		"flower":
-			for k in 5:
-				var a2 := TAU * float(k) / 5.0
-				_circle(c + Vector2(0.5, -0.8) * r + Vector2(cos(a2), sin(a2)) * 0.14 * r, 0.1 * r, WHITE)
-			_circle(c + Vector2(0.5, -0.8) * r, 0.08 * r, Color(1.0, 0.86, 0.4))
-		"bee":
-			for side in [-1.0, 1.0]:
-				_line([c + Vector2(side * 0.2, -0.9) * r, c + Vector2(side * 0.34, -1.26) * r])
-				_circle(c + Vector2(side * 0.34, -1.3) * r, 0.08 * r, INK)
-			_ellipse(c + Vector2(-0.9, -0.3) * r, 0.2 * r, 0.12 * r, Color(1, 1, 1, 0.8), true, -0.5)
-		"halo":
-			draw_arc(_u(c + Vector2(0, -1.12) * r), 0.36 * r * _s, 0.0, TAU, 28, Color(1.0, 0.86, 0.36), 0.1 * r * _s, true)
-		"crown":
-			_draw_crown(c + Vector2(0, -0.98) * r, r * 1.4)
-		"party":
-			_poly([c + Vector2(-0.26, -0.82) * r, c + Vector2(0.06, -1.5) * r, c + Vector2(0.3, -0.84) * r], Color(0.62, 0.84, 1.0))
-			_circle(c + Vector2(0.06, -1.5) * r, 0.09 * r, Color(1.0, 0.86, 0.4))
-		"glasses":
-			for side in [-1.0, 1.0]:
-				draw_arc(_u(c + Vector2(side * 0.34 * r, eye_y)), 0.24 * r * _s, 0.0, TAU, 20, INK, _w() * 0.9, true)
-			_line([c + Vector2(-0.1, eye_y / r) * r, c + Vector2(0.1, eye_y / r) * r])
-		"star":
-			_line([c + Vector2(0, -0.92) * r, c + Vector2(0.1, -1.3) * r])
-			_poly(_star_pts(c + Vector2(0.12, -1.4) * r, 0.2 * r, 0.09 * r), Color(1.0, 0.86, 0.36))
-		"cloud":
-			for k in 3:
-				_circle(c + Vector2(-0.3 + k * 0.3, -0.96 - (0.1 if k == 1 else 0.0)) * r, 0.2 * r, WHITE)
-		"pumpkin":
-			_rrect(Rect2(c + Vector2(-0.07, -1.16) * r, Vector2(0.14, 0.28) * r), 0.04 * r, Color(0.44, 0.66, 0.36))
-			_ellipse(c + Vector2(0.26, -1.08) * r, 0.18 * r, 0.08 * r, Color(0.56, 0.86, 0.5), true, -0.4)
-		"beanie":
-			_poly([c + Vector2(-0.86, -0.46) * r, c + Vector2(-0.6, -0.98) * r, c + Vector2(0.0, -1.14) * r, c + Vector2(0.6, -0.98) * r, c + Vector2(0.86, -0.46) * r], Color(0.62, 0.8, 1.0))
-			_rrect(Rect2(c + Vector2(-0.9, -0.56) * r, Vector2(1.8, 0.2) * r), 0.08 * r, Color(1.0, 0.72, 0.8))
-			_circle(c + Vector2(0, -1.18) * r, 0.14 * r, WHITE)
-		"horns":
-			pass
+	var art := TSProfile.critter_art(clampi(i, 0, TSProfile.CRITTER_COUNT - 1))
+	var side := 2.4 * r
+	var rect := Rect2(_u(c + Vector2(-0.5 * side, -0.5 * side - 0.15 * r)), Vector2(side, side) * _s)
+	var shade := Color(0, 0, 0, 0.3) if silhouette else (tint if tint.a > 0.0 else Color.WHITE)
+	draw_texture_rect(art, rect, false, shade)
 
 
 ## An egg: a little egg in one of the egg paints, with a band of pastel pieces.

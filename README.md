@@ -84,7 +84,11 @@ slides.
 
 Every menu from Duckdoku (`Documents/meow-ship`), rebuilt for Tetrisphere in
 its hand-drawn style: the same screens, flow and systems, re-themed, with all
-art drawn in code (`scripts/ui/icon.gd`) -- none of Duckdoku's art is copied.
+art drawn in code (`scripts/ui/icon.gd`) -- none of Duckdoku's art is copied. The
+one exception is the critters: 104 stickers, `icons/critters/NNN.png`, cut
+from the sheets in `art/critter_sheets/` by `tools/cut_critters.gd` (rerun it
+if a sheet changes; `TSProfile.CRITTERS` names each one, its rarity, its
+sticker and its body colour).
 
 | Duckdoku | Tetrisphere |
 | --- | --- |
@@ -105,7 +109,7 @@ Purchases and a Privacy Policy link, which opens the policy page in the
 browser), Profile, the camp and ship build card, chest opening, finish-a-chest-now, pop-up sales, leaderboard results, and
 the Home, Daily Egg and camp walkthroughs; **Battle Pass** (30 tiers of free and
 premium rewards, buy a tier for coins, Daily/Weekly quests, buy-pass pop-up);
-**Collection** (critters to buy and upgrade to Lv 10; titles
+**Collection** (104 critters to buy and upgrade to Lv 10; titles
 and stars, rarity, collection level, the first-visit walkthrough with its
 coin gift); **Shop** (weekly featured sale, No Ads pass, bundles, bomb, Any Piece and Rocks packs,
 coin packs and building-materials packs, each with a free daily pack); **Leaderboard** (Daily / Weekly /

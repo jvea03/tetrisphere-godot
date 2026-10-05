@@ -237,7 +237,7 @@ func _test_collection() -> void:
 		TSProfile.level_up_critter(5)
 	_check("the collection level rises with it (%d -> %d)" % [lvl, TSProfile.collection_level()], TSProfile.collection_level() > lvl)
 	_check("a critter tops out at level %d" % TSProfile.CRITTER_MAX_LEVEL, not TSProfile.level_up_critter(5) and TSProfile.is_critter_max_level(5))
-	_check("pass-only critters are marked", TSProfile.is_critter_pass_exclusive(19))
+	_check("pass-only critters are marked", TSProfile.is_critter_pass_exclusive(58))
 	TSProfile.set_avatar_critter(5)
 	_check("an owned critter becomes the avatar", TSProfile.avatar() == 5)
 
