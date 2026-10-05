@@ -8,8 +8,9 @@ extends TSScreen
 ## level, and each collection level adds 1% to the materials a win pays. (The camp
 ## and the ship are built from their nodes on Home, and don't count.)
 
-const TILE := 120.0
-const TUTORIAL_CRITTER := 5 # Blueberry: the Common one the walkthrough's gift buys
+const TILE := 118.0
+const COLUMNS := 5
+const TUTORIAL_CRITTER := 5 # Grad: the Common one the walkthrough's gift buys
 
 var _level_label: Label
 var _bonus_label: Label
@@ -17,7 +18,11 @@ var _level_bar: ProgressBar
 var _feature: VBoxContainer
 var _feature_tile: Control
 var _feature_btn: Button
-var _critter_grid: GridContainer
+var _owned_grid: GridContainer   # the critters you have
+var _locked_grid: GridContainer  # and the ones still to collect
+var _owned_head: Label
+var _locked_head: Label
+var _count_label: Label
 var _critter_scroll: ScrollContainer
 var _level_card: PanelContainer
 var _info: Dictionary
@@ -48,15 +53,29 @@ func build() -> void:
 	lv.add_child(top)
 	_level_bar = TSUI.bar(TSUI.GOLD, 22)
 	lv.add_child(_level_bar)
+	_count_label = TSUI.label("", 18, TSUI.MUTED)
+	lv.add_child(_count_label)
 	content.add_child(_level_card)
 
-	_feature = TSUI.vbox(8)
-	content.add_child(_feature)
-	_feature_btn = TSUI.button("", TSUI.GREEN, 28, Vector2(0, 76))
+	# The selected critter on its stage, its button underneath, in one card.
+	var feature_card := TSUI.card(TSUI.CARD, 30, 14, 4)
+	content.add_child(feature_card)
+	_feature = TSUI.vbox(12)
+	feature_card.add_child(_feature)
+	_feature_btn = TSUI.button("", TSUI.GREEN, 28, Vector2(0, 72))
 	_feature_btn.pressed.connect(_on_feature_pressed)
 
-	_critter_grid = _grid()
-	_critter_scroll = TSUI.scroll(_critter_grid)
+	# Every critter: yours first, then the ones still to collect.
+	var lists := TSUI.vbox(10)
+	_owned_head = _section(lists, TSUI.MINT)
+	_owned_grid = _grid()
+	lists.add_child(_owned_grid)
+	lists.add_child(TSUI.spacer(6))
+	_locked_head = _section(lists, TSUI.GREY)
+	_locked_grid = _grid()
+	lists.add_child(_locked_grid)
+	lists.add_child(TSUI.spacer(10))
+	_critter_scroll = TSUI.scroll(lists)
 	content.add_child(_critter_scroll)
 
 	_info = TSUI.dialog(self, 580)
@@ -74,10 +93,24 @@ func build() -> void:
 
 func _grid() -> GridContainer:
 	var g := GridContainer.new()
-	g.columns = 4
-	g.add_theme_constant_override("h_separation", 18)
-	g.add_theme_constant_override("v_separation", 14)
+	g.columns = COLUMNS
+	g.add_theme_constant_override("h_separation", 12)
+	g.add_theme_constant_override("v_separation", 12)
 	return g
+
+
+## A section's heading: a pill with its name and count, a rule running on.
+func _section(parent: Control, colour: Color) -> Label:
+	var row := TSUI.hbox(10)
+	parent.add_child(row)
+	var pill := TSUI.pill("", colour, 20)
+	row.add_child(pill)
+	var rule := ColorRect.new()
+	rule.color = Color(TSUI.INK, 0.15)
+	rule.custom_minimum_size = Vector2(0, 3)
+	rule.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(TSUI.expand(rule))
+	return pill.get_meta("label")
 
 
 func _refresh() -> void:
@@ -89,6 +122,7 @@ func _refresh() -> void:
 	_bonus_label.text = "+%d%% materials" % TSProfile.collection_material_bonus_percent()
 	_level_bar.max_value = TSProfile.collection_points_for_level(lvl)
 	_level_bar.value = TSProfile.collection_level_progress()
+	_count_label.text = "%d of %d critters collected" % [_owned_count(), TSProfile.CRITTER_COUNT]
 	if _sel_critter < 0:
 		_sel_critter = TSProfile.avatar()
 	_build_feature()
@@ -110,20 +144,31 @@ func _build_feature() -> void:
 func _build_critter_feature(i: int) -> void:
 	var owned := TSProfile.is_critter_unlocked(i)
 	var rarity := TSProfile.critter_rarity(i)
-	var bg: Color = TSProfile.critter_color(i).lerp(Color.WHITE, 0.55) if owned else TSUI.CARD
-	var info := _feature_row(bg, TSUI.RARITY_COLORS[rarity], i == TSProfile.avatar(), TSIcon.make("critter", 170, i), not owned)
+	var info := _feature_row(i, owned, rarity)
 	var level := TSProfile.critter_level_of(i)
 	var name := TSProfile.critter_name(i)
 	if owned:
 		name = TSProfile.progress_title(level, TSProfile.CRITTER_MAX_LEVEL, name)
-	info.add_child(TSUI.wrap(TSUI.label(name, 32, TSUI.INK if owned else TSUI.MUTED)))
+	var name_label := TSUI.wrap(TSUI.outlined(TSUI.label(name, 36, TSUI.INK if owned else TSUI.MUTED), Color.WHITE, 8))
+	info.add_child(name_label)
 	var tags := TSUI.hbox(8)
 	tags.add_child(TSUI.pill(TSProfile.RARITY_NAMES[rarity].to_upper(), TSUI.RARITY_COLORS[rarity], 18))
-	tags.add_child(TSUI.label("Lv %d/%d" % [level, TSProfile.CRITTER_MAX_LEVEL] if owned else "Locked", 22, TSFX.COL_GAIN if owned else TSUI.MUTED))
+	tags.add_child(TSUI.label("Lv %d/%d" % [level, TSProfile.CRITTER_MAX_LEVEL] if owned else "Not yet yours", 22, TSFX.COL_GAIN if owned else TSUI.MUTED))
 	info.add_child(tags)
 	if owned:
-		info.add_child(_stars(level, TSProfile.CRITTER_MAX_LEVEL, 26.0))
-		info.add_child(TSUI.label("In your egg" if i == TSProfile.avatar() else "Tap its tile to use it", 20, TSUI.MUTED))
+		info.add_child(_stars(level, TSProfile.CRITTER_MAX_LEVEL, 28.0))
+		if i == TSProfile.avatar():
+			var here := TSUI.hbox(6)
+			here.add_child(TSIcon.make("egg", 30))
+			here.add_child(TSUI.label("In your egg", 20, TSUI.INK))
+			info.add_child(here)
+		else:
+			info.add_child(TSUI.label("Tap its tile to put it in your egg", 18, TSUI.MUTED))
+	elif TSProfile.is_critter_pass_exclusive(i):
+		var pass_row := TSUI.hbox(6)
+		pass_row.add_child(TSIcon.make("pass", 30))
+		pass_row.add_child(TSUI.label("Only in the Battle Pass", 20, TSUI.INK))
+		info.add_child(pass_row)
 	var cost := 0
 	var maxed := false
 	if not owned and TSProfile.is_critter_pass_exclusive(i):
@@ -140,27 +185,67 @@ func _build_critter_feature(i: int) -> void:
 	_feature_btn.disabled = maxed or TSProfile.coin_count < cost
 
 
-## The feature card's big tile and, beside it, the column the caller fills.
-func _feature_row(bg: Color, border: Color, glow: bool, art: TSIcon, silhouette: bool) -> VBoxContainer:
+## The feature card's stage -- the critter over a slowly turning sunburst in
+## its rarity's colour (sparkling for Epic and Legendary), a gold glow round
+## it while it's the one in the egg -- and, beside it, the column the caller
+## fills.
+func _feature_row(i: int, owned: bool, rarity: int) -> VBoxContainer:
 	var row := TSUI.hbox(16)
 	_feature.add_child(row)
-	var tile := PanelContainer.new()
-	tile.custom_minimum_size = Vector2(200, 200)
-	var face := TSUI.sb(bg, 34, 6, 4, 8)
-	face.border_color = border
-	if glow:
+	var tint: Color = TSUI.RARITY_COLORS[rarity]
+	var stage := PanelContainer.new()
+	stage.custom_minimum_size = Vector2(210, 210)
+	var face := TSUI.sb(TSProfile.critter_color(i).lerp(tint, 0.3).lerp(Color.WHITE, 0.2) if owned else Color(0.9, 0.88, 0.88), 36, 5, 5, 0)
+	face.border_color = tint.darkened(0.15) if owned else TSUI.GREY.darkened(0.2)
+	if owned and i == TSProfile.avatar():
 		face.shadow_color = Color(TSUI.GOLD, 0.9)
-		face.shadow_size = 8
-	tile.add_theme_stylebox_override("panel", face)
-	art.silhouette = silhouette
-	tile.add_child(art)
-	row.add_child(tile)
-	_feature_tile = tile
+		face.shadow_size = 10
+	stage.add_theme_stylebox_override("panel", face)
+	var burst := Burst.new()
+	burst.colour = Color(Color.WHITE, 0.5) if owned else Color(Color.WHITE, 0.4)
+	burst.sparkles = [0, 0, 5, 9][rarity] if owned else 0
+	stage.add_child(burst)
+	var art := TSIcon.make("critter", 176, i)
+	art.silhouette = not owned
+	stage.add_child(art)
+	row.add_child(stage)
+	_feature_tile = stage
 	var info := TSUI.vbox(8)
 	TSUI.expand(info)
 	info.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_child(info)
 	return info
+
+
+## A sunburst behind the featured critter: soft rays turning slowly inside a
+## circle, and twinkling sparkles round it.
+class Burst extends Control:
+	var colour := Color(1, 1, 1, 0.5)
+	var sparkles := 0
+	var _t := 0.0
+
+	func _init() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _process(delta: float) -> void:
+		_t += delta
+		queue_redraw()
+
+	func _draw() -> void:
+		var c := size * 0.5
+		var r := minf(size.x, size.y) * 0.5 - 8.0
+		for k in 12:
+			var a := _t * 0.25 + TAU * float(k) / 12.0
+			draw_colored_polygon(PackedVector2Array([c, c + Vector2.from_angle(a - 0.12) * r, c + Vector2.from_angle(a + 0.12) * r]), colour)
+		for k in sparkles:
+			# Each in its own spot round the edge, pulsing in its own time.
+			var at := c + Vector2.from_angle(TAU * float(k) / float(sparkles) + 0.4) * r * (0.72 + 0.16 * float(k % 2))
+			var s := 9.0 * maxf(0.0, sin(_t * 2.4 + float(k) * 1.7))
+			if s > 0.5:
+				var star := PackedVector2Array()
+				for p in 8:
+					star.append(at + Vector2.from_angle(TAU * float(p) / 8.0) * (s if p % 2 == 0 else s * 0.3))
+				draw_colored_polygon(star, Color(1.0, 0.95, 0.6))
 
 
 func _on_feature_pressed() -> void:
@@ -211,24 +296,45 @@ static func _key(owned: bool, rarity: int, name: String) -> Array:
 
 
 func _build_critters() -> void:
-	for c in _critter_grid.get_children():
-		c.queue_free()
+	for g in [_owned_grid, _locked_grid]:
+		for c in g.get_children():
+			c.queue_free()
 	var order: Array = range(TSProfile.CRITTER_COUNT)
 	order.sort_custom(func(a: int, b: int) -> bool:
 		return _key(TSProfile.is_critter_unlocked(a), TSProfile.critter_rarity(a), TSProfile.critter_name(a)) < _key(TSProfile.is_critter_unlocked(b), TSProfile.critter_rarity(b), TSProfile.critter_name(b)))
 	for i in order:
-		_critter_grid.add_child(_tile(i))
+		(_owned_grid if TSProfile.is_critter_unlocked(i) else _locked_grid).add_child(_tile(i))
+	var owned := _owned_count()
+	_owned_head.text = "Your critters  %d" % owned
+	_locked_head.text = "Still to collect  %d" % (TSProfile.CRITTER_COUNT - owned)
+	_locked_head.get_parent().get_parent().visible = owned < TSProfile.CRITTER_COUNT
 
 
+func _owned_count() -> int:
+	var n := 0
+	for i in TSProfile.CRITTER_COUNT:
+		n += int(TSProfile.is_critter_unlocked(i))
+	return n
+
+
+## A critter's tile: owned, in a wash of its own colour with its level; still
+## to collect, its shadow on grey with its price (or the pass it comes from)
+## under its name. The bottom lip is its rarity's colour either way.
 func _tile(i: int) -> Control:
 	var owned := TSProfile.is_critter_unlocked(i)
-	var bg: Color = TSProfile.critter_color(i).lerp(Color.WHITE, 0.55) if owned else TSUI.CARD
+	var rarity: Color = TSUI.RARITY_COLORS[TSProfile.critter_rarity(i)]
+	var bg: Color = TSProfile.critter_color(i).lerp(Color.WHITE, 0.45) if owned else Color(0.93, 0.91, 0.9)
 	var selected := i == _sel_critter
-	var b := _tile_button(bg, TSUI.INK if selected else TSUI.RARITY_COLORS[TSProfile.critter_rarity(i)], selected, TSIcon.make("critter", TILE * 0.8, i), not owned)
+	var b := _tile_button(bg, rarity, selected, TSIcon.make("critter", TILE * 0.84, i), not owned)
 	if owned:
-		_badge(b, "Lv %d" % TSProfile.critter_level_of(i), TSUI.INK, Vector2(TILE - 60, 4))
+		_badge(b, "Lv %d" % TSProfile.critter_level_of(i), TSUI.INK, Vector2(TILE - 56, 4))
 		if TSProfile.is_critter_new(i):
 			_badge(b, "NEW", TSUI.RED_DOT, Vector2(4, 4))
+		if i == TSProfile.avatar():
+			var egg := TSIcon.make("egg", 30)
+			egg.position = Vector2(4, TILE - 40)
+			egg.size = Vector2(30, 30)
+			b.add_child(egg)
 	b.pressed.connect(func():
 		_sel_critter = i
 		TSProfile.clear_new_critters([i])
@@ -237,20 +343,36 @@ func _tile(i: int) -> Control:
 		_refresh()
 		if i == TUTORIAL_CRITTER:
 			_tutorial.gate_passed())
-	return _tile_column(b, i, TSProfile.critter_name(i), owned)
+	return _tile_column(b, i, owned)
 
 
-func _tile_button(bg: Color, border: Color, selected: bool, art: TSIcon, silhouette: bool) -> Button:
+func _tile_button(bg: Color, rarity: Color, selected: bool, art: TSIcon, silhouette: bool) -> Button:
 	var b := Button.new()
 	b.focus_mode = Control.FOCUS_NONE
 	b.custom_minimum_size = Vector2(TILE, TILE)
-	var face := TSUI.sb(bg, 26, 5 if selected else 4, 3, 4)
-	face.border_color = border
+	var face := TSUI.sb(bg, 24, 4 if selected else 3, 5, 4)
+	face.border_color = TSUI.INK if selected else rarity.darkened(0.1)
+	face.border_width_bottom = 8
+	if selected:
+		face.shadow_color = Color(TSUI.GOLD, 0.85)
+		face.shadow_size = 6
 	for st in ["normal", "hover", "pressed", "focus"]:
 		b.add_theme_stylebox_override(st, face)
+	if selected:
+		# The selected tile keeps its rarity's lip under the ink rim.
+		var lip := Panel.new()
+		var lip_style := TSUI.sb(rarity, 0, 0, 0, 0)
+		lip_style.set_corner_radius_all(0)
+		lip_style.corner_radius_bottom_left = 20
+		lip_style.corner_radius_bottom_right = 20
+		lip.add_theme_stylebox_override("panel", lip_style)
+		lip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		lip.position = Vector2(4, TILE - 12)
+		lip.size = Vector2(TILE - 8, 8)
+		b.add_child(lip)
 	art.silhouette = silhouette
-	art.position = Vector2(TILE * 0.1, TILE * 0.1)
-	art.size = Vector2(TILE * 0.8, TILE * 0.8)
+	art.position = Vector2(TILE * 0.08, TILE * 0.04)
+	art.size = Vector2(TILE * 0.84, TILE * 0.84)
 	b.add_child(art)
 	return b
 
@@ -261,15 +383,32 @@ func _badge(b: Button, text: String, colour: Color, at: Vector2) -> void:
 	b.add_child(pill)
 
 
-func _tile_column(b: Button, i: int, caption: String, bright: bool) -> Control:
-	var v := TSUI.vbox(2)
+func _tile_column(b: Button, i: int, owned: bool) -> Control:
+	var v := TSUI.vbox(0)
 	v.set_meta("index", i)
 	v.add_child(b)
-	var name := TSUI.label(caption, 18, TSUI.INK if bright else TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+	var name := TSUI.label(TSProfile.critter_name(i), 18, TSUI.INK if owned else TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER)
 	name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	name.custom_minimum_size.x = TILE
 	v.add_child(name)
+	if not owned:
+		var price := TSUI.hbox(3)
+		price.alignment = BoxContainer.ALIGNMENT_CENTER
+		price.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		if TSProfile.is_critter_pass_exclusive(i):
+			price.add_child(TSIcon.make("pass", 20))
+			price.add_child(TSUI.label("Pass", 16, TSUI.MUTED))
+		else:
+			var cost := TSProfile.critter_unlock_cost(i)
+			price.add_child(TSIcon.make("coin", 18))
+			price.add_child(TSUI.label(_short_coins(cost), 16, TSUI.INK if TSProfile.coin_count >= cost else TSUI.MUTED))
+		v.add_child(price)
 	return v
+
+
+## "5k", "15k", "100k": a price short enough for a tile.
+static func _short_coins(n: int) -> String:
+	return "%dk" % (n / 1000) if n >= 1000 and n % 1000 == 0 else TSProfile.fmt_coins(n)
 
 
 ## Five stars, one filled per fifth of the climb (all gold at max).
@@ -305,12 +444,12 @@ func _maybe_start_tutorial() -> void:
 	_tutorial.finished.connect(func():
 		TSProfile.collection_tutorial_seen = true
 		TSProfile.save(), CONNECT_ONE_SHOT)
-	var steps := [{"rect": _feature.get_global_rect(), "text": "This is your Collection: your critters. Their levels boost the coins you earn."}]
+	var steps := [{"rect": _feature.get_global_rect(), "text": "This is your Collection: your critters. Every level they gain raises your Collection level."}]
 	if gift > 0:
 		steps.append({"rect": wallet.get_global_rect(), "text": "Here's %s coins -- enough for your first critter." % TSProfile.fmt_coins(gift)})
 	var buying := not TSProfile.is_critter_unlocked(TUTORIAL_CRITTER) and TSProfile.coin_count >= TSProfile.critter_unlock_cost(TUTORIAL_CRITTER)
 	if buying:
-		steps.append({"rect": func() -> Rect2: return _tile_rect(TUTORIAL_CRITTER), "text": "Tap Blueberry.", "gate": true})
+		steps.append({"rect": func() -> Rect2: return _tile_rect(TUTORIAL_CRITTER), "text": "Tap %s." % TSProfile.critter_name(TUTORIAL_CRITTER), "gate": true})
 		steps.append({"rect": func() -> Rect2: return _feature_btn.get_global_rect(), "text": "Tap Buy to adopt it.", "gate": true})
 	steps.append({"rect": func() -> Rect2: return _feature.get_global_rect(), "text": "It's yours! Tap an owned critter to seal it in the egg, and upgrade it here." if buying else "Tap an owned critter to seal it in the egg, and upgrade it here."})
 	steps.append({"rect": func() -> Rect2: return _level_card.get_global_rect(), "text": "Each Collection level adds +1% building materials on every win."})
@@ -318,7 +457,8 @@ func _maybe_start_tutorial() -> void:
 
 
 func _tile_rect(i: int) -> Rect2:
-	for t in _critter_grid.get_children():
-		if t.get_meta("index", -1) == i:
-			return (t as Control).get_global_rect()
-	return _critter_grid.get_global_rect()
+	for g in [_owned_grid, _locked_grid]:
+		for t in g.get_children():
+			if t.get_meta("index", -1) == i:
+				return (t as Control).get_global_rect()
+	return _locked_grid.get_global_rect()

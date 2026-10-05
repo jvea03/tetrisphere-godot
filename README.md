@@ -111,7 +111,9 @@ Purchases and a Privacy Policy link, which opens the policy page in the
 browser), Profile, the camp and ship build card, chest opening, finish-a-chest-now, pop-up sales, leaderboard results, and
 the Home, Daily Egg and camp walkthroughs; **Battle Pass** (30 tiers of free and
 premium rewards, buy a tier for coins, Daily/Weekly quests, buy-pass pop-up);
-**Collection** (104 critters to buy and upgrade to Lv 10; titles
+**Collection** (104 critters to buy and upgrade to Lv 10, split into yours
+and those still to collect with their prices; the selected one on a stage
+over a turning sunburst, sparkling for Epic and Legendary; titles
 and stars, rarity, collection level, the first-visit walkthrough with its
 coin gift); **Shop** (weekly featured sale, No Ads pass, bundles, bomb, Any Piece and Rocks packs,
 coin packs and building-materials packs, each with a free daily pack); **Leaderboard** (Daily / Weekly /
