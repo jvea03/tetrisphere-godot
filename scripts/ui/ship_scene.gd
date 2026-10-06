@@ -197,6 +197,7 @@ const SHIP_RING := Vector2(270.0, 190.0)
 const SHIP_SLOTS := {12: 10.0, 13: 55.0, 11: 125.0, 6: 160.0, 10: 200.0, 9: 240.0, 7: 280.0, 8: 320.0}
 const SHIP_SPOTS := {6: NOZZLE, 7: PATCH, 8: DOME, 9: ANTENNA_UP, 10: FIN_TIP, 11: Vector2(256.0, 204.0), 12: Vector2(466.0, 200.0), 13: Vector2(270.0, 262.0)}
 const NODE_R := 32.0            # a node's circle, on screen
+const GROUND_TILES := Vector2i(4, 5)   # the still ground's clutter, in tiles the renderer can skip out of view
 const SPOT_REACH := 520.0       # how far round its spot a camp spot draws (a windmill's sails, a treehouse's crown)
 const EDGE_INSET := 44.0        # how far inside node_area an edge arrow sits
 
@@ -244,6 +245,10 @@ func _ready() -> void:
 	# the moving shadows go on the layer above it, redrawn every frame.
 	var ground_still := _spot_layer(_draw_ground_still, -1.5)
 	_painters.erase(ground_still)
+	for tx in GROUND_TILES.x:
+		for ty in GROUND_TILES.y:
+			var tile := Rect2(W * tx / GROUND_TILES.x, H * ty / GROUND_TILES.y, W / GROUND_TILES.x, H / GROUND_TILES.y)
+			_area_layer(tile.grow(170.0), func(ci: Control): _draw_ground_tile(ci, tile), -1.4)   # still: drawn once
 	_ground = _layer(_draw_ground, -1.0)
 	_pad_layer = _spot_layer(_draw_pad, _ship_depth - 2.0)
 	_ship_layer = _layer(_draw_ship, _ship_depth)
@@ -267,14 +272,13 @@ func _ready() -> void:
 			[_draw_hammock, HAMMOCK], [_draw_picnic, PICNIC], [_draw_clothesline, CLOTHESLINE], [_draw_mailbox, MAILBOX], [_draw_windmill, WINDMILL],
 			[_draw_dock, DOCK], [_draw_playground, PLAYGROUND], [_draw_treehouse, TREEHOUSE], [_draw_stall, STALL], [_draw_greenhouse, GREENHOUSE],
 			[_draw_spring, SPRING], [_draw_observatory, OBSERVATORY], [_draw_oven, OVEN], [_draw_statue, STATUE], [_draw_mine, MINE]]:
-		_spot_layer(spot[0], (spot[1] as Vector2).y).set_meta("at", spot[1])
+		var at: Vector2 = spot[1]
+		var layer := _area_layer(Rect2(at - Vector2(SPOT_REACH, SPOT_REACH), Vector2(SPOT_REACH * 2.0, SPOT_REACH + 140.0)), spot[0], at.y)
+		layer.set_meta("at", at)
+		_painters.append(layer)
 	for tree in _trees:
-		var layer := Control.new()
-		layer.size = Vector2(W, H)
-		layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		layer.draw.connect(func(): _draw_tree(layer, tree))
-		layer.set_meta("depth", (tree[0] as Vector2).y)
-		_world.add_child(layer)   # still: drawn once, never repainted
+		var foot: Vector2 = tree[0]
+		_area_layer(Rect2(foot - Vector2(190, 300), Vector2(380, 340)), func(ci: Control): _draw_tree(ci, tree), foot.y)   # still: drawn once
 	if _jobs.has("crater"):
 		_lip_layer = _layer(_draw_crater_lip, CRATER.y + 1.0)
 	# The time of day, as on the player's current level (TSToon.SKIES): the
@@ -324,6 +328,22 @@ func _layer(painter: Callable, depth: float) -> Control:
 	c.set_meta("depth", depth)
 	_world.add_child(c)
 	_painters.append(c)
+	return c
+
+
+## A layer covering only `area` of the world -- it draws in world coordinates
+## all the same -- so the renderer skips it whenever that area is out of view.
+## (A layer the size of the world is drawn every frame, seen or not.)
+func _area_layer(area: Rect2, painter: Callable, depth: float) -> Control:
+	var c := Control.new()
+	c.position = area.position
+	c.size = area.size
+	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	c.draw.connect(func():
+		c.draw_set_transform(-c.position)
+		painter.call(c))
+	c.set_meta("depth", depth)
+	_world.add_child(c)
 	return c
 
 
@@ -1229,8 +1249,8 @@ func _pool(ci: CanvasItem, at: Vector2, radius: float, colour: Color, strength: 
 	ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
-## The still ground, drawn once: the planet's surface curving away, its
-## horizon band, the autumn trees along it, and everything strewn about.
+## The still ground, drawn once: the planet's surface curving away and its
+## horizon band. What stands or lies on it is drawn in tiles (_draw_ground_tile).
 func _draw_ground_still(ci: Control) -> void:
 	# The planet's surface, curving away at the edges of the world.
 	var ground := PackedVector2Array()
@@ -1248,13 +1268,23 @@ func _draw_ground_still(ci: Control) -> void:
 		band.append(Vector2(x, _horizon(x) + 26.0))
 	ci.draw_colored_polygon(band, _planet["ground_dark"])
 	ci.draw_polyline(rim, INK, 5.0, true)
+
+
+## One tile of the still ground's clutter: the autumn trees along the horizon
+## and everything strewn about that stand in `tile`. Each tile is its own
+## canvas item, so the ones out of view are skipped when drawing (one layer
+## over the whole world cost a third of every frame, seen or not).
+func _draw_ground_tile(ci: Control, tile: Rect2) -> void:
 	if SEASON == "autumn":
 		# A line of autumn trees along the horizon, paled by the distance.
 		for n in 16:
 			var x := 70.0 + float(n) * 165.0 + sin(float(n) * 2.3) * 40.0
-			_canopy(ci, Vector2(x, _horizon(x) + 4.0), 0.5 + 0.08 * sin(float(n) * 1.7), n, 0.3)
+			if tile.has_point(Vector2(x, _horizon(x))):
+				_canopy(ci, Vector2(x, _horizon(x) + 4.0), 0.5 + 0.08 * sin(float(n) * 1.7), n, 0.3)
 	for item in _scatter:
 		var p: Vector2 = item[1]
+		if not tile.has_point(p):
+			continue
 		var k: float = float(item[2]) * _depth_scale(p.y)
 		match item[0]:
 			"crater":
