@@ -8,6 +8,10 @@
 
 config_version=5
 
+[admob]
+
+general/android/app_id="ca-app-pub-6257234803503517~7700172757"
+
 [application]
 
 config/name="Egg Escape: Puzzle Break"
@@ -48,3 +52,7 @@ renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 textures/vram_compression/import_etc2_astc=true
 anti_aliasing/quality/msaa_3d=2
+
+[tetrisphere]
+
+test_ads=true

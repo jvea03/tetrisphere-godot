@@ -33,11 +33,13 @@ const AD_UNITS_TEST := {
 	},
 }
 
-## Tetrisphere's own ad units, from its AdMob app -- fill these in (and the
-## app ids under Project Settings > admob/general) once they exist. Release
-## builds use them when set; debug builds always use the test units above.
+## Tetrisphere's own ad units, from its AdMob app "Egg Escape: Puzzle Break"
+## (its app id is under Project Settings > admob/general). Release builds use
+## them when set, unless tetrisphere/test_ads is on (for a build you will tap
+## through yourself -- tapping your own live ads breaks AdMob policy); debug
+## builds always use the test units above. iOS has no app yet.
 const AD_UNITS_LIVE := {
-	"android": {"rewarded": "", "interstitial": ""},
+	"android": {"rewarded": "ca-app-pub-6257234803503517/3961072448", "interstitial": "ca-app-pub-6257234803503517/2647990771"},   # Egg Escape: Puzzle Break (AdMob app ~7700172757)
 	"ios": {"rewarded": "", "interstitial": ""},
 }
 
@@ -67,7 +69,8 @@ func _ready() -> void:
 func _units() -> Dictionary:
 	var os := "ios" if OS.has_feature("ios") else "android"
 	var live: Dictionary = AD_UNITS_LIVE[os]
-	if not OS.is_debug_build() and str(live["rewarded"]) != "" and str(live["interstitial"]) != "":
+	var test := OS.is_debug_build() or bool(ProjectSettings.get_setting("tetrisphere/test_ads", false))
+	if not test and str(live["rewarded"]) != "" and str(live["interstitial"]) != "":
 		return live
 	return AD_UNITS_TEST[os]
 

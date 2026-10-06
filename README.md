@@ -263,11 +263,13 @@ parks it, and Home's PLAY becomes CONTINUE.
 - **Ads** (`scripts/meta/ads.gd`) "play" for 2.5 seconds and always reward on
   desktop. On Android and iOS, Poing Studios' AdMob plugin (v5.1,
   `addons/admob`) shows real ads through `scripts/ads/AdmobBackend.gd`, one
-  rewarded and one interstitial kept loaded ahead. Only Google's public test
-  app ids and ad units are set; fill in `Ads.AD_UNITS_LIVE` and the
-  `admob/general` app ids once Tetrisphere's AdMob app exists. Tetrisphere needs its
-  own AdMob app and ad units; Duckdoku's belong to Duckdoku's listing and are
-  deliberately not reused.
+  rewarded and one interstitial kept loaded ahead. Its own AdMob app, "Egg
+  Escape: Puzzle Break" (app id in `admob/general/android/app_id`), has the
+  units `egg_escape_rewarded` and `egg_escape_interstitial`
+  (`Ads.AD_UNITS_LIVE`); Duckdoku's are never reused. Release builds show those
+  live ads **unless `tetrisphere/test_ads` is on** -- it is, for closed
+  testing, as tapping your own live ads breaks AdMob policy. Turn it off for
+  the public release. Debug builds always show test ads.
 - **Leaderboards and Clubs** have no backend: rivals, clubs, members and chat
   replies are simulated locally and deterministically, as in Duckdoku.
 - **Music**: the main menu song (`audio/main_menu.mp3`) loops on Home and every
