@@ -1225,6 +1225,11 @@ func _build_settings() -> void:
 	links.add_child(restore)
 	links.add_child(privacy)
 	box.add_child(links)
+	# Where a privacy law asks for it, a way back to the ad consent choices.
+	if Ads.privacy_options_required():
+		var choices := TSUI.button("Ad Privacy Choices", TSUI.CARD, 22, Vector2(0, 64))
+		choices.pressed.connect(Ads.show_privacy_options)
+		box.add_child(choices)
 	var close := TSUI.button("Close", TSUI.PINK, 28)
 	close.pressed.connect(func(): TSUI.conceal(_settings["root"]))
 	box.add_child(close)

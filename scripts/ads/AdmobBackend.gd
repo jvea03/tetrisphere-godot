@@ -50,7 +50,49 @@ func setup(units: Dictionary) -> void:
 	_init_listener.on_initialization_complete = func(_status: InitializationStatus) -> void:
 		_load_rewarded()
 		_load_interstitial()
+	_gather_consent()
+
+
+# -- consent ----------------------------------------------------------------
+# Google's User Messaging Platform: where a privacy law asks for it (the EEA,
+# the UK, Switzerland, some US states), the AdMob app's published message is
+# shown once, before any ad is requested. Ads start either way once that is
+# settled -- or if the check can't be made (offline), as AdMob then serves
+# only what the stored answer allows.
+
+var _ads_started := false
+
+
+func _gather_consent() -> void:
+	UserMessagingPlatform.consent_information.update(ConsentRequestParameters.new(), _on_consent_info, func(_e: FormError) -> void: _start_ads())
+
+
+func _on_consent_info() -> void:
+	var info := UserMessagingPlatform.consent_information
+	if info.get_is_consent_form_available() and info.get_consent_status() == ConsentInformation.ConsentStatus.REQUIRED:
+		UserMessagingPlatform.load_consent_form(
+			func(form: ConsentForm) -> void: form.show(func(_e: FormError) -> void: _start_ads()),
+			func(_e: FormError) -> void: _start_ads())
+	else:
+		_start_ads()
+
+
+func _start_ads() -> void:
+	if _ads_started:
+		return
+	_ads_started = true
 	MobileAds.initialize(_init_listener)
+
+
+## True where the player must be able to change their ad privacy choices
+## (Settings then shows a button for it).
+func privacy_options_required() -> bool:
+	return UserMessagingPlatform.consent_information.get_privacy_options_requirement_status() \
+		== ConsentInformation.PrivacyOptionsRequirementStatus.REQUIRED
+
+
+func show_privacy_options() -> void:
+	UserMessagingPlatform.show_privacy_options_form(func(_e: FormError) -> void: pass)
 
 
 # -- rewarded ---------------------------------------------------------------

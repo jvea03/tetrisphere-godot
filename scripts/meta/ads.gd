@@ -75,6 +75,17 @@ func _units() -> Dictionary:
 	return AD_UNITS_TEST[os]
 
 
+## Whether Settings must offer the player a way to change their ad privacy
+## choices (only where a privacy law asks for it, and only with real ads).
+func privacy_options_required() -> bool:
+	return _backend != null and _backend.privacy_options_required()
+
+
+func show_privacy_options() -> void:
+	if _backend != null:
+		_backend.show_privacy_options()
+
+
 func is_busy() -> bool:
 	return _busy
 
