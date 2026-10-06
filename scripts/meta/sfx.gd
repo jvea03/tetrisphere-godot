@@ -54,6 +54,24 @@ static func music(mode: String) -> void:
 ## The next level song from the shuffle bag: every level song in a random order,
 ## each played once, then a fresh shuffle -- which never opens with the song
 ## that just finished, so no song plays twice in a row.
+## Stops and lets go of every player and stream, as the app quits, so
+## nothing is left playing (or held) while the engine shuts down.
+static func release() -> void:
+	for group in [_music_players, _players]:
+		for p in group.values():
+			if is_instance_valid(p):
+				(p as AudioStreamPlayer).stop()
+				(p as AudioStreamPlayer).stream = null
+				(p as AudioStreamPlayer).free()
+		group.clear()
+	for t in _music_tweens.values():
+		if t is Tween and (t as Tween).is_valid():
+			(t as Tween).kill()
+	_music_tweens.clear()
+	_streams.clear()
+	_music_mode = ""
+
+
 static func next_level_song() -> String:
 	if _level_bag.is_empty():
 		_level_bag = LEVEL_MUSIC.duplicate()

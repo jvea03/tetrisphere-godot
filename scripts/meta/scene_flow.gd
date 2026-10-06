@@ -64,6 +64,10 @@ func _handle_back() -> void:
 	go(HOME)
 
 
+func _exit_tree() -> void:
+	TSSfx.release()   # the app is quitting: let go of the music and sounds
+
+
 func _ready() -> void:
 	layer = 128
 	process_mode = Node.PROCESS_MODE_ALWAYS
