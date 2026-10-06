@@ -255,12 +255,17 @@ parks it, and Home's PLAY becomes CONTINUE.
   A release build with no store plugin has no store at all -- buying fails
   with "The store isn't available yet" -- unless the project setting
   `tetrisphere/simulate_store` is turned on for a test build. The Google Play
-  Billing and StoreKit code paths are ported and switch on when those
-  plugins are installed, but none of the product ids exist yet: they must be
+  Billing plugin (v3.3, Billing Library 9.1, `addons/GodotGooglePlayBilling`)
+  is installed and switches on in the Android build; the StoreKit path
+  switches on with Godot's iOS plugin, but none of the product ids exist yet: they must be
   created in Play Console and App Store Connect under Tetrisphere's own
   listing.
-- **Ads** (`scripts/meta/ads.gd`) "play" for 2.5 seconds and always reward.
-  Only Google's public test ad units are in the code. Tetrisphere needs its
+- **Ads** (`scripts/meta/ads.gd`) "play" for 2.5 seconds and always reward on
+  desktop. On Android and iOS, Poing Studios' AdMob plugin (v5.1,
+  `addons/admob`) shows real ads through `scripts/ads/AdmobBackend.gd`, one
+  rewarded and one interstitial kept loaded ahead. Only Google's public test
+  app ids and ad units are set; fill in `Ads.AD_UNITS_LIVE` and the
+  `admob/general` app ids once Tetrisphere's AdMob app exists. Tetrisphere needs its
   own AdMob app and ad units; Duckdoku's belong to Duckdoku's listing and are
   deliberately not reused.
 - **Leaderboards and Clubs** have no backend: rivals, clubs, members and chat

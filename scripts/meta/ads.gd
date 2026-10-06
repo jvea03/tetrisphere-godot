@@ -33,6 +33,14 @@ const AD_UNITS_TEST := {
 	},
 }
 
+## Tetrisphere's own ad units, from its AdMob app -- fill these in (and the
+## app ids under Project Settings > admob/general) once they exist. Release
+## builds use them when set; debug builds always use the test units above.
+const AD_UNITS_LIVE := {
+	"android": {"rewarded": "", "interstitial": ""},
+	"ios": {"rewarded": "", "interstitial": ""},
+}
+
 const ADMOB_BACKEND_PATH := "res://scripts/ads/AdmobBackend.gd"
 const ADMOB_ADDON_MARKER := "res://addons/admob/plugin.cfg"
 
@@ -50,8 +58,18 @@ func _ready() -> void:
 			add_child(_backend)
 			_backend.rewarded_result.connect(_finish_rewarded)
 			_backend.interstitial_closed.connect(_finish_interstitial)
-			_backend.setup(AD_UNITS_TEST["ios" if OS.has_feature("ios") else "android"])
+			_backend.setup(_units())
 			simulated = false
+
+
+## The ad units to use: the live ones in a release build once they are set,
+## Google's test units otherwise.
+func _units() -> Dictionary:
+	var os := "ios" if OS.has_feature("ios") else "android"
+	var live: Dictionary = AD_UNITS_LIVE[os]
+	if not OS.is_debug_build() and str(live["rewarded"]) != "" and str(live["interstitial"]) != "":
+		return live
+	return AD_UNITS_TEST[os]
 
 
 func is_busy() -> bool:
