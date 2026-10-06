@@ -494,6 +494,8 @@ func _start_daily() -> void:
 ## A fresh ball: the baked one when the level has one (levels 1-50), else
 ## generated from the seed.
 func _start(seed_value: int, baked: Dictionary = {}) -> void:
+	if not TSSession.has_saved_game:
+		TSSession.forget()   # a fresh ball: nothing to continue
 	level = TSLevels.rules_for_level(current_level)
 	if baked.is_empty():
 		board.generate(seed_value, level)
@@ -574,11 +576,24 @@ func _park() -> void:
 	if state != State.PLAYING:
 		return
 	TSSession.has_saved_game = true
-	TSSession.state = {
+	TSSession.state = _snapshot()
+	TSSession.write(TSSession.state)
+
+
+func _snapshot() -> Dictionary:
+	return {
 		"board": board, "daily": is_daily, "level": current_level, "difficulty": difficulty,
 		"cur_type": cur_type, "next_type": next_type, "cursor": cursor, "lives": lives,
 		"first_attempt": is_first_attempt, "lose_ad_used": lose_ad_used,
 	}
+
+
+## Sent to the background mid-ball: put the ball on disk, so it can be
+## continued even if Android ends the app (unless another ball is parked).
+func _notification(what: int) -> void:
+	if what in [NOTIFICATION_APPLICATION_PAUSED, NOTIFICATION_APPLICATION_FOCUS_OUT, NOTIFICATION_WM_CLOSE_REQUEST]:
+		if state == State.PLAYING and not _escaping and not TSSession.has_saved_game:
+			TSSession.write(_snapshot())
 
 
 func current_offsets() -> Array:
@@ -1622,6 +1637,8 @@ func _update_creature() -> void:
 # celebration, so leaving mid-animation cannot lose them (as in Duckdoku).
 func _win() -> void:
 	state = State.WON
+	if not TSSession.has_saved_game:
+		TSSession.forget()
 	_creature.react(TSCreature.Mood.HAPPY, 9999.0)
 	_escaping = true
 	_pay_win()
@@ -1711,6 +1728,8 @@ func _restart() -> void:
 
 func _lose() -> void:
 	state = State.LOST
+	if not TSSession.has_saved_game:
+		TSSession.forget()
 	_creature.react(TSCreature.Mood.SCARED, 9999.0)
 	TSSfx.play("lose")
 	TSHaptics.heavy()

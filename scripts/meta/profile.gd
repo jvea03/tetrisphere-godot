@@ -2435,6 +2435,7 @@ static func ensure_loaded() -> void:
 	TSChests.from_save(g.call("chests", {}))
 	TSHunt.from_save(g.call("hunt", {}))
 	TSSales.from_save(g.call("sales", {}))
+	TSSession.restore()   # a ball left in play last time
 
 
 static func save() -> void:

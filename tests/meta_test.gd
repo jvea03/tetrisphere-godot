@@ -23,6 +23,7 @@ func _initialize() -> void:
 	_test_boosters()
 	_test_level_music()
 	_test_skies()
+	_test_parked_ball()
 	print("")
 	print("ALL PASSED" if _failures == 0 else "%d FAILED" % _failures)
 	quit(0 if _failures == 0 else 1)
@@ -490,3 +491,28 @@ func _test_skies() -> void:
 		names.append(TSToon.sky_for_level(level)["name"])
 	_check("every ten levels the sky moves on a time of day, and cycles (%s)" % ", ".join(names),
 		names == ["Morning", "Morning", "Day", "Day", "Sunset", "Night", "Dawn", "Dawn", "Morning", "Day"])
+
+
+# A ball in play written to disk comes back whole at the next launch -- the
+# same cells, pieces, hearts and aim -- and is dropped once forgotten.
+func _test_parked_ball() -> void:
+	var b := TSBoard.new()
+	b.generate(1234, TSLevels.rules_for_level(12))
+	b.cleared_blocks = 7
+	var s := {"board": b, "daily": false, "level": 12, "difficulty": 1, "cur_type": 2, "next_type": 3,
+		"cursor": Vector2i(5, 4), "lives": 2, "first_attempt": false, "lose_ad_used": true}
+	var was_persist := TSProfile.persist
+	TSProfile.persist = true
+	TSSession.forget()
+	TSSession.write(s)
+	TSSession.has_saved_game = false
+	TSSession.state = {}
+	TSSession.restore()
+	var back: Dictionary = TSSession.state
+	var same: bool = TSSession.has_saved_game and back.has("board") \
+		and JSON.stringify((back["board"] as TSBoard).to_dict()) == JSON.stringify(b.to_dict()) \
+		and back["cursor"] == Vector2i(5, 4) and int(back["lives"]) == 2 and int(back["level"]) == 12 \
+		and (back["board"] as TSBoard).shell_depth == b.shell_depth and (back["board"] as TSBoard).cleared_blocks == 7
+	TSSession.clear()
+	_check("a ball in play survives the app being closed (written, read back whole, then dropped)", same and not FileAccess.file_exists(TSSession.PATH))
+	TSProfile.persist = was_persist
