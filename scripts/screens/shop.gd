@@ -103,7 +103,7 @@ func _refresh() -> void:
 		_list.add_child(_sections[id])
 		match id:
 			"deals":
-				var sale: Dictionary = FEATURED_SALES[(int(Time.get_unix_time_from_system() + 3 * 86400) / (7 * 86400)) % FEATURED_SALES.size()]
+				var sale: Dictionary = FEATURED_SALES[(int(TSClock.now() + 3 * 86400) / (7 * 86400)) % FEATURED_SALES.size()]
 				_list.add_child(_featured_card(sale))
 			"noads":
 				_list.add_child(_no_ads_card())

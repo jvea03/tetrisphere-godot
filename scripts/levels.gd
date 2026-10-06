@@ -144,7 +144,7 @@ static func baked_board(level: int) -> Dictionary:
 ## the same for everyone all day and different tomorrow.
 static func daily_level() -> int:
 	var rng := RandomNumberGenerator.new()
-	rng.seed = hash("daily_" + Time.get_date_string_from_system())
+	rng.seed = hash("daily_" + TSClock.date_string())
 	var level := rng.randi_range(11, 70)
 	while difficulty_for_level(level) == 0:
 		level += 1

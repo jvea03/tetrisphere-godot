@@ -679,6 +679,7 @@ stepped through frame by frame.
 | `scripts/toon.gd` | The hand-drawn look: cel-shading, ink-outline and paper shaders, the rounded tile meshes (and the shader that bends them onto the egg), and the font. |
 | `scripts/board_view.gd` | Maps the grid onto the egg, draws each piece as one rounded bar and the pole caps, and plays the clear effects. |
 | `scripts/game.gd` | The game screen: builds the scene in code, drives input, camera and HUD, levels, and the pause, win, lose and ad cards. |
+| `scripts/meta/clock.gd` | `TSClock`: the game's clock -- the device's, corrected by the network's time read once at launch (an HTTP Date header, no player data sent), so winding the phone's clock doesn't speed builds, the mine, chests or daily rewards while online. Every time read goes through it. (The Android presets have the INTERNET permission for it.) |
 | `scripts/meta/profile.gd` | `TSProfile`: the saved player -- coins, boosters, critters and ship parts, clubs, streaks, simulated leaderboards, Battle Pass and quests. |
 | `scripts/meta/chests.gd`, `hunt.gd`, `sales.gd` | The chest tray, the Eggsperience, and pop-up sales. |
 | `scripts/meta/nav.gd`, `tunables.gd`, `session.gd`, `filter.gd`, `haptics.gd`, `sfx.gd` | Unlock levels, live-tunable numbers, the parked ball, the name/chat filter, vibration, and synthesized sounds. |

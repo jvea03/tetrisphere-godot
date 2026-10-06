@@ -122,7 +122,7 @@ func _scroll_to_player() -> void:
 
 
 func _refresh_countdown() -> void:
-	var dt := Time.get_datetime_dict_from_system()
+	var dt := TSClock.datetime_dict()
 	var day_secs := int(dt["hour"]) * 3600 + int(dt["minute"]) * 60 + int(dt["second"])
 	var secs := 0
 	match _tab:
@@ -135,7 +135,7 @@ func _refresh_countdown() -> void:
 			if next["month"] > 12:
 				next["month"] = 1
 				next["year"] = int(dt["year"]) + 1
-			secs = int(Time.get_unix_time_from_datetime_dict(next)) - int(Time.get_unix_time_from_system()) - int(Time.get_time_zone_from_system().get("bias", 0)) * 60
+			secs = int(Time.get_unix_time_from_datetime_dict(next)) - int(TSClock.now()) - int(Time.get_time_zone_from_system().get("bias", 0)) * 60
 	_countdown.text = "%s in %s" % ["Resets" if _tab == "daily" else "Ends", TSUI.fmt_duration(maxi(secs, 0))]
 
 

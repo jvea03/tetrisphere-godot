@@ -91,7 +91,7 @@ func _fill(parts: Dictionary, card: PanelContainer, count: int, claimable: bool,
 	(parts["claim"] as Control).visible = claimable
 	var collected: Label = parts["collected"]
 	collected.visible = not claimable
-	var today := Time.get_date_string_from_system()
+	var today := TSClock.date_string()
 	var claimed_today := (TSProfile.login_reward_claimed_date if login else TSProfile.daily_reward_claimed_date) == today
 	collected.text = "Collected today" if claimed_today else ("Come back tomorrow" if login else "Crack today's Daily Egg to keep it going")
 	card.add_theme_stylebox_override("panel", TSUI.sb(TSUI.CARD, 30, 5 if claimable else 3, 5, 22))

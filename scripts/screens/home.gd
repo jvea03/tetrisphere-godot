@@ -317,7 +317,7 @@ func _refresh_side() -> void:
 	streak_badge.get_meta("label").text = str(TSProfile.login_streak_count)
 	streak_btn.visible = not TSProfile.has_claimed_all_streak_rewards_today()
 	daily_btn.visible = TSNav.daily_unlocked() and not TSProfile.is_daily_completed_today()
-	daily_dot.visible = daily_btn.visible and TSProfile.daily_streak_last_date != Time.get_date_string_from_system()
+	daily_dot.visible = daily_btn.visible and TSProfile.daily_streak_last_date != TSClock.date_string()
 	pass_dot.visible = TSProfile.has_claimable_battle_pass_reward() or TSProfile.has_unclaimed_quests()
 	hunt_dot.visible = TSHunt.has_alert()
 
@@ -1074,7 +1074,7 @@ func _on_purchase_result(product_id: String, success: bool) -> void:
 # -- leaderboard results -------------------------------------------------------------
 
 func _tick_boards() -> void:
-	var today := Time.get_date_string_from_system()
+	var today := TSClock.date_string()
 	if _board_day == today:
 		return
 	var first := _board_day == ""

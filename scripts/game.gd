@@ -488,7 +488,7 @@ func _start_daily() -> void:
 	current_level = TSLevels.daily_level()
 	difficulty = TSLevels.difficulty_for_level(current_level)
 	TSProfile.record_daily_play()
-	_start(hash("daily_" + Time.get_date_string_from_system()))
+	_start(hash("daily_" + TSClock.date_string()))
 
 
 ## A fresh ball: the baked one when the level has one (levels 1-50), else

@@ -65,7 +65,7 @@ static func from_save(data: Dictionary) -> void:
 
 
 static func _now() -> int:
-	return int(Time.get_unix_time_from_system())
+	return int(TSClock.now())
 
 
 static func offer(id: String) -> Dictionary:

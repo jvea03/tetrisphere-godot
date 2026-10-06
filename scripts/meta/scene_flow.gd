@@ -71,6 +71,7 @@ func _exit_tree() -> void:
 func _ready() -> void:
 	layer = 128
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	TSClock.sync(self)   # read the network's time once, so the device clock can't be wound on
 	fade_rect = ColorRect.new()
 	fade_rect.color = TSToon.PAPER
 	fade_rect.set_anchors_preset(Control.PRESET_FULL_RECT)

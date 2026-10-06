@@ -324,7 +324,7 @@ func _chat_line(line: Dictionary) -> Control:
 	bubble.add_theme_stylebox_override("panel", face)
 	var v := TSUI.vbox(0)
 	bubble.add_child(v)
-	var ago := maxi(int(Time.get_unix_time_from_system()) - int(line["unix"]), 0)
+	var ago := maxi(int(TSClock.now()) - int(line["unix"]), 0)
 	v.add_child(TSUI.label("%s  ·  %s" % [line["name"], "just now" if ago < 60 else ("%dm ago" % (ago / 60) if ago < 3600 else "%s ago" % _dur(ago))], 16, TSUI.MUTED))
 	var text := TSUI.label(str(line["text"]), 22)
 	if TSToon.hand_font().get_string_size(text.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 22).x > 400:

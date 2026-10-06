@@ -72,7 +72,7 @@ static var starter_material_claims_date: String = ""
 
 ## Zeroes the daily packs' claims on the first look each day.
 static func roll_starter_claims() -> void:
-	var today := Time.get_date_string_from_system()
+	var today := TSClock.date_string()
 	var changed := false
 	if starter_coin_claims_date != today:
 		starter_coin_claims_date = today
@@ -789,7 +789,7 @@ static var part_builds: Dictionary = {}
 
 
 static func _now_unix() -> int:
-	return int(Time.get_unix_time_from_system())
+	return int(TSClock.now())
 
 
 ## A step's tier for its materials and time: the camp spot's wave, or 4 for the ship.
@@ -1259,7 +1259,7 @@ static func _is_known_club_name(name: String) -> bool:
 
 
 static func _push_chat(name: String, text: String, is_player: bool, unix: int = 0) -> void:
-	club_chat.append({"name": name, "text": text, "unix": unix if unix > 0 else int(Time.get_unix_time_from_system()), "is_player": is_player})
+	club_chat.append({"name": name, "text": text, "unix": unix if unix > 0 else int(TSClock.now()), "is_player": is_player})
 	while club_chat.size() > CLUB_CHAT_KEEP:
 		club_chat.pop_front()
 
@@ -1268,7 +1268,7 @@ static func _seed_club_chat() -> void:
 	club_chat = []
 	if club_is_owner:
 		return
-	var now := int(Time.get_unix_time_from_system())
+	var now := int(TSClock.now())
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash("club_chat_" + club_name)
 	var mates := club_roster().filter(func(m): return not m["is_player"])
@@ -1364,8 +1364,8 @@ static func create_club(new_name: String, icon: int = 0) -> bool:
 	club_icon = clampi(icon, 0, CLUB_ICON_COUNT - 1)
 	club_message = ""
 	club_chat = []
-	club_joined_date = Time.get_date_string_from_system()
-	club_joined_unix = int(Time.get_unix_time_from_system())
+	club_joined_date = TSClock.date_string()
+	club_joined_unix = int(TSClock.now())
 	save()
 	return true
 
@@ -1376,8 +1376,8 @@ static func join_club(target_name: String) -> bool:
 	has_club = true
 	club_name = target_name
 	club_is_owner = false
-	club_joined_date = Time.get_date_string_from_system()
-	club_joined_unix = int(Time.get_unix_time_from_system())
+	club_joined_date = TSClock.date_string()
+	club_joined_unix = int(TSClock.now())
 	_seed_club_chat()
 	save()
 	return true
@@ -1440,7 +1440,7 @@ static func club_roster() -> Array:
 static func club_tenure_seconds() -> int:
 	if club_joined_unix <= 0:
 		return 0
-	return maxi(int(Time.get_unix_time_from_system()) - club_joined_unix, 0)
+	return maxi(int(TSClock.now()) - club_joined_unix, 0)
 
 
 ## Weekly club-vs-club board: the player is their club's only real
@@ -1503,7 +1503,7 @@ static func club_standings() -> Array:
 
 ## Seconds to the coming Monday 00:00 local.
 static func seconds_until_weekly_reset() -> int:
-	var dt := Time.get_datetime_dict_from_system()
+	var dt := TSClock.datetime_dict()
 	var days_left: int = (8 - int(dt["weekday"])) % 7
 	if days_left == 0:
 		days_left = 7
@@ -1541,7 +1541,7 @@ static func _append_streak_message(msg: String) -> void:
 
 ## Once per real day the app is opened (Home calls it).
 static func record_login() -> void:
-	var today := Time.get_date_string_from_system()
+	var today := TSClock.date_string()
 	if login_streak_last_date == today:
 		return
 	if login_streak_last_date != "" and login_streak_last_date == _yesterday_of(today):
@@ -1559,7 +1559,7 @@ static func record_login() -> void:
 
 ## Once when the player starts the day's Daily Egg.
 static func record_daily_play() -> void:
-	var today := Time.get_date_string_from_system()
+	var today := TSClock.date_string()
 	if daily_streak_last_date == today:
 		return
 	if daily_streak_last_date != "" and daily_streak_last_date == _yesterday_of(today):
@@ -1575,7 +1575,7 @@ static func record_daily_play() -> void:
 
 
 static func can_claim_login_reward() -> bool:
-	var today := Time.get_date_string_from_system()
+	var today := TSClock.date_string()
 	return login_streak_last_date == today and login_reward_claimed_date != today
 
 
@@ -1594,7 +1594,7 @@ static func claim_login_reward() -> int:
 
 
 static func can_claim_daily_reward() -> bool:
-	var today := Time.get_date_string_from_system()
+	var today := TSClock.date_string()
 	return daily_streak_last_date == today and daily_reward_claimed_date != today
 
 
@@ -1613,17 +1613,17 @@ static func claim_daily_reward() -> int:
 
 
 static func has_claimed_all_streak_rewards_today() -> bool:
-	var today := Time.get_date_string_from_system()
+	var today := TSClock.date_string()
 	return login_reward_claimed_date == today and daily_reward_claimed_date == today
 
 
 static func mark_daily_completed() -> void:
-	daily_completed_date = Time.get_date_string_from_system()
+	daily_completed_date = TSClock.date_string()
 	save()
 
 
 static func is_daily_completed_today() -> bool:
-	return daily_completed_date == Time.get_date_string_from_system()
+	return daily_completed_date == TSClock.date_string()
 
 
 # -- leaderboards ("stars") ---------------------------------------------------------
@@ -1678,7 +1678,7 @@ static func simulated_rivals_for(date_str: String, days: float = 1.0) -> Array:
 
 
 static func _roll_leaderboard_day() -> void:
-	var today := Time.get_date_string_from_system()
+	var today := TSClock.date_string()
 	if daily_star_date == today:
 		return
 	if daily_star_date != "" and daily_star_total > 0:
@@ -1812,7 +1812,7 @@ static func add_stars(lives_remaining: int, bonus: int = 0, difficulty: int = 0)
 
 static func todays_standings() -> Array:
 	_roll_leaderboard_day()
-	var entries := simulated_rivals_for(Time.get_date_string_from_system())
+	var entries := simulated_rivals_for(TSClock.date_string())
 	entries.append({"name": player_name, "stars": daily_star_total, "is_player": true})
 	entries.sort_custom(func(a, b): return int(a["stars"]) > int(b["stars"]))
 	return entries
@@ -1820,7 +1820,7 @@ static func todays_standings() -> Array:
 
 static func _period_key(period: String) -> String:
 	if period == "season":
-		var dt := Time.get_datetime_dict_from_system()
+		var dt := TSClock.datetime_dict()
 		return "%04d-%02d" % [dt["year"], dt["month"]]
 	return "W%d" % _local_week_index()
 
@@ -1832,13 +1832,13 @@ static func period_length_days(period: String) -> int:
 static func period_days_elapsed(period: String) -> int:
 	if period == "weekly":
 		return (_local_day_index() + 3) % 7 + 1
-	return int(Time.get_datetime_dict_from_system()["day"])
+	return int(TSClock.datetime_dict()["day"])
 
 
 ## Days since the epoch in local time (1970-01-01 was a Thursday, so +3 makes
 ## Monday the start of each week).
 static func _local_day_index() -> int:
-	var date := Time.get_date_string_from_system()
+	var date := TSClock.date_string()
 	return int(Time.get_unix_time_from_datetime_string(date + "T00:00:00") / 86400)
 
 
@@ -1919,7 +1919,7 @@ static func battle_pass_stars_for_tier(tier: int) -> int:
 
 static func _battle_pass_key() -> String:
 	@warning_ignore("integer_division")
-	var epoch_day: int = int(Time.get_unix_time_from_system()) / 86400
+	var epoch_day: int = int(TSClock.now()) / 86400
 	@warning_ignore("integer_division")
 	return "BP%d" % (epoch_day / BATTLE_PASS_DAYS)
 
@@ -1949,7 +1949,7 @@ static func _roll_battle_pass() -> void:
 
 static func battle_pass_seconds_remaining() -> int:
 	_roll_battle_pass()
-	var now := int(Time.get_unix_time_from_system())
+	var now := int(TSClock.now())
 	@warning_ignore("integer_division")
 	var season_index: int = (now / 86400) / BATTLE_PASS_DAYS
 	return maxi((season_index + 1) * BATTLE_PASS_DAYS * 86400 - now, 0)
@@ -2028,7 +2028,7 @@ const BATTLE_PASS_EXCLUSIVE_CRITTERS := [52, 82]
 
 static func battle_pass_season_number() -> int:
 	@warning_ignore("integer_division")
-	var idx: int = (int(Time.get_unix_time_from_system()) / 86400) / BATTLE_PASS_DAYS
+	var idx: int = (int(TSClock.now()) / 86400) / BATTLE_PASS_DAYS
 	return maxi(idx - BATTLE_PASS_SEASON_ONE, 0) + 1
 
 
@@ -2191,7 +2191,7 @@ static func _quest_week_number(key: String) -> int:
 
 
 static func _roll_quests() -> void:
-	var today := Time.get_date_string_from_system()
+	var today := TSClock.date_string()
 	if quest_daily_date != today:
 		quest_daily_date = today
 		quest_daily_progress = {}

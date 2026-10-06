@@ -24,6 +24,7 @@ func _initialize() -> void:
 	_test_level_music()
 	_test_skies()
 	_test_parked_ball()
+	_test_clock()
 	print("")
 	print("ALL PASSED" if _failures == 0 else "%d FAILED" % _failures)
 	quit(0 if _failures == 0 else 1)
@@ -516,3 +517,14 @@ func _test_parked_ball() -> void:
 	TSSession.clear()
 	_check("a ball in play survives the app being closed (written, read back whole, then dropped)", same and not FileAccess.file_exists(TSSession.PATH))
 	TSProfile.persist = was_persist
+
+
+# The clock: an HTTP date reads back exactly, a device clock off by hours is
+# corrected (and everything reading TSClock moves with it), a close one isn't.
+func _test_clock() -> void:
+	_check("an HTTP date reads", TSClock.parse_http_date("Mon, 05 Oct 2026 10:00:00 GMT") == int(Time.get_unix_time_from_datetime_string("2026-10-05T10:00:00")) and TSClock.parse_http_date("garbage") == 0)
+	var device := Time.get_unix_time_from_system()
+	TSClock.apply_network_time(device + 3 * 3600)
+	var corrected := absf(TSClock.now() - (device + 3 * 3600)) < 5.0
+	TSClock.apply_network_time(Time.get_unix_time_from_system() + 30)
+	_check("a clock hours off is corrected by the network's; one a few seconds off is left alone", corrected and TSClock.offset == 0.0)
