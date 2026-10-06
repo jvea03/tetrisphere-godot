@@ -197,6 +197,7 @@ const SHIP_RING := Vector2(270.0, 190.0)
 const SHIP_SLOTS := {12: 10.0, 13: 55.0, 11: 125.0, 6: 160.0, 10: 200.0, 9: 240.0, 7: 280.0, 8: 320.0}
 const SHIP_SPOTS := {6: NOZZLE, 7: PATCH, 8: DOME, 9: ANTENNA_UP, 10: FIN_TIP, 11: Vector2(256.0, 204.0), 12: Vector2(466.0, 200.0), 13: Vector2(270.0, 262.0)}
 const NODE_R := 32.0            # a node's circle, on screen
+const SPOT_REACH := 520.0       # how far round its spot a camp spot draws (a windmill's sails, a treehouse's crown)
 const EDGE_INSET := 44.0        # how far inside node_area an edge arrow sits
 
 ## Home turns the nodes on (once the camp is open to the player) and says
@@ -238,6 +239,11 @@ func _ready() -> void:
 	_world.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_world)
 	_sky_layer = _layer(_draw_sky, -2.0)
+	# The ground itself -- its colours, horizon, trees on it and everything
+	# strewn about -- never changes, so it is drawn once; the pond's shimmer and
+	# the moving shadows go on the layer above it, redrawn every frame.
+	var ground_still := _spot_layer(_draw_ground_still, -1.5)
+	_painters.erase(ground_still)
 	_ground = _layer(_draw_ground, -1.0)
 	_pad_layer = _spot_layer(_draw_pad, _ship_depth - 2.0)
 	_ship_layer = _layer(_draw_ship, _ship_depth)
@@ -261,15 +267,14 @@ func _ready() -> void:
 			[_draw_hammock, HAMMOCK], [_draw_picnic, PICNIC], [_draw_clothesline, CLOTHESLINE], [_draw_mailbox, MAILBOX], [_draw_windmill, WINDMILL],
 			[_draw_dock, DOCK], [_draw_playground, PLAYGROUND], [_draw_treehouse, TREEHOUSE], [_draw_stall, STALL], [_draw_greenhouse, GREENHOUSE],
 			[_draw_spring, SPRING], [_draw_observatory, OBSERVATORY], [_draw_oven, OVEN], [_draw_statue, STATUE], [_draw_mine, MINE]]:
-		_spot_layer(spot[0], (spot[1] as Vector2).y)
+		_spot_layer(spot[0], (spot[1] as Vector2).y).set_meta("at", spot[1])
 	for tree in _trees:
 		var layer := Control.new()
 		layer.size = Vector2(W, H)
 		layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		layer.draw.connect(func(): _draw_tree(layer, tree))
 		layer.set_meta("depth", (tree[0] as Vector2).y)
-		_world.add_child(layer)
-		_painters.append(layer)
+		_world.add_child(layer)   # still: drawn once, never repainted
 	if _jobs.has("crater"):
 		_lip_layer = _layer(_draw_crater_lip, CRATER.y + 1.0)
 	# The time of day, as on the player's current level (TSToon.SKIES): the
@@ -396,6 +401,11 @@ func _home_view() -> void:
 
 func _view_size() -> Vector2:
 	return size if size.x > 0.0 else Vector2(720.0, 1280.0)
+
+
+## The part of the world on screen now, in world coordinates.
+func _visible_world() -> Rect2:
+	return Rect2(-_world.position / ZOOM, _view_size() / ZOOM)
 
 
 func _clamp_offset() -> void:
@@ -759,7 +769,11 @@ func _process(delta: float) -> void:
 	for c in _crew:
 		_place(c)
 	_sort()
+	# Repaint what moves; a camp spot well out of view keeps its last frame.
+	var seen := _visible_world().grow(SPOT_REACH)
 	for p in _painters:
+		if (p as Control).has_meta("at") and not seen.has_point((p as Control).get_meta("at")):
+			continue
 		(p as Control).queue_redraw()
 	_sync_builders()
 	_nodes.queue_redraw()
@@ -1215,8 +1229,9 @@ func _pool(ci: CanvasItem, at: Vector2, radius: float, colour: Color, strength: 
 	ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
-func _draw_ground() -> void:
-	var ci := _ground
+## The still ground, drawn once: the planet's surface curving away, its
+## horizon band, the autumn trees along it, and everything strewn about.
+func _draw_ground_still(ci: Control) -> void:
 	# The planet's surface, curving away at the edges of the world.
 	var ground := PackedVector2Array()
 	for k in 41:
@@ -1259,6 +1274,13 @@ func _draw_ground() -> void:
 				for dx in [-8.0, 8.0]:
 					ci.draw_line(p + Vector2(dx, -25.0) * k, p + Vector2(dx, 1.0) * k, Color(INK, 0.3), 2.0, true)
 				ci.draw_line(p + Vector2(0, -27.0) * k, p + Vector2(3.0, -35.0) * k, Color(0.4, 0.6, 0.32), 5.0 * k, true)
+
+
+## What moves on the ground, repainted every frame: the pond's shimmer, the
+## crater's hole while someone pops out of it, and the soft shadows under
+## the ship and everyone standing about.
+func _draw_ground() -> void:
+	var ci := _ground
 	# The crater pond.
 	_ellipse(ci, POND, 170.0, 42.0, WATER)
 	var shimmer := sin(_t * 1.5) * 10.0
@@ -2373,10 +2395,13 @@ func _draw_tree(ci: Control, tree: Array) -> void:
 
 ## Leaves drifting down all over the world, swaying and turning as they fall.
 func _draw_falling_leaves(ci: CanvasItem) -> void:
+	var seen := _visible_world().grow(30.0)   # only the ones in view are drawn
 	for leaf in _falling:
 		var y := fposmod(float(leaf[1]) + _t * float(leaf[2]), H)
 		var phase: float = leaf[3]
 		var x := fposmod(float(leaf[0]) + sin(_t * 0.9 + phase) * 46.0 + _t * 10.0, W)
+		if not seen.has_point(Vector2(x, y)):
+			continue
 		_leaf(ci, Vector2(x, y), float(leaf[5]), sin(_t * 1.6 + phase) * 1.2 + phase, AUTUMN_LEAVES[int(leaf[4])])
 
 

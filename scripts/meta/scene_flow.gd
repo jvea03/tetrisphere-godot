@@ -41,6 +41,11 @@ func _process(_delta: float) -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
 		_handle_back()
+	# Sent to the background or closing: save now, as Android may end the app
+	# without another word.
+	elif what in [NOTIFICATION_APPLICATION_PAUSED, NOTIFICATION_APPLICATION_FOCUS_OUT, NOTIFICATION_WM_CLOSE_REQUEST]:
+		if TSProfile._loaded:
+			TSProfile.save()
 
 
 func _handle_back() -> void:

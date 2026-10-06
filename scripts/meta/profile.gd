@@ -830,6 +830,8 @@ static func mine_per_hour() -> int:
 static func mine_seconds() -> int:
 	if mine_since <= 0:
 		mine_since = _now_unix()
+	elif mine_since > _now_unix():
+		mine_since = _now_unix()   # the clock went back: start over rather than stall
 	return clampi(_now_unix() - mine_since, 0, MINE_CAP_SECONDS)
 
 
