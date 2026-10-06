@@ -251,7 +251,10 @@ parks it, and Home's PLAY becomes CONTINUE.
 
 **Simulated, as in Duckdoku's desktop builds -- needed before a release:**
 
-- **Purchases** (`scripts/meta/billing.gd`) succeed instantly. The Google Play
+- **Purchases** (`scripts/meta/billing.gd`) succeed instantly in debug builds.
+  A release build with no store plugin has no store at all -- buying fails
+  with "The store isn't available yet" -- unless the project setting
+  `tetrisphere/simulate_store` is turned on for a test build. The Google Play
   Billing and StoreKit code paths are ported and switch on when those
   plugins are installed, but none of the product ids exist yet: they must be
   created in Play Console and App Store Connect under Tetrisphere's own

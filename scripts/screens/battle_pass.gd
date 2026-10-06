@@ -363,8 +363,10 @@ func _open_buy() -> void:
 	var confirm := TSUI.button("Buy Pass  ·  %s" % _price(), COL_PREMIUM_RIM, 30, Vector2(0, 84))
 	confirm.pressed.connect(func():
 		TSUI.conceal(_buy["root"])
-		Billing.purchase_result.connect(func(id: String, _ok: bool):
+		Billing.purchase_result.connect(func(id: String, ok: bool):
 			if id == "battle_pass" and is_inside_tree():
+				if not ok and not Billing.available():
+					TSUI.note(self, _buy_btn, "The store isn't available yet -- check back soon!")
 				_refresh(), CONNECT_ONE_SHOT)
 		Billing.purchase("battle_pass"))
 	box.add_child(confirm)

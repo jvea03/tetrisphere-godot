@@ -5,8 +5,9 @@ extends Node
 ## behind it is this script's business.
 ##
 ## Backends:
-##  - simulated (default): purchases succeed instantly. Editor, desktop, and
-##    any device build without a billing plugin.
+##  - simulated: purchases succeed instantly. Editor, desktop and debug
+##    builds without a billing plugin (a release build without one has no
+##    store at all, unless tetrisphere/simulate_store is set for testing).
 ##  - Google Play Billing (Android): the official plugin (v3.x) at
 ##    res://addons/GodotGooglePlayBilling, used only when its Engine
 ##    singleton exists on a device build.
@@ -88,9 +89,18 @@ func _ready() -> void:
 		_store.request_product_info({"product_ids": PackedStringArray(PRODUCTS.keys())})
 		set_process(true)
 	else:
-		print("[Billing] simulated backend (no store plugin)")
+		# No store plugin. Debug builds simulate one (purchases succeed at once);
+		# a release build has no store at all -- purchases fail -- unless the
+		# project setting tetrisphere/simulate_store is on, for a test build.
+		simulated = OS.is_debug_build() or bool(ProjectSettings.get_setting("tetrisphere/simulate_store", false))
+		print("[Billing] simulated backend (no store plugin)" if simulated else "[Billing] no store plugin: purchases unavailable")
 	if _store == null:
 		set_process(false)
+
+
+## True when purchases can go through: a store plugin, or the simulation.
+func available() -> bool:
+	return simulated or _store != null or _client != null
 
 
 ## Localized price for a product ("$4.99", "4,99 €"), or "" until the store

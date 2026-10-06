@@ -482,6 +482,8 @@ func _on_purchase_result(_id: String, success: bool) -> void:
 		return
 	if success:
 		_celebrate()
+	elif not Billing.available() and is_instance_valid(_last_btn):
+		TSUI.note(self, _last_btn, "The store isn't available yet -- check back soon!")
 	_refresh()
 
 
