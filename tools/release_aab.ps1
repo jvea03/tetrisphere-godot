@@ -42,6 +42,9 @@ $plain = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServ
 $env:GODOT_ANDROID_KEYSTORE_RELEASE_PATH = $Keystore
 $env:GODOT_ANDROID_KEYSTORE_RELEASE_USER = $Alias
 $env:GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD = $plain
+# No Gradle daemon: one left running holds Godot's output open, and the
+# export never returns even though the .aab is already written.
+$env:GRADLE_OPTS = "-Dorg.gradle.daemon=false"
 try {
     New-Item -ItemType Directory -Force "$project\build" | Out-Null
     # The Gradle build template, installed on the first run.
