@@ -62,7 +62,7 @@ static func release() -> void:
 			if is_instance_valid(p):
 				(p as AudioStreamPlayer).stop()
 				(p as AudioStreamPlayer).stream = null
-				(p as AudioStreamPlayer).free()
+				(p as AudioStreamPlayer).queue_free()   # still parented while the tree shuts down: free() would error
 		group.clear()
 	for t in _music_tweens.values():
 		if t is Tween and (t as Tween).is_valid():

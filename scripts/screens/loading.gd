@@ -5,7 +5,8 @@ extends Control
 ## on a background thread with a progress bar, never for less than
 ## MIN_SECONDS so it does not just flash by. The screen is the game's key art
 ## -- the title over the pink ship of critters in space -- with the bar along
-## the bottom, over its clouds.
+## the bottom, over its clouds. The art is fitted whole to the screen (see
+## _layout_art), never cropped.
 
 static var target_scene_path: String = ""
 
@@ -19,16 +20,29 @@ var _bar: ProgressBar
 var _label: Label
 
 
+var _art: TextureRect
+var _fill: Array[TextureRect] = []   # the art's edge pixels, stretched over what it leaves bare
+
+
 func _ready() -> void:
-	# The art fills the screen whatever its shape (it is 9:16, as the game is);
-	# a taller phone trims a little off its sides.
-	var art := TextureRect.new()
-	art.texture = load(ART)
-	art.set_anchors_preset(Control.PRESET_FULL_RECT)
-	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(art)
+	# The whole key art always shows, title and all: it is fitted to the screen
+	# (9:16 art), and a taller or wider screen gets the art's own edge pixels
+	# stretched into the leftover space, so there is no seam.
+	_art = TextureRect.new()
+	_art.texture = load(ART)
+	_art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_art.stretch_mode = TextureRect.STRETCH_SCALE
+	_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for i in 4:   # top, bottom, left, right
+		var f := TextureRect.new()
+		f.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		f.stretch_mode = TextureRect.STRETCH_SCALE
+		f.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(f)
+		_fill.append(f)
+	add_child(_art)
+	_layout_art()
+	get_viewport().size_changed.connect(_layout_art)
 	var bottom := TSUI.vbox(10)
 	bottom.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
 	bottom.grow_vertical = Control.GROW_DIRECTION_BEGIN
@@ -45,6 +59,36 @@ func _ready() -> void:
 	if target_scene_path == "":
 		target_scene_path = SceneFlow.HOME
 	ResourceLoader.load_threaded_request(target_scene_path)
+
+
+func _layout_art() -> void:
+	var tex: Texture2D = _art.texture
+	var tw := float(tex.get_width())
+	var th := float(tex.get_height())
+	var vp := get_viewport_rect().size
+	var s := minf(vp.x / tw, vp.y / th)
+	var size := Vector2(tw, th) * s
+	var at := ((vp - size) * 0.5).round()
+	_art.position = at
+	_art.size = size
+	var rects := [
+		[Rect2(0, 0, tw, 1), Rect2(at.x, 0, size.x, at.y)],                                     # top
+		[Rect2(0, th - 1, tw, 1), Rect2(at.x, at.y + size.y, size.x, vp.y - at.y - size.y)],    # bottom
+		[Rect2(0, 0, 1, th), Rect2(0, at.y, at.x, size.y)],                                     # left
+		[Rect2(tw - 1, 0, 1, th), Rect2(at.x + size.x, at.y, vp.x - at.x - size.x, size.y)],    # right
+	]
+	for i in 4:
+		var src: Rect2 = rects[i][0]
+		var dst: Rect2 = rects[i][1]
+		var f := _fill[i]
+		f.visible = dst.size.x > 0.5 and dst.size.y > 0.5
+		if f.visible:
+			var atlas := AtlasTexture.new()
+			atlas.atlas = tex
+			atlas.region = src
+			f.texture = atlas
+			f.position = dst.position
+			f.size = dst.size
 
 
 func _process(delta: float) -> void:

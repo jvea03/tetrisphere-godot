@@ -5,7 +5,9 @@
 # written, and Godot quits. A throwaway profile is used and never saved.
 # Run (see tools/ios-screenshots.sh, which runs the whole set):
 #   Godot --path . res://tools/store_shot.tscn -- --scene=home --size=1290x2796 --out=/abs/home.png
-# --scene=<name>  a screen in res://scenes (home, shop, collection, battle_pass,
+# --scene=<name>  a screen in res://scenes, or an overlay: pause, lose, bomb_empty,
+#                 swap_empty, rocks_empty (over the game), settings (over Home);
+#                 a screen in res://scenes (home, shop, collection, battle_pass,
 #                 hunt, streak ...), `game` (a level part way dug) or `win`
 #                 (the same level's win card)
 # --level=<n>     the level for game / win (default 12)
@@ -41,8 +43,11 @@ func _ready() -> void:
 		return
 	_profile(level)
 	var path := "res://scenes/%s.tscn" % scene_name
-	if scene_name == "game" or scene_name == "win":
+	var game_cards := ["pause", "lose", "bomb_empty", "swap_empty", "rocks_empty"]
+	if scene_name == "game" or scene_name == "win" or game_cards.has(scene_name):
 		path = "res://tests/demo.tscn"   # the real game, six greedy drops in
+	elif scene_name == "settings":
+		path = "res://scenes/home.tscn"
 	var packed: PackedScene = load(path)
 	if packed == null:
 		printerr("FAILED_LOAD ", path)
@@ -65,6 +70,24 @@ func _ready() -> void:
 	await get_tree().create_timer(wait).timeout
 	if scene_name == "win":
 		inst._debug_win()
+		await get_tree().create_timer(wait).timeout
+	elif game_cards.has(scene_name) or scene_name == "settings":
+		match scene_name:   # the same hooks tests/card_capture.gd and menu_capture.gd use
+			"pause": inst._open_pause()
+			"lose":
+				inst.lives = 0
+				inst.lose_reason = "OUT OF LIVES"
+				inst._lose()
+			"bomb_empty":
+				TSProfile.bomb_count = 0
+				inst._toggle_bomb()
+			"swap_empty":
+				TSProfile.swap_count = 0
+				inst._use_any_piece()
+			"rocks_empty":
+				TSProfile.rock_count = 0
+				inst._fire_rocks()
+			"settings": inst._open_settings()
 		await get_tree().create_timer(wait).timeout
 	await RenderingServer.frame_post_draw
 	var err := sub.get_texture().get_image().save_png(out)

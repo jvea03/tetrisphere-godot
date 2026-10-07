@@ -16,6 +16,8 @@ const DONE := 8.0            # the last caption; a tap now starts level 1
 const AUTO_ADVANCE := 12.0
 const EGG_COUNT := 7
 const GRAVITY := 2400.0
+const WIDE := 400.0         # background past each side of the 720 px stage
+const TALL := 1200.0        # and below the 1320 px the sky and ground used to reach
 const HORIZON := 800.0       # the ground's edge, after the crash
 const CRASH_AT := Vector2(360.0, 850.0)   # where the ship ends up, nose in the dirt
 
@@ -56,18 +58,31 @@ var _caption_label: Label
 var _tap_hint: Label
 
 
+## The scene is drawn on a 720 px wide stage; on a wider screen (an iPad) it
+## sits in the middle and the background carries on past both sides.
+func _recenter() -> void:
+	if _stage != null:
+		_stage.position.x = maxf(0.0, (get_viewport_rect().size.x - 720.0) * 0.5)
+
+
 func _ready() -> void:
 	TSProfile.ensure_loaded()
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_rng.seed = 20260928
 	for i in 90:
 		_stars.append([Vector2(_rng.randf_range(0, 720), _rng.randf_range(0, 1280)), _rng.randf_range(1.5, 4.0), _rng.randf() * TAU])
+	for i in 60:   # the sky beyond the base width and height (wider and taller screens)
+		var at := Vector2(_rng.randf_range(-WIDE, 720 + WIDE), _rng.randf_range(-40, 1280 + TALL * 0.5))
+		if at.x < 0.0 or at.x > 720.0 or at.y > 1280.0:
+			_stars.append([at, _rng.randf_range(1.5, 4.0), _rng.randf() * TAU])
 
 	_stage = Control.new()
 	_stage.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_stage.draw.connect(_draw_stage)
 	add_child(_stage)
+	_recenter()
+	get_viewport().size_changed.connect(_recenter)
 	for i in EGG_COUNT:
 		var egg := TSIcon.make("egg", 100, i % TSProfile.EGG_PAINTS.size())
 		egg.visible = false
@@ -329,8 +344,11 @@ func _draw_stage() -> void:
 
 
 func _draw_space() -> void:
-	_stage.draw_polygon(PackedVector2Array([Vector2(-40, -40), Vector2(760, -40), Vector2(760, 1320), Vector2(-40, 1320)]),
+	# Wider than the 720 px base (an iPad's screen is wider) and flat below it
+	# (a tall phone's is taller), so it always reaches the screen's edges.
+	_stage.draw_polygon(PackedVector2Array([Vector2(-WIDE, -40), Vector2(720 + WIDE, -40), Vector2(720 + WIDE, 1320), Vector2(-WIDE, 1320)]),
 		PackedColorArray([SPACE_TOP, SPACE_TOP, SPACE_LOW, SPACE_LOW]))
+	_stage.draw_rect(Rect2(-WIDE, 1319.0, 720.0 + WIDE * 2.0, TALL), SPACE_LOW)
 	for st in _stars:
 		var r: float = float(st[1]) * (0.6 + 0.4 * sin(_t * 2.5 + float(st[2])))
 		_stage.draw_circle(st[0], r, Color(1.0, 0.92, 0.7, 0.9), true, -1.0, true)
@@ -350,14 +368,14 @@ func _draw_space() -> void:
 
 func _draw_crash_site() -> void:
 	var planet: Dictionary = TSShipScene.PLANETS[0]
-	_stage.draw_polygon(PackedVector2Array([Vector2(-40, -40), Vector2(760, -40), Vector2(760, HORIZON), Vector2(-40, HORIZON)]),
+	_stage.draw_polygon(PackedVector2Array([Vector2(-WIDE, -40), Vector2(720 + WIDE, -40), Vector2(720 + WIDE, HORIZON), Vector2(-WIDE, HORIZON)]),
 		PackedColorArray([planet["sky_top"], planet["sky_top"], planet["sky_low"], planet["sky_low"]]))
 	# Gentle hills along the horizon, then the ground.
-	var ground := PackedVector2Array([Vector2(-40, 1320)])
-	for k in 25:
-		var x := -40.0 + float(k) * 34.0
+	var ground := PackedVector2Array([Vector2(-WIDE, 1320.0 + TALL)])
+	for k in int((720.0 + WIDE * 2.0) / 34.0) + 2:
+		var x := -WIDE + float(k) * 34.0
 		ground.append(Vector2(x, HORIZON - 18.0 * sin(x * 0.012) - 10.0 * sin(x * 0.031 + 1.0)))
-	ground.append(Vector2(760, 1320))
+	ground.append(Vector2(720.0 + WIDE + 34.0, 1320.0 + TALL))
 	_stage.draw_colored_polygon(ground, planet["ground"])
 	var edge := ground.slice(1, ground.size() - 1)
 	_stage.draw_polyline(edge, INK, 5.0, true)
