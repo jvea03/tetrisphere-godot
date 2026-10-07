@@ -35,10 +35,15 @@ the same Mac, Xcode, Godot 4.7.2 and App Store Connect API key are used.
 
 ## Still to do, in order
 
-1. **AdMob** (by hand): add an **iOS** app "Egg Escape: Puzzle Break" with a
-   rewarded and an interstitial unit. Put the app id in `project.godot`
-   `[admob] general/ios/app_id` and the unit ids in `Ads.AD_UNITS_LIVE["ios"]`.
-   Add Egg Escape to the published consent (GDPR) message.
+1. **AdMob**: **done 7 Oct 2026**: iOS app "Egg Escape: Puzzle Break"
+   (`ca-app-pub-6257234803503517~5835361087`) with units `egg_escape_rewarded`
+   (`.../8642232686`) and `egg_escape_interstitial` (`.../8915810831`), in
+   `project.godot` and `Ads.AD_UNITS_LIVE["ios"]`. Still to do: add the app to
+   the published consent (GDPR) message (Privacy & messaging), and after
+   launch link it to the App Store listing (Apps > Add store). New units can
+   take up to an hour to serve, and nothing fills until the app is approved.
+   The ids only take effect in a new build, and **`tetrisphere/test_ads` is
+   still on**, so release builds show Google's test ads until it is turned off.
 2. **Apple Developer**: register the bundle id `com.jvea.eggescape`, then
    create the App Store Connect app (name "Egg Escape: Puzzle Break", SKU
    `egg-escape`). Create an **App Store provisioning profile** named

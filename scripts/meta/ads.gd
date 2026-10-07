@@ -37,10 +37,10 @@ const AD_UNITS_TEST := {
 ## (its app id is under Project Settings > admob/general). Release builds use
 ## them when set, unless tetrisphere/test_ads is on (for a build you will tap
 ## through yourself -- tapping your own live ads breaks AdMob policy); debug
-## builds always use the test units above. iOS has no app yet.
+## builds always use the test units above.
 const AD_UNITS_LIVE := {
 	"android": {"rewarded": "ca-app-pub-6257234803503517/3961072448", "interstitial": "ca-app-pub-6257234803503517/2647990771"},   # Egg Escape: Puzzle Break (AdMob app ~7700172757)
-	"ios": {"rewarded": "", "interstitial": ""},
+	"ios": {"rewarded": "ca-app-pub-6257234803503517/8642232686", "interstitial": "ca-app-pub-6257234803503517/8915810831"},   # Egg Escape: Puzzle Break, iOS (AdMob app ~5835361087)
 }
 
 const ADMOB_BACKEND_PATH := "res://scripts/ads/AdmobBackend.gd"
