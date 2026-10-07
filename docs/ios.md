@@ -38,9 +38,9 @@ the same Mac, Xcode, Godot 4.7.2 and App Store Connect API key are used.
 1. **AdMob**: **done 7 Oct 2026**: iOS app "Egg Escape: Puzzle Break"
    (`ca-app-pub-6257234803503517~5835361087`) with units `egg_escape_rewarded`
    (`.../8642232686`) and `egg_escape_interstitial` (`.../8915810831`), in
-   `project.godot` and `Ads.AD_UNITS_LIVE["ios"]`. Still to do: add the app to
-   the published consent (GDPR) message (Privacy & messaging), and after
-   launch link it to the App Store listing (Apps > Add store). New units can
+   `project.godot` and `Ads.AD_UNITS_LIVE["ios"]`. The app is on the published
+   consent (GDPR) message "Egg Escape European regulations message" (iOS and
+   Android, 7 Oct 2026; it can take an hour to appear). After launch, link it to the App Store listing (Apps > Add store). New units can
    take up to an hour to serve, and nothing fills until the app is approved.
    `tetrisphere/test_ads` (on, for Android's closed test) applies to Android
    only, so iOS release builds show live ads (build 2 onward).
