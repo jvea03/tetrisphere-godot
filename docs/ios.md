@@ -52,11 +52,19 @@ the same Mac, Xcode, Godot 4.7.2 and App Store Connect API key are used.
    `no_ads_pass` and others. Use the same ids in Play Console. They are
    submitted with the first version ("Add for Review", tick them all).
    `egg_popup_hatch_day_2026` must be live before that sale (26 Nov).
-4. **Listing**: text from `store/listing.md`, category Games > Puzzle, age
-   rating, privacy URL, support URL, App Privacy (as Duckdoku: ads data used
-   for tracking, purchase history for app functionality), App Review contact
-   and notes ("No account needed").
-5. **Screenshots**: rendered (`./tools/ios-screenshots.sh`, 7 Oct 2026) in
+4. **Listing**: filled in 7 Oct 2026 by `tools/asc_listing.py` (re-runnable):
+   description, keywords, subtitle, promo text, categories (Games > Puzzle,
+   Casual), age rating 4+ (ads are the only "yes"), copyright, manual release,
+   privacy URL, price Free, and the three screenshot sets. **Still by hand:**
+   - **Support URL** (needs `store/support.html` published; then
+     `SUPPORT_URL=<url> .../python tools/asc_listing.py 6819941762`)
+   - **App Privacy** (the API can't): as Duckdoku: ad data used for tracking,
+     purchase history for app functionality
+   - **App Review contact** (name, phone, email) and notes ("No account needed")
+   - **Content rights**: whether the app uses third-party content
+     (the music in particular)
+   - **Availability**: all territories except the 27 EU countries
+5. **Screenshots**: uploaded 7 Oct 2026 (all three sets, processed). Rendered (`./tools/ios-screenshots.sh`, 7 Oct 2026) in
    `build/store/ios/<size>/`: Home, the egg part dug, the win card, Shop,
    Collection, Battle Pass. Upload 1290x2796 (6.7"), 1284x2778 (6.5") and
    2048x2732 (iPad 12.9") to the version.
