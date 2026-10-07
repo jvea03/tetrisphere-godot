@@ -8,7 +8,7 @@ the same Mac, Xcode, Godot 4.7.2 and App Store Connect API key are used.
 
 - **Export preset "iOS"** (`export_presets.cfg`, preset.2): bundle id
   `com.jvea.eggescape` (same as Android), iPhone + iPad, portrait, min iOS 15,
-  version 0.2.0 build 1, Team ID `75DDPXBG45`, exports an Xcode project to
+  version 1.0 build 1 (must match the App Store version), Team ID `75DDPXBG45`, exports an Xcode project to
   `build/ios/EggEscape.xcodeproj`. Icon `icons/icon_ios_1024.png` (the app
   icon, 1024, no alpha). Launch screen = the studio logo on the studio-splash
   blue, so it flows into the game's own splash. The ATT prompt text and
@@ -74,7 +74,7 @@ the same Mac, Xcode, Godot 4.7.2 and App Store Connect API key are used.
 7. **Test**: `./tools/ios-setup.sh`, open `build/ios/EggEscape.xcodeproj`, sign
    in with the Team, run on the phone: ATT prompt, consent form, a test ad,
    real store prices, a sandbox purchase, Restore Purchases, notch insets.
-8. **Upload**: bump `application/version` in the preset, `./tools/ios-upload.sh`,
+8. **Upload**: first build (1.0, build 1) uploaded 7 Oct 2026. For the next,  bump `application/version` in the preset, `./tools/ios-upload.sh`,
    attach the build, set release to **Manual**, then Add for Review.
 9. **Countries**: Pricing and Availability: every territory **except the 27 EU
    countries** (same as Duckdoku). It is a by-hand edit (the API key cannot

@@ -40,7 +40,7 @@ step() { printf '\n\033[1m%s\033[0m\n' "$*"; }
 step "1. Preflight"
 
 FREE_GB=$(df -g / | awk 'NR==2 {print $4}')
-if [ "$FREE_GB" -lt 25 ]; then
+if [ "$FREE_GB" -lt 10 ]; then   # 25+ for a first Xcode install; an export and archive need a few GB
 	warn "Only ${FREE_GB} GB free on /. Xcode needs ~40 GB to install and ~15 GB after;"
 	warn "the plugin build needs another ~6 GB. Free space first (Storage settings)."
 	[ "$MODE" = "check" ] || die "not enough disk space"

@@ -76,4 +76,4 @@ rm -rf build/ios-export
 ( cd build && xcodebuild -exportArchive -archivePath "$PWD/EggEscape.xcarchive" \
 	-exportOptionsPlist ExportOptions.plist -exportPath "$PWD/ios-export" "${AUTH[@]}" 2>&1 \
 	| grep -E "error|EXPORT (SUCCEEDED|FAILED)|is complete" | grep -v DVTPlugIn | sort -u )
-echo "Uploaded. Processing takes 5-15 min; then: tools/asc.py builds <apple-id-of-the-app>"
+echo "Uploaded. Processing takes 5-15 min; then: tools/asc.py builds 6819941762"
