@@ -56,8 +56,8 @@ the same Mac, Xcode, Godot 4.7.2 and App Store Connect API key are used.
    description, keywords, subtitle, promo text, categories (Games > Puzzle,
    Casual), age rating 4+ (ads are the only "yes"), copyright, manual release,
    privacy URL, price Free, and the three screenshot sets. **Still by hand:**
-   - **Support URL** (needs `store/support.html` published; then
-     `SUPPORT_URL=<url> .../python tools/asc_listing.py 6819941762`)
+   - (Support URL is set: `store/support.html` is published at
+     https://jvea03.github.io/duckdoku-privacy/egg-escape-support/)
    - **App Privacy** (the API can't): as Duckdoku: ad data used for tracking,
      purchase history for app functionality
    - **App Review contact** (name, phone, email) and notes ("No account needed")

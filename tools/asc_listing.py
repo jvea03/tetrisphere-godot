@@ -16,7 +16,7 @@ import asc  # noqa: E402
 
 B = "https://api.appstoreconnect.apple.com/v1"
 PRIVACY_URL = "https://jvea03.github.io/duckdoku-privacy/egg-escape.html"
-SUPPORT_URL = os.environ.get("SUPPORT_URL", "")   # set once the support page is published
+SUPPORT_URL = os.environ.get("SUPPORT_URL", "https://jvea03.github.io/duckdoku-privacy/egg-escape-support/")
 SHOTS = "build/store/ios"
 
 SUBTITLE = "Spin the egg, free critters"            # <= 30
