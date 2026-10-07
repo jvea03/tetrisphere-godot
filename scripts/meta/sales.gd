@@ -17,7 +17,7 @@ const OFFERS := [
 	{
 		"id": "hatch_day_2026",
 		"name": "Hatch Day Feast",
-		"product_id": "popup_hatch_day_2026",
+		"product_id": "egg_popup_hatch_day_2026",
 		"price": "$4.99", "orig_price": "$19.99",
 		"trigger": "dates", "start": "2026-11-26", "end": "2026-11-29", "min_level": 7,
 		"enabled": true,
@@ -25,7 +25,7 @@ const OFFERS := [
 	{
 		"id": "starter_sprinkle",
 		"name": "Starter Sprinkle",
-		"product_id": "popup_starter_sprinkle",
+		"product_id": "egg_popup_starter_sprinkle",
 		"price": "$0.99", "orig_price": "$4.99",
 		"hours": 48,
 		"trigger": "level", "level": 8,
@@ -34,7 +34,7 @@ const OFFERS := [
 	{
 		"id": "flash_sale",
 		"name": "Flash Sale",
-		"product_id": "popup_flash_sale",
+		"product_id": "egg_popup_flash_sale",
 		"price": "$4.99", "orig_price": "$12.99",
 		"hours": 24,
 		"trigger": "every_days", "every": 3, "min_level": 15,

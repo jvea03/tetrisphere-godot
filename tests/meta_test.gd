@@ -304,7 +304,7 @@ func _test_purchases() -> void:
 	get_root().add_child(billing)
 	var before := TSProfile.coin_count
 	var bombs := TSProfile.bomb_count
-	billing.purchase("bundle_value")
+	billing.purchase("egg_bundle_value")
 	_check("a bundle grants its coins and bombs (simulated store)", TSProfile.coin_count == before + 50000 and TSProfile.bomb_count == bombs + 11)
 	_check("any purchase makes the player a payer", TSProfile.is_payer)
 	before = TSProfile.coin_count
@@ -321,7 +321,7 @@ func _test_purchases() -> void:
 	TSSales.active_id = ""
 	TSProfile.last_level = 8
 	_check("the level-8 sale starts on its own", TSSales.roll() and TSSales.current()["id"] == "starter_sprinkle")
-	billing.purchase("popup_starter_sprinkle")
+	billing.purchase("egg_popup_starter_sprinkle")
 	_check("buying it ends it", TSSales.current().is_empty())
 	billing.queue_free()
 

@@ -1063,7 +1063,7 @@ func _stack(icon: String, caption: String) -> Control:
 
 
 func _on_purchase_result(product_id: String, success: bool) -> void:
-	if not is_inside_tree() or not success or not product_id.begins_with("popup_"):
+	if not is_inside_tree() or not success or not product_id.begins_with("egg_popup_"):
 		return
 	var from := (_sale["panel"] as Control).get_global_rect()
 	TSUI.conceal(_sale["root"])

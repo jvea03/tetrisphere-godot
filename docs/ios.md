@@ -44,10 +44,14 @@ the same Mac, Xcode, Godot 4.7.2 and App Store Connect API key are used.
    `egg-escape`). Create an **App Store provisioning profile** named
    `Egg Escape App Store` for it (the Apple Distribution certificate from
    Duckdoku is reused); `tools/ios-upload.sh` expects that name.
-3. **In-app purchases**: create one per id in `Billing.PRODUCTS`
-   (`scripts/meta/billing.gd`; `no_ads_pass` is the only non-consumable), with
-   name, description, price and a review screenshot. `popup_hatch_day_2026`
-   must exist and be live before that sale.
+3. **In-app purchases**: **done 7 Oct 2026** (app 6819941762): all 19 ids in
+   `Billing.PRODUCTS`, `READY_TO_SUBMIT`, with USD prices, en-US text, all
+   territories and review screenshots (`tools/asc_iaps.py`, re-runnable).
+   Every id has an `egg_` prefix because **Apple product ids are unique across
+   the whole developer account** and Duckdoku already used `coins_5000`,
+   `no_ads_pass` and others. Use the same ids in Play Console. They are
+   submitted with the first version ("Add for Review", tick them all).
+   `egg_popup_hatch_day_2026` must be live before that sale (26 Nov).
 4. **Listing**: text from `store/listing.md`, category Games > Puzzle, age
    rating, privacy URL, support URL, App Privacy (as Duckdoku: ads data used
    for tracking, purchase history for app functionality), App Review contact

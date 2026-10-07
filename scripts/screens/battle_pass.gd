@@ -108,7 +108,7 @@ func _process(delta: float) -> void:
 
 
 func _price() -> String:
-	var live := Billing.price_of("battle_pass")
+	var live := Billing.price_of("egg_battle_pass")
 	return live if live != "" else TSProfile.BATTLE_PASS_PRICE_LABEL
 
 
@@ -364,11 +364,11 @@ func _open_buy() -> void:
 	confirm.pressed.connect(func():
 		TSUI.conceal(_buy["root"])
 		Billing.purchase_result.connect(func(id: String, ok: bool):
-			if id == "battle_pass" and is_inside_tree():
+			if id == "egg_battle_pass" and is_inside_tree():
 				if not ok and not Billing.available():
 					TSUI.note(self, _buy_btn, "The store isn't available yet -- check back soon!")
 				_refresh(), CONNECT_ONE_SHOT)
-		Billing.purchase("battle_pass"))
+		Billing.purchase("egg_battle_pass"))
 	box.add_child(confirm)
 	var later := TSUI.button("Not now", TSUI.GREY, 24, Vector2(0, 60))
 	later.pressed.connect(func(): TSUI.conceal(_buy["root"]))

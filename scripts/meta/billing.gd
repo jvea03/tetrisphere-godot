@@ -22,28 +22,28 @@ signal purchase_result(product_id: String, success: bool)
 signal prices_updated() # localized price strings are available via price_of()
 signal restore_finished(restored: Array) # product ids that were restored
 
-const NO_ADS := "no_ads_pass"
+const NO_ADS := "egg_no_ads_pass"
 const PRODUCTS := {
-	"coins_5000": {"coins": 5000, "consumable": true},
-	"coins_16000": {"coins": 16000, "consumable": true},
-	"coins_50000": {"coins": 50000, "consumable": true},
-	"coins_120000": {"coins": 120000, "consumable": true},
-	"coins_320000": {"coins": 320000, "consumable": true},
-	"materials_500": {"materials": 500, "consumable": true},
-	"materials_1600": {"materials": 1600, "consumable": true},
-	"materials_5000": {"materials": 5000, "consumable": true},
-	"materials_12000": {"materials": 12000, "consumable": true},
-	"materials_32000": {"materials": 32000, "consumable": true},
-	"bundle_starter": {"coins": 10000, "bomb": 4, "consumable": true},
-	"bundle_value": {"coins": 50000, "bomb": 11, "materials": 1500, "consumable": true},
-	"bundle_mega": {"coins": 150000, "bomb": 26, "materials": 5000, "consumable": true},
-	"featured_hatchers_hoard": {"coins": 130000, "bomb": 15, "materials": 2000, "consumable": true},
+	"egg_coins_5000": {"coins": 5000, "consumable": true},
+	"egg_coins_16000": {"coins": 16000, "consumable": true},
+	"egg_coins_50000": {"coins": 50000, "consumable": true},
+	"egg_coins_120000": {"coins": 120000, "consumable": true},
+	"egg_coins_320000": {"coins": 320000, "consumable": true},
+	"egg_materials_500": {"materials": 500, "consumable": true},
+	"egg_materials_1600": {"materials": 1600, "consumable": true},
+	"egg_materials_5000": {"materials": 5000, "consumable": true},
+	"egg_materials_12000": {"materials": 12000, "consumable": true},
+	"egg_materials_32000": {"materials": 32000, "consumable": true},
+	"egg_bundle_starter": {"coins": 10000, "bomb": 4, "consumable": true},
+	"egg_bundle_value": {"coins": 50000, "bomb": 11, "materials": 1500, "consumable": true},
+	"egg_bundle_mega": {"coins": 150000, "bomb": 26, "materials": 5000, "consumable": true},
+	"egg_featured_hatchers_hoard": {"coins": 130000, "bomb": 15, "materials": 2000, "consumable": true},
 	NO_ADS: {"no_ads": true, "consumable": false},
-	"battle_pass": {"battle_pass": true, "consumable": true}, # one season; consumed so next season can buy again
+	"egg_battle_pass": {"battle_pass": true, "consumable": true}, # one season; consumed so next season can buy again
 	# Pop-up sales (TSSales.OFFERS) -- Home only, never in the Shop.
-	"popup_hatch_day_2026": {"coins": 130000, "bomb": 30, "consumable": true},
-	"popup_starter_sprinkle": {"coins": 25000, "bomb": 9, "consumable": true},
-	"popup_flash_sale": {"coins": 75000, "bomb": 15, "consumable": true},
+	"egg_popup_hatch_day_2026": {"coins": 130000, "bomb": 30, "consumable": true},
+	"egg_popup_starter_sprinkle": {"coins": 25000, "bomb": 9, "consumable": true},
+	"egg_popup_flash_sale": {"coins": 75000, "bomb": 15, "consumable": true},
 }
 
 const SINGLETON := "GodotGooglePlayBilling"
@@ -118,7 +118,7 @@ func purchase(product_id: String) -> void:
 	if product_id == NO_ADS and TSProfile.no_ads:
 		purchase_result.emit(product_id, false)
 		return
-	if product_id == "battle_pass" and TSProfile.battle_pass_purchased:
+	if product_id == "egg_battle_pass" and TSProfile.battle_pass_purchased:
 		purchase_result.emit(product_id, false)
 		return
 	_pending = product_id

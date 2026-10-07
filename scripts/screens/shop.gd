@@ -10,30 +10,30 @@ extends TSScreen
 ## and product ids exist.
 
 const FEATURED_SALES := [
-	{"name": "Hatcher's Hoard", "coins": 130000, "bomb": 15, "materials": 2000, "price": "$4.99", "orig_price": "$9.99", "product_id": "featured_hatchers_hoard"},
+	{"name": "Hatcher's Hoard", "coins": 130000, "bomb": 15, "materials": 2000, "price": "$4.99", "orig_price": "$9.99", "product_id": "egg_featured_hatchers_hoard"},
 ]
 const BUNDLES := [
-	{"name": "Starter", "coins": 10000, "bomb": 4, "price": "$0.99", "product_id": "bundle_starter", "chest": "common"},
-	{"name": "Value", "coins": 50000, "bomb": 11, "materials": 1500, "price": "$2.99", "product_id": "bundle_value", "chest": "rare"},
-	{"name": "Mega", "coins": 150000, "bomb": 26, "materials": 5000, "price": "$6.99", "product_id": "bundle_mega", "chest": "legendary"},
+	{"name": "Starter", "coins": 10000, "bomb": 4, "price": "$0.99", "product_id": "egg_bundle_starter", "chest": "common"},
+	{"name": "Value", "coins": 50000, "bomb": 11, "materials": 1500, "price": "$2.99", "product_id": "egg_bundle_value", "chest": "rare"},
+	{"name": "Mega", "coins": 150000, "bomb": 26, "materials": 5000, "price": "$6.99", "product_id": "egg_bundle_mega", "chest": "legendary"},
 ]
 const COIN_PACKS := [
 	{"coins": 1000, "price": "Free", "starter": true},
-	{"coins": 5000, "price": "$0.99", "product_id": "coins_5000"},
-	{"coins": 16000, "price": "$2.99", "product_id": "coins_16000"},
-	{"coins": 50000, "price": "$6.99", "product_id": "coins_50000"},
-	{"coins": 120000, "price": "$12.99", "product_id": "coins_120000"},
-	{"coins": 320000, "price": "$29.99", "product_id": "coins_320000"},
+	{"coins": 5000, "price": "$0.99", "product_id": "egg_coins_5000"},
+	{"coins": 16000, "price": "$2.99", "product_id": "egg_coins_16000"},
+	{"coins": 50000, "price": "$6.99", "product_id": "egg_coins_50000"},
+	{"coins": 120000, "price": "$12.99", "product_id": "egg_coins_120000"},
+	{"coins": 320000, "price": "$29.99", "product_id": "egg_coins_320000"},
 ]
 ## Building materials for the camp and the ship, packed like the coins: a free
 ## daily pack, then five for real money.
 const MATERIAL_PACKS := [
 	{"materials": 100, "price": "Free", "starter": true},
-	{"materials": 500, "price": "$0.99", "product_id": "materials_500"},
-	{"materials": 1600, "price": "$2.99", "product_id": "materials_1600"},
-	{"materials": 5000, "price": "$6.99", "product_id": "materials_5000"},
-	{"materials": 12000, "price": "$12.99", "product_id": "materials_12000"},
-	{"materials": 32000, "price": "$29.99", "product_id": "materials_32000"},
+	{"materials": 500, "price": "$0.99", "product_id": "egg_materials_500"},
+	{"materials": 1600, "price": "$2.99", "product_id": "egg_materials_1600"},
+	{"materials": 5000, "price": "$6.99", "product_id": "egg_materials_5000"},
+	{"materials": 12000, "price": "$12.99", "product_id": "egg_materials_12000"},
+	{"materials": 32000, "price": "$29.99", "product_id": "egg_materials_32000"},
 ]
 const STARTER_PACK_LIMIT := 3 # per day: 1 free + 2 ads
 const NO_ADS_PRICE := "$4.99"
