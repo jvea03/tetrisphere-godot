@@ -17,7 +17,7 @@ general/ios/app_id="ca-app-pub-6257234803503517~5835361087"
 
 config/name="Egg Escape: Puzzle Break"
 config/description="Egg Escape: Puzzle Break: a Tetrisphere-style egg-digging puzzle for phones in portrait. Original code and geometry only."
-config/version="0.2.0"
+config/version="1.0"
 run/main_scene="res://scenes/opening.tscn"
 config/quit_on_go_back=false
 config/features=PackedStringArray("4.7", "GL Compatibility")

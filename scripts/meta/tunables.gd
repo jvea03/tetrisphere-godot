@@ -17,7 +17,7 @@ const DEFAULTS := {
 	"swap_pack_cost": 3000, # the Shop's x5 Swap price
 	"rocks_buy_count": 2, # rock shots per mid-game coin buy
 	"rocks_pack_cost": 6000, # the Shop's x5 Rocks price
-	"social_enabled": true, # Leaderboards + Clubs; false shows "Coming soon"
+	"social_enabled": false, # Leaderboards + Clubs are simulated on the device: "Coming soon" until they are real (the editor still shows them)
 }
 
 static var _values: Dictionary = {}
