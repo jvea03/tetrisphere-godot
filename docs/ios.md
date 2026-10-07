@@ -28,6 +28,8 @@ the same Mac, Xcode, Godot 4.7.2 and App Store Connect API key are used.
   when the `InAppStore` singleton exists (`ios/plugins/`, copied from
   Duckdoku, `plugins/InAppStore=true`). The Output says
   `[Billing] simulated backend` if it is missing: do not ship that.
+- **Screenshots**: `tools/ios-screenshots.sh` renders the six App Store shots at
+  the three Apple sizes into `build/store/ios/` (resumable: delete a file to redo it).
 - **Tools**: `tools/ios-setup.sh [check|release]` (export), `tools/ios-upload.sh`
   (release export, archive, upload), `tools/asc.py` (App Store Connect helper).
 
@@ -50,8 +52,10 @@ the same Mac, Xcode, Godot 4.7.2 and App Store Connect API key are used.
    rating, privacy URL, support URL, App Privacy (as Duckdoku: ads data used
    for tracking, purchase history for app functionality), App Review contact
    and notes ("No account needed").
-5. **Screenshots**: iPhone 6.7" (1290x2796), 6.5" (1284x2778), iPad 12.9"
-   (2048x2732). `store/screenshots` are 540x960 Play images and will not do.
+5. **Screenshots**: rendered (`./tools/ios-screenshots.sh`, 7 Oct 2026) in
+   `build/store/ios/<size>/`: Home, the egg part dug, the win card, Shop,
+   Collection, Battle Pass. Upload 1290x2796 (6.7"), 1284x2778 (6.5") and
+   2048x2732 (iPad 12.9") to the version.
 6. **Privacy policy**: `store/privacy.html` now describes AdMob, the ATT prompt
    and the store purchases. Publish it as `egg-escape.html` in the
    `duckdoku-privacy` repo **before** the build goes to review.

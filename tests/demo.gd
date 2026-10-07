@@ -12,7 +12,11 @@ func _ready() -> void:
 	super()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 4242
-	for _i in DEMO_DROPS:
+	var drops := DEMO_DROPS
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--drops="):   # tools/store_shot.gd: a part-dug egg for a screenshot
+			drops = int(a.substr(8))
+	for _i in drops:
 		if state != State.PLAYING:
 			break
 		_aim_best(rng)
