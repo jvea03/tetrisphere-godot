@@ -54,6 +54,13 @@ terminal and hands it to Godot for that export only, and writes
 one-time `keytool` command for making the upload key. Bump `version/code`
 under `[preset.1.options]` before each new upload.
 
+**iOS.** `export_presets.cfg` also has an **iOS** preset (bundle id
+`com.jvea.eggescape`, iPhone and iPad, portrait, iOS 15+). On a Mac with Xcode,
+`./tools/ios-setup.sh` installs Godot 4.7.2 and its templates and exports
+`build/ios/EggEscape.xcodeproj`; `./tools/ios-upload.sh` archives and uploads a
+release build. What is done and what still needs an account (AdMob iOS ids, the
+App Store Connect app and purchases, the listing) is in `docs/ios.md`.
+
 **Touch controls** — everything is a gesture, apart from the three booster buttons and pause:
 
 | Gesture | Action |

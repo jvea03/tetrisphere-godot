@@ -15,3 +15,7 @@ export_credentials.cfg
 # OS clutter.
 .DS_Store
 Thumbs.db
+
+# AdMob addon: its downloader cache and the 12 MB iOS binaries (copied from Duckdoku or re-fetched by the addon)
+addons/admob/downloads/
+addons/admob/ios/bin/
