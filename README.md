@@ -274,7 +274,7 @@ parks it, and Home's PLAY becomes CONTINUE.
   Escape: Puzzle Break" (app id in `admob/general/android/app_id`), has the
   units `egg_escape_rewarded` and `egg_escape_interstitial`
   (`Ads.AD_UNITS_LIVE`); Duckdoku's are never reused. Release builds show those
-  live ads **unless `tetrisphere/test_ads` is on** -- it is, for closed
+  live ads **unless `tetrisphere/test_ads` is on** (Android only: iOS release builds always show live ads) -- it is, for closed
   testing, as tapping your own live ads breaks AdMob policy. Turn it off for
   the public release. Debug builds always show test ads.
 - **Leaderboards and Clubs** have no backend: rivals, clubs, members and chat

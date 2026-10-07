@@ -42,8 +42,8 @@ the same Mac, Xcode, Godot 4.7.2 and App Store Connect API key are used.
    the published consent (GDPR) message (Privacy & messaging), and after
    launch link it to the App Store listing (Apps > Add store). New units can
    take up to an hour to serve, and nothing fills until the app is approved.
-   The ids only take effect in a new build, and **`tetrisphere/test_ads` is
-   still on**, so release builds show Google's test ads until it is turned off.
+   `tetrisphere/test_ads` (on, for Android's closed test) applies to Android
+   only, so iOS release builds show live ads (build 2 onward).
 2. **Apple Developer**: register the bundle id `com.jvea.eggescape`, then
    create the App Store Connect app (name "Egg Escape: Puzzle Break", SKU
    `egg-escape`). Create an **App Store provisioning profile** named
@@ -85,4 +85,4 @@ the same Mac, Xcode, Godot 4.7.2 and App Store Connect API key are used.
    countries** (same as Duckdoku). It is a by-hand edit (the API key cannot
    change availability), and it must be done **before** pressing Release.
 10. After approval: link the AdMob iOS app to the store listing, switch
-    `tetrisphere/test_ads` off for the public release, press Release.
+    `tetrisphere/test_ads` off for the public Android release (iOS is already live), press Release.

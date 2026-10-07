@@ -35,7 +35,7 @@ const AD_UNITS_TEST := {
 
 ## Tetrisphere's own ad units, from its AdMob app "Egg Escape: Puzzle Break"
 ## (its app id is under Project Settings > admob/general). Release builds use
-## them when set, unless tetrisphere/test_ads is on (for a build you will tap
+## them when set, unless tetrisphere/test_ads is on (Android only; for a build you will tap
 ## through yourself -- tapping your own live ads breaks AdMob policy); debug
 ## builds always use the test units above.
 const AD_UNITS_LIVE := {
@@ -69,7 +69,9 @@ func _ready() -> void:
 func _units() -> Dictionary:
 	var os := "ios" if OS.has_feature("ios") else "android"
 	var live: Dictionary = AD_UNITS_LIVE[os]
-	var test := OS.is_debug_build() or bool(ProjectSettings.get_setting("tetrisphere/test_ads", false))
+	# tetrisphere/test_ads is Android's closed-test switch only: iOS has no test
+	# track, so its release builds always show live ads (debug builds show test ads).
+	var test := OS.is_debug_build() or (os == "android" and bool(ProjectSettings.get_setting("tetrisphere/test_ads", false)))
 	if not test and str(live["rewarded"]) != "" and str(live["interstitial"]) != "":
 		return live
 	return AD_UNITS_TEST[os]
