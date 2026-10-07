@@ -33,6 +33,14 @@ the same Mac, Xcode, Godot 4.7.2 and App Store Connect API key are used.
 - **Tools**: `tools/ios-setup.sh [check|release]` (export), `tools/ios-upload.sh`
   (release export, archive, upload), `tools/asc.py` (App Store Connect helper).
 
+## Privacy manifest
+
+The iOS preset sets `privacy/tracking_enabled=true` (NSPrivacyTracking), matching the
+App Privacy answers and the ATT prompt, and **leaves `tracking_domains` empty on
+purpose**: with domains listed, iOS blocks connections to them until the player
+allows tracking, which would stop most ad requests (most players decline).
+Google's own manifest lists none either.
+
 ## Still to do, in order
 
 1. **AdMob**: **done 7 Oct 2026**: iOS app "Egg Escape: Puzzle Break"
