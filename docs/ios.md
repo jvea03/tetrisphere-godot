@@ -35,11 +35,14 @@ the same Mac, Xcode, Godot 4.7.2 and App Store Connect API key are used.
 
 ## Privacy manifest
 
-The iOS preset sets `privacy/tracking_enabled=true` (NSPrivacyTracking), matching the
-App Privacy answers and the ATT prompt, and **leaves `tracking_domains` empty on
-purpose**: with domains listed, iOS blocks connections to them until the player
-allows tracking, which would stop most ad requests (most players decline).
-Google's own manifest lists none either.
+The iOS preset keeps `privacy/tracking_enabled=false` (NSPrivacyTracking) and an empty
+`tracking_domains`. **Do not set tracking true without listing tracking domains**: build 4
+(tracking true, no domains) was marked *Invalid* by App Store Connect ("invalid tracking
+information") and bounced the whole review submission, while builds 1-3 (false) passed.
+If it is ever turned on, list the ad domains too, knowing iOS then blocks them until the
+player allows tracking, which stops most ad requests. Google's own manifest lists none,
+and Duckdoku ships with false. The App Privacy answers in App Store Connect are separate
+and do declare tracking.
 
 ## Still to do, in order
 
@@ -87,7 +90,7 @@ Google's own manifest lists none either.
 7. **Test**: `./tools/ios-setup.sh`, open `build/ios/EggEscape.xcodeproj`, sign
    in with the Team, run on the phone: ATT prompt, consent form, a test ad,
    real store prices, a sandbox purchase, Restore Purchases, notch insets.
-8. **Upload**: builds 1-4 of 1.0 uploaded 7-8 Oct 2026 (3 adds the QA fixes, leaderboard/Clubs "Coming soon", live iOS ads; 4 adds the privacy manifest fix). For the next,  bump `application/version` in the preset, `./tools/ios-upload.sh`,
+8. **Upload**: builds 1-5 of 1.0 uploaded 7-8 Oct 2026 (3 adds the QA fixes, leaderboard/Clubs "Coming soon", live iOS ads; 4 was rejected as invalid by the tracking change below; 5 is 3 plus a new build number). For the next,  bump `application/version` in the preset, `./tools/ios-upload.sh`,
    attach the build, set release to **Manual**, then Add for Review.
 9. **Countries**: Pricing and Availability: every territory **except the 27 EU
    countries** (same as Duckdoku). It is a by-hand edit (the API key cannot
