@@ -87,7 +87,7 @@ Google's own manifest lists none either.
 7. **Test**: `./tools/ios-setup.sh`, open `build/ios/EggEscape.xcodeproj`, sign
    in with the Team, run on the phone: ATT prompt, consent form, a test ad,
    real store prices, a sandbox purchase, Restore Purchases, notch insets.
-8. **Upload**: builds 1-3 of 1.0 uploaded 7 Oct 2026 (3 adds the QA fixes, leaderboard/Clubs "Coming soon", live iOS ads). For the next,  bump `application/version` in the preset, `./tools/ios-upload.sh`,
+8. **Upload**: builds 1-4 of 1.0 uploaded 7-8 Oct 2026 (3 adds the QA fixes, leaderboard/Clubs "Coming soon", live iOS ads; 4 adds the privacy manifest fix). For the next,  bump `application/version` in the preset, `./tools/ios-upload.sh`,
    attach the build, set release to **Manual**, then Add for Review.
 9. **Countries**: Pricing and Availability: every territory **except the 27 EU
    countries** (same as Duckdoku). It is a by-hand edit (the API key cannot
