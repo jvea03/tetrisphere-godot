@@ -1432,6 +1432,11 @@ func _touch_input(event: InputEvent) -> void:
 			_gesture = Gesture.PENDING
 			_touch_start = touch.position
 			_touch_ms = Time.get_ticks_msec()
+			# The sliding lesson grabs the line the moment it is touched: a real
+			# finger rarely holds still for HOLD_TIME, and a touch that drifted
+			# into a swipe would turn the ball out from under the fixed spotlight.
+			if _tutorial.on_step("slide"):
+				_begin_hold()
 			return
 		# Lifted.
 		var was := _gesture
@@ -1450,6 +1455,10 @@ func _touch_input(event: InputEvent) -> void:
 		return
 	match _gesture:
 		Gesture.PENDING, Gesture.IGNORE:
+			# While the sliding lesson waits, the ball must not move: its spotlight
+			# stays where the line was, and a turned ball would strand the player.
+			if _tutorial.on_step("slide"):
+				return
 			# A hold that grabbed nothing can still turn into a swipe.
 			if drag.position.distance_to(_touch_start) > MOVE_TOL:
 				_gesture = Gesture.TURNING

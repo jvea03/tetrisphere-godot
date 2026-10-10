@@ -8,13 +8,15 @@ extends Control
 ## and lets taps through only inside the hole -- the screen calls
 ## gate_passed() once the player has done the thing (a step's optional "id"
 ## lets it check which, with on_step). "rect" may be a Callable, re-read when
-## its step shows.
+## its step shows. A gated step offers Skip after GATE_SKIP_SECONDS, so a
+## lesson the player cannot complete never traps them behind the dark panels.
 
 signal finished
 
 const PAD := 12.0
 const GAP := 18.0
 const CAPTION_WIDTH := 460.0
+const GATE_SKIP_SECONDS := 12.0   # a gated step with no buttons offers Skip after this long
 
 var steps: Array = []
 var step_index := 0
@@ -114,6 +116,11 @@ func _show_step() -> void:
 	var gated: bool = step.get("gate", false)
 	_next.visible = not gated
 	_skip.visible = not gated
+	if gated:
+		var shown := step_index
+		get_tree().create_timer(GATE_SKIP_SECONDS).timeout.connect(func():
+			if visible and step_index == shown and steps[step_index].get("gate", false):
+				_skip.visible = true)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE if gated else Control.MOUSE_FILTER_STOP
 	for m in _masks:
 		m.mouse_filter = Control.MOUSE_FILTER_STOP if gated else Control.MOUSE_FILTER_IGNORE
