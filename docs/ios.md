@@ -90,7 +90,7 @@ and do declare tracking.
 7. **Test**: `./tools/ios-setup.sh`, open `build/ios/EggEscape.xcodeproj`, sign
    in with the Team, run on the phone: ATT prompt, consent form, a test ad,
    real store prices, a sandbox purchase, Restore Purchases, notch insets.
-8. **Upload**: builds 1-6 of 1.0 uploaded 7-9 Oct 2026 (3 adds the QA fixes, leaderboard/Clubs "Coming soon", live iOS ads; 4 was rejected as invalid by the tracking change below; 5 is 3 plus a new build number; 6 adds the sliding-lesson fix). For the next,  bump `application/version` in the preset, `./tools/ios-upload.sh`,
+8. **Upload**: builds 1-7 of 1.0 uploaded 7-9 Oct 2026 (3 adds the QA fixes, leaderboard/Clubs "Coming soon", live iOS ads; 4 was rejected as invalid by the tracking change below; 5 is 3 plus a new build number; 6 adds the sliding-lesson fix; 7 adds the Collection-lesson fix). For the next,  bump `application/version` in the preset, `./tools/ios-upload.sh`,
    attach the build, set release to **Manual**, then Add for Review.
 9. **Countries**: Pricing and Availability: every territory **except the 27 EU
    countries** (same as Duckdoku). It is a by-hand edit (the API key cannot
