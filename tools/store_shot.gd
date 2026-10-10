@@ -13,6 +13,8 @@
 # --level=<n>     the level for game / win (default 12)
 # --drops=<n>    greedy drops played before a game / win shot (default 6, which
 #                 clears the level; tests/demo.gd reads it)
+# --fresh        first-visit walkthroughs not yet seen (Collection, Home)
+# --advance=<n>  press Next n times on the first-visit walkthrough (with --fresh)
 # --wait=<s>      seconds to let animations settle (default 1.5)
 extends Node
 
@@ -22,6 +24,8 @@ func _ready() -> void:
 	var out := ""
 	var level := 12
 	var wait := 1.5
+	var fresh := false
+	var advance := 0
 	var size := Vector2i(1290, 2796)
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--scene="):
@@ -30,6 +34,10 @@ func _ready() -> void:
 			out = a.substr(6)
 		elif a.begins_with("--drops="):
 			pass   # read by tests/demo.gd from the same command line
+		elif a == "--fresh":
+			fresh = true
+		elif a.begins_with("--advance="):
+			advance = int(a.substr(10))
 		elif a.begins_with("--wait="):
 			wait = float(a.substr(7))
 		elif a.begins_with("--level="):
@@ -42,6 +50,15 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	_profile(level)
+	if fresh:   # a brand-new player: the first-visit walkthroughs still to come
+		TSProfile.collection_tutorial_seen = false
+		TSProfile.home_tutorial_seen = false
+		TSProfile.collection_gift_claimed = false
+		for i in TSProfile.CRITTER_COUNT:   # only the starter critter, as in a new game
+			TSProfile.critter_unlocked[i] = i == 0
+			TSProfile.critter_level[i] = 1 if i == 0 else 0
+		TSProfile.avatar_critter = 0
+		TSProfile.coin_count = 600
 	var path := "res://scenes/%s.tscn" % scene_name
 	var game_cards := ["pause", "lose", "bomb_empty", "swap_empty", "rocks_empty"]
 	if scene_name == "game" or scene_name == "win" or game_cards.has(scene_name):
@@ -68,6 +85,9 @@ func _ready() -> void:
 	Input.warp_mouse(Vector2(2, 2))   # keep hover states out of the picture
 	# Wait in seconds, not frames: a big off-screen render runs slower than 60 fps.
 	await get_tree().create_timer(wait).timeout
+	for i in advance:   # step the walkthrough on (fresh shots)
+		inst._tutorial._advance()
+		await get_tree().create_timer(0.8).timeout
 	if scene_name == "win":
 		inst._debug_win()
 		await get_tree().create_timer(wait).timeout

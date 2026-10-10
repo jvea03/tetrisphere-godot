@@ -458,11 +458,26 @@ func _maybe_start_tutorial() -> void:
 		steps.append({"rect": wallet.get_global_rect(), "text": "Here's %s coins -- enough for your first critter." % TSProfile.fmt_coins(gift)})
 	var buying := not TSProfile.is_critter_unlocked(TUTORIAL_CRITTER) and TSProfile.coin_count >= TSProfile.critter_unlock_cost(TUTORIAL_CRITTER)
 	if buying:
+		# The critter to tap sits far down the alphabetical list. The walkthrough
+		# blocks scrolling (everything outside its spotlight is dark and dead), so
+		# bring the tile on screen now, while the first two steps look elsewhere.
+		_scroll_tile_into_view(TUTORIAL_CRITTER)
 		steps.append({"rect": func() -> Rect2: return _tile_rect(TUTORIAL_CRITTER), "text": "Tap %s." % TSProfile.critter_name(TUTORIAL_CRITTER), "gate": true})
 		steps.append({"rect": func() -> Rect2: return _feature_btn.get_global_rect(), "text": "Tap Buy to adopt it.", "gate": true})
 	steps.append({"rect": func() -> Rect2: return _feature.get_global_rect(), "text": "It's yours! Tap an owned critter to seal it in the egg, and upgrade it here." if buying else "Tap an owned critter to seal it in the egg, and upgrade it here."})
 	steps.append({"rect": func() -> Rect2: return _level_card.get_global_rect(), "text": "Each Collection level adds +1% building materials on every win."})
 	_tutorial.start(steps)
+
+
+## Scrolls the critter list so critter i's tile sits comfortably in view.
+func _scroll_tile_into_view(i: int) -> void:
+	for g in [_owned_grid, _locked_grid]:
+		for t in g.get_children():
+			if t.get_meta("index", -1) == i:
+				var tile := t as Control
+				var top := tile.global_position.y - _critter_scroll.global_position.y + float(_critter_scroll.scroll_vertical)
+				_critter_scroll.scroll_vertical = maxi(0, int(top - (_critter_scroll.size.y - tile.size.y) * 0.4))
+				return
 
 
 func _tile_rect(i: int) -> Rect2:
