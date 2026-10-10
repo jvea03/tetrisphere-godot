@@ -1,5 +1,9 @@
 # App Review: Guideline 2.1 "Information Needed" (8 Oct 2026)
 
+**Status 9-10 Oct 2026:** replied in the Resolution Center with these answers and a
+screen recording from an iPhone 16 Pro (TestFlight build 7), then resubmitted 1.0 (7)
+with its 19 purchases; "Waiting for Review".
+
 Apple's message (new developer account, little review history) asks for a
 screen recording from a physical iPhone plus seven written answers. The written
 part is below; it is also in the App Review Notes field. The recording is the
