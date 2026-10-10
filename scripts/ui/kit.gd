@@ -197,8 +197,8 @@ static func expand(c: Control) -> Control:
 	return c
 
 
-static func scroll(content: Control) -> ScrollContainer:
-	var sc := ScrollContainer.new()
+static func scroll(content: Control) -> ScrollContainer:   # a TSScroll: a finger can drag it from anywhere
+	var sc := TSScroll.new()
 	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	sc.follow_focus = false
