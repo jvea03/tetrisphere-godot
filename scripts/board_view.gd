@@ -488,7 +488,7 @@ func _tile(xform: Transform3D, material: Material, mesh: Mesh) -> MeshInstance3D
 # many beats (everything from one drop is step 1), so a chain pops in waves.
 # Each block reports the moment it cracks through tile_popped, for the 2D
 # sparks, sound and shake that go with it (TSGame).
-signal tile_popped(at: Vector3, outward: Vector3, kind: int, step: int, total: int)
+signal tile_popped(at: Vector3, outward: Vector3, kind: int, step: int, total: int, event: String)
 
 const POP_SWELL := 0.09      # the swell before the crack
 const POP_BEAT := 0.18       # between the waves of a chain
@@ -499,8 +499,9 @@ func spawn_clear_fx(fx: Array) -> void:
 	for e in fx:
 		var kind: int = e[3]
 		var step: int = e[4]
+		var event: String = e[5] if e.size() > 5 else ""   # "armor" or "hit": it took a hit and stays
 		var xf := cell_transform(e[0], e[1], float(e[2]))
-		var colour: Color = TYPE_COLORS[kind]
+		var colour: Color = ARMOR_COLOR if event == "armor" else TYPE_COLORS[kind]
 
 		var holder := Node3D.new()
 		holder.position = xf.origin
@@ -517,7 +518,7 @@ func spawn_clear_fx(fx: Array) -> void:
 			if not is_instance_valid(holder):
 				return
 			_shatter(xf, colour, kind, loose, fx.size() > BIG_CLEAR)
-			tile_popped.emit(holder.global_position, (holder.global_position - global_position).normalized(), kind, step, fx.size())
+			tile_popped.emit(holder.global_position, (holder.global_position - global_position).normalized(), kind, step, fx.size(), event)
 			holder.queue_free())
 
 

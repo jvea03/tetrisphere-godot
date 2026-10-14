@@ -687,7 +687,9 @@ func _matches(seeds: Array) -> Dictionary:
 
 
 # Destroys these pieces, logging each block to `fx` (where it stood, and the
-# chain step it went at) so the view can play the clear in place.
+# chain step it went at) so the view can play the clear in place. A block that
+# only takes a hit carries a sixth field: "armor" (its armour knocked off) or
+# "hit" (a tie-down's layer, a geode's chip); a plain break has none.
 func _destroy(doomed: Dictionary, step: int, fx: Array) -> int:
 	var removed := 0
 	# An armoured blocker takes the hit instead: its armour chips off (a
@@ -698,7 +700,7 @@ func _destroy(doomed: Dictionary, step: int, fx: Array) -> int:
 			doomed.erase(p)
 			for col in plate_cols[p]:
 				var v: Vector2i = col
-				fx.append([v.x, v.y, (cells[v.x][v.y] as Array).find(p), BLOCKER, step])
+				fx.append([v.x, v.y, (cells[v.x][v.y] as Array).find(p), BLOCKER, step, "armor"])
 	# A tie-down loses one layer per hit (a chip of it in the fx) and breaks
 	# with its last.
 	for p in doomed.keys():
@@ -707,7 +709,7 @@ func _destroy(doomed: Dictionary, step: int, fx: Array) -> int:
 			doomed.erase(p)
 			for col in plate_cols[p]:
 				var v: Vector2i = col
-				fx.append([v.x, v.y, (cells[v.x][v.y] as Array).find(p), TIE, step])
+				fx.append([v.x, v.y, (cells[v.x][v.y] as Array).find(p), TIE, step, "hit"])
 	# A geode takes a hit the same way; on its last it cracks open, and the
 	# rock inside flies (the caller plays it: see geode_shots in the result).
 	for p in doomed.keys():
@@ -718,7 +720,7 @@ func _destroy(doomed: Dictionary, step: int, fx: Array) -> int:
 			doomed.erase(p)
 			for col in plate_cols[p]:
 				var v: Vector2i = col
-				fx.append([v.x, v.y, (cells[v.x][v.y] as Array).find(p), GEODE, step])
+				fx.append([v.x, v.y, (cells[v.x][v.y] as Array).find(p), GEODE, step, "hit"])
 		else:
 			_geode_breaks.append(plate_cols[p][0])
 	for p in doomed:

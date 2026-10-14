@@ -212,6 +212,16 @@ static func _stream(name: String) -> AudioStreamWAV:
 				_streams[name] = _chime([523.0, 587.0, 659.0, 784.0, 880.0, 1047.0, 1175.0, 1319.0, 1568.0, 1760.0, 2093.0], 0.028, 0.16)
 			"rainbow":
 				_streams[name] = _rainbow()
+			"clang":
+				_streams[name] = _clang()
+			"knock":
+				_streams[name] = _knock()
+			"snap":
+				_streams[name] = _snap()
+			"tink":
+				_streams[name] = _glass([2350.0], 0.0, 0.3)
+			"shatter":
+				_streams[name] = _shatter()
 			"win":
 				_streams[name] = _fanfare()
 			"windup":
@@ -579,4 +589,107 @@ static func _rainbow() -> AudioStreamWAV:
 			if tj > 0.0:
 				s += sin(TAU * float(twinkles[j]) * tj) * exp(-tj * 16.0) * 0.12
 		samples[i] = s
+	return _make_stream(samples)
+
+
+## Armour knocked off a blocker: a struck steel plate -- a bright click and
+## the clashing, inharmonic partials of metal ringing off.
+static func _clang() -> AudioStreamWAV:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 53
+	var n := int(SAMPLE_RATE * 0.55)
+	var samples := PackedFloat32Array()
+	samples.resize(n)
+	var f := 540.0
+	var partials := [[1.0, 1.0, 9.0], [2.76, 0.6, 12.0], [5.40, 0.4, 18.0], [8.93, 0.25, 26.0], [1.51, 0.35, 7.0]]
+	for i in range(n):
+		var t := float(i) / SAMPLE_RATE
+		var s := 0.0
+		for pt in partials:
+			s += sin(TAU * f * float(pt[0]) * t) * float(pt[1]) * exp(-t * float(pt[2]))
+		var click := rng.randf_range(-1.0, 1.0) * exp(-t * 900.0)
+		samples[i] = (s * 0.16 + click * 0.45) * minf(t / 0.0008, 1.0)
+	return _make_stream(samples)
+
+
+## A tie-down losing a layer: a hollow wooden knock.
+static func _knock() -> AudioStreamWAV:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 59
+	var n := int(SAMPLE_RATE * 0.16)
+	var samples := PackedFloat32Array()
+	samples.resize(n)
+	var low := 0.0
+	for i in range(n):
+		var t := float(i) / SAMPLE_RATE
+		var body := sin(TAU * 310.0 * t) * exp(-t * 38.0) + 0.5 * sin(TAU * 720.0 * t) * exp(-t * 60.0)
+		low += (rng.randf_range(-1.0, 1.0) - low) * 0.4
+		samples[i] = (body * 0.5 + low * exp(-t * 120.0) * 0.6) * minf(t / 0.0008, 1.0) * 0.5
+	return _make_stream(samples)
+
+
+## A tie-down breaking free: the stake snaps with a splintering crack, and its
+## cable springs loose with a wobbling "boing".
+static func _snap() -> AudioStreamWAV:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 61
+	var n := int(SAMPLE_RATE * 0.5)
+	var samples := PackedFloat32Array()
+	samples.resize(n)
+	var grain := 0.0
+	var phase := 0.0
+	for i in range(n):
+		var t := float(i) / SAMPLE_RATE
+		var noise := rng.randf_range(-1.0, 1.0)
+		if rng.randf() < 0.3 * exp(-t * 40.0):
+			grain = noise
+		grain *= 0.7
+		var crack := noise * exp(-t * 250.0) * 0.7 + grain * 0.8
+		var tb := maxf(t - 0.03, 0.0)
+		phase += TAU * lerpf(620.0, 220.0, minf(tb / 0.3, 1.0)) * (1.0 + 0.06 * sin(TAU * 22.0 * tb)) / SAMPLE_RATE
+		var boing := sin(phase) * exp(-tb * 7.0) * minf(tb / 0.01, 1.0) * (1.0 if t > 0.03 else 0.0)
+		samples[i] = (crack * 0.5 + boing * 0.32) * minf(t / 0.0008, 1.0)
+	return _make_stream(samples)
+
+
+## Glass: struck crystal partials (a little inharmonic), `step` seconds apart.
+static func _glass(freqs: Array, step: float, vol: float) -> AudioStreamWAV:
+	var ring := 0.4
+	var n := int(SAMPLE_RATE * (step * float(maxi(freqs.size() - 1, 0)) + ring))
+	var samples := PackedFloat32Array()
+	samples.resize(n)
+	for k in freqs.size():
+		var f: float = freqs[k]
+		var start := int(SAMPLE_RATE * step * float(k))
+		for i in range(start, mini(start + int(SAMPLE_RATE * ring), n)):
+			var t := float(i - start) / SAMPLE_RATE
+			var s := sin(TAU * f * t) * exp(-t * 14.0) + 0.5 * sin(TAU * f * 2.32 * t) * exp(-t * 22.0) + 0.25 * sin(TAU * f * 4.1 * t) * exp(-t * 35.0)
+			samples[i] += s * minf(t / 0.0006, 1.0) * vol * 0.6
+	return _make_stream(samples)
+
+
+## A geode cracking open: a stony crack, then a spill of crystal tinkles at
+## random high notes, scattering and fading.
+static func _shatter() -> AudioStreamWAV:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 67
+	var n := int(SAMPLE_RATE * 0.7)
+	var samples := PackedFloat32Array()
+	samples.resize(n)
+	var low := 0.0
+	var tinkles := []
+	for k in 9:
+		tinkles.append([0.02 + rng.randf_range(0.0, 0.32) * pow(float(k) / 9.0, 0.7), rng.randf_range(1900.0, 4200.0), rng.randf_range(0.5, 1.0)])
+	for i in range(n):
+		var t := float(i) / SAMPLE_RATE
+		var noise := rng.randf_range(-1.0, 1.0)
+		low += (noise - low) * 0.3
+		var crack := (low * exp(-t * 45.0) + noise * exp(-t * 500.0) * 0.5) * 0.7
+		var s := 0.0
+		for tk in tinkles:
+			var tt: float = t - float(tk[0])
+			if tt > 0.0:
+				var f: float = tk[1]
+				s += (sin(TAU * f * tt) + 0.4 * sin(TAU * f * 2.32 * tt)) * exp(-tt * 18.0) * float(tk[2])
+		samples[i] = (crack * 0.6 + s * 0.14) * minf(t / 0.0008, 1.0)
 	return _make_stream(samples)

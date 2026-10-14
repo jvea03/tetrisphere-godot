@@ -128,7 +128,8 @@ const ROCK_DUST := Color(0.82, 0.78, 0.72)
 const BOMB_DROP_PX := 96.0
 const BOMB_DROP_SECONDS := 0.32
 var _fx: TSFxLayer          # the boosters' sparks, puffs, rings and flashes
-var _pop_clock := 0         # when the last block-pop sound played (msec), so a big clear is one pop per beat
+var _pop_clock := 0         # when the last pop's ring and camera nudge happened (msec): once per beat
+var _sound_clocks := {}     # block sound -> when it last played (msec): each once per beat
 var _shimmer_clock := 0     # when the last big clear's shimmer played (msec)
 const POP_SCALE := [0, 2, 4, 7, 9, 12, 14, 16]   # semitones up for chain waves 1, 2, 3...: major pentatonic
 const SHIMMER_CLEAR := 12   # blocks in one clear for the sparkle on top of the pops
@@ -2398,14 +2399,13 @@ func _start_booster_tutorial(btn: Button, id: String, text: String) -> void:
 	_tutorial.start([{"rect": btn.get_global_rect(), "text": text}])
 
 
-## Tie-downs (TSBoard.TIE): keeps the counter by the hearts up to date, with
-## a chime as each one breaks. A new ball (_ties_seen -1) just takes its count.
+## Tie-downs (TSBoard.TIE): keeps the counter by the hearts up to date (each
+## one's break is heard as it snaps: _on_tile_popped). A new ball (_ties_seen
+## -1) just takes its count.
 func _note_ties() -> void:
 	var left := board.ties_left()
 	if _ties_seen < 0:
 		_level_ties = left
-	elif left < _ties_seen:
-		TSSfx.play("upgrade")
 	_ties_seen = left
 	_tie_pill.visible = _level_ties > 0
 	_tie_label.text = str(left)
@@ -2427,21 +2427,49 @@ func _apply_sky() -> void:
 ## the camera once per beat. A clear shares one budget of sparks between its
 ## blocks, so a big one sparkles instead of turning to fog. Blocks round the
 ## back of the egg pop unseen, so they throw nothing over the front.
-func _on_tile_popped(at: Vector3, outward: Vector3, kind: int, step: int, total: int) -> void:
+func _on_tile_popped(at: Vector3, outward: Vector3, kind: int, step: int, total: int, event: String) -> void:
 	if not is_inside_tree() or _fx == null:
 		return
 	var stone := kind == TSBoard.BLOCKER or kind == TSBoard.GEODE
 	var seen := outward.dot((_camera.global_position - at).normalized()) > 0.05
 	var p := _camera.unproject_position(at)
-	var colour: Color = TSBoardView.TYPE_COLORS[kind]
+	var colour: Color = TSBoardView.ARMOR_COLOR if event == "armor" else TSBoardView.TYPE_COLORS[kind]
 	var now := Time.get_ticks_msec()
-	if now - _pop_clock > 45:   # one pop sound, ring and nudge per beat, not per block
+	# Each blocker has a voice of its own: armour clangs off, a tie-down knocks
+	# as it loses a layer and snaps when it breaks, a geode tinks as it chips
+	# and shatters into crystal when it opens, a stone cracks; pieces pop. Each
+	# sound plays once a beat, so a clear of mixed blocks is heard as all of them.
+	var sound := "pop"
+	if event == "armor":
+		sound = "clang"
+	elif kind == TSBoard.TIE:
+		sound = "knock" if event == "hit" else "snap"
+	elif kind == TSBoard.GEODE:
+		sound = "tink" if event == "hit" else "shatter"
+	elif kind == TSBoard.BLOCKER:
+		sound = "crack"
+	# Each wave of a chain a step up the major pentatonic scale, so a long
+	# chain climbs like a tune; a hair of detune keeps repeats alive.
+	var note: int = POP_SCALE[mini(step - 1, POP_SCALE.size() - 1)]
+	var pitch := pow(2.0, float(note) / 12.0) * randf_range(0.985, 1.015)
+	if now - int(_sound_clocks.get(sound, 0)) > 45:
+		_sound_clocks[sound] = now
+		if sound == "pop":
+			TSSfx.play("pop%d" % (randi() % 3), pitch)
+		elif sound == "crack":
+			TSSfx.play(sound, pitch)
+		else:   # the blockers' own sounds keep their note, give or take
+			TSSfx.play(sound, randf_range(0.95, 1.05))
+	if seen:
+		match sound:
+			"clang":   # sparks off the steel
+				_fx.burst(p, [Color(1.0, 0.86, 0.42), Color.WHITE], 5, 360.0, 0.35, 6.0, 500.0, true)
+			"snap":    # splinters of the stake
+				_fx.burst(p, [colour, colour.lightened(0.3)], 6, 420.0, 0.5, 5.0, 900.0)
+			"shatter": # crystal glinting out of the geode
+				_fx.burst(p, [Color(0.82, 1.0, 0.98), Color(0.55, 0.92, 0.9), Color.WHITE], 7, 380.0, 0.6, 8.0, 300.0, true)
+	if now - _pop_clock > 45:   # one ring and camera nudge per beat, not per block
 		_pop_clock = now
-		# Each wave of a chain a step up the major pentatonic scale, so a long
-		# chain climbs like a tune; a hair of detune keeps repeats alive.
-		var note: int = POP_SCALE[mini(step - 1, POP_SCALE.size() - 1)]
-		var pitch := pow(2.0, float(note) / 12.0) * randf_range(0.985, 1.015)
-		TSSfx.play("crack" if stone else "pop%d" % (randi() % 3), pitch)
 		if total >= SHIMMER_CLEAR and step == 1 and now - _shimmer_clock > 400:   # a big clear sparkles on top, once
 			_shimmer_clock = now
 			TSSfx.play("shimmer", pitch)
