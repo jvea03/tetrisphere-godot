@@ -8,7 +8,11 @@ const DEMO_DROPS := 6
 
 func _ready() -> void:
 	seed(1234)
-	TSProfile.use_test_profile(12)
+	var level := 12
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--level="):   # tools/store_shot.gd: which level to show
+			level = int(a.substr(8))
+	TSProfile.use_test_profile(level)
 	super()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 4242

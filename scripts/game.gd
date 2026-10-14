@@ -529,7 +529,7 @@ func _start(seed_value: int, baked: Dictionary = {}) -> void:
 		board.generate(seed_value, level)
 	else:
 		board.load_dict(baked)
-	_lbl_level.text = "DAILY EGG" if is_daily else "LEVEL %d" % current_level
+	_set_level_text()
 	_ties_seen = -1
 	_apply_sky()
 	state = State.PLAYING
@@ -592,7 +592,7 @@ func _resume() -> void:
 	_rocks_flying = false
 	_rocks_shot += 1
 	_stop_deal_animation()
-	_lbl_level.text = "DAILY EGG" if is_daily else "LEVEL %d" % current_level
+	_set_level_text()
 	_ties_seen = -1
 	_apply_sky()
 	_face(_piece_centre())
@@ -2652,3 +2652,15 @@ func _on_tile_popped(at: Vector3, outward: Vector3, kind: int, step: int, total:
 		_fx.burst(p, [colour, colour.lightened(0.35), Color.WHITE], sparks, 420.0, 0.45, 7.5, 700.0)
 		if step >= 2:
 			_fx.burst(p, [Color.WHITE, Color(1.0, 0.9, 0.5)], 2, 200.0, 0.5, 9.0, 0.0, true)
+
+
+## The level readout in the top-left corner, its font shrunk as the number
+## grows so it never runs into the hearts (LEVEL 10000 and on).
+const LEVEL_LABEL_WIDTH := 250.0
+func _set_level_text() -> void:
+	_lbl_level.text = "DAILY EGG" if is_daily else "LEVEL %d" % current_level
+	var font := _lbl_level.get_theme_font("font")
+	var px := 42
+	while px > 24 and font.get_string_size(_lbl_level.text, HORIZONTAL_ALIGNMENT_LEFT, -1, px).x > LEVEL_LABEL_WIDTH:
+		px -= 2
+	_lbl_level.add_theme_font_size_override("font_size", px)
