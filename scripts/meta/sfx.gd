@@ -142,7 +142,7 @@ static func play(name: String, pitch: float = 1.0) -> void:
 	var voices: Array = _players.get(name, [])
 	var player: AudioStreamPlayer = null
 	for v in voices:
-		if is_instance_valid(v) and not (v as AudioStreamPlayer).playing:
+		if is_instance_valid(v) and (v as AudioStreamPlayer).is_inside_tree() and not (v as AudioStreamPlayer).playing:
 			player = v
 			break
 	if player == null and voices.size() < VOICES:

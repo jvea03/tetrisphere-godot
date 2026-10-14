@@ -1530,7 +1530,9 @@ func _turn(pixels: Vector2) -> void:
 func _tap(pos: Vector2) -> void:
 	var now := Time.get_ticks_msec()
 	var on_piece := _on_aimed_piece(_cell_at(pos))
-	if now - _last_tap_ms <= int(DOUBLE_TAP_TIME * 1000.0) and (pos.distance_to(_last_tap_pos) <= DOUBLE_TAP_DIST or on_piece):
+	# (A bomb lands exactly where the second tap is, so it keeps to taps near the first.)
+	var bomb := bomb_armed and TSProfile.bomb_count > 0
+	if now - _last_tap_ms <= int(DOUBLE_TAP_TIME * 1000.0) and (pos.distance_to(_last_tap_pos) <= DOUBLE_TAP_DIST or (on_piece and not bomb)):
 		_last_tap_ms = -100000   # a third tap starts over rather than dropping again
 		_drop_cell = _cell_at(pos)
 		_drop()
@@ -1538,7 +1540,7 @@ func _tap(pos: Vector2) -> void:
 		return
 	_last_tap_ms = now
 	_last_tap_pos = pos
-	if on_piece and not (bomb_armed and TSProfile.bomb_count > 0):
+	if on_piece and not bomb:
 		return   # already aimed here: the tap only readies the drop
 	_tap_aim(pos)
 
@@ -2058,7 +2060,7 @@ func _refresh_lose_card() -> void:
 		cont.pressed.connect(func():
 			if TSProfile.coin_count >= _continue_cost():
 				_buy_continue()
-			elif not pack.is_empty() and _lose_pack == "":
+			elif not pack.is_empty():   # Billing turns down a second buy while one is pending
 				_lose_pack = str(pack["product_id"])
 				Billing.purchase(_lose_pack))
 		box.add_child(cont)
@@ -2151,13 +2153,12 @@ func _open_ad(reward: String) -> void:
 	var booster := TSProfile.BOOSTERS.has(reward)
 	var box: VBoxContainer = _ad_card["box"]
 	for c in box.get_children():
+		box.remove_child(c)
 		c.queue_free()
 	var titles := {"life": "One More Heart", "next_level": "Next Level"}
 	var title: String = ("Out of " + str(TSProfile.BOOSTER_NAMES[reward][2]).capitalize()) if booster else titles[reward]
-	box.add_child(TSUI.title(title, 44))
-	var ic := TSIcon.make(reward if booster else ("heart" if reward == "life" else "ad"), 130)
-	ic.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	box.add_child(ic)
+	box.add_child(TSUI.ribbon(title, TSUI.SKY, 40, 470.0))
+	box.add_child(TSUI.halo(TSIcon.make(reward if booster else ("heart" if reward == "life" else "ad"), 120), 200.0, TSUI.SKY, false))
 	var status := TSUI.wrap(TSUI.label("", 24, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER))
 	box.add_child(status)
 	_ad_card["status"] = status

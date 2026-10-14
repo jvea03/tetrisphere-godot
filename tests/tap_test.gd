@@ -160,6 +160,29 @@ func _run_gestures() -> void:
 	_check("a slower second tap anywhere on the piece drops it", _drops == 2)
 	_check("...where it was aimed", _dropped_at == aim_before)
 
+	# With a bomb armed, a quick second tap far off on the piece re-aims, not
+	# drops: the bomb lands where the second tap is, so it keeps to the strict rule.
+	if state != State.PLAYING:
+		_start_level(current_level)
+	_face(_piece_centre())
+	_cam_theta = _cam_target_theta
+	_cam_phi = _cam_target_phi
+	_process(0.0)
+	_last_tap_ms = -100000
+	cur_type = TSBoard.I_FLAT
+	TSProfile.bomb_count = maxi(TSProfile.bomb_count, 1)
+	bomb_armed = true
+	var bcells := board.footprint_cells(current_offsets(), cursor)
+	var far_a := _screen_of(bcells[0])
+	var far_b := _screen_of(bcells[bcells.size() - 1])
+	var drops_before := _drops
+	if far_a.distance_to(far_b) > DOUBLE_TAP_DIST:
+		_tap_at(far_a)
+		_tap_at(far_b)
+		_check("with a bomb armed, a far second tap on the piece does not drop", _drops == drops_before)
+	bomb_armed = false
+	_last_tap_ms = -100000
+
 	# A second touch that wobbles a little as it lands is still a tap.
 	if state != State.PLAYING:
 		_start_level(current_level)
