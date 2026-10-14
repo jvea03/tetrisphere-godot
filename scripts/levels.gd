@@ -87,6 +87,26 @@ const TIE_LAYERS := [2, 2, 2, 2, 3]
 const GEODE_FROM_LEVEL := 13
 const GEODE_COUNT := [1, 1, 2, 2, 2]
 
+## A slow ramp past the baked fifty, as the loop of tiers comes round again and
+## again: every RAMP_EVERY levels from LEVEL_LOOP_START the eggs get one step
+## harder, up to RAMP_STEPS (level 551 on) -- the deal favours the piece the
+## board needs a little less, the shell holds a little more grey, and a little
+## more of the grey wears armour. Tiers, pieces, holes, tie-downs and geodes
+## stay as the loop has them. Tuned with `tests/sim.gd -- ramp`.
+const RAMP_EVERY := 50
+const RAMP_STEPS := 10
+const RAMP_BIAS := 0.015    # deal bias (common_bias) taken off per step
+const RAMP_GREY := 0.006    # blocker_share added per step
+const RAMP_ARMOR := 0.02    # armour share added per step
+
+
+## How many steps of the ramp a level is on: 0 up to level 100, 1 from 101...
+static func ramp_step(level: int) -> int:
+	if level < LEVEL_LOOP_START:
+		return 0
+	return mini((level - LEVEL_LOOP_START) / RAMP_EVERY, RAMP_STEPS)
+
+
 static var _bank: Dictionary = {}
 static var _bank_loaded := false
 
@@ -272,6 +292,12 @@ static func rules_for_level(level: int) -> Dictionary:
 		rules["escape_size"] = int(DIFFICULTIES[difficulty_for_level(level)]["escape_size"]) - 1
 		rules.erase("ties")
 		rules.erase("tie_layers")
+	# Past the baked fifty, the slow ramp (ramp_step).
+	var step := ramp_step(level)
+	rules["common_bias"] = float(DIFFICULTIES[difficulty_for_level(level)]["common_bias"]) - RAMP_BIAS * step
+	if step > 0:
+		rules["blocker_share"] = float(rules["blocker_share"]) + RAMP_GREY * step
+		rules["armor_share"] = minf(float(rules["armor_share"]) + RAMP_ARMOR * step, 0.9)
 	return rules
 
 

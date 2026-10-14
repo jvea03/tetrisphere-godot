@@ -1658,7 +1658,7 @@ func _piece_centre() -> Vector2:
 # Only the level's own pieces are ever dealt; blockers are shell-only. How
 # often you get the piece most common on the board is set by the difficulty.
 func _deal() -> int:
-	return board.deal_piece(level["pieces"], float(TSLevels.DIFFICULTIES[difficulty]["common_bias"]))
+	return board.deal_piece(level["pieces"], float(level.get("common_bias", TSLevels.DIFFICULTIES[difficulty]["common_bias"])))
 
 
 # The fair deal: if the piece coming up has nowhere on the ball to make a

@@ -29,6 +29,13 @@ func _initialize() -> void:
 		_probe(levels, int(args[2]), int(args[3]) if args.size() > 3 else 24)
 		quit()
 		return
+	# `-- ramp 8`: the slow ramp past level 50 (TSLevels.ramp_step) -- for every
+	# other step, one full loop of tiers at that step, each level played 8 times
+	# by both bots, as average win rates per tier.
+	if args.size() >= 1 and args[0] == "ramp":
+		_ramp(int(args[1]) if args.size() > 1 else 8)
+		quit()
+		return
 	print("==== tiers: win rate over %d generated balls each ====" % TIER_TRIALS)
 	print("%-13s %-8s %-6s %-5s | %-26s | %-26s" % ["tier", "pieces", "hole", "deal", "careful: won  drops  hearts", "casual: won  drops  hearts"])
 	for t in TSLevels.DIFFICULTIES.size():
@@ -121,7 +128,7 @@ func _batch(tier: int, candidates: int, trials: int, seed_base: int) -> Dictiona
 func _play(board: TSBoard, tier: int, rules: Dictionary, rng: RandomNumberGenerator, candidates: int) -> Dictionary:
 	var d: Dictionary = TSLevels.DIFFICULTIES[tier]
 	var escape := int(rules.get("escape_size", d["escape_size"]))
-	var bias := float(d["common_bias"])
+	var bias := float(rules.get("common_bias", d["common_bias"]))
 	var pieces: Array = rules["pieces"]
 	var next := board.deal_piece(pieces, bias, rng)
 	var misses := 0
@@ -165,3 +172,31 @@ func _best_move(board: TSBoard, type_id: int, rng: RandomNumberGenerator, candid
 			best_score = s
 			best = at
 	return best
+
+
+func _ramp(trials: int) -> void:
+	print("step  first level | careful  I    H    X    E   all | casual  I    H    X    E   all")
+	for step in range(0, TSLevels.RAMP_STEPS + 1, 2):
+		var first := TSLevels.LEVEL_LOOP_START + step * TSLevels.RAMP_EVERY
+		var rates := {CAREFUL: {}, CASUAL: {}}
+		for bot in [CAREFUL, CASUAL]:
+			for lvl in range(first, first + TSLevels.LEVEL_LOOP_TEMPLATE.size()):
+				var t := TSLevels.difficulty_for_level(lvl)
+				if not rates[bot].has(t):
+					rates[bot][t] = []
+				rates[bot][t].append(_level(lvl, bot, trials))
+		var line := "%4d  %5d       |" % [step, first]
+		for bot in [CAREFUL, CASUAL]:
+			line += "        " if bot == CAREFUL else " |       "
+			var all := 0.0
+			var n := 0
+			for t in [1, 2, 3, 4]:
+				var rs: Array = rates[bot].get(t, [])
+				var sum := 0.0
+				for r in rs:
+					sum += r
+				all += sum
+				n += rs.size()
+				line += " %3d%%" % roundi(100.0 * sum / maxf(rs.size(), 1))
+			line += " %3d%%" % roundi(100.0 * all / maxf(n, 1))
+		print(line)
