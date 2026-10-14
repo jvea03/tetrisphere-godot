@@ -730,7 +730,7 @@ func _use_any_piece() -> void:
 	_clamp_cursor()
 	_face(_piece_centre())
 	_animate_swap_in()
-	TSSfx.play("upgrade")
+	TSSfx.play("magic")
 	TSHaptics.light()
 	_refresh_piece()
 	_refresh_hud()
@@ -758,7 +758,7 @@ func _fire_rocks() -> void:
 	for k in 5:
 		_fx.puff(muzzle + Vector2(randf_range(-30.0, 30.0), randf_range(-20.0, 10.0)), ROCK_DUST, 16.0, 0.5, Vector2(randf_range(-50.0, 50.0), -60.0))
 	_throw_rocks(muzzle, targets)
-	TSSfx.play("upgrade")
+	TSSfx.play("rock_launch")
 	_refresh_hud()
 
 
@@ -788,6 +788,7 @@ func _throw_rocks(from: Vector2, targets: Array) -> void:
 		_hud.add_child(rock)
 		var tw := rock.create_tween()
 		tw.tween_interval(0.08 * i)
+		tw.tween_callback(func() -> void: TSSfx.play("rock_fly", randf_range(0.92, 1.1)))
 		tw.set_parallel(true)
 		tw.tween_property(rock, "position", (flights[i] as Vector2) - Vector2(32.0, 32.0), 0.38).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 		tw.tween_property(rock, "rotation", TAU * 1.5, 0.38)
@@ -801,6 +802,7 @@ func _throw_rocks(from: Vector2, targets: Array) -> void:
 		var hit: Vector2 = flights[i]
 		tw.tween_callback(func() -> void:
 			# It lands: a dusty impact, chips flying, and a small jolt.
+			TSSfx.play("rock_hit", randf_range(0.9, 1.08))
 			for k in 5:
 				_fx.puff(hit + Vector2(randf_range(-24.0, 24.0), randf_range(-16.0, 16.0)), ROCK_DUST, 18.0, 0.55, Vector2(randf_range(-70.0, 70.0), -40.0))
 			_fx.burst(hit, [Color(0.6, 0.58, 0.64), Color(0.74, 0.7, 0.78)], 10, 420.0, 0.5, 5.0, 900.0)
@@ -890,6 +892,7 @@ func _drop() -> void:
 			# The Any Piece lands: a burst of every colour where it becomes one.
 			_fx.burst(landing_at, TSFxLayer.RAINBOW, 24, 620.0, 0.7, 9.0, 0.0, true)
 			_fx.ring(landing_at, Color.WHITE, 16.0, 150.0, 0.35)
+			TSSfx.play("rainbow")
 		if int(res["chain"]) == 0:
 			lives -= 1
 			TSSfx.play("miss")

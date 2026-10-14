@@ -202,6 +202,16 @@ static func _stream(name: String) -> AudioStreamWAV:
 				_streams[name] = _chime([1568.0, 2093.0, 2637.0, 3136.0, 2637.0, 3136.0], 0.04, 0.14)
 			"miss":
 				_streams[name] = _tone(220.0, 0.28, "triangle", 0.4, 90.0)
+			"rock_launch":
+				_streams[name] = _twang()
+			"rock_fly":
+				_streams[name] = _whizz()
+			"rock_hit":
+				_streams[name] = _thunk()
+			"magic":
+				_streams[name] = _chime([523.0, 587.0, 659.0, 784.0, 880.0, 1047.0, 1175.0, 1319.0, 1568.0, 1760.0, 2093.0], 0.028, 0.16)
+			"rainbow":
+				_streams[name] = _rainbow()
 			"win":
 				_streams[name] = _fanfare()
 			"windup":
@@ -483,4 +493,90 @@ static func _popper() -> AudioStreamWAV:
 		if tc > 0.0:
 			chime = (sin(TAU * 2093.0 * tc) + 0.5 * sin(TAU * 3136.0 * tc)) * exp(-tc * 12.0)
 		samples[i] = (crack * 0.5 + grain * 0.35 + chime * 0.12) * minf(t / 0.001, 1.0)
+	return _make_stream(samples)
+
+
+## The Rocks booster firing: a slingshot's rubber band twanging (a bright
+## plucked tone that sags in pitch and buzzes) with a puff of dust.
+static func _twang() -> AudioStreamWAV:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 41
+	var n := int(SAMPLE_RATE * 0.35)
+	var samples := PackedFloat32Array()
+	samples.resize(n)
+	var phase := 0.0
+	var dust := 0.0
+	for i in range(n):
+		var t := float(i) / SAMPLE_RATE
+		phase += TAU * lerpf(260.0, 170.0, minf(t / 0.2, 1.0)) * (1.0 + 0.02 * sin(TAU * 30.0 * t)) / SAMPLE_RATE
+		# A sawtooth softened with its octave: the band's buzz.
+		var saw := 2.0 * fposmod(phase / TAU, 1.0) - 1.0
+		var band := (saw * 0.5 + sin(phase) * 0.6) * exp(-t * 11.0)
+		dust += (rng.randf_range(-1.0, 1.0) - dust) * 0.2
+		samples[i] = (band * 0.4 + dust * exp(-t * 20.0) * 0.5) * minf(t / 0.002, 1.0) * 0.8
+	return _make_stream(samples)
+
+
+## A rock flying through the air: a short whizz of noise sliding down.
+static func _whizz() -> AudioStreamWAV:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 43
+	var n := int(SAMPLE_RATE * 0.38)
+	var samples := PackedFloat32Array()
+	samples.resize(n)
+	var fast := 0.0
+	var slow := 0.0
+	for i in range(n):
+		var t := float(i) / SAMPLE_RATE
+		var p := t / 0.38
+		var noise := rng.randf_range(-1.0, 1.0)
+		fast += (noise - fast) * lerpf(0.5, 0.15, p)
+		slow += (noise - slow) * lerpf(0.12, 0.03, p)
+		samples[i] = (fast - slow) * sin(PI * p) * 0.55
+	return _make_stream(samples)
+
+
+## A rock landing on the egg: a deep stony thunk and gravel scattering.
+static func _thunk() -> AudioStreamWAV:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 47
+	var n := int(SAMPLE_RATE * 0.3)
+	var samples := PackedFloat32Array()
+	samples.resize(n)
+	var phase := 0.0
+	var grain := 0.0
+	var low := 0.0
+	for i in range(n):
+		var t := float(i) / SAMPLE_RATE
+		phase += TAU * lerpf(120.0, 48.0, minf(t / 0.12, 1.0)) / SAMPLE_RATE
+		var thud := (sin(phase) + 0.3 * sin(phase * 2.7) * exp(-t * 40.0)) * exp(-t * 16.0)
+		if rng.randf() < 0.2 * exp(-t * 12.0):
+			grain = rng.randf_range(-1.0, 1.0)
+		grain *= 0.9
+		low += (grain - low) * 0.35
+		var hit := rng.randf_range(-1.0, 1.0) * exp(-t * 300.0)
+		samples[i] = (thud * 0.75 + low * 0.8 + hit * 0.4) * minf(t / 0.001, 1.0) * 0.6
+	return _make_stream(samples)
+
+
+## The Any Piece landing: every colour at once -- a bright major chord of bells
+## struck together, then twinkles tumbling down over it.
+static func _rainbow() -> AudioStreamWAV:
+	var n := int(SAMPLE_RATE * 0.9)
+	var samples := PackedFloat32Array()
+	samples.resize(n)
+	var chord := [784.0, 988.0, 1175.0, 1568.0]
+	var twinkles := [3136.0, 2637.0, 2349.0, 2093.0, 1760.0, 1568.0]
+	for i in range(n):
+		var t := float(i) / SAMPLE_RATE
+		var s := 0.0
+		for c in chord:
+			var f: float = c
+			s += sin(TAU * f * t) + 0.3 * sin(TAU * f * 2.0 * t) * exp(-t * 6.0)
+		s *= minf(t / 0.003, 1.0) * exp(-t * 4.0) * 0.09
+		for j in twinkles.size():
+			var tj := t - 0.1 - 0.06 * float(j)
+			if tj > 0.0:
+				s += sin(TAU * float(twinkles[j]) * tj) * exp(-tj * 16.0) * 0.12
+		samples[i] = s
 	return _make_stream(samples)
