@@ -336,8 +336,11 @@ func _test_levels() -> void:
 	_check("the tiers follow Duckdoku's curve (wrong at %s)" % [wrong], wrong.is_empty())
 	var loops := true
 	for lvl in range(71, 131):
+		if lvl == TSLevels.LOCK_FROM_LEVEL or lvl - 20 == TSLevels.LOCK_FROM_LEVEL:
+			continue   # a blocker's first egg is a breather (below)
 		loops = loops and TSLevels.difficulty_for_level(lvl) == TSLevels.difficulty_for_level(lvl - 20)
 	_check("after level 70 the 51-70 stretch repeats", loops)
+	_check("a new blocker's first egg is a breather: Intermediate at most", TSLevels.difficulty_for_level(TSLevels.LOCK_FROM_LEVEL) <= 1 and TSLevels.difficulty_for_level(TSLevels.VINE_FROM_LEVEL) <= 1)
 	var baked := true
 	var sigs := {}
 	for lvl in range(1, 51):

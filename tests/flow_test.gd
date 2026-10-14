@@ -289,6 +289,41 @@ func _run() -> void:
 			break
 	_check("an armed bomb falls on the cell double-tapped (%s)" % want, want.x >= 0 and _bomb_landed == want)
 
+	# The new blockers' first eggs: each opens its card once.
+	TSProfile.vine_tutorial_seen = false
+	_close_cards()
+	_start_level(TSLevels.VINE_FROM_LEVEL)
+	for _i in 4:
+		await get_tree().process_frame
+	_check("level %d has creeping vines and opens their card" % TSLevels.VINE_FROM_LEVEL, not board.vined.is_empty() and _tutorial.visible)
+	_tutorial._finish()
+	_check("and it is marked seen", TSProfile.vine_tutorial_seen)
+	TSProfile.lock_tutorial_seen = false
+	_start_level(TSLevels.LOCK_FROM_LEVEL)
+	for _i in 4:
+		await get_tree().process_frame
+	_check("level %d has padlocks and a key, and opens their card (a breather: Intermediate)" % TSLevels.LOCK_FROM_LEVEL, not board.locked.is_empty() and board.key_piece != TSBoard.HOLE and _tutorial.visible and difficulty == 1)
+	_tutorial._advance()
+	_check("...whose second step turns to the key", _tutorial.visible)
+	_tutorial._finish()
+	_check("and it is marked seen", TSProfile.lock_tutorial_seen)
+
+	# A real drop on a vine egg with nothing cut, three times: the vines spread.
+	_start_level(TSLevels.VINE_FROM_LEVEL + 3)
+	for _i in 4:
+		await get_tree().process_frame
+	var before_vines := board.vined.size()
+	var spreads := 0
+	for _i in TSBoard.VINE_GROW_EVERY:
+		var probe_res := board.clone().place_and_resolve(current_offsets(), cursor, cur_type, _current_depth())
+		if int(probe_res["chain"]) > 0 or state != State.PLAYING:
+			break
+		lives = LIVES
+		_drop()
+		spreads += 1
+	if spreads == TSBoard.VINE_GROW_EVERY:
+		_check("three drops that cut no vine make the vines spread", board.vined.size() == before_vines + 1)
+
 	print("")
 	print("ALL PASSED" if _failures == 0 else "%d FAILED" % _failures)
 	get_tree().quit(0 if _failures == 0 else 1)

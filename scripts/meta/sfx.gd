@@ -222,6 +222,14 @@ static func _stream(name: String) -> AudioStreamWAV:
 				_streams[name] = _glass([2350.0], 0.0, 0.3)
 			"shatter":
 				_streams[name] = _shatter()
+			"snip":
+				_streams[name] = _snip()
+			"sprout":
+				_streams[name] = _sprout()
+			"clink":
+				_streams[name] = _glass([1568.0], 0.0, 0.16)
+			"unlock":
+				_streams[name] = _unlock()
 			"win":
 				_streams[name] = _fanfare()
 			"windup":
@@ -794,3 +802,72 @@ static func unduck() -> void:
 		_duck_tween.kill()
 	_duck_tween = tree.create_tween()
 	_duck_tween.tween_method(func(v: float) -> void: AudioServer.set_bus_volume_db(bus, v), AudioServer.get_bus_volume_db(bus), 0.0, 0.4)
+
+
+## A vine cut: two quick scissor snips and a rustle of leaves falling.
+static func _snip() -> AudioStreamWAV:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 83
+	var n := int(SAMPLE_RATE * 0.3)
+	var samples := PackedFloat32Array()
+	samples.resize(n)
+	var fast := 0.0
+	var slow := 0.0
+	for i in range(n):
+		var t := float(i) / SAMPLE_RATE
+		var noise := rng.randf_range(-1.0, 1.0)
+		fast += (noise - fast) * 0.7
+		slow += (noise - slow) * 0.2
+		var hiss := fast - slow   # bright noise: the blades
+		var snips := 0.0
+		for at in [0.0, 0.07]:
+			var ts: float = t - at
+			if ts >= 0.0:
+				snips += hiss * exp(-ts * 160.0) + sin(TAU * 3100.0 * ts) * exp(-ts * 120.0) * 0.3
+		var rustle := slow * exp(-maxf(t - 0.08, 0.0) * 14.0) * (1.0 if t > 0.06 else 0.0) * (0.6 + 0.4 * sin(TAU * 31.0 * t))
+		samples[i] = (snips * 0.5 + rustle * 0.9) * minf(t / 0.0008, 1.0) * 0.72
+	return _make_stream(samples)
+
+
+## The vines spreading: a soft bubbly "bloop" rising, and leaves unfurling.
+static func _sprout() -> AudioStreamWAV:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 89
+	var n := int(SAMPLE_RATE * 0.4)
+	var samples := PackedFloat32Array()
+	samples.resize(n)
+	var phase := 0.0
+	var slow := 0.0
+	for i in range(n):
+		var t := float(i) / SAMPLE_RATE
+		phase += TAU * lerpf(240.0, 520.0, smoothstep(0.0, 0.22, t)) / SAMPLE_RATE
+		var bloop := sin(phase) * minf(t / 0.02, 1.0) * exp(-t * 7.0)
+		slow += (rng.randf_range(-1.0, 1.0) - slow) * 0.15
+		var leaves := slow * sin(PI * minf(t / 0.35, 1.0)) * 0.8
+		samples[i] = (bloop * 0.32 + leaves * 0.35)
+	return _make_stream(samples)
+
+
+## The key popping: a key turning in a lock (two mechanical clicks), then the
+## padlocks springing open as a bright little run of chimes.
+static func _unlock() -> AudioStreamWAV:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 97
+	var n := int(SAMPLE_RATE * 0.75)
+	var samples := PackedFloat32Array()
+	samples.resize(n)
+	var notes := [1047.0, 1319.0, 1568.0, 2093.0]
+	for i in range(n):
+		var t := float(i) / SAMPLE_RATE
+		var s := 0.0
+		for at in [0.0, 0.09]:
+			var tc: float = t - at
+			if tc >= 0.0:
+				s += rng.randf_range(-1.0, 1.0) * exp(-tc * 500.0) * 0.6 + sin(TAU * 2400.0 * tc) * exp(-tc * 200.0) * 0.3
+		for k in notes.size():
+			var tn := t - 0.18 - 0.06 * float(k)
+			if tn > 0.0:
+				var f: float = notes[k]
+				s += (sin(TAU * f * tn) + 0.3 * sin(TAU * f * 2.0 * tn)) * exp(-tn * 9.0) * 0.16
+		samples[i] = s * minf(t / 0.0008, 1.0)
+	return _make_stream(samples)

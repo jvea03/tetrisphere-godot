@@ -95,6 +95,10 @@ const VINE_COUNT := [2, 2, 2, 3, 3]
 ## one buried key.
 const LOCK_FROM_LEVEL := 100
 const LOCK_COUNT := [3, 3, 3, 4, 4]
+## A blocker's first egg (VINE_FROM_LEVEL, LOCK_FROM_LEVEL) is its lesson:
+## INTRO_COUNT of it, and a deal that helps INTRO_BIAS more than the tier's.
+const INTRO_COUNT := 2
+const INTRO_BIAS := 0.15
 
 ## A slow ramp past the baked fifty, as the loop of tiers comes round again and
 ## again: every RAMP_EVERY levels from LEVEL_LOOP_START the eggs get one step
@@ -122,6 +126,13 @@ static var _bank_loaded := false
 
 ## The tier a level plays at.
 static func difficulty_for_level(level: int) -> int:
+	# A blocker's first egg is a breather: Intermediate at most.
+	if level == VINE_FROM_LEVEL or level == LOCK_FROM_LEVEL:
+		return mini(_planned_tier(level), 1)
+	return _planned_tier(level)
+
+
+static func _planned_tier(level: int) -> int:
 	if level >= 1 and level <= LEVEL_PLAN.size():
 		return LEVEL_PLAN[level - 1]
 	return LEVEL_LOOP_TEMPLATE[posmod(level - LEVEL_LOOP_START, LEVEL_LOOP_TEMPLATE.size())]
@@ -154,6 +165,7 @@ const SEED_SHIFT := {
 	17: 12, 20: 2, 23: 9,                              # Hard: the first stretch of them (15-23) smoothed
 	34: 3, 42: 1, 58: 6, 63: 6, 64: 2,                 # Hard
 	22: 10, 54: 5, 60: 4,                              # Expert
+	100: 6,                                            # lock & key's first egg (Intermediate: see difficulty_for_level)
 	46: 2, 61: 2, 70: 3,                               # Extreme
 }
 
@@ -313,6 +325,11 @@ static func rules_for_level(level: int) -> Dictionary:
 	# Past the baked fifty, the slow ramp (ramp_step).
 	var step := ramp_step(level)
 	rules["common_bias"] = float(DIFFICULTIES[difficulty_for_level(level)]["common_bias"]) - RAMP_BIAS * step
+	if level == VINE_FROM_LEVEL or level == LOCK_FROM_LEVEL:
+		rules["common_bias"] = minf(float(rules["common_bias"]) + INTRO_BIAS, 0.95)
+		for k in ["vines", "locks"]:
+			if rules.has(k):
+				rules[k] = mini(int(rules[k]), INTRO_COUNT)
 	if step > 0:
 		rules["blocker_share"] = float(rules["blocker_share"]) + RAMP_GREY * step
 		rules["armor_share"] = minf(float(rules["armor_share"]) + RAMP_ARMOR * step, 0.9)

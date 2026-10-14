@@ -76,6 +76,18 @@ const TIE_PIP_COLOR := Color(1.0, 0.93, 0.78)
 ## A geode's dots are crystals, pale aqua, one per hit to go, spread along the stone.
 const GEODE_PIP_COLOR := Color(0.82, 1.0, 0.98)
 const GEODE_PIP_SPACING := 0.42
+## Creeping vines: a wrapped piece is tinted toward the vine and carries two
+## leaves on each cell; cut ones fly off as leaf-green shards.
+const VINE_GREEN := Color(0.24, 0.44, 0.2)    # the stem, dark enough to show on the mint upright too
+const VINE_LEAF := Color(0.62, 0.86, 0.42)
+const VINE_TINT := 0.3
+## Lock & key: a gold padlock (a stud, with a dark keyhole on it) on each
+## padlocked blocker; a gold emblem on the key piece once it shows, and a
+## glint on top of the stack above it while it is still buried.
+const LOCK_GOLD := Color(1.0, 0.78, 0.28)
+const LOCK_HOLE := Color(0.27, 0.16, 0.19)
+const KEY_GOLD := Color(1.0, 0.86, 0.36)
+const KEY_GLINT := Color(1.0, 0.93, 0.62)
 ## The cable from a tie-down to the critter: rope tan.
 const WIRE_COLOR := Color(0.93, 0.76, 0.5)
 const WIRE_RADIUS := 0.05
@@ -373,7 +385,25 @@ func rebuild() -> void:
 					sets[key] = []
 				var shade := depth_shade(d, board.shell_depth)
 				var colour: Color = ARMOR_COLOR if board.armored.has(p) else TYPE_COLORS[kind]
+				if board.vined.has(p):
+					colour = colour.lerp(VINE_GREEN, VINE_TINT)
 				sets[key].append([colour, Color(c, r, d, shade)])
+				var open := _open_above(stack, d)
+				if board.vined.has(p) and open:
+					# A stem zigzagging across the cell, and a leaf off it.
+					var zig := 1.0 if (c + r) % 2 == 0 else -1.0
+					for k in [-1.0, 0.0, 1.0]:
+						pips.append([VINE_GREEN, Color(c + k * 0.26, r + k * 0.26 * zig, d + ARMOR_STUD_RISE, shade)])
+					pips.append([VINE_LEAF, Color(c + 0.24, r - 0.24 * zig, d + ARMOR_STUD_RISE * 1.5, shade)])
+				if board.locked.has(p) and open:
+					studs.append([LOCK_GOLD, Color(c, r, d + ARMOR_STUD_RISE, shade)])
+					pips.append([LOCK_HOLE, Color(c, r, d + ARMOR_STUD_RISE * 2.0, shade)])
+				if p == board.key_piece:
+					if open:
+						studs.append([KEY_GOLD, Color(c, r, d + ARMOR_STUD_RISE, shade)])
+					else:   # buried: a glint on top of the stack shows where to dig
+						var top := stack.size() - 1
+						pips.append([KEY_GLINT, Color(c, r, top + ARMOR_STUD_RISE * 2.0, depth_shade(top, board.shell_depth))])
 				if board.armored.has(p) and _open_above(stack, d):
 					studs.append([TYPE_COLORS[TSBoard.BLOCKER], Color(c, r, d + ARMOR_STUD_RISE, shade)])
 				if board.ties.has(p) and _open_above(stack, d):
@@ -499,9 +529,21 @@ func spawn_clear_fx(fx: Array) -> void:
 	for e in fx:
 		var kind: int = e[3]
 		var step: int = e[4]
-		var event: String = e[5] if e.size() > 5 else ""   # "armor" or "hit": it took a hit and stays
+		var event: String = e[5] if e.size() > 5 else ""   # "armor", "hit", "vine", "locked" or "unlock" (see TSBoard._destroy)
 		var xf := cell_transform(e[0], e[1], float(e[2]))
 		var colour: Color = ARMOR_COLOR if event == "armor" else TYPE_COLORS[kind]
+		if event == "vine":
+			colour = VINE_LEAF      # the vine flies off; the piece stays
+		elif event == "unlock":
+			colour = LOCK_GOLD      # the padlock flies off; a plain blocker stays
+		elif event == "locked":
+			# A padlock shrugs the hit off: nothing breaks, it only clinks.
+			var at := _fx_root.to_global(xf.origin)
+			var out := (at - global_position).normalized()
+			var wait := create_tween()
+			wait.tween_interval(0.08 + POP_BEAT * float(maxi(step - 1, 0)))
+			wait.tween_callback(func(): tile_popped.emit(at, out, kind, step, fx.size(), event))
+			continue
 
 		var holder := Node3D.new()
 		holder.position = xf.origin
@@ -581,3 +623,15 @@ func spawn_popup(text: String, fx: Array) -> void:
 	tw.parallel().tween_property(label, "modulate:a", 0.0, 0.6).set_delay(0.5)
 	tw.parallel().tween_property(label, "outline_modulate:a", 0.0, 0.6).set_delay(0.5)
 	tw.tween_callback(label.queue_free)
+
+
+## The vines spreading onto piece `id`: a burst of leaves off each of its cells
+## (the rebuild then shows it wrapped).
+func spawn_vine_growth(id: int) -> void:
+	if not board.plate_cols.has(id):
+		return
+	var loose := TSToon.tile([false, false, false, false], RIM_GAP)
+	var d := board.depth_of(id)
+	for col in board.plate_cols[id]:
+		var v: Vector2i = col
+		_shatter(cell_transform(v.x, v.y, float(d)), VINE_LEAF, TSBoard.TIE, loose, true)

@@ -444,6 +444,27 @@ A cute, hand-drawn style, all in `scripts/toon.gd` (`TSToon`):
   (`TSLevels.GEODE_FROM_LEVEL`, `GEODE_COUNT`). Generation merges two
   side-by-side surface blockers into each after tiling, so the eggs are
   otherwise unchanged; the first egg with one has a short lesson.
+- **Creeping vines** (`TSBoard.vined`: a dark stem zigzagging over a piece,
+  with a bright leaf on each cell) wrap a coloured piece or a blocker. A
+  wrapped piece **never matches and never slides** (it stops a slide, like
+  armour); a hit -- a pop beside it, a bomb, a rock -- **cuts the vine and
+  leaves the piece**. Left alone they **spread**: every
+  `TSBoard.VINE_GROW_EVERY` (3) drops that cut none, a piece showing beside a
+  vine is wrapped too. From level 50 on every third level (50, 53, 56...), 2 to
+  an egg (3 in Expert and Extreme), in place of tie-downs
+  (`TSLevels.VINE_FROM_LEVEL`, `VINE_COUNT`).
+- **Lock & key** (`TSBoard.locked`, `key_piece`): grey blockers with a gold
+  padlock that **nothing can break** -- a match, a bomb or a rock only makes
+  them clink -- and one **key**: an ordinary piece buried a layer down (never
+  under a padlock), marked by a gold glint on the stack above it and a gold
+  emblem once it shows. **Pop the key and every padlock opens**, leaving plain
+  blockers. From level 100 on every third level (100, 103, 106...; never a
+  vine level), 3 padlocks (4 in Expert and Extreme), in place of tie-downs
+  (`TSLevels.LOCK_FROM_LEVEL`, `LOCK_COUNT`).
+- **A new blocker's first egg is a breather**: it plays at Intermediate at
+  most (`TSLevels.difficulty_for_level`), with 2 of the blocker
+  (`INTRO_COUNT`), a friendlier deal (`INTRO_BIAS`) and a lesson card -- level
+  50 (vines) plays at 96% for the casual bot, level 100 (padlocks) at 67%.
 - **No walls:** a mix with two or more five-cell pieces (plus, L, T) and no
   square leaves few ways to match, so it digs a hole one size smaller and has
   no tie-downs (`TSLevels.heavy_mix`). And a level whose egg played far below

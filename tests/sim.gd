@@ -166,12 +166,33 @@ func _best_move(board: TSBoard, type_id: int, rng: RandomNumberGenerator, candid
 		var s := int(res["removed"]) * 10 + int(res["pieces"]) * 25 + int(probe.best_escape_patch(escape)["open"]) * 60
 		# A player aims at the tie-downs: every layer knocked off is worth a lot.
 		s += (board.tie_layers_left() - probe.tie_layers_left()) * 80
+		# ...cuts the vines before they spread...
+		s += (board.vined.size() - probe.vined.size()) * 50
+		if int(res.get("vine_grew", TSBoard.HOLE)) != TSBoard.HOLE:
+			s -= 40
+		# ...and digs down to the key, then pops it.
+		if board.key_piece != TSBoard.HOLE:
+			s += 300 if probe.key_piece == TSBoard.HOLE else (_cover(board, board.key_piece) - _cover(probe, probe.key_piece)) * 30
 		if bool(res["overload"]):
 			s -= 500
 		if s > best_score:
 			best_score = s
 			best = at
 	return best
+
+
+## How many blocks sit above piece `id`, over all its cells.
+func _cover(board: TSBoard, id: int) -> int:
+	if not board.plate_cols.has(id):
+		return 0
+	var n := 0
+	for col in board.plate_cols[id]:
+		var v: Vector2i = col
+		var stack: Array = board.cells[v.x][v.y]
+		for above in range(stack.find(id) + 1, stack.size()):
+			if int(stack[above]) != TSBoard.HOLE:
+				n += 1
+	return n
 
 
 func _ramp(trials: int) -> void:

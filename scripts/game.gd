@@ -897,6 +897,9 @@ func _drop() -> void:
 	else:
 		var wild := cur_type == TSBoard.WILD
 		res = board.place_and_resolve(offsets, landing, cur_type, _current_depth())
+		var grew := int(res.get("vine_grew", TSBoard.HOLE))
+		if grew != TSBoard.HOLE:
+			_vines_spread(grew)
 		if wild:
 			# The Any Piece lands: a burst of every colour where it becomes one.
 			_fx.burst(landing_at, TSFxLayer.RAINBOW, 24, 620.0, 0.7, 9.0, 0.0, true)
@@ -2300,6 +2303,10 @@ func _maybe_start_tutorials() -> void:
 		_start_tie_tutorial()
 	elif not board.geodes.is_empty() and not TSProfile.geode_tutorial_seen:
 		_start_geode_tutorial()
+	elif not board.vined.is_empty() and not TSProfile.vine_tutorial_seen:
+		_start_vine_tutorial()
+	elif not board.locked.is_empty() and not TSProfile.lock_tutorial_seen:
+		_start_lock_tutorial()
 	elif TSProfile.swaps_unlocked and not TSProfile.swap_tutorial_seen:
 		_start_booster_tutorial(_btn_swap, "swap", "The Any Piece! Tap it to turn your piece into a wild block that becomes whatever it touches -- drop it by any pair to make a match. Here are %d to start." % TSProfile.SWAP_UNLOCK_GRANT)
 	elif TSProfile.rocks_unlocked and not TSProfile.rocks_tutorial_seen:
@@ -2344,6 +2351,53 @@ func _start_geode_tutorial() -> void:
 		{"rect": func() -> Rect2: return _piece_rect(id),
 			"text": "A geode! It takes three hits -- break pieces right next to it (the dots count down). On the last one it cracks open and fires a rock that finishes a match for you."},
 	])
+
+
+## The first egg with creeping vines: the camera turns to one, and a card says
+## how a vine holds a piece, how to cut it, and that it spreads if left.
+func _start_vine_tutorial() -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if not is_inside_tree() or board.vined.is_empty():
+		return
+	var id: int = board.vined.keys()[0]
+	_face(Vector2(board.plate_cols[id][0]))
+	_snap_camera()
+	_tutorial.finished.connect(func():
+		TSProfile.vine_tutorial_seen = true
+		TSProfile.save(), CONNECT_ONE_SHOT)
+	_tutorial.start([
+		{"rect": func() -> Rect2: return _piece_rect(id),
+			"text": "Creeping vines! A wrapped piece won't match or slide. Pop a piece right next to it to cut the vine -- but leave it for %d drops and it spreads to the next piece!" % TSBoard.VINE_GROW_EVERY},
+	])
+
+
+## The first egg with padlocks: the camera turns to one, and a card says that
+## nothing breaks a padlock -- but the key, buried under the gold glint, opens them all.
+func _start_lock_tutorial() -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if not is_inside_tree() or board.locked.is_empty():
+		return
+	var id: int = board.locked.keys()[0]
+	_face(Vector2(board.plate_cols[id][0]))
+	_snap_camera()
+	var key := board.key_piece
+	_tutorial.finished.connect(func():
+		TSProfile.lock_tutorial_seen = true
+		TSProfile.save(), CONNECT_ONE_SHOT)
+	var steps: Array = [
+		{"rect": func() -> Rect2: return _piece_rect(id),
+			"text": "Padlocks! Nothing can break a locked stone -- not a match, a bomb or a rock."},
+	]
+	if key != TSBoard.HOLE:
+		steps.append({"rect": func() -> Rect2:
+			if board.plate_cols.has(key):
+				_face(Vector2(board.plate_cols[key][0]))
+				_snap_camera()
+			return _piece_rect(key),
+			"text": "The key is buried under the gold glint. Dig down to it and pop it, and every padlock on the egg snaps open!"})
+	_tutorial.start(steps)
 
 
 ## Level 1's walkthrough: the ball, the gestures, the pieces, the aim, the hearts.
@@ -2601,12 +2655,22 @@ func _on_tile_popped(at: Vector3, outward: Vector3, kind: int, step: int, total:
 	var p := _camera.unproject_position(at)
 	var colour: Color = TSBoardView.ARMOR_COLOR if event == "armor" else TSBoardView.TYPE_COLORS[kind]
 	var now := Time.get_ticks_msec()
-	# Each blocker has a voice of its own: armour clangs off, a tie-down knocks
+	# Each blocker has a voice of its own: a vine is snipped, a padlock clinks
+	# (and the key springs them all open), armour clangs off, a tie-down knocks
 	# as it loses a layer and snaps when it breaks, a geode tinks as it chips
 	# and shatters into crystal when it opens, a stone cracks; pieces pop. Each
 	# sound plays once a beat, so a clear of mixed blocks is heard as all of them.
 	var sound := "pop"
-	if event == "armor":
+	if event == "vine":
+		sound = "snip"
+		colour = TSBoardView.VINE_LEAF
+	elif event == "locked":
+		sound = "clink"
+		colour = TSBoardView.LOCK_GOLD
+	elif event == "unlock":
+		sound = "unlock"
+		colour = TSBoardView.LOCK_GOLD
+	elif event == "armor":
 		sound = "clang"
 	elif kind == TSBoard.TIE:
 		sound = "knock" if event == "hit" else "snap"
@@ -2634,6 +2698,13 @@ func _on_tile_popped(at: Vector3, outward: Vector3, kind: int, step: int, total:
 				_fx.burst(p, [colour, colour.lightened(0.3)], 6, 420.0, 0.5, 5.0, 900.0)
 			"shatter": # crystal glinting out of the geode
 				_fx.burst(p, [Color(0.82, 1.0, 0.98), Color(0.55, 0.92, 0.9), Color.WHITE], 7, 380.0, 0.6, 8.0, 300.0, true)
+			"snip":    # leaves fluttering down
+				_fx.burst(p, [TSBoardView.VINE_LEAF, TSBoardView.VINE_GREEN], 6, 300.0, 0.7, 7.0, 500.0)
+			"clink":   # a glint off the padlock
+				_fx.burst(p, [TSBoardView.LOCK_GOLD, Color.WHITE], 3, 220.0, 0.3, 6.0, 0.0, true)
+			"unlock":  # the padlock springing open
+				_fx.burst(p, [TSBoardView.LOCK_GOLD, Color(1.0, 0.95, 0.7), Color.WHITE], 9, 420.0, 0.6, 9.0, 300.0, true)
+				_fx.ring(p, Color(TSBoardView.LOCK_GOLD, 0.9), 10.0, 80.0, 0.35)
 	if now - _pop_clock > 45:   # one ring and camera nudge per beat, not per block
 		_pop_clock = now
 		if total >= SHIMMER_CLEAR and step == 1 and now - _shimmer_clock > 400:   # a big clear sparkles on top, once
@@ -2664,3 +2735,16 @@ func _set_level_text() -> void:
 	while px > 24 and font.get_string_size(_lbl_level.text, HORIZONTAL_ALIGNMENT_LEFT, -1, px).x > LEVEL_LABEL_WIDTH:
 		px -= 2
 	_lbl_level.add_theme_font_size_override("font_size", px)
+
+
+## The vines crept onto piece `id` after a drop that cut none: once the drop's
+## pops have played, leaves burst off it with a rustling "sprout".
+func _vines_spread(id: int) -> void:
+	get_tree().create_timer(0.3).timeout.connect(func() -> void:
+		if not is_inside_tree() or not board.plate_cols.has(id):
+			return
+		view.spawn_vine_growth(id)
+		TSSfx.play("sprout")
+		var v: Vector2i = board.plate_cols[id][0]
+		var at := _camera.unproject_position(view.to_global(TSBoardView.cell_transform(v.x, v.y, float(board.depth_of(id))).origin))
+		_fx.burst(at, [TSBoardView.VINE_LEAF, TSBoardView.VINE_GREEN], 8, 260.0, 0.7, 8.0, 200.0))
