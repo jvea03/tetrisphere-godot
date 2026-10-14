@@ -235,7 +235,13 @@ static func _stream(name: String) -> AudioStreamWAV:
 			"ding":
 				_streams[name] = _chime([1319.0, 1760.0, 2637.0], 0.045, 0.24)
 			"lose":
-				_streams[name] = _arpeggio([440.0, 330.0, 220.0, 140.0], 0.18, "sine", 0.45, 1.2)
+				_streams[name] = _sad_horn()
+			"heartbreak":
+				_streams[name] = _heartbreak()
+			"groan":
+				_streams[name] = _groan()
+			"revive":
+				_streams[name] = _chime([523.0, 659.0, 784.0, 1047.0, 1319.0], 0.07, 0.28)
 			"upgrade":
 				_streams[name] = _arpeggio([660.0, 880.0, 1320.0, 1760.0, 2640.0], 0.06, "sine", 0.35, 1.1)
 			"coin":
@@ -693,3 +699,98 @@ static func _shatter() -> AudioStreamWAV:
 				s += (sin(TAU * f * tt) + 0.4 * sin(TAU * f * 2.32 * tt)) * exp(-tt * 18.0) * float(tk[2])
 		samples[i] = (crack * 0.6 + s * 0.14) * minf(t / 0.0008, 1.0)
 	return _make_stream(samples)
+
+
+## A level lost: a soft muted horn going "wah, wah, wah, wahhh" down G, F#, F,
+## E -- each note's tone opening and closing like a plunger mute, the last one
+## held with a wobble of vibrato that droops as it fades. Sad, but cute.
+static func _sad_horn() -> AudioStreamWAV:
+	var notes := [[392.0, 0.3], [370.0, 0.3], [349.0, 0.3], [330.0, 1.0]]
+	var total := 0.0
+	for nd in notes:
+		total += float(nd[1])
+	var n := int(SAMPLE_RATE * (total + 0.05))
+	var samples := PackedFloat32Array()
+	samples.resize(n)
+	var i := 0
+	var phase := 0.0
+	var lp := 0.0
+	for k in notes.size():
+		var f0: float = notes[k][0]
+		var dur: float = notes[k][1]
+		var last := k == notes.size() - 1
+		var count := int(SAMPLE_RATE * dur)
+		for j in count:
+			if i >= n:
+				break
+			var t := float(j) / SAMPLE_RATE
+			var p := t / dur
+			var f := f0
+			if last:   # vibrato growing in, and the note sagging as it dies
+				f *= (1.0 + 0.012 * sin(TAU * 5.0 * t) * minf(t / 0.3, 1.0)) * lerpf(1.0, 0.96, p * p)
+			phase += TAU * f / SAMPLE_RATE
+			var saw := 2.0 * fposmod(phase / TAU, 1.0) - 1.0
+			# The "wah": the low-pass opens as the note sounds and closes after.
+			var wah := minf(p * 4.0, 1.0) * (1.0 - p * 0.7) if last else sin(PI * minf(p * 1.6, 1.0))
+			lp += (saw - lp) * lerpf(0.02, 0.16, wah)
+			var env := minf(t / 0.03, 1.0) * (1.0 - smoothstep(0.82, 1.0, p))
+			var warm := sin(phase * 0.5) * 0.35   # an octave under, for body
+			samples[i] = (lp * 0.9 + warm * 0.4) * env * 0.42
+			i += 1
+	return _make_stream(samples)
+
+
+## The last heart going: a glassy crack, then a sigh sliding down.
+static func _heartbreak() -> AudioStreamWAV:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 71
+	var n := int(SAMPLE_RATE * 0.6)
+	var samples := PackedFloat32Array()
+	samples.resize(n)
+	var phase := 0.0
+	for i in range(n):
+		var t := float(i) / SAMPLE_RATE
+		var crack := rng.randf_range(-1.0, 1.0) * exp(-t * 300.0) * 0.6 \
+			+ (sin(TAU * 1760.0 * t) + 0.5 * sin(TAU * 1760.0 * 2.4 * t)) * exp(-t * 30.0) * 0.25
+		var ts := maxf(t - 0.08, 0.0)
+		phase += TAU * lerpf(700.0, 380.0, smoothstep(0.0, 0.4, ts)) / SAMPLE_RATE
+		var sigh := (sin(phase) + 0.2 * sin(phase * 2.0)) * minf(ts / 0.04, 1.0) * exp(-ts * 4.5) * (1.0 if t > 0.08 else 0.0)
+		samples[i] = (crack + sigh * 0.35) * minf(t / 0.0008, 1.0)
+	return _make_stream(samples)
+
+
+## The egg overloaded: the shell straining under the weight -- a slow,
+## stick-slip wooden creak over a low rumble.
+static func _groan() -> AudioStreamWAV:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 73
+	var n := int(SAMPLE_RATE * 0.75)
+	var samples := PackedFloat32Array()
+	samples.resize(n)
+	var phase := 0.0
+	var low := 0.0
+	var jitter := 0.0
+	for i in range(n):
+		var t := float(i) / SAMPLE_RATE
+		var p := t / 0.75
+		jitter += (rng.randf_range(-1.0, 1.0) - jitter) * 0.002
+		phase += TAU * (lerpf(95.0, 70.0, p) * (1.0 + jitter * 6.0)) / SAMPLE_RATE
+		# Stick-slip: the creak catches and lets go in little pulses.
+		var pulse := pow(0.5 + 0.5 * sin(TAU * lerpf(18.0, 9.0, p) * t), 3.0)
+		var saw := 2.0 * fposmod(phase / TAU, 1.0) - 1.0
+		low += (rng.randf_range(-1.0, 1.0) - low) * 0.01
+		var env := sin(PI * p)
+		samples[i] = (saw * pulse * 0.35 + low * 2.0) * env * 0.6
+	return _make_stream(samples)
+
+
+## Brings ducked music straight back up (the moment has passed early).
+static func unduck() -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	var bus := AudioServer.get_bus_index(MUSIC_BUS)
+	if tree == null or bus == -1:
+		return
+	if _duck_tween != null and _duck_tween.is_valid():
+		_duck_tween.kill()
+	_duck_tween = tree.create_tween()
+	_duck_tween.tween_method(func(v: float) -> void: AudioServer.set_bus_volume_db(bus, v), AudioServer.get_bus_volume_db(bus), 0.0, 0.4)

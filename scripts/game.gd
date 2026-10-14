@@ -896,7 +896,7 @@ func _drop() -> void:
 			TSSfx.play("rainbow")
 		if int(res["chain"]) == 0:
 			lives -= 1
-			TSSfx.play("miss")
+			TSSfx.play("heartbreak" if lives <= 0 else "miss")   # the last heart breaks
 			_creature.react(TSCreature.Mood.SCARED)
 			TSHaptics.medium()
 			if lives <= 0:
@@ -1770,7 +1770,15 @@ func _lose() -> void:
 	if not TSSession.has_saved_game:
 		TSSession.forget()
 	_creature.react(TSCreature.Mood.SCARED, 9999.0)
-	TSSfx.play("lose")
+	# An overloaded egg groans first; then, as the card settles, the sad horn
+	# over the music pulled right down.
+	var overload := lose_reason == "SHELL OVERLOADED"
+	if overload:
+		TSSfx.play("groan")
+	TSSfx.duck(3.4, -20.0)
+	get_tree().create_timer(0.55 if overload else 0.4).timeout.connect(func() -> void:
+		if state == State.LOST:
+			TSSfx.play("lose"))
 	TSHaptics.heavy()
 	_refresh_lose_card()
 	TSUI.reveal(_lose_card["root"], _lose_card["panel"])
@@ -2008,6 +2016,9 @@ func _revive(count: int) -> void:
 	lose_reason = ""
 	state = State.PLAYING
 	_creature.react(TSCreature.Mood.HAPPY)   # saved!
+	TSSfx.unduck()
+	TSSfx.play("revive")
+	TSSfx.play("shimmer")
 	_update_creature()
 	is_first_attempt = false
 	TSUI.conceal(_lose_card["root"])
