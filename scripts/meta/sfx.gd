@@ -175,6 +175,10 @@ static func _stream(name: String) -> AudioStreamWAV:
 				_streams[name] = _arpeggio([523.0, 659.0, 784.0], 0.07, "square", 0.3)
 			"chain":
 				_streams[name] = _arpeggio([523.0, 659.0, 784.0, 1047.0, 1319.0], 0.06, "square", 0.3)
+			"pop":
+				_streams[name] = _tone(520.0, 0.07, "sine", 0.32, 1250.0)
+			"crack":
+				_streams[name] = _tone(260.0, 0.06, "square", 0.2, 110.0)
 			"miss":
 				_streams[name] = _tone(220.0, 0.28, "triangle", 0.4, 90.0)
 			"win":

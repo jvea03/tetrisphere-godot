@@ -482,9 +482,18 @@ func _tile(xform: Transform3D, material: Material, mesh: Mesh) -> MeshInstance3D
 	return mi
 
 
-# The clear from the reference footage: each block flashes white where it
-# stood, then tumbles away from the ball in its own colour and shrinks out.
-# `step` delays a block by that many beats (everything from one drop is step 1).
+# A block breaking: it swells and lights up where it stood, then cracks into
+# shards in its own colour that tumble away from the ball, spin and shrink
+# out (stone breaks into more, smaller chips). `step` delays a block by that
+# many beats (everything from one drop is step 1), so a chain pops in waves.
+# Each block reports the moment it cracks through tile_popped, for the 2D
+# sparks, sound and shake that go with it (TSGame).
+signal tile_popped(at: Vector3, outward: Vector3, kind: int, step: int, total: int)
+
+const POP_SWELL := 0.09      # the swell before the crack
+const POP_BEAT := 0.18       # between the waves of a chain
+const BIG_CLEAR := 20        # a clear of more blocks than this breaks them into fewer shards
+
 func spawn_clear_fx(fx: Array) -> void:
 	var loose := TSToon.tile([false, false, false, false], RIM_GAP)
 	for e in fx:
@@ -496,28 +505,49 @@ func spawn_clear_fx(fx: Array) -> void:
 		var holder := Node3D.new()
 		holder.position = xf.origin
 		_fx_root.add_child(holder)
-		var mat := make_material(Color.WHITE, 1.0, 0.6)
+		var mat := make_material(colour, 1.0, 0.0)
 		holder.add_child(_tile(Transform3D(xf.basis, Vector3.ZERO), mat, loose))
 
-		var outward := xf.origin.normalized()
-		var drift := Vector3(
-			_fx_rng.randf_range(-1.0, 1.0), _fx_rng.randf_range(-1.0, 1.0), _fx_rng.randf_range(-1.0, 1.0)
-		) * 0.9
-		var spin := Vector3(
-			_fx_rng.randf_range(-6.0, 6.0), _fx_rng.randf_range(-6.0, 6.0), _fx_rng.randf_range(-6.0, 6.0)
-		)
-		var delay := 0.14 + 0.22 * float(maxi(step - 1, 0))
-
+		var delay := 0.08 + POP_BEAT * float(maxi(step - 1, 0)) + _fx_rng.randf_range(0.0, 0.04)
 		var tw := holder.create_tween()
 		tw.tween_interval(delay)
-		tw.tween_property(mat, "shader_parameter/albedo", colour, 0.12)
-		tw.parallel().tween_property(mat, "shader_parameter/glow", 0.15, 0.12)
-		tw.tween_property(holder, "position", xf.origin + outward * 3.2 + drift, 0.6) \
-			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-		tw.parallel().tween_property(holder, "rotation", spin, 0.6)
-		tw.parallel().tween_property(holder, "scale", Vector3.ONE * 0.1, 0.6) \
-			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-		tw.tween_callback(holder.queue_free)
+		tw.tween_property(holder, "scale", Vector3.ONE * 1.22, POP_SWELL).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.parallel().tween_property(mat, "shader_parameter/glow", 0.85, POP_SWELL)
+		tw.tween_callback(func():
+			if not is_instance_valid(holder):
+				return
+			_shatter(xf, colour, kind, loose, fx.size() > BIG_CLEAR)
+			tile_popped.emit(holder.global_position, (holder.global_position - global_position).normalized(), kind, step, fx.size())
+			holder.queue_free())
+
+
+## The shards of one block: quarters of it (sixths for stone), flung out from
+## the ball and fanned apart, each spinning down to nothing.
+func _shatter(xf: Transform3D, colour: Color, kind: int, mesh: Mesh, big: bool) -> void:
+	var stone := kind == TSBoard.BLOCKER or kind == TSBoard.GEODE
+	var outward := xf.origin.normalized()
+	var mat := make_material(colour, 1.0, 0.7)
+	var n := 3 if big else (6 if stone else 4)   # fewer, on a big clear: they add up on a phone
+	for i in n:
+		var a := TAU * (float(i) + _fx_rng.randf_range(-0.2, 0.2)) / float(n)
+		var off := Vector3(cos(a) * 0.26, 0.0, sin(a) * 0.26)
+		var shard := Node3D.new()
+		_fx_root.add_child(shard)
+		shard.position = xf.origin + xf.basis * off
+		var s := _fx_rng.randf_range(0.34, 0.42) if stone else _fx_rng.randf_range(0.44, 0.52)
+		shard.add_child(_tile(Transform3D(xf.basis * Basis.from_scale(Vector3(s, 0.85, s)), Vector3.ZERO), mat, mesh))
+		var fan := (xf.basis * off).normalized()
+		var to := shard.position + outward * _fx_rng.randf_range(1.8, 2.8) + fan * _fx_rng.randf_range(0.9, 1.6)
+		var life := _fx_rng.randf_range(0.5, 0.7) * (1.2 if stone else 1.0)
+		var spin := Vector3(_fx_rng.randf_range(-8.0, 8.0), _fx_rng.randf_range(-8.0, 8.0), _fx_rng.randf_range(-8.0, 8.0))
+		var tw := shard.create_tween()
+		tw.tween_property(shard, "position", to, life).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		tw.parallel().tween_property(shard, "rotation", spin, life)
+		tw.parallel().tween_property(shard, "scale", Vector3.ONE * 0.05, life).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		tw.tween_callback(shard.queue_free)
+	# The flash fades off the shards as they fly.
+	var glow := create_tween()
+	glow.tween_property(mat, "shader_parameter/glow", 0.0, 0.3)
 
 
 # Floating score over the clear, as in the footage: handwritten, in pink on a

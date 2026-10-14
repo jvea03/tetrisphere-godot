@@ -128,6 +128,7 @@ const ROCK_DUST := Color(0.82, 0.78, 0.72)
 const BOMB_DROP_PX := 96.0
 const BOMB_DROP_SECONDS := 0.32
 var _fx: TSFxLayer          # the boosters' sparks, puffs, rings and flashes
+var _pop_clock := 0         # when the last block-pop sound played (msec), so a big clear is one pop per beat
 var _shake := 0.0           # how hard the camera shakes, in world units, fading out
 var _sparkle_clock := 0.0   # paces the armed bomb's fuse sparks and the Any Piece's shimmer
 var _swap_flyer: Control    # the Any Piece's icon while it flies to the tray
@@ -150,6 +151,7 @@ func _ready() -> void:
 	view = TSBoardView.new()
 	add_child(view)
 	view.setup(board)
+	view.tile_popped.connect(_on_tile_popped)
 	_ghost_root = Node3D.new()
 	add_child(_ghost_root)
 	if TSSession.daily_requested:
@@ -2397,3 +2399,35 @@ func _apply_sky() -> void:
 	TSToon.apply_sky(_sky_mat, sky)
 	_key_light.light_color = sky["light"]
 	_env.ambient_light_color = sky["ambient"]
+
+
+## A block cracking on the ball (TSBoardView.tile_popped): sparks in its
+## colour -- for stone, a pale puff of dust and a few chips -- with a pop that
+## climbs in pitch with each wave of a chain, a little shockwave and a nudge of
+## the camera once per beat. A clear shares one budget of sparks between its
+## blocks, so a big one sparkles instead of turning to fog. Blocks round the
+## back of the egg pop unseen, so they throw nothing over the front.
+func _on_tile_popped(at: Vector3, outward: Vector3, kind: int, step: int, total: int) -> void:
+	if not is_inside_tree() or _fx == null:
+		return
+	var stone := kind == TSBoard.BLOCKER or kind == TSBoard.GEODE
+	var seen := outward.dot((_camera.global_position - at).normalized()) > 0.05
+	var p := _camera.unproject_position(at)
+	var colour: Color = TSBoardView.TYPE_COLORS[kind]
+	var now := Time.get_ticks_msec()
+	if now - _pop_clock > 45:   # one pop sound, ring and nudge per beat, not per block
+		_pop_clock = now
+		TSSfx.play("crack" if stone else "pop", 1.0 + 0.12 * float(mini(step - 1, 6)) + randf_range(-0.04, 0.04))
+		_shake_screen(0.05 + 0.02 * float(mini(step, 4)))
+		if seen:
+			_fx.ring(p, Color(colour.lightened(0.5), 0.9), 10.0, 70.0 + 10.0 * float(mini(step, 4)), 0.3)
+	if not seen:
+		return
+	var sparks := clampi(int(72.0 / float(maxi(total, 1))), 2, 8)
+	if stone:
+		_fx.puff(p, Color(1.0, 0.98, 0.95, 0.45), 16.0, 0.4, Vector2(0.0, -24.0))
+		_fx.burst(p, [colour.lightened(0.2), Color(0.9, 0.88, 0.92)], mini(sparks, 4), 340.0, 0.5, 6.0, 900.0)
+	else:
+		_fx.burst(p, [colour, colour.lightened(0.35), Color.WHITE], sparks, 420.0, 0.45, 7.5, 700.0)
+		if step >= 2:
+			_fx.burst(p, [Color.WHITE, Color(1.0, 0.9, 0.5)], 2, 200.0, 0.5, 9.0, 0.0, true)
