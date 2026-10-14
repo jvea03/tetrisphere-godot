@@ -16,7 +16,7 @@ signal finished
 const PAD := 12.0
 const GAP := 18.0
 const CAPTION_WIDTH := 460.0
-const GATE_SKIP_SECONDS := 12.0   # a gated step with no buttons offers Skip after this long
+const GATE_SKIP_SECONDS := 8.0    # a gated step with no buttons offers Skip after this long
 
 var steps: Array = []
 var step_index := 0

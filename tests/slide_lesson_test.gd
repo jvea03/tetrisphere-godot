@@ -141,6 +141,51 @@ func _run() -> void:
 			_check("a hold that wobbles %d px still passes the lesson" % int(wobble), _lesson_passed())
 			_check("and the wobble did not turn the ball", is_equal_approx(_cam_target_theta, l["theta"]) and is_equal_approx(_cam_target_phi, l["phi"]))
 
+	# 4. Pressed near the spotlight's edge, off the line's own cells: grabs the
+	# line anyway (it used to grab whatever was under the finger).
+	l = await _fresh_lesson()
+	if l["ok"]:
+		var hole: Rect2 = _piece_rect(int(l["id"]))
+		var edge := Vector2(hole.position.x + 6.0, hole.get_center().y)
+		_touch(edge, true)
+		_check("a press at the spotlight's edge grabs the lesson's line", selected == int(l["id"]))
+		var end4 := _drag_by(edge, (l["towards"] as Vector2) * (SLIDE_STEP + 6.0), 4)
+		_touch(end4, false)
+		for _i in 3:
+			await get_tree().process_frame
+		_check("...and dragging it passes the lesson", _lesson_passed())
+
+	# 5. Dragged a way the line can't go: it slides the nearest way it can.
+	l = await _fresh_lesson()
+	if l["ok"]:
+		var id := int(l["id"])
+		var cell: Vector2i = l["grip"]
+		var blocked := Vector2i.ZERO
+		for dir in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			if board.slide_preview(id, dir) < 0:
+				blocked = dir
+				break
+		if blocked != Vector2i.ZERO:
+			var depth := float(board.depth_of(id))
+			var a := _camera.unproject_position(TSBoardView.cell_transform(cell.x, cell.y, depth).origin)
+			var b := _camera.unproject_position(TSBoardView.cell_transform(board.wrap_col(cell.x + blocked.x), cell.y + blocked.y, depth).origin)
+			_touch(l["from"], true)
+			var end5 := _drag_by(l["from"], (b - a).normalized() * (SLIDE_STEP + 6.0), 4)
+			_touch(end5, false)
+			for _i in 3:
+				await get_tree().process_frame
+			_check("a drag the way it can't go still slides it and passes the lesson", _lesson_passed())
+
+	# 6. A short, timid drag and let go: the line slides itself.
+	l = await _fresh_lesson()
+	if l["ok"]:
+		_touch(l["from"], true)
+		var end6 := _drag_by(l["from"], (l["towards"] as Vector2) * 20.0, 2)
+		_touch(end6, false)
+		for _i in 3:
+			await get_tree().process_frame
+		_check("a short drag and let go still passes the lesson", _lesson_passed())
+
 	print("")
 	print("ALL PASSED" if _failures == 0 else "%d FAILED" % _failures)
 	get_tree().quit(0 if _failures == 0 else 1)

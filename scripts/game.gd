@@ -135,6 +135,7 @@ var _fx: TSFxLayer          # the boosters' sparks, puffs, rings and flashes
 var _pop_clock := 0         # when the last pop's ring and camera nudge happened (msec): once per beat
 var _sound_clocks := {}     # block sound -> when it last played (msec): each once per beat
 var _lose_pack := ""         # a coin pack bought from the lose card, until its purchase answers
+var _lesson_line := TSBoard.HOLE   # the sliding lesson's line (a piece id), while it runs
 var _shimmer_clock := 0     # when the last big clear's shimmer played (msec)
 const POP_SCALE := [0, 2, 4, 7, 9, 12, 14, 16]   # semitones up for chain waves 1, 2, 3...: major pentatonic
 const SHIMMER_CLEAR := 12   # blocks in one clear for the sparkle on top of the pops
@@ -1468,7 +1469,7 @@ func _touch_input(event: InputEvent) -> void:
 			# finger rarely holds still for HOLD_TIME, and a touch that drifted
 			# into a swipe would turn the ball out from under the fixed spotlight.
 			if _tutorial.on_step("slide"):
-				_begin_hold()
+				_grab_lesson_line(touch.position)
 			return
 		# Lifted.
 		var was := _gesture
@@ -1477,6 +1478,10 @@ func _touch_input(event: InputEvent) -> void:
 			Gesture.PENDING:
 				_tap(touch.position)
 			Gesture.SLIDING:
+				# The lesson never strands anyone: a drag that let go without the
+				# line moving slides it anyway, the nearest way it can go.
+				if _tutorial.on_step("slide") and touch.position.distance_to(_touch_start) > MOVE_TOL:
+					_slide_any(touch.position - _touch_start)
 				selected = TSBoard.HOLE
 				_refresh_piece()
 				_refresh_hud()
@@ -1501,7 +1506,12 @@ func _touch_input(event: InputEvent) -> void:
 			_turn(drag.relative)
 		Gesture.SLIDING:
 			_slide_drag += drag.relative
-			if _slide_drag.length() >= SLIDE_STEP:
+			if _tutorial.on_step("slide"):
+				# In the lesson half a step is enough, and a blocked way tries the next.
+				if _slide_drag.length() >= SLIDE_STEP * 0.5:
+					_slide_any(_slide_drag)
+					_slide_drag = Vector2.ZERO
+			elif _slide_drag.length() >= SLIDE_STEP:
 				_slide(_slide_dir(_slide_drag))
 				_slide_drag = Vector2.ZERO
 
@@ -2368,6 +2378,7 @@ func _start_slide_tutorial() -> void:
 	var id := _slide_example(TSBoard.I_FLAT)
 	if id == TSBoard.HOLE:
 		return   # nothing can slide on this ball; the lesson waits for another
+	_lesson_line = id
 	cur_type = TSBoard.I_FLAT
 	var cols: Array = board.plate_cols[id]
 	var mid := Vector2.ZERO
@@ -2382,9 +2393,46 @@ func _start_slide_tutorial() -> void:
 		TSProfile.save(), CONNECT_ONE_SHOT)
 	_tutorial.start([
 		{"id": "slide", "gate": true, "rect": func() -> Rect2: return _piece_rect(id),
-			"text": "Sliding! Press and hold this line for a moment, then drag it sideways. You can slide any piece like the one you're holding."},
+			"text": "Sliding! Press this line and drag it. You can slide any piece like the one you're holding."},
 		{"rect": _ball_rect(), "text": "A slide smashes grey blocks in its way, but never makes a match by itself -- slide pieces together, then drop one on them. Slides never cost a heart."},
 	])
+
+
+## The sliding lesson's press: anywhere in its spotlight grabs the lesson's
+## line (not just its exact cells -- a finger near the edge used to grab a
+## neighbour that cannot slide). Elsewhere, an ordinary hold.
+func _grab_lesson_line(at: Vector2) -> void:
+	if _lesson_line != TSBoard.HOLE and board.plate_cols.has(_lesson_line) and _piece_rect(_lesson_line).has_point(at):
+		selected = _lesson_line
+		_gesture = Gesture.SLIDING
+		_slide_drag = Vector2.ZERO
+		_last_tap_ms = -100000
+		_refresh_piece()
+		_refresh_hud()
+	else:
+		_begin_hold()
+
+
+## Slides the held piece the way that best matches `drag` that is open --
+## trying the others, nearest first, when that one is blocked. For the lesson,
+## where any honest drag has to work.
+func _slide_any(drag: Vector2) -> void:
+	if not _has_selection():
+		return
+	var cell: Vector2i = board.plate_cols[selected][0]
+	var depth := float(board.depth_of(selected))
+	var from := _camera.unproject_position(TSBoardView.cell_transform(cell.x, cell.y, depth).origin)
+	var ways: Array = []
+	for dir in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+		var d: Vector2i = dir
+		if board.slide_preview(selected, d) < 0:
+			continue
+		var to := _camera.unproject_position(TSBoardView.cell_transform(board.wrap_col(cell.x + d.x), cell.y + d.y, depth).origin)
+		ways.append([(to - from).normalized().dot(drag.normalized()), d])
+	if ways.is_empty():
+		return
+	ways.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) > float(b[0]))
+	_slide(ways[0][1])
 
 
 ## Whether the walkthrough is waiting for something done on the egg itself --
