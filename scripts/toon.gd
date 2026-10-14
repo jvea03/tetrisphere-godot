@@ -159,9 +159,25 @@ uniform vec2 orb_uv = vec2(0.82, 0.24);
 uniform float orb_px = 44.0;
 uniform float crescent = 0.0;     // 1: a crescent moon
 uniform float grad_start = 0.45;  // how far down the sky starts to turn
+uniform float autumn = 0.0;       // 1: rolling hills with orange trees below, and leaves drifting down
+uniform vec4 world : source_color = vec4(1.0);   // tints the hills and leaves (moonlit at night)
+uniform vec4 ink : source_color = vec4(0.27, 0.16, 0.19, 1.0);
 
 float hash(vec2 p) {
 	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+// A hill's top edge at x (in screen widths), as a fraction of the screen height.
+float hill(float x, float base, float amp, float f, float ph) {
+	return base - amp * (0.55 + 0.45 * sin(x * f + ph)) - amp * 0.3 * sin(x * f * 2.3 + ph * 1.7);
+}
+
+// Paints a filled shape (signed distance d, in pixels; < 0 inside) with an ink rim.
+vec3 shape(vec3 col, float d, vec3 fill, float rim) {
+	float inside = 1.0 - smoothstep(-0.75, 0.75, d);
+	col = mix(col, fill, inside);
+	float line = 1.0 - smoothstep(rim * 0.5 - 0.75, rim * 0.5 + 0.75, abs(d));
+	return mix(col, ink.rgb, line);
 }
 
 void fragment() {
@@ -176,8 +192,9 @@ void fragment() {
 	float d = distance(fract(grid), centre);
 	float dot_mask = (1.0 - smoothstep(r - 0.015, r, d)) * step(mix(0.5, 0.35, stars), hash(cell + 11.0));
 	dot_mask *= mix(1.0, 0.55 + 0.45 * sin(TIME * (1.2 + 2.0 * hash(cell + 5.0)) + hash(cell) * 6.28), stars);
-	// By day the dots are a soft texture, half way to the sky; at night, bright stars.
-	col = mix(col, dots.rgb, dot_mask * mix(0.5, 1.0, stars));
+	// By day the dots are a soft texture, half way to the sky; at night, bright
+	// stars. In autumn the daytime dots give way to falling leaves (below).
+	col = mix(col, dots.rgb, dot_mask * mix(0.5, 1.0, stars) * mix(1.0, stars, autumn));
 	// The sun or moon: a disc with a soft glow round it; a crescent moon has a
 	// bite taken out of it by a second disc of sky.
 	vec2 px = SCREEN_UV * VIEWPORT_SIZE;
@@ -189,6 +206,67 @@ void fragment() {
 	}
 	float glow = (1.0 - smoothstep(orb_px, orb_px * 2.2, od)) * 0.25;
 	col = mix(col, orb.rgb, (disc + glow * (1.0 - disc)) * orb.a);
+	if (autumn > 0.5) {
+		// The countryside the egg came down in: a far hill lined with round
+		// orange and red trees, a nearer golden meadow, all in the same ink.
+		float rim = max(VIEWPORT_SIZE.y / 1280.0, 0.5) * 3.0;   // the ink line, as thick as the UI's
+		float sx = SCREEN_UV.x;
+		float yp = px.y;
+		float H = VIEWPORT_SIZE.y;
+		float W = VIEWPORT_SIZE.x;
+		vec3 far_hill = mix(blush.rgb, vec3(0.86, 0.68, 0.5), 0.55) * world.rgb;
+		vec3 near_hill = vec3(0.9, 0.76, 0.46) * world.rgb;
+		vec3 near_low = vec3(0.84, 0.68, 0.4) * world.rgb;
+		float hf = hill(sx, 0.74, 0.04, 5.0, 1.3) * H;
+		// Trees, one per slot along the far hill, standing on it.
+		float slot = W / 7.0;
+		float k = floor(px.x / slot);
+		for (int i = -1; i <= 1; i++) {
+			float n = k + float(i);
+			float tx = (n + 0.25 + 0.5 * hash(vec2(n, 3.0))) * slot;
+			float ground = hill(tx / W, 0.74, 0.04, 5.0, 1.3) * H;
+			float r = slot * (0.26 + 0.12 * hash(vec2(n, 9.0)));
+			vec2 c = vec2(tx, ground - r * 1.7);
+			// The trunk, then the round canopy (a fat blob of three discs).
+			vec2 q = abs(px - vec2(tx, ground - r * 0.6)) - vec2(r * 0.13, r * 0.65);
+			float trunk = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0);
+			col = shape(col, trunk, vec3(0.62, 0.42, 0.3) * world.rgb, rim);
+			float blob = min(distance(px, c) - r, min(distance(px, c + vec2(-r * 0.55, r * 0.3)) - r * 0.7, distance(px, c + vec2(r * 0.55, r * 0.3)) - r * 0.7));
+			float h = hash(vec2(n, 5.0));
+			vec3 leaf = h < 0.33 ? vec3(1.0, 0.56, 0.22) : (h < 0.66 ? vec3(0.94, 0.36, 0.26) : vec3(1.0, 0.78, 0.3));
+			col = shape(col, blob, leaf * world.rgb, rim);
+			// A soft highlight on the canopy's upper left.
+			float shine = 1.0 - smoothstep(r * 0.3, r * 0.42, distance(px, c + vec2(-r * 0.32, -r * 0.35)));
+			col = mix(col, mix(leaf, vec3(1.0), 0.45) * world.rgb, shine * 0.5 * step(blob, -rim));
+		}
+		col = shape(col, hf - yp, far_hill, rim);
+		float hn = hill(sx, 0.84, 0.035, 3.4, 4.2) * H;
+		vec3 meadow = mix(near_hill, near_low, smoothstep(hn, H, yp));
+		col = shape(col, hn - yp, meadow, rim);
+		// Tufts of grass dotted over the meadow.
+		vec2 tg = vec2(px.x / (W / 6.0), (yp - hn) / (H * 0.05));
+		vec2 tc = floor(tg);
+		if (tc.y >= 0.0 && hash(tc + 21.0) > 0.45) {
+			vec2 tp = (fract(tg) - vec2(0.5, 0.5)) * vec2(W / 6.0, H * 0.05);
+			float tuft = abs(tp.x) < W * 0.02 ? abs(tp.y + abs(sin(tp.x / W * 160.0)) * H * 0.008) - rim * 0.4 : 1e3;
+			col = mix(col, near_low * 0.82, (1.0 - smoothstep(0.0, 1.0, tuft)) * 0.8);
+		}
+		// Leaves drifting down the whole screen, each tumbling at its own pace.
+		float lp = W / 6.5;
+		vec2 lg = (px + vec2(sin(TIME * 0.6 + floor((px.y - TIME * lp * 0.35) / lp)) * lp * 0.12, -TIME * lp * 0.35)) / lp;
+		vec2 lc = floor(lg);
+		if (hash(lc + 31.0) > 0.62) {
+			vec2 lcen = vec2(hash(lc + 13.0), hash(lc + 17.0)) * 0.6 + 0.2;
+			vec2 lq = (fract(lg) - lcen) * lp;
+			float a = TIME * (0.8 + hash(lc + 2.0) * 1.6) + hash(lc) * 6.28;
+			lq = mat2(vec2(cos(a), sin(a)), vec2(-sin(a), cos(a))) * lq;
+			float ls = lp * (0.07 + 0.04 * hash(lc + 4.0));
+			float ld = length(lq / vec2(1.0, 0.5)) - ls;
+			float lh = hash(lc + 8.0);
+			vec3 lcol = lh < 0.33 ? vec3(1.0, 0.56, 0.22) : (lh < 0.66 ? vec3(0.94, 0.36, 0.26) : vec3(1.0, 0.78, 0.3));
+			col = mix(col, lcol * world.rgb, (1.0 - smoothstep(-0.75, 0.75, ld)) * 0.85);
+		}
+	}
 	// Paper grain.
 	col *= 1.0 - 0.04 * hash(floor(FRAGCOORD.xy / 2.0));
 	ALBEDO = col;
@@ -279,6 +357,8 @@ static func apply_sky(mat: ShaderMaterial, sky: Dictionary) -> void:
 	mat.set_shader_parameter("orb", sky["orb"])
 	mat.set_shader_parameter("orb_uv", sky["orb_uv"])
 	mat.set_shader_parameter("crescent", sky["crescent"])
+	mat.set_shader_parameter("world", sky["world"])
+	mat.set_shader_parameter("autumn", 1.0 if TSShipScene.SEASON == "autumn" else 0.0)
 
 
 static func paper() -> ShaderMaterial:

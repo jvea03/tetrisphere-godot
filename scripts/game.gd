@@ -1751,7 +1751,7 @@ func _lose() -> void:
 func _build_dialogs(root: Control) -> void:
 	_pause = TSUI.dialog(root, 560)
 	var pbox: VBoxContainer = _pause["box"]
-	pbox.add_child(TSUI.title("Paused", 48))
+	pbox.add_child(TSUI.ribbon("Paused", TSUI.SKY, 44, 360.0))
 	var resume := TSUI.button("Resume", TSUI.GREEN, 30)
 	resume.pressed.connect(func(): TSUI.conceal(_pause["root"]))
 	pbox.add_child(resume)
@@ -1841,13 +1841,13 @@ func _show_win_card() -> void:
 	var top := TSUI.hbox(8)
 	box.add_child(top)
 	top.add_child(TSUI.spacer(60))
-	top.add_child(TSUI.expand(TSUI.title("Rescued!", 56)))
+	var banner := TSUI.ribbon("Rescued!", TSUI.PINK, 48, 400.0)
+	banner.size_flags_horizontal = Control.SIZE_EXPAND | Control.SIZE_SHRINK_CENTER
+	top.add_child(banner)
 	var close := TSUI.close_button()
 	close.pressed.connect(_on_win_close)
 	top.add_child(close)
-	var critter := TSIcon.make("critter", 190, TSProfile.avatar())
-	critter.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	box.add_child(critter)
+	box.add_child(TSUI.halo(TSIcon.make("critter", 180, TSProfile.avatar()), 280.0))
 	box.add_child(TSUI.label("Your %s escaped the egg!" % TSProfile.critter_name(TSProfile.avatar()), 24, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	var rewards := TSUI.card(Color(1.0, 0.95, 0.84), 24, 16, 2)
 	var row := TSUI.hbox(28)
@@ -1930,10 +1930,8 @@ func _refresh_lose_card() -> void:
 	for c in box.get_children():
 		c.queue_free()
 	var overload := lose_reason == "SHELL OVERLOADED"
-	box.add_child(TSUI.title("Egg overloaded!" if overload else "Out of hearts!", 48))
-	var ic := TSIcon.make("heart_empty", 150)
-	ic.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	box.add_child(ic)
+	box.add_child(TSUI.ribbon("Egg overloaded!" if overload else "Out of hearts!", TSUI.LILAC, 40, 500.0))
+	box.add_child(TSUI.halo(TSIcon.make("heart_empty", 140), 220.0, TSUI.LILAC, false))
 	if overload:
 		box.add_child(TSUI.wrap(TSUI.label("A stack grew too tall. Try the level again!", 24, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER)))
 		var again := TSUI.button("Try Again", TSUI.GREEN, 30, Vector2(0, 84))

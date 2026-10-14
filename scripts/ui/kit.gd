@@ -274,6 +274,67 @@ static func style_tabs(tab_row: PanelContainer, active: int) -> void:
 			b.add_theme_stylebox_override(st, face)
 
 
+## A hero icon on a slowly turning sunburst: soft rays in `color` round a
+## pale disc, the icon centred on top. `px` is the whole square's size.
+static func halo(icon: Control, px: float, color := GOLD, spin := true) -> Control:
+	var box := CenterContainer.new()
+	box.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var rays := Control.new()
+	rays.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rays.custom_minimum_size = Vector2(px, px)
+	rays.pivot_offset = Vector2(px, px) * 0.5
+	rays.draw.connect(func():
+		var c := Vector2(px, px) * 0.5
+		var n := 14
+		for i in n:
+			var a := TAU * float(i) / float(n)
+			var w := PI / float(n) * 0.55
+			var poly := PackedVector2Array([c, c + Vector2.from_angle(a - w) * px * 0.5, c + Vector2.from_angle(a + w) * px * 0.5])
+			rays.draw_colored_polygon(poly, Color(color, 0.32))
+		rays.draw_circle(c, px * 0.3, Color(color.lerp(Color.WHITE, 0.55), 0.85), true, -1.0, true)
+		rays.draw_circle(c, px * 0.22, Color(1, 1, 1, 0.6), true, -1.0, true))
+	box.add_child(rays)
+	if spin:
+		var tw := rays.create_tween().set_loops()
+		tw.tween_property(rays, "rotation", TAU, 24.0).from(0.0)
+	box.add_child(icon)
+	return box
+
+
+## A card's heading on a ribbon: a coloured band with folded, notched tails,
+## the words in cream with an ink outline.
+static func ribbon(text: String, color := PINK, font_size := 44, width := 440.0) -> Control:
+	var h := font_size * 1.55
+	var box := Control.new()
+	box.custom_minimum_size = Vector2(width, h + 10.0)
+	box.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.draw.connect(func():
+		var w := box.size.x
+		var tail := h * 0.55
+		var dark := color.darkened(0.22)
+		# The tails, behind and a little lower than the band, with a notch cut in.
+		for side: float in [-1.0, 1.0]:
+			var x0 := w * 0.5 + side * (w * 0.5 - tail * 1.4)
+			var x1 := w * 0.5 + side * (w * 0.5)
+			var tail_poly := PackedVector2Array([Vector2(x0, 10.0), Vector2(x1, 10.0), Vector2(x1 - side * tail * 0.45, 10.0 + h * 0.5), Vector2(x1, h + 10.0), Vector2(x0, h + 10.0)])
+			box.draw_colored_polygon(tail_poly, dark)
+			tail_poly.append(tail_poly[0])
+			box.draw_polyline(tail_poly, INK, BORDER, true)
+		# The band itself.
+		var band := Rect2(tail, 0.0, w - tail * 2.0, h)
+		box.draw_style_box(sb(color, 14, BORDER, 0, 0), band)
+		box.draw_line(band.position + Vector2(14.0, 8.0), Vector2(band.end.x - 14.0, band.position.y + 8.0), Color(1, 1, 1, 0.35), 4.0, true))
+	var l := label(text, font_size, Color(1.0, 0.99, 0.95), HORIZONTAL_ALIGNMENT_CENTER)
+	outlined(l, INK, 10)
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.set_anchors_preset(Control.PRESET_FULL_RECT)
+	l.offset_bottom = -10.0
+	box.add_child(l)
+	return box
+
+
 ## The paper background for a 2D screen.
 static func paper_rect() -> ColorRect:
 	var r := ColorRect.new()
