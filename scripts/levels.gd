@@ -121,10 +121,11 @@ static func shifted_seed(level: int, shift: int) -> int:
 
 
 const SEED_SHIFT := {
-	14: 6, 16: 1, 52: 7, 57: 4,          # Intermediate
-	34: 3, 42: 1, 58: 6, 63: 6, 64: 2,   # Hard
-	22: 5, 54: 5, 60: 4,                 # Expert
-	46: 2, 61: 2, 70: 3,                 # Extreme
+	14: 6, 16: 1, 18: 11, 52: 7, 57: 4,                # Intermediate
+	17: 12, 20: 2, 23: 9,                              # Hard: the first stretch of them (15-23) smoothed
+	34: 3, 42: 1, 58: 6, 63: 6, 64: 2,                 # Hard
+	22: 10, 54: 5, 60: 4,                              # Expert
+	46: 2, 61: 2, 70: 3,                               # Extreme
 }
 
 
