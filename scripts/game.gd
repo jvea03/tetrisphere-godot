@@ -64,6 +64,7 @@ var current_level := 1
 var is_daily := false       # a Daily Egg: never touches level progress
 var is_first_attempt := true # won without a lost ball or a paid rescue: +2 stars
 var lose_ad_used := false   # the lose card's ad life, once per ball
+var continues_bought := 0   # hearts refills bought for this ball: the first is at FIRST_CONTINUE_COST
 var _win_ad_due := false    # this win falls on an interstitial
 var _win_stars := 0
 var _win_coins := 0
@@ -72,6 +73,7 @@ var _win_chest := ""
 var _win_bonus := ""
 const FIRST_ATTEMPT_STAR_BONUS := 2
 const LIVES_REFILL_COST := 2500
+const FIRST_CONTINUE_COST := 1000   # the first refill on a ball, at 60% off, to make the first buy an easy yes
 const SHOP := preload("res://scripts/screens/shop.gd")   # its coin packs, sold from the lose card too
 var aim_combo := 0          # pieces the current aim would clear; 0 = no combo
 # Per-block depths once the piece has been slid into the shell; empty while it
@@ -546,6 +548,7 @@ func _start(seed_value: int, baked: Dictionary = {}) -> void:
 	lose_reason = ""
 	is_first_attempt = true
 	lose_ad_used = false
+	continues_bought = 0
 	selected = TSBoard.HOLE
 	cur_type = _fair(_deal())
 	next_type = _deal()
@@ -576,6 +579,7 @@ func _resume() -> void:
 	lives = int(s["lives"])
 	is_first_attempt = bool(s["first_attempt"])
 	lose_ad_used = bool(s["lose_ad_used"])
+	continues_bought = int(s.get("continues_bought", 0))
 	state = State.PLAYING
 	_escaping = false
 	_creature.scale = Vector3.ONE * _creature_scale()
@@ -608,7 +612,7 @@ func _snapshot() -> Dictionary:
 	return {
 		"board": board, "daily": is_daily, "level": current_level, "difficulty": difficulty,
 		"cur_type": cur_type, "next_type": next_type, "cursor": cursor, "lives": lives,
-		"first_attempt": is_first_attempt, "lose_ad_used": lose_ad_used,
+		"first_attempt": is_first_attempt, "lose_ad_used": lose_ad_used, "continues_bought": continues_bought,
 	}
 
 
@@ -2004,15 +2008,29 @@ func _refresh_lose_card() -> void:
 			box.add_child(TSUI.label("%d tie-down%s still holding on" % [ties, "" if ties == 1 else "s"], 20, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 		# Continue: the big button. Short of coins, it buys the smallest coin
 		# pack that covers the gap and carries straight on once it lands.
-		var short := LIVES_REFILL_COST - TSProfile.coin_count
+		# The first continue on a ball is on sale (FIRST_CONTINUE_COST).
+		var cost := _continue_cost()
+		var deal := cost < LIVES_REFILL_COST
+		var short := cost - TSProfile.coin_count
 		var pack := _coin_pack_for(short) if short > 0 else {}
-		var price_line := "%s coins" % TSProfile.fmt_coins(LIVES_REFILL_COST)
+		var price_line := "%s coins" % TSProfile.fmt_coins(cost)
+		if deal:
+			price_line += "  (was %s)" % TSProfile.fmt_coins(LIVES_REFILL_COST)
 		if not pack.is_empty():
 			price_line = "Get %s coins  ·  %s" % [TSProfile.fmt_coins(int(pack["coins"])), pack["price"]]
 		var cont := TSUI.button("Continue  +%d hearts\n%s" % [LIVES, price_line], TSUI.GREEN, 28, Vector2(0, 112))
 		cont.disabled = short > 0 and pack.is_empty()
+		if deal:
+			# A tilted sale tag on the button's corner, as on the Shop's deals.
+			var tag := TSUI.pill("%d%% OFF" % roundi(100.0 * (1.0 - float(cost) / float(LIVES_REFILL_COST))), TSUI.CORAL, 20, Color.WHITE)
+			tag.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+			tag.position = Vector2(-96.0, -18.0)
+			tag.rotation = 0.12
+			tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			cont.add_child(tag)
+			box.add_child(TSUI.label("First continue on this egg: on sale!", 20, TSFX.COL_GAIN, HORIZONTAL_ALIGNMENT_CENTER))
 		cont.pressed.connect(func():
-			if TSProfile.coin_count >= LIVES_REFILL_COST:
+			if TSProfile.coin_count >= _continue_cost():
 				_buy_continue()
 			elif not pack.is_empty() and _lose_pack == "":
 				_lose_pack = str(pack["product_id"])
@@ -2039,11 +2057,18 @@ func _refresh_lose_card() -> void:
 	TSUI.juice(box)
 
 
+## What the next refill of hearts costs: the first on a ball is on sale.
+func _continue_cost() -> int:
+	return FIRST_CONTINUE_COST if continues_bought == 0 else LIVES_REFILL_COST
+
+
 ## Spends the coins for a refill of hearts and carries on.
 func _buy_continue() -> void:
-	if TSProfile.coin_count < LIVES_REFILL_COST or state != State.LOST:
+	var cost := _continue_cost()
+	if TSProfile.coin_count < cost or state != State.LOST:
 		return
-	TSProfile.coin_count -= LIVES_REFILL_COST
+	TSProfile.coin_count -= cost
+	continues_bought += 1
 	TSProfile.save()
 	_revive(LIVES)
 
@@ -2068,7 +2093,7 @@ func _on_lose_purchase(product_id: String, success: bool) -> void:
 	_lose_pack = ""
 	if not is_inside_tree() or state != State.LOST:
 		return
-	if success and TSProfile.coin_count >= LIVES_REFILL_COST:
+	if success and TSProfile.coin_count >= _continue_cost():
 		TSSfx.play("coin")
 		_buy_continue()
 	else:

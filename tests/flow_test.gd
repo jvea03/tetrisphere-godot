@@ -126,14 +126,20 @@ func _run() -> void:
 	# losing, then the coin refill
 	lives = 0
 	lose_reason = "OUT OF LIVES"
+	TSProfile.coin_count = 5000
 	_lose()
 	_check("running out of hearts shows the lose card", state == State.LOST and _lose_card["root"].visible)
-	TSProfile.coin_count = 5000
+	var first_offer := ""
+	for b in (_lose_card["box"] as Node).get_children():
+		if b is Button and (b as Button).text.begins_with("Continue"):
+			first_offer = (b as Button).text
 	_revive_after_refill()
-	_check("the refill costs %d coins and restores %d hearts" % [LIVES_REFILL_COST, LIVES], TSProfile.coin_count == 5000 - LIVES_REFILL_COST and lives == LIVES and state == State.PLAYING and not is_first_attempt)
+	_check("the first continue on a ball is on sale", first_offer.contains("%s coins  (was %s)" % [TSProfile.fmt_coins(FIRST_CONTINUE_COST), TSProfile.fmt_coins(LIVES_REFILL_COST)]))
+	_check("the first refill costs %d coins and restores %d hearts" % [FIRST_CONTINUE_COST, LIVES], TSProfile.coin_count == 5000 - FIRST_CONTINUE_COST and lives == LIVES and state == State.PLAYING and not is_first_attempt)
 
-	# short of coins: Continue sells the smallest coin pack that covers it, and
-	# carries straight on once the purchase lands
+	# the second continue on the same ball is full price -- and short of coins,
+	# Continue sells the smallest coin pack that covers it, and carries straight
+	# on once the purchase lands
 	lives = 0
 	lose_reason = "OUT OF LIVES"
 	TSProfile.coin_count = 1000
