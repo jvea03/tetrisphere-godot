@@ -203,7 +203,17 @@ static func _stream(name: String) -> AudioStreamWAV:
 			"miss":
 				_streams[name] = _tone(220.0, 0.28, "triangle", 0.4, 90.0)
 			"win":
-				_streams[name] = _arpeggio([523.0, 659.0, 784.0, 1047.0, 784.0, 1047.0, 1319.0], 0.09, "sine", 0.4, 1.1)
+				_streams[name] = _fanfare()
+			"windup":
+				_streams[name] = _windup()
+			"whoosh":
+				_streams[name] = _whoosh()
+			"popper":
+				_streams[name] = _popper()
+			"tick":
+				_streams[name] = _chime([1760.0], 0.0, 0.22)
+			"ding":
+				_streams[name] = _chime([1319.0, 1760.0, 2637.0], 0.045, 0.24)
 			"lose":
 				_streams[name] = _arpeggio([440.0, 330.0, 220.0, 140.0], 0.18, "sine", 0.45, 1.2)
 			"upgrade":
@@ -354,4 +364,123 @@ static func _chime(freqs: Array, step: float, vol: float) -> AudioStreamWAV:
 			var env := minf(t / 0.002, 1.0) * exp(-t * 11.0)
 			var s := sin(TAU * f * t) + 0.35 * sin(TAU * f * 2.0 * t) * exp(-t * 8.0) + 0.12 * sin(TAU * f * 3.01 * t) * exp(-t * 20.0)
 			samples[i] += s * env * vol * 0.75
+	return _make_stream(samples)
+
+
+## Pulls the music down by `db` for `seconds` and lets it back up, so a
+## fanfare can be heard over it.
+static var _duck_tween: Tween
+static func duck(seconds: float, db := -12.0) -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	var bus := AudioServer.get_bus_index(MUSIC_BUS)
+	if tree == null or bus == -1:
+		return
+	if _duck_tween != null and _duck_tween.is_valid():
+		_duck_tween.kill()
+	var set_db := func(v: float) -> void: AudioServer.set_bus_volume_db(bus, v)
+	_duck_tween = tree.create_tween()
+	_duck_tween.tween_method(set_db, AudioServer.get_bus_volume_db(bus), db, 0.12)
+	_duck_tween.tween_interval(maxf(seconds - 0.12, 0.0))
+	_duck_tween.tween_method(set_db, db, 0.0, 0.8)
+
+
+## A level won: bells running up C major (C5 E5 G5 C6), landing on a warm held
+## C chord with a gentle shimmer of vibrato, a little sparkle over the top.
+static func _fanfare() -> AudioStreamWAV:
+	var n := int(SAMPLE_RATE * 1.5)
+	var samples := PackedFloat32Array()
+	samples.resize(n)
+	var run := [523.0, 659.0, 784.0, 1047.0]
+	var step := 0.075
+	for k in run.size():
+		var f: float = run[k]
+		var start := int(SAMPLE_RATE * step * float(k))
+		for i in range(start, mini(start + int(SAMPLE_RATE * 0.3), n)):
+			var t := float(i - start) / SAMPLE_RATE
+			var env := minf(t / 0.002, 1.0) * exp(-t * 10.0)
+			samples[i] += (sin(TAU * f * t) + 0.3 * sin(TAU * f * 2.0 * t) * exp(-t * 9.0)) * env * 0.22
+	# The chord, struck as the run ends and held, fading over a second.
+	var chord := [1047.0, 1319.0, 1568.0, 523.0]
+	var at := int(SAMPLE_RATE * step * 4.0)
+	for i in range(at, n):
+		var t := float(i - at) / SAMPLE_RATE
+		var env := minf(t / 0.01, 1.0) * exp(-t * 2.6)
+		var vib := 1.0 + 0.004 * sin(TAU * 5.5 * t) * minf(t / 0.3, 1.0)
+		var s := 0.0
+		for c in chord:
+			var f: float = c
+			s += sin(TAU * f * vib * t) + 0.25 * sin(TAU * f * 2.0 * vib * t) * exp(-t * 4.0)
+		# A twinkle of high notes over the chord.
+		var tw := 0.0
+		for j in 3:
+			var tj := t - 0.12 * float(j + 1)
+			if tj > 0.0:
+				tw += sin(TAU * [2093.0, 2637.0, 3136.0][j] * tj) * exp(-tj * 14.0)
+		samples[i] += (s * 0.075 + tw * 0.08) * env
+	return _make_stream(samples)
+
+
+## The critter crouching to jump: a soft whistle rising, with a wobble.
+static func _windup() -> AudioStreamWAV:
+	var n := int(SAMPLE_RATE * 0.5)
+	var samples := PackedFloat32Array()
+	samples.resize(n)
+	var phase := 0.0
+	for i in range(n):
+		var t := float(i) / SAMPLE_RATE
+		var p := t / 0.5
+		phase += TAU * lerpf(330.0, 880.0, p * p) * (1.0 + 0.03 * sin(TAU * 14.0 * t)) / SAMPLE_RATE
+		var env := minf(t / 0.05, 1.0) * (1.0 - smoothstep(0.85, 1.0, p))
+		samples[i] = (sin(phase) + 0.2 * sin(phase * 2.0)) * env * 0.2
+	return _make_stream(samples)
+
+
+## The critter shooting out of the egg: a rush of air rising in pitch and
+## fading as it goes, with a cartoon "fwip" at the start.
+static func _whoosh() -> AudioStreamWAV:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	var n := int(SAMPLE_RATE * 0.75)
+	var samples := PackedFloat32Array()
+	samples.resize(n)
+	var fast := 0.0
+	var slow := 0.0
+	var phase := 0.0
+	for i in range(n):
+		var t := float(i) / SAMPLE_RATE
+		var p := t / 0.75
+		var noise := rng.randf_range(-1.0, 1.0)
+		# A band of noise sliding up: the low-passes open as it goes.
+		fast += (noise - fast) * lerpf(0.12, 0.6, p)
+		slow += (noise - slow) * lerpf(0.02, 0.15, p)
+		var env := sin(PI * minf(p * 1.6, 1.0)) * (1.0 - p)
+		phase += TAU * lerpf(500.0, 1500.0, minf(t / 0.12, 1.0)) / SAMPLE_RATE
+		var fwip := sin(phase) * exp(-t * 22.0)
+		samples[i] = ((fast - slow) * env * 1.4 + fwip * 0.3) * 0.75
+	return _make_stream(samples)
+
+
+## The win card's confetti: a party popper's crack, the paper crackling out,
+## and a bright little chime.
+static func _popper() -> AudioStreamWAV:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 23
+	var n := int(SAMPLE_RATE * 0.45)
+	var samples := PackedFloat32Array()
+	samples.resize(n)
+	var grain := 0.0
+	var low := 0.0
+	for i in range(n):
+		var t := float(i) / SAMPLE_RATE
+		var noise := rng.randf_range(-1.0, 1.0)
+		low += (noise - low) * 0.3
+		var crack := low * exp(-t * 60.0) * 1.6 + noise * exp(-t * 400.0) * 0.5
+		if rng.randf() < 0.05 * exp(-t * 7.0):
+			grain = rng.randf_range(-1.0, 1.0)
+		grain *= 0.8
+		var tc := t - 0.06
+		var chime := 0.0
+		if tc > 0.0:
+			chime = (sin(TAU * 2093.0 * tc) + 0.5 * sin(TAU * 3136.0 * tc)) * exp(-tc * 12.0)
+		samples[i] = (crack * 0.5 + grain * 0.35 + chime * 0.12) * minf(t / 0.001, 1.0)
 	return _make_stream(samples)

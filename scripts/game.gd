@@ -132,6 +132,7 @@ var _pop_clock := 0         # when the last block-pop sound played (msec), so a 
 var _shimmer_clock := 0     # when the last big clear's shimmer played (msec)
 const POP_SCALE := [0, 2, 4, 7, 9, 12, 14, 16]   # semitones up for chain waves 1, 2, 3...: major pentatonic
 const SHIMMER_CLEAR := 12   # blocks in one clear for the sparkle on top of the pops
+const COUNT_TICKS := 8    # coin ticks while the win card's coins count up
 var _shake := 0.0           # how hard the camera shakes, in world units, fading out
 var _sparkle_clock := 0.0   # paces the armed bomb's fuse sparks and the Any Piece's shimmer
 var _swap_flyer: Control    # the Any Piece's icon while it flies to the tray
@@ -1680,10 +1681,14 @@ func _win() -> void:
 	_face(Vector2(float(at.x) + float(k - 1) * 0.5, float(at.y) + float(k - 1) * 0.5))
 	var out := TSBoardView.cell_transform(mid.x, mid.y, 0.0).origin.normalized()
 
+	# The score: a fanfare over ducked music, a wind-up as the critter crouches,
+	# a whoosh as it shoots out of the egg (and the popper as the card lands).
 	_escape_tween = _creature.create_tween()
 	_escape_tween.tween_interval(0.5)
+	_escape_tween.tween_callback(func() -> void: TSSfx.play("windup"))
 	_escape_tween.tween_property(_creature, "scale", Vector3.ONE * 0.25, 0.5) \
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+	_escape_tween.tween_callback(func() -> void: TSSfx.play("whoosh"))
 	_escape_tween.tween_property(_creature, "position", out * 16.0, 1.1) \
 		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	_escape_tween.tween_callback(func() -> void:
@@ -1691,6 +1696,7 @@ func _win() -> void:
 		_refresh_hud()
 		_show_win_card())
 	TSSfx.play("win")
+	TSSfx.duck(3.2)
 
 
 ## Stars (hearts left, +2 for a first attempt), coins for them, chest progress,
@@ -1901,12 +1907,20 @@ func _show_win_card() -> void:
 	TSUI.juice(box)
 	TSUI.reveal(_win_card["root"], _win_card["panel"])
 	TSFX.confetti(_hud)
-	# the coins count up once the card has settled
+	TSSfx.play("popper")
+	# The coins count up once the card has settled, ticking as they go -- each
+	# tick a little higher -- and landing on a ding.
 	get_tree().create_timer(0.35).timeout.connect(func():
 		if is_instance_valid(coin_amount):
 			TSSfx.play("coin")
 			TSFX.sparkle_burst(_hud, coin_amount)
-			coin_amount.create_tween().tween_method(func(v: float): coin_amount.text = "+%s" % TSProfile.fmt_coins(int(v)), 0.0, float(_win_coins), 0.6))
+			var count := coin_amount.create_tween()
+			count.tween_method(func(v: float): coin_amount.text = "+%s" % TSProfile.fmt_coins(int(v)), 0.0, float(_win_coins), 0.6)
+			for k in COUNT_TICKS:
+				get_tree().create_timer(0.6 * float(k) / float(COUNT_TICKS)).timeout.connect(func():
+					if is_instance_valid(coin_amount):
+						TSSfx.play("tick", pow(2.0, float(POP_SCALE[k]) / 12.0)))
+			count.tween_callback(func(): TSSfx.play("ding")))
 
 
 func _reward_stack(icon: String, amount: Label) -> Control:
