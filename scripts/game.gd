@@ -72,6 +72,7 @@ var _win_chest := ""
 var _win_bonus := ""
 const FIRST_ATTEMPT_STAR_BONUS := 2
 const LIVES_REFILL_COST := 2500
+const SHOP := preload("res://scripts/screens/shop.gd")   # its coin packs, sold from the lose card too
 var aim_combo := 0          # pieces the current aim would clear; 0 = no combo
 # Per-block depths once the piece has been slid into the shell; empty while it
 # is simply aimed at the surface.
@@ -130,6 +131,7 @@ const BOMB_DROP_SECONDS := 0.32
 var _fx: TSFxLayer          # the boosters' sparks, puffs, rings and flashes
 var _pop_clock := 0         # when the last pop's ring and camera nudge happened (msec): once per beat
 var _sound_clocks := {}     # block sound -> when it last played (msec): each once per beat
+var _lose_pack := ""         # a coin pack bought from the lose card, until its purchase answers
 var _shimmer_clock := 0     # when the last big clear's shimmer played (msec)
 const POP_SCALE := [0, 2, 4, 7, 9, 12, 14, 16]   # semitones up for chain waves 1, 2, 3...: major pentatonic
 const SHIMMER_CLEAR := 12   # blocks in one clear for the sparkle on top of the pops
@@ -1823,6 +1825,7 @@ func _build_dialogs(root: Control) -> void:
 
 	_win_card = TSUI.dialog(root, 600)
 	_lose_card = TSUI.dialog(root, 580)
+	Billing.purchase_result.connect(_on_lose_purchase)
 	_ad_card = TSUI.dialog(root, 560)
 
 
@@ -1974,11 +1977,12 @@ func _on_next_pressed() -> void:
 func _refresh_lose_card() -> void:
 	var box: VBoxContainer = _lose_card["box"]
 	for c in box.get_children():
+		box.remove_child(c)   # gone at once, not at the end of the frame: the card is rebuilt in place
 		c.queue_free()
 	var overload := lose_reason == "SHELL OVERLOADED"
 	box.add_child(TSUI.ribbon("Egg overloaded!" if overload else "Out of hearts!", TSUI.LILAC, 40, 500.0))
-	box.add_child(TSUI.halo(TSIcon.make("heart_empty", 140), 220.0, TSUI.LILAC, false))
 	if overload:
+		box.add_child(TSUI.halo(TSIcon.make("heart_empty", 140), 220.0, TSUI.LILAC, false))
 		box.add_child(TSUI.wrap(TSUI.label("A stack grew too tall. Try the level again!", 24, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER)))
 		var again := TSUI.button("Try Again", TSUI.GREEN, 30, Vector2(0, 84))
 		again.pressed.connect(func():
@@ -1986,21 +1990,46 @@ func _refresh_lose_card() -> void:
 			_restart())
 		box.add_child(again)
 	else:
-		box.add_child(TSUI.wrap(TSUI.label("Keep going with the same egg?", 24, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER)))
-		var refill := TSUI.button("+%d hearts   %s coins" % [LIVES, TSProfile.fmt_coins(LIVES_REFILL_COST)], TSUI.GREEN, 28, Vector2(0, 84))
-		refill.disabled = TSProfile.coin_count < LIVES_REFILL_COST
-		refill.pressed.connect(func():
-			if TSProfile.coin_count < LIVES_REFILL_COST:
-				return
-			TSProfile.coin_count -= LIVES_REFILL_COST
-			TSProfile.save()
-			_revive(LIVES))
-		box.add_child(refill)
+		# What's at stake: the critter, and how close its way out really is.
+		var k := _escape_size()
+		var open := int(board.best_escape_patch(k)["open"])
+		var pct := clampi(roundi(100.0 * float(open) / float(k * k)), 0, 99)
+		box.add_child(TSUI.halo(TSIcon.make("critter", 120, TSProfile.avatar()), 190.0, TSUI.LILAC, false))
+		box.add_child(TSUI.wrap(TSUI.label("%s is %d%% of the way out!" % [TSProfile.critter_name(TSProfile.avatar()), pct], 28, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER)))
+		var progress := TSUI.bar(TSUI.MINT, 24)
+		progress.value = pct
+		box.add_child(progress)
+		var ties := board.ties_left()
+		if ties > 0:
+			box.add_child(TSUI.label("%d tie-down%s still holding on" % [ties, "" if ties == 1 else "s"], 20, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+		# Continue: the big button. Short of coins, it buys the smallest coin
+		# pack that covers the gap and carries straight on once it lands.
+		var short := LIVES_REFILL_COST - TSProfile.coin_count
+		var pack := _coin_pack_for(short) if short > 0 else {}
+		var price_line := "%s coins" % TSProfile.fmt_coins(LIVES_REFILL_COST)
+		if not pack.is_empty():
+			price_line = "Get %s coins  ·  %s" % [TSProfile.fmt_coins(int(pack["coins"])), pack["price"]]
+		var cont := TSUI.button("Continue  +%d hearts\n%s" % [LIVES, price_line], TSUI.GREEN, 28, Vector2(0, 112))
+		cont.disabled = short > 0 and pack.is_empty()
+		cont.pressed.connect(func():
+			if TSProfile.coin_count >= LIVES_REFILL_COST:
+				_buy_continue()
+			elif not pack.is_empty() and _lose_pack == "":
+				_lose_pack = str(pack["product_id"])
+				Billing.purchase(_lose_pack))
+		box.add_child(cont)
+		TSUI.breathe(cont, 1.8)
+		var wallet := TSUI.hbox(6)
+		wallet.alignment = BoxContainer.ALIGNMENT_CENTER
+		wallet.add_child(TSIcon.make("coin", 26))
+		wallet.add_child(TSUI.label("You have %s" % TSProfile.fmt_coins(TSProfile.coin_count), 20, TSUI.MUTED))
+		box.add_child(wallet)
 		if not lose_ad_used and not TSProfile.is_payer and not TSProfile.no_ads:
 			var ad := TSUI.button("Watch an ad: +1 heart", TSUI.SKY, 26, Vector2(0, 72))
 			ad.pressed.connect(func(): _open_ad("life"))
 			box.add_child(ad)
-	var quit := TSUI.button("Quit", TSUI.GREY, 26, Vector2(0, 68))
+		box.add_child(TSUI.label("Giving up loses this egg's progress", 18, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	var quit := TSUI.button("Quit" if overload else "Give Up", TSUI.GREY, 22 if not overload else 26, Vector2(0, 56 if not overload else 68))
 	quit.pressed.connect(func():
 		if not is_daily:
 			TSSession.retried_level = current_level
@@ -2008,6 +2037,42 @@ func _refresh_lose_card() -> void:
 		SceneFlow.go(SceneFlow.HOME))
 	box.add_child(quit)
 	TSUI.juice(box)
+
+
+## Spends the coins for a refill of hearts and carries on.
+func _buy_continue() -> void:
+	if TSProfile.coin_count < LIVES_REFILL_COST or state != State.LOST:
+		return
+	TSProfile.coin_count -= LIVES_REFILL_COST
+	TSProfile.save()
+	_revive(LIVES)
+
+
+## The smallest coin pack (the Shop's, sold through Billing) that covers `short` coins, with its
+## price -- the store's own when it has answered -- or {} if none will do.
+func _coin_pack_for(short: int) -> Dictionary:
+	if not Billing.available():
+		return {}
+	for p in SHOP.COIN_PACKS:
+		if p.has("product_id") and int(p["coins"]) >= short:
+			var live := Billing.price_of(str(p["product_id"]))
+			return {"product_id": p["product_id"], "coins": p["coins"], "price": live if live != "" else p["price"]}
+	return {}
+
+
+## A coin pack bought from the lose card: the coins are in -- spend them and
+## carry on. A purchase that fell through just leaves the card as it was.
+func _on_lose_purchase(product_id: String, success: bool) -> void:
+	if product_id != _lose_pack:
+		return
+	_lose_pack = ""
+	if not is_inside_tree() or state != State.LOST:
+		return
+	if success and TSProfile.coin_count >= LIVES_REFILL_COST:
+		TSSfx.play("coin")
+		_buy_continue()
+	else:
+		_refresh_lose_card()
 
 
 ## Back into the same egg with `count` hearts. Either rescue ends the first-try bonus.

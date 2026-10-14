@@ -132,6 +132,30 @@ func _run() -> void:
 	_revive_after_refill()
 	_check("the refill costs %d coins and restores %d hearts" % [LIVES_REFILL_COST, LIVES], TSProfile.coin_count == 5000 - LIVES_REFILL_COST and lives == LIVES and state == State.PLAYING and not is_first_attempt)
 
+	# short of coins: Continue sells the smallest coin pack that covers it, and
+	# carries straight on once the purchase lands
+	lives = 0
+	lose_reason = "OUT OF LIVES"
+	TSProfile.coin_count = 1000
+	_lose()
+	var offer := ""
+	for b in (_lose_card["box"] as Node).get_children():
+		if b is Button and (b as Button).text.begins_with("Continue"):
+			offer = (b as Button).text
+	_check("short of coins, Continue offers the 5,000 coin pack", offer.contains("Get 5,000 coins"))
+	_revive_after_refill()
+	_check("buying it from the lose card spends the refill and carries on", TSProfile.coin_count == 1000 + 5000 - LIVES_REFILL_COST and lives == LIVES and state == State.PLAYING)
+	lives = 0
+	lose_reason = "OUT OF LIVES"
+	_lose()
+	var card_text := ""
+	for l in (_lose_card["box"] as Node).get_children():
+		if l is Label:
+			card_text += (l as Label).text + " "
+	_check("the lose card says how close the critter is to escaping", card_text.contains("% of the way out"))
+	TSProfile.coin_count = 5000
+	_revive_after_refill()
+
 	# winning
 	var before := TSProfile.coin_count
 	var level_before := TSProfile.last_level
@@ -244,7 +268,7 @@ func get_root_ref() -> Node:
 ## The lose card's refill button, pressed.
 func _revive_after_refill() -> void:
 	for b in (_lose_card["box"] as Node).get_children():
-		if b is Button and (b as Button).text.begins_with("+%d hearts" % LIVES):
+		if b is Button and (b as Button).text.begins_with("Continue"):
 			(b as Button).pressed.emit()
 			return
 
