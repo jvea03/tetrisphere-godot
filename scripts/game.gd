@@ -38,8 +38,9 @@ const TITLE_PINK := Color(1.0, 0.55, 0.70)
 enum Gesture { NONE, PENDING, TURNING, SLIDING, IGNORE }
 const HOLD_TIME := 0.35         # seconds held still before a touch grabs a piece
 const MOVE_TOL := 16.0          # movement that turns a touch into a swipe
-const DOUBLE_TAP_TIME := 0.35   # most time between the two taps of a double-tap
-const DOUBLE_TAP_DIST := 48.0   # and how close together they must land
+const DOUBLE_TAP_TIME := 0.45   # most time between the two taps of a double-tap
+const DOUBLE_TAP_DIST := 72.0   # and how close together they must land (or anywhere on the aimed piece)
+const SECOND_TAP_TOL := 30.0    # movement a double-tap's second touch may wobble by before it is a swipe
 const TURN_RATE := 0.008        # radians of turn per pixel swiped
 const TILT_LIMIT := 0.9         # how far up or down the ball can be tilted
 const SLIDE_STEP := 56.0        # pixels of drag per cell a held piece slides
@@ -1490,8 +1491,10 @@ func _touch_input(event: InputEvent) -> void:
 			# stays where the line was, and a turned ball would strand the player.
 			if _tutorial.on_step("slide"):
 				return
-			# A hold that grabbed nothing can still turn into a swipe.
-			if drag.position.distance_to(_touch_start) > MOVE_TOL:
+			# A hold that grabbed nothing can still turn into a swipe. The second
+			# touch of a double-tap may wobble a little more: a hurried tap does.
+			var tol := SECOND_TAP_TOL if Time.get_ticks_msec() - _last_tap_ms <= int(DOUBLE_TAP_TIME * 1000.0) else MOVE_TOL
+			if drag.position.distance_to(_touch_start) > tol:
 				_gesture = Gesture.TURNING
 				_turn(drag.position - _touch_start)
 		Gesture.TURNING:
@@ -1510,10 +1513,14 @@ func _turn(pixels: Vector2) -> void:
 	_cam_target_phi = clampf(_cam_target_phi + pixels.y * TURN_RATE, -TILT_LIMIT, TILT_LIMIT)
 
 
-# One tap aims; a second tap soon after, near the first, drops.
+# One tap aims; a second tap soon after -- near the first, or anywhere on the
+# aimed piece -- drops. A tap on the piece where it is already aimed leaves it
+# there (it would otherwise re-centre on the tapped cell and shift a cell or
+# two, so the double-tap meant to drop it would drop it somewhere else).
 func _tap(pos: Vector2) -> void:
 	var now := Time.get_ticks_msec()
-	if now - _last_tap_ms <= int(DOUBLE_TAP_TIME * 1000.0) and pos.distance_to(_last_tap_pos) <= DOUBLE_TAP_DIST:
+	var on_piece := _on_aimed_piece(_cell_at(pos))
+	if now - _last_tap_ms <= int(DOUBLE_TAP_TIME * 1000.0) and (pos.distance_to(_last_tap_pos) <= DOUBLE_TAP_DIST or on_piece):
 		_last_tap_ms = -100000   # a third tap starts over rather than dropping again
 		_drop_cell = _cell_at(pos)
 		_drop()
@@ -1521,7 +1528,16 @@ func _tap(pos: Vector2) -> void:
 		return
 	_last_tap_ms = now
 	_last_tap_pos = pos
+	if on_piece and not (bomb_armed and TSProfile.bomb_count > 0):
+		return   # already aimed here: the tap only readies the drop
 	_tap_aim(pos)
+
+
+## Whether `cell` is one the held piece covers where it is aimed now.
+func _on_aimed_piece(cell: Vector2i) -> bool:
+	if cell.x < 0 or state != State.PLAYING:
+		return false
+	return board.footprint_cells(current_offsets(), cursor).has(cell)
 
 
 # A touch held still: grab the piece under the finger to slide it, if it is

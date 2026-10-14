@@ -139,6 +139,49 @@ func _run_gestures() -> void:
 	_tap_at(target)
 	_check("a third tap does not drop again", _drops == 1)
 
+	# Tapping the aimed piece off its centre leaves it where it is: the first
+	# tap of a double-tap must not shift it (it used to re-centre on the cell).
+	_start_level(current_level)   # the double-tap above may have won the ball
+	_face(_piece_centre())
+	_cam_theta = _cam_target_theta
+	_cam_phi = _cam_target_phi
+	_process(0.0)
+	_last_tap_ms = -100000
+	cur_type = TSBoard.I_FLAT
+	var cells := board.footprint_cells(current_offsets(), cursor)
+	var aim_before := cursor
+	var end_a: Vector2i = cells[0]
+	var end_b: Vector2i = cells[cells.size() - 1]
+	_tap_at(_screen_of(end_a))
+	_check("a tap on the end of the aimed piece does not move it", cursor == aim_before and _drops == 1)
+	# The second tap a bit slow, and on the piece's far end: still the drop.
+	_last_tap_ms -= 400
+	_tap_at(_screen_of(end_b))
+	_check("a slower second tap anywhere on the piece drops it", _drops == 2)
+	_check("...where it was aimed", _dropped_at == aim_before)
+
+	# A second touch that wobbles a little as it lands is still a tap.
+	if state != State.PLAYING:
+		_start_level(current_level)
+	_face(_piece_centre())
+	_cam_theta = _cam_target_theta
+	_cam_phi = _cam_target_phi
+	_process(0.0)
+	_last_tap_ms = -100000
+	var on := _screen_of(board.footprint_cells(current_offsets(), cursor)[0])
+	_tap_at(on)
+	_touch(on, true)
+	_drag_to(on, on + Vector2(24.0, 0.0), 3)
+	_touch(on + Vector2(24.0, 0.0), false)
+	_check("a wobbly second tap still drops", _drops == 3)
+	# A wobble that big on a lone touch is still a swipe, as before.
+	_last_tap_ms = -100000
+	var turned_before := _cam_target_theta
+	_touch(on, true)
+	_drag_to(on, on + Vector2(24.0, 0.0), 3)
+	_touch(on + Vector2(24.0, 0.0), false)
+	_check("...but the same wobble on its own turns the ball", _cam_target_theta != turned_before and _drops == 3)
+
 
 
 
