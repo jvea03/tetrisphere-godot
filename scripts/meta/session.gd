@@ -76,6 +76,6 @@ static func restore() -> void:
 		"difficulty": int(d.get("difficulty", 0)), "cur_type": int(d.get("cur_type", 0)),
 		"next_type": int(d.get("next_type", 0)), "cursor": Vector2i(int(d["cursor"][0]), int(d["cursor"][1])),
 		"lives": int(d.get("lives", 1)), "first_attempt": bool(d.get("first_attempt", false)),
-		"lose_ad_used": bool(d.get("lose_ad_used", false)),
+		"lose_ad_used": bool(d.get("lose_ad_used", false)), "continues_bought": int(d.get("continues_bought", 0)),
 	}
 	has_saved_game = true

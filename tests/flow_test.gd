@@ -162,6 +162,33 @@ func _run() -> void:
 	TSProfile.coin_count = 5000
 	_revive_after_refill()
 
+	# an overloaded egg can't be continued: Try Again, and no Continue on offer
+	lives = 0
+	lose_reason = "SHELL OVERLOADED"
+	_lose()
+	var texts: Array = []
+	for b in (_lose_card["box"] as Node).get_children():
+		if b is Button:
+			texts.append((b as Button).text)
+	_check("the overload card offers Try Again and no Continue", texts.has("Try Again") and not texts.any(func(t): return str(t).begins_with("Continue")))
+	_close_cards()
+	_start_level(current_level)
+
+	# the ad's heart is not a bought continue: the sale still waits after it
+	lives = 0
+	lose_reason = "OUT OF LIVES"
+	_lose()
+	_ad_reward = "life"
+	_on_ad_finished()
+	_check("the ad's heart revives with one heart", state == State.PLAYING and lives == 1 and lose_ad_used)
+	_check("...and leaves the first-continue sale for later", _continue_cost() == FIRST_CONTINUE_COST)
+
+	# the count rides along with a parked ball, and a new ball starts over
+	continues_bought = 1
+	_check("a parked ball keeps its continues count", int(_snapshot().get("continues_bought", -1)) == 1)
+	_start_level(current_level)
+	_check("a new ball puts the first continue back on sale", continues_bought == 0 and _continue_cost() == FIRST_CONTINUE_COST)
+
 	# winning
 	var before := TSProfile.coin_count
 	var level_before := TSProfile.last_level

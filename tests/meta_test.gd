@@ -501,7 +501,7 @@ func _test_parked_ball() -> void:
 	b.generate(1234, TSLevels.rules_for_level(12))
 	b.cleared_blocks = 7
 	var s := {"board": b, "daily": false, "level": 12, "difficulty": 1, "cur_type": 2, "next_type": 3,
-		"cursor": Vector2i(5, 4), "lives": 2, "first_attempt": false, "lose_ad_used": true}
+		"cursor": Vector2i(5, 4), "lives": 2, "first_attempt": false, "lose_ad_used": true, "continues_bought": 1}
 	var was_persist := TSProfile.persist
 	TSProfile.persist = true
 	TSSession.forget()
@@ -513,7 +513,8 @@ func _test_parked_ball() -> void:
 	var same: bool = TSSession.has_saved_game and back.has("board") \
 		and JSON.stringify((back["board"] as TSBoard).to_dict()) == JSON.stringify(b.to_dict()) \
 		and back["cursor"] == Vector2i(5, 4) and int(back["lives"]) == 2 and int(back["level"]) == 12 \
-		and (back["board"] as TSBoard).shell_depth == b.shell_depth and (back["board"] as TSBoard).cleared_blocks == 7
+		and (back["board"] as TSBoard).shell_depth == b.shell_depth and (back["board"] as TSBoard).cleared_blocks == 7 \
+		and int(back.get("continues_bought", 0)) == 1   # or a relaunch would put the first continue back on sale
 	TSSession.clear()
 	_check("a ball in play survives the app being closed (written, read back whole, then dropped)", same and not FileAccess.file_exists(TSSession.PATH))
 	TSProfile.persist = was_persist
