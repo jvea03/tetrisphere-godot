@@ -86,6 +86,15 @@ const TIE_LAYERS := [2, 2, 2, 2, 3]
 ## the even ones), GEODE_COUNT[tier] to an egg.
 const GEODE_FROM_LEVEL := 13
 const GEODE_COUNT := [1, 1, 2, 2, 2]
+## Creeping vines (TSBoard.vined): from VINE_FROM_LEVEL, on every third level,
+## VINE_COUNT[tier] pieces start wrapped -- and spread if left alone.
+const VINE_FROM_LEVEL := 50
+const VINE_COUNT := [2, 2, 2, 3, 3]
+## Lock & key (TSBoard.locked, key_piece): from LOCK_FROM_LEVEL, on every
+## third level (never a vine level), LOCK_COUNT[tier] padlocked blockers and
+## one buried key.
+const LOCK_FROM_LEVEL := 100
+const LOCK_COUNT := [3, 3, 3, 4, 4]
 
 ## A slow ramp past the baked fifty, as the loop of tiers comes round again and
 ## again: every RAMP_EVERY levels from LEVEL_LOOP_START the eggs get one step
@@ -277,6 +286,15 @@ static func rules_for_level(level: int) -> Dictionary:
 		var tier := difficulty_for_level(level)
 		rules["ties"] = TIE_COUNT[tier]
 		rules["tie_layers"] = TIE_LAYERS[tier]
+	# Vines and padlocks are a level's challenge in place of tie-downs.
+	if has_vines(level):
+		rules["vines"] = VINE_COUNT[difficulty_for_level(level)]
+		rules.erase("ties")
+		rules.erase("tie_layers")
+	if has_locks(level):
+		rules["locks"] = LOCK_COUNT[difficulty_for_level(level)]
+		rules.erase("ties")
+		rules.erase("tie_layers")
 	if level == 1:
 		rules["shell_depth"] = 2
 	if LEVEL_PIECES.has(level):
@@ -352,3 +370,13 @@ static func heavy_mix(pieces: Array) -> bool:
 ## Whether this level's egg has geodes (see GEODE_FROM_LEVEL).
 static func has_geodes(level: int) -> bool:
 	return level >= GEODE_FROM_LEVEL and level % 2 == 1
+
+
+## Whether this level's egg has creeping vines (see VINE_FROM_LEVEL).
+static func has_vines(level: int) -> bool:
+	return level >= VINE_FROM_LEVEL and (level - VINE_FROM_LEVEL) % 3 == 0
+
+
+## Whether this level's egg has padlocks and a key (see LOCK_FROM_LEVEL).
+static func has_locks(level: int) -> bool:
+	return level >= LOCK_FROM_LEVEL and (level - LOCK_FROM_LEVEL) % 3 == 0

@@ -86,6 +86,7 @@ const TIE := 11
 const TIE_MAX_LAYERS := 3
 const GEODE := 12
 const GEODE_HITS := 3
+const VINE_GROW_EVERY := 3   # drops that cut no vine before the vines spread by one piece
 
 # cells[col][row] -> Array of piece ids, deepest first. A HOLE marks an empty
 # depth with something still above it; stacks never end in a HOLE, so a
@@ -100,6 +101,20 @@ var plate_cols := {}      # piece id -> Array[Vector2i], the columns it occupies
 var armored := {}         # blocker id -> true while its armour is on
 var ties := {}            # tie-down id -> layers left (1 to TIE_MAX_LAYERS)
 var geodes := {}          # geode id -> hits left (1 to GEODE_HITS)
+## Creeping vines (TSLevels.has_vines): a vine wraps a whole piece or blocker.
+## A wrapped piece never matches and never slides -- it stops a slide, like
+## armour -- and a hit (a pop beside it, a bomb, a rock) cuts the vine off and
+## leaves the piece. Left alone, the vines spread: every VINE_GROW_EVERY drops
+## that cut none, one more piece showing beside a vine is wrapped.
+var vined := {}           # piece id -> true while a vine wraps it
+var vine_clock := 0       # drops since a vine was last cut (or grew)
+## Lock & key (TSLevels.has_locks): padlocked grey blockers that nothing can
+## break, and one key -- an ordinary piece with a key on it, buried a layer
+## down. Pop the key piece and every padlock on the egg snaps open, leaving
+## plain blockers.
+var locked := {}          # blocker id -> true while padlocked
+var key_piece := HOLE     # the key's piece id, until it is popped
+var _vine_cut := false    # a vine was cut during this resolve
 var _geode_breaks: Array = []   # where geodes cracked open this resolve: each fires a rock
 var initial_blocks := 0
 var cleared_blocks := 0
@@ -158,6 +173,8 @@ func generate(seed_value: int, level: Dictionary) -> void:
 				armored[id] = true
 	_place_ties(int(level.get("ties", 0)), int(level.get("tie_layers", TIE_MAX_LAYERS)))
 	_place_geodes(int(level.get("geodes", 0)))
+	_place_vines(int(level.get("vines", 0)))
+	_place_locks(int(level.get("locks", 0)))
 
 	initial_blocks = count_blocks()
 	cleared_blocks = 0
@@ -306,6 +323,99 @@ func _place_geodes(count: int) -> void:
 				if cols.has(v):
 					return false
 			return true)
+
+
+## Vines, after the geodes (so every ball without them is unchanged): `count`
+## coloured pieces showing on the surface, away from the caps where they can,
+## each as far as can be from the vines already placed, are wrapped.
+func _place_vines(count: int) -> void:
+	vined.clear()
+	vine_clock = 0
+	if count <= 0:
+		return
+	var middle: Array = []
+	var edge: Array = []
+	for c in COLS:
+		for r in ROWS:
+			var p := top_piece(c, r)
+			if p == HOLE or is_obstacle(int(plate_kind[p])) or middle.has(p) or edge.has(p):
+				continue
+			if r >= 1 and r <= ROWS - 2:
+				middle.append(p)
+			else:
+				edge.append(p)
+	for pool in [middle, edge]:
+		while vined.size() < count and not (pool as Array).is_empty():
+			var best: int = pool[_rng.randi_range(0, (pool as Array).size() - 1)]
+			if not vined.is_empty():
+				var best_gap := -1
+				for id in pool:
+					var gap := 999
+					var v: Vector2i = plate_cols[id][0]
+					for w_id in vined:
+						var w: Vector2i = plate_cols[w_id][0]
+						gap = mini(gap, absi(wrap_col(v.x - w.x + COLS / 2) - COLS / 2) + absi(v.y - w.y))
+					if gap > best_gap:
+						best_gap = gap
+						best = id
+			(pool as Array).erase(best)
+			vined[best] = true
+
+
+## Padlocks and the key, last: `count` plain grey blockers showing on the
+## surface are padlocked, and one coloured piece a layer down becomes the key
+## -- one with no padlock above any of its cells, so it can always be dug to.
+## (A one-layer egg has nowhere to bury it, so its key lies on top.)
+func _place_locks(count: int) -> void:
+	locked.clear()
+	key_piece = HOLE
+	if count <= 0:
+		return
+	var plain: Array = []
+	for id in plate_kind:
+		if int(plate_kind[id]) == BLOCKER and not armored.has(id) and not vined.has(id):
+			var v: Vector2i = plate_cols[id][0]
+			if top_piece(v.x, v.y) == id:
+				plain.append(id)
+	plain.sort()
+	while locked.size() < count and not plain.is_empty():
+		var pick: int = plain[_rng.randi_range(0, plain.size() - 1)]
+		plain.erase(pick)
+		locked[pick] = true
+	if locked.is_empty():
+		return
+	var want := 1 if shell_depth >= 2 else 0   # how many layers down the key lies
+	var keys: Array = []
+	for id in plate_kind:
+		if is_obstacle(int(plate_kind[id])) or vined.has(id):
+			continue
+		var ok := true
+		for col in plate_cols[id]:
+			var v: Vector2i = col
+			var stack: Array = cells[v.x][v.y]
+			var d := stack.find(id)
+			if stack.size() - 1 - d != want:
+				ok = false
+				break
+			for above in range(d + 1, stack.size()):
+				if locked.has(int(stack[above])):
+					ok = false
+					break
+			if not ok:
+				break
+		if ok:
+			keys.append(id)
+	keys.sort()
+	if keys.is_empty():
+		locked.clear()   # nowhere fair for the key: no padlocks either
+		return
+	key_piece = keys[_rng.randi_range(0, keys.size() - 1)]
+
+
+## Whether a pop beside piece `n` hits it: blockers, tie-downs and geodes
+## shatter (or chip), and a vine round anything is cut.
+func _hit_by_pop(n: int) -> bool:
+	return is_obstacle(int(plate_kind[n])) or vined.has(n)
 
 
 ## Blockers, tie-downs and geodes: never dealt, never matched, never slid.
@@ -546,6 +656,8 @@ func _remove_plate(id: int) -> void:
 	armored.erase(id)
 	ties.erase(id)
 	geodes.erase(id)
+	vined.erase(id)
+	locked.erase(id)
 
 
 # A hole with nothing above it is just open space; drop it from the stack.
@@ -604,7 +716,7 @@ func _component(id: int, limit: int = 1 << 20) -> Array:
 		if out.size() >= limit:
 			return out
 		for n in _neighbors(p):
-			if not seen.has(n) and int(plate_kind[n]) == kind:
+			if not seen.has(n) and int(plate_kind[n]) == kind and not vined.has(n):
 				seen[n] = true
 				pending.append(n)
 	return out
@@ -617,7 +729,7 @@ func _contacts(kind: int, cols: Array, d: int) -> Array:
 	for col in cols:
 		var v: Vector2i = col
 		for p in [_occupant(v.x, v.y, d - 1), _occupant(v.x, v.y, d + 1)]:
-			if p != HOLE and int(plate_kind[p]) == kind:
+			if p != HOLE and int(plate_kind[p]) == kind and not vined.has(p):
 				found[p] = true
 		for dir in DIRS:
 			var dv: Vector2i = dir
@@ -625,7 +737,7 @@ func _contacts(kind: int, cols: Array, d: int) -> Array:
 			if not in_rows(n.y) or cols.has(n):
 				continue
 			var p := _occupant(n.x, n.y, d)
-			if p != HOLE and int(plate_kind[p]) == kind:
+			if p != HOLE and int(plate_kind[p]) == kind and not vined.has(p):
 				found[p] = true
 	return found.keys()
 
@@ -671,7 +783,7 @@ func _matches(seeds: Array) -> Dictionary:
 	var checked := {}
 	for s in seeds:
 		var id: int = s
-		if checked.has(id) or not plate_kind.has(id) or is_obstacle(int(plate_kind[id])):
+		if checked.has(id) or not plate_kind.has(id) or is_obstacle(int(plate_kind[id])) or vined.has(id):
 			continue
 		var group := _component(id)
 		for g in group:
@@ -681,7 +793,7 @@ func _matches(seeds: Array) -> Dictionary:
 		for p in group:
 			doomed[p] = true
 			for n in _neighbors(p):
-				if is_obstacle(int(plate_kind[n])):
+				if _hit_by_pop(n):
 					doomed[n] = true
 	return doomed
 
@@ -692,6 +804,23 @@ func _matches(seeds: Array) -> Dictionary:
 # "hit" (a tie-down's layer, a geode's chip); a plain break has none.
 func _destroy(doomed: Dictionary, step: int, fx: Array) -> int:
 	var removed := 0
+	# A vine takes the hit first, whatever it wraps: it is cut ("vine" in the
+	# fx, in the colour of what it held) and the piece stays.
+	for p in doomed.keys():
+		if vined.has(p):
+			vined.erase(p)
+			doomed.erase(p)
+			_vine_cut = true
+			vine_clock = 0
+			for col in plate_cols[p]:
+				var v: Vector2i = col
+				fx.append([v.x, v.y, (cells[v.x][v.y] as Array).find(p), int(plate_kind[p]), step, "vine"])
+	# A padlocked blocker shrugs the hit off ("locked": a clink, nothing breaks).
+	for p in doomed.keys():
+		if locked.has(p):
+			doomed.erase(p)
+			var lv: Vector2i = plate_cols[p][0]
+			fx.append([lv.x, lv.y, (cells[lv.x][lv.y] as Array).find(p), BLOCKER, step, "locked"])
 	# An armoured blocker takes the hit instead: its armour chips off (a
 	# puff of grey in the fx) and it stays as a plain blocker.
 	for p in doomed.keys():
@@ -723,6 +852,13 @@ func _destroy(doomed: Dictionary, step: int, fx: Array) -> int:
 				fx.append([v.x, v.y, (cells[v.x][v.y] as Array).find(p), GEODE, step, "hit"])
 		else:
 			_geode_breaks.append(plate_cols[p][0])
+	# The key popping: every padlock on the egg snaps open ("unlock").
+	if key_piece != HOLE and doomed.has(key_piece):
+		for p in locked:
+			var uv: Vector2i = plate_cols[p][0]
+			fx.append([uv.x, uv.y, (cells[uv.x][uv.y] as Array).find(p), BLOCKER, step, "unlock"])
+		locked.clear()
+		key_piece = HOLE
 	for p in doomed:
 		var kind: int = plate_kind[p]
 		for col in plate_cols[p]:
@@ -750,7 +886,7 @@ func _chain(seeds: Array, fx: Array, step: int) -> Dictionary:
 			break
 		chain += 1
 		for p in doomed:
-			if not is_obstacle(int(plate_kind[p])):
+			if not is_obstacle(int(plate_kind[p])) and not vined.has(p):
 				pieces += 1
 		removed += _destroy(doomed, step + chain - 1, fx)
 		seeds = _settle()
@@ -949,14 +1085,14 @@ func top_piece(c: int, r: int) -> int:
 # May piece `id` be slid while the player holds a piece of type `holding`?
 # Only pieces of that same type; never blockers.
 func can_slide(id: int, holding: int) -> bool:
-	return plate_kind.has(id) and not is_obstacle(int(plate_kind[id])) and int(plate_kind[id]) == holding
+	return plate_kind.has(id) and not is_obstacle(int(plate_kind[id])) and int(plate_kind[id]) == holding and not vined.has(id)
 
 
 # What sliding piece `id` one cell in `dir` would do, without doing it: -1 if
 # it cannot move (a Tetris piece or the rim in the way), otherwise how many
 # blockers it would smash (0 for a clear move).
 func slide_preview(id: int, dir: Vector2i) -> int:
-	if not plate_kind.has(id) or is_obstacle(int(plate_kind[id])):
+	if not plate_kind.has(id) or is_obstacle(int(plate_kind[id])) or vined.has(id):
 		return -1
 	var d := depth_of(id)
 	var smash := 0
@@ -968,7 +1104,7 @@ func slide_preview(id: int, dir: Vector2i) -> int:
 		var p := _occupant(n.x, n.y, d)
 		if p == HOLE or p == id:
 			continue
-		if int(plate_kind[p]) != BLOCKER or armored.has(p):   # pieces and armour stop a slide
+		if int(plate_kind[p]) != BLOCKER or armored.has(p) or vined.has(p) or locked.has(p):   # pieces, armour, vines and padlocks stop a slide
 			return -1
 		smash += 1
 	return smash
@@ -1017,6 +1153,7 @@ func slide(id: int, dir: Vector2i) -> Dictionary:
 # and resolves the matches and chain reactions.
 func place_and_resolve(offsets: Array, at: Vector2i, kind: int, depth: int = -1) -> Dictionary:
 	_geode_breaks.clear()
+	_vine_cut = false
 	if depth < 0:
 		depth = landing_depth(offsets, at)
 	if kind == WILD:
@@ -1027,10 +1164,40 @@ func place_and_resolve(offsets: Array, at: Vector2i, kind: int, depth: int = -1)
 	res["fx"] = fx
 	res["overload"] = _overloaded()
 	res["geode_shots"] = _geode_breaks.duplicate()   # a rock from each geode that cracked open
+	res["vine_grew"] = _grow_vines()   # a piece the vines spread onto, or HOLE
 	return res
 
 
-# Blows the top block off every column within `radius`, then lets gravity and
+## After a drop that cut no vine, the vines creep: every VINE_GROW_EVERY such
+## drops, one piece showing beside a vine -- not a tie-down, geode or padlock
+## -- is wrapped too. Returns its id, or HOLE.
+func _grow_vines() -> int:
+	if vined.is_empty() or _vine_cut:
+		return HOLE
+	vine_clock += 1
+	if vine_clock < VINE_GROW_EVERY:
+		return HOLE
+	vine_clock = 0
+	var found := {}
+	for id in vined:
+		for col in plate_cols[id]:
+			var v: Vector2i = col
+			for dir in DIRS:
+				var dv: Vector2i = dir
+				var p := top_piece(v.x + dv.x, v.y + dv.y)
+				if p == HOLE or vined.has(p) or locked.has(p) or ties.has(p) or geodes.has(p):
+					continue
+				found[p] = true
+	if found.is_empty():
+		return HOLE
+	var options: Array = found.keys()
+	options.sort()
+	var grew: int = options[_rng.randi_range(0, options.size() - 1)]
+	vined[grew] = true
+	return grew
+
+
+# Blows the top block off) every column within `radius`, then lets gravity and
 # any chain reaction follow. Bombs are not drops: they never cost a life.
 # A bomb destroys every piece showing inside a circle of `radius` cells --
 # whole pieces, never part of one, so a line is never left as a stub -- and,
@@ -1048,11 +1215,11 @@ func detonate(at: Vector2i, radius: int) -> Dictionary:
 				doomed[p] = true
 	var pieces := 0
 	for p in doomed.keys():
-		if is_obstacle(int(plate_kind[p])):
+		if is_obstacle(int(plate_kind[p])) or vined.has(p):
 			continue
 		pieces += 1
 		for n in _neighbors(p):
-			if is_obstacle(int(plate_kind[n])):
+			if _hit_by_pop(n):
 				doomed[n] = true
 	var fx: Array = []
 	var blasted := _destroy(doomed, 1, fx)
@@ -1097,7 +1264,7 @@ func rock_targets(count: int, near: Vector2i) -> Array:
 	for c in COLS:
 		for r in ROWS:
 			var p := top_piece(c, r)
-			if p == HOLE or seen.has(p) or is_obstacle(int(plate_kind[p])):
+			if p == HOLE or seen.has(p) or is_obstacle(int(plate_kind[p])) or vined.has(p):
 				continue
 			var group := _component(p)
 			for g in group:
@@ -1129,7 +1296,7 @@ func rock_strike(groups: Array) -> Dictionary:
 			doomed[id] = true
 			pieces += 1
 			for n in _neighbors(id):
-				if is_obstacle(int(plate_kind[n])):
+				if _hit_by_pop(n):
 					doomed[n] = true
 	var fx: Array = []
 	var hit := _destroy(doomed, 1, fx)
@@ -1301,6 +1468,13 @@ func to_dict() -> Dictionary:
 		for id in geodes:
 			hits[str(id)] = int(geodes[id])
 		out["geodes"] = hits
+	if not vined.is_empty():
+		out["vines"] = vined.keys()
+		out["vine_clock"] = vine_clock
+	if not locked.is_empty():
+		out["locks"] = locked.keys()
+	if key_piece != HOLE:
+		out["key"] = key_piece
 	return out
 
 
@@ -1312,6 +1486,10 @@ func load_dict(data: Dictionary) -> void:
 	armored.clear()
 	ties.clear()
 	geodes.clear()
+	vined.clear()
+	locked.clear()
+	key_piece = HOLE
+	vine_clock = 0
 	_next_id = 0
 	for id_str in data["kinds"]:
 		var id := int(id_str)
@@ -1346,6 +1524,15 @@ func load_dict(data: Dictionary) -> void:
 	for id_str in geode_hits:
 		if plate_kind.has(int(id_str)):
 			geodes[int(id_str)] = int(geode_hits[id_str])
+	for id in data.get("vines", []):
+		if plate_kind.has(int(id)):
+			vined[int(id)] = true
+	vine_clock = int(data.get("vine_clock", 0))
+	for id in data.get("locks", []):
+		if plate_kind.has(int(id)):
+			locked[int(id)] = true
+	if plate_kind.has(int(data.get("key", HOLE))):
+		key_piece = int(data["key"])
 	initial_blocks = count_blocks()
 	cleared_blocks = 0
 
@@ -1361,6 +1548,10 @@ func clone() -> TSBoard:
 	b.armored = armored.duplicate()
 	b.ties = ties.duplicate()
 	b.geodes = geodes.duplicate()
+	b.vined = vined.duplicate()
+	b.vine_clock = vine_clock
+	b.locked = locked.duplicate()
+	b.key_piece = key_piece
 	b.cells = []
 	for c in COLS:
 		var column: Array = []

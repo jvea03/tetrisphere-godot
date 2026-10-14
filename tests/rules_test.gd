@@ -28,6 +28,8 @@ func _initialize() -> void:
 	_test_armor()
 	_test_ties()
 	_test_geodes()
+	_test_vines()
+	_test_locks()
 	_test_pieces_stay_whole()
 	print("")
 	print("ALL PASSED" if _failures == 0 else "%d FAILED" % _failures)
@@ -669,3 +671,142 @@ func _test_geodes() -> void:
 	back.load_dict(ball.to_dict())
 	_check("geodes survive saving and copying", back.geodes == ball.geodes and ball.clone().geodes == ball.geodes)
 	_check("none before level %d, and none on even levels" % lvl, not TSLevels.rules_for_level(lvl - 2).has("geodes") and not TSLevels.rules_for_level(lvl + 1).has("geodes") and TSLevels.rules_for_level(lvl + 2).has("geodes"))
+
+
+# Creeping vines: a wrapped piece never matches or slides; a pop beside it, or
+# a bomb, cuts the vine and leaves the piece; left alone, vines spread.
+func _test_vines() -> void:
+	var shape: Array = TSBoard.SHAPES[FLAT]["offsets"]
+	var b := _empty_board()
+	_flat(b, 0, 5)
+	var wrapped := _flat(b, 4, 5)
+	b.vined[wrapped] = true
+	var res := b.place_and_resolve(shape, Vector2i(2, 5), FLAT)
+	_check("a wrapped piece never joins a match", int(res["chain"]) == 0 and b.plate_kind.has(wrapped) and b.vined.has(wrapped))
+
+	var c := _empty_board()
+	_flat(c, 0, 5)
+	_flat(c, 4, 5)
+	var beside := _upright(c, 8, 2)
+	c.vined[beside] = true
+	var cut := c.place_and_resolve(shape, Vector2i(2, 5), FLAT)
+	var tagged := false
+	for e in cut["fx"]:
+		if (e as Array).size() > 5 and str(e[5]) == "vine":
+			tagged = true
+	_check("a pop beside a vine cuts it, and the piece stays", int(cut["chain"]) == 1 and c.plate_kind.has(beside) and not c.vined.has(beside) and tagged)
+
+	var bomb := _empty_board()
+	var target := _flat(bomb, 8, 4)
+	bomb.vined[target] = true
+	bomb.detonate(Vector2i(9, 4), 1)
+	_check("a bomb cuts a vine without breaking what it wraps", bomb.plate_kind.has(target) and not bomb.vined.has(target))
+
+	var s := _empty_board()
+	var mover := _flat(s, 0, 3)
+	var held := _flat(s, 8, 3)
+	var stop := s._add_plate(TSBoard.BLOCKER, [Vector2i(4, 3)])
+	s.vined[held] = true
+	s.vined[stop] = true
+	_check("a wrapped piece can't be slid, and a wrapped blocker stops a slide", not s.can_slide(held, FLAT) and s.slide_preview(held, Vector2i(1, 0)) < 0 and s.slide_preview(mover, Vector2i(1, 0)) < 0)
+
+	# Spreading: every VINE_GROW_EVERY drops that cut nothing, one neighbour.
+	var g := _empty_board()
+	var root := _flat(g, 0, 3)
+	var next := _flat(g, 0, 4)
+	g.vined[root] = true
+	var grew := TSBoard.HOLE
+	for i in TSBoard.VINE_GROW_EVERY:
+		grew = int(g.place_and_resolve(shape, Vector2i(10, 0 if i % 2 == 0 else 7), FLAT)["vine_grew"])
+		if i < TSBoard.VINE_GROW_EVERY - 1:
+			_check("drop %d: no spread yet" % (i + 1), grew == TSBoard.HOLE)
+	_check("after %d drops that cut nothing, the vine spreads to the piece beside it" % TSBoard.VINE_GROW_EVERY, grew == next and g.vined.has(next))
+	var back := TSBoard.new()
+	back.load_dict(g.to_dict())
+	_check("vines and their clock survive saving and copying", back.vined == g.vined and back.vine_clock == g.vine_clock and g.clone().vined == g.vined)
+
+	# The schedule, and a generated egg.
+	var lvl := TSLevels.VINE_FROM_LEVEL
+	var rules := TSLevels.rules_for_level(lvl)
+	_check("vines arrive at level %d and come every third level" % lvl, rules.has("vines") and not TSLevels.rules_for_level(lvl - 1).has("vines") and not TSLevels.rules_for_level(lvl + 1).has("vines") and TSLevels.rules_for_level(lvl + 3).has("vines"))
+	_check("...in place of tie-downs", not rules.has("ties"))
+	var ball := TSBoard.new()
+	var baked := TSLevels.baked_board(lvl)
+	if baked.is_empty():
+		ball.generate(TSLevels.seed_for_level(lvl), rules)
+	else:
+		ball.load_dict(baked)
+	var ok := ball.vined.size() == int(rules["vines"])
+	for id in ball.vined:
+		var v: Vector2i = ball.plate_cols[id][0]
+		ok = ok and not TSBoard.is_obstacle(int(ball.plate_kind[id])) and ball.top_piece(v.x, v.y) == id
+	_check("level %d's egg has %d vines, on coloured pieces showing on top" % [lvl, int(rules["vines"])], ok)
+
+
+# Lock & key: padlocked blockers shrug off every hit until the key piece is
+# popped, which opens them all.
+func _test_locks() -> void:
+	var shape: Array = TSBoard.SHAPES[FLAT]["offsets"]
+	var b := _empty_board()
+	_flat(b, 0, 5)
+	_flat(b, 4, 5)
+	var lock := b._add_plate(TSBoard.BLOCKER, [Vector2i(8, 5)])
+	var far_lock := b._add_plate(TSBoard.BLOCKER, [Vector2i(15, 2)])
+	b.locked[lock] = true
+	b.locked[far_lock] = true
+	var key := _upright(b, 12, 0)
+	b.key_piece = key
+	var hit := b.place_and_resolve(shape, Vector2i(2, 5), FLAT)
+	var clink := false
+	for e in hit["fx"]:
+		if (e as Array).size() > 5 and str(e[5]) == "locked":
+			clink = true
+	_check("a pop beside a padlock can't break it (it clinks)", int(hit["chain"]) == 1 and b.plate_kind.has(lock) and b.locked.has(lock) and clink)
+	var bomb := b.clone()
+	bomb.detonate(Vector2i(8, 5), 1)
+	_check("nor can a bomb", bomb.plate_kind.has(lock) and bomb.locked.has(lock))
+	var s := _empty_board()
+	var mover := _flat(s, 0, 3)
+	var bolt := s._add_plate(TSBoard.BLOCKER, [Vector2i(4, 3)])
+	s.locked[bolt] = true
+	_check("a padlock stops a slide", s.slide_preview(mover, Vector2i(1, 0)) < 0)
+
+	# Pop the key (an upright, matched by two more): every padlock opens.
+	_upright(b, 13, 0)
+	var up_shape: Array = TSBoard.SHAPES[UP]["offsets"]
+	var opened := b.place_and_resolve(up_shape, Vector2i(12, 0), UP)
+	var unlocks := 0
+	for e in opened["fx"]:
+		if (e as Array).size() > 5 and str(e[5]) == "unlock":
+			unlocks += 1
+	_check("popping the key opens every padlock on the egg", not b.plate_kind.has(key) and b.locked.is_empty() and b.key_piece == TSBoard.HOLE and unlocks == 2)
+	var plain := b.clone()
+	plain.detonate(Vector2i(8, 5), 1)
+	_check("...and an opened padlock breaks like a plain blocker", b.plate_kind.has(lock) and not plain.plate_kind.has(lock))
+
+	# The schedule, and a generated egg: the key a layer down, no padlock above it.
+	var lvl := TSLevels.LOCK_FROM_LEVEL
+	var rules := TSLevels.rules_for_level(lvl)
+	_check("padlocks arrive at level %d and come every third level, never with vines" % lvl, rules.has("locks") and not rules.has("vines") and not TSLevels.rules_for_level(lvl - 3).has("locks") and not TSLevels.rules_for_level(lvl + 1).has("locks") and TSLevels.rules_for_level(lvl + 3).has("locks"))
+	var fair := 0
+	for l in [lvl, lvl + 3, lvl + 6, lvl + 9, lvl + 12]:
+		var ball := TSBoard.new()
+		var r := TSLevels.rules_for_level(l)
+		ball.generate(TSLevels.seed_for_level(l), r)
+		var ok := ball.locked.size() == int(r["locks"]) and ball.key_piece != TSBoard.HOLE and not TSBoard.is_obstacle(int(ball.plate_kind[ball.key_piece]))
+		if ok:
+			for col in ball.plate_cols[ball.key_piece]:
+				var v: Vector2i = col
+				var stack: Array = ball.cells[v.x][v.y]
+				var d := stack.find(ball.key_piece)
+				ok = ok and stack.size() - 1 - d == 1
+				for above in range(d + 1, stack.size()):
+					ok = ok and not ball.locked.has(int(stack[above]))
+		for id in ball.locked:
+			ok = ok and int(ball.plate_kind[id]) == TSBoard.BLOCKER and not ball.armored.has(id)
+		var back := TSBoard.new()
+		back.load_dict(ball.to_dict())
+		ok = ok and back.locked == ball.locked and back.key_piece == ball.key_piece and ball.clone().key_piece == ball.key_piece
+		if ok:
+			fair += 1
+	_check("five lock eggs: the level's padlocks, a key one layer down with none above it, kept through saving", fair == 5)
