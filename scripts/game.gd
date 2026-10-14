@@ -242,16 +242,31 @@ func _build_hud() -> void:
 	# Three hearts 46 px apart, centred on the screen's middle.
 	var hearts_at := _pin(root, Control.PRESET_CENTER_TOP, Vector2(-70.0, _top + 30.0))
 	for i in LIVES:
-		# Each heart is drawn twice: a larger one in ink behind, as its outline.
-		var ink := Polygon2D.new()
-		ink.polygon = _heart_shape(1.3)
-		ink.color = TSToon.INK
-		ink.position = Vector2(24.0 + i * 46.0, 0.0)
-		hearts_at.add_child(ink)
+		# The filled heart, then its ink rim on top as a smooth (antialiased) line.
 		var heart := Polygon2D.new()
-		heart.polygon = _heart_shape(1.05)
-		heart.position = Vector2(24.0 + i * 46.0, -0.5)
+		heart.polygon = _heart_shape(1.12)
+		heart.position = Vector2(24.0 + i * 46.0, 0.0)
 		hearts_at.add_child(heart)
+		var rim := Node2D.new()
+		rim.draw.connect(func():
+			# Two halves, top dip to bottom point, so neither point grows a mitred spike.
+			var pts := _heart_shape(1.12)
+			var right := pts.slice(16)
+			right.append(pts[0])
+			rim.draw_polyline(pts.slice(0, 17), TSToon.INK, 4.5, true)
+			rim.draw_polyline(right, TSToon.INK, 4.5, true)
+			for tip in [pts[0], pts[16]]:
+				rim.draw_circle(tip, 2.25, TSToon.INK, true, -1.0, true))
+		heart.add_child(rim)
+		# A glint on the upper left lobe.
+		var glint := Polygon2D.new()
+		var g := PackedVector2Array()
+		for k in 12:
+			g.append(Vector2(cos(TAU * k / 12.0) * 4.0, sin(TAU * k / 12.0) * 2.6).rotated(-0.6) + Vector2(-7.5, -7.0))
+		glint.polygon = g
+		glint.color = Color(1, 1, 1, 0.55)
+		glint.antialiased = true
+		heart.add_child(glint)
 		_hearts.append(heart)
 	# Tie-downs left, a pill to the right of the hearts, on levels that have them.
 	var ties_at := _pin(root, Control.PRESET_CENTER_TOP, Vector2(92.0, _top + 8.0))

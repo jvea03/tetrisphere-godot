@@ -18,6 +18,10 @@ func build() -> void:
 	_banner.add_child(TSUI.wrap(TSUI.label("", 24, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER)))
 	content.add_child(_banner)
 	content.add_child(TSUI.spacer(0, true))
+	# The streak's prize -- bombs -- on a sunburst, filling the space above the cards.
+	var hero := TSIcon.make("bomb", 120)
+	content.add_child(TSUI.halo(hero, 230.0, TSUI.PEACH))
+	content.add_child(TSUI.spacer(0, true))
 	_login_card = _make_card("LOGIN STREAK", TSUI.BUTTER, "flame", _login, _on_login_tap)
 	content.add_child(_login_card)
 	content.add_child(TSUI.spacer(10))

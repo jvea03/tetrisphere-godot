@@ -345,6 +345,7 @@ static func paper_rect() -> ColorRect:
 	var mat := ShaderMaterial.new()
 	mat.shader = shader
 	mat.set_shader_parameter("paper", PAPER)
+	mat.set_shader_parameter("autumn", 1.0 if TSShipScene.SEASON == "autumn" else 0.0)
 	r.material = mat
 	return r
 
@@ -354,15 +355,38 @@ shader_type canvas_item;
 uniform vec4 paper : source_color = vec4(1.0, 0.96, 0.88, 1.0);
 uniform vec4 blush : source_color = vec4(1.0, 0.88, 0.89, 1.0);
 uniform vec4 dots : source_color = vec4(0.99, 0.89, 0.89, 1.0);
+uniform float autumn = 0.0;   // 1: soft leaves drift down the paper instead of the polka dots
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 void fragment() {
 	vec3 col = mix(paper.rgb, blush.rgb, smoothstep(0.45, 1.0, UV.y));
-	vec2 grid = FRAGCOORD.xy / 110.0;
-	vec2 cell = floor(grid);
-	vec2 centre = vec2(hash(cell), hash(cell + 7.0)) * 0.6 + 0.2;
-	float r = 0.08 + 0.06 * hash(cell + 3.0);
-	float m = (1.0 - smoothstep(r - 0.015, r, distance(fract(grid), centre))) * step(0.5, hash(cell + 11.0));
-	col = mix(col, dots.rgb, m);
+	if (autumn < 0.5) {
+		vec2 grid = FRAGCOORD.xy / 110.0;
+		vec2 cell = floor(grid);
+		vec2 centre = vec2(hash(cell), hash(cell + 7.0)) * 0.6 + 0.2;
+		float r = 0.08 + 0.06 * hash(cell + 3.0);
+		float m = (1.0 - smoothstep(r - 0.015, r, distance(fract(grid), centre))) * step(0.5, hash(cell + 11.0));
+		col = mix(col, dots.rgb, m);
+	} else {
+		// Pale leaves, half way to the paper, drifting slowly down and turning.
+		float lp = 120.0;
+		vec2 lg = (FRAGCOORD.xy - vec2(0.0, TIME * 18.0)) / lp;
+		lg.x += sin(TIME * 0.4 + floor(lg.y) * 1.7) * 0.12;
+		vec2 lc = floor(lg);
+		if (hash(lc + 31.0) > 0.55) {
+			vec2 q = (fract(lg) - (vec2(hash(lc + 13.0), hash(lc + 17.0)) * 0.6 + 0.2)) * lp;
+			float a = TIME * (0.3 + 0.5 * hash(lc + 2.0)) + hash(lc) * 6.28;
+			q = mat2(vec2(cos(a), sin(a)), vec2(-sin(a), cos(a))) * q;
+			float s = 11.0 + 7.0 * hash(lc + 4.0);
+			float d = length(q / vec2(1.0, 0.5)) - s;
+			// a vein down the middle
+			float vein = (1.0 - smoothstep(0.6, 1.4, abs(q.y))) * step(abs(q.x), s * 0.8);
+			float h = hash(lc + 8.0);
+			vec3 lcol = h < 0.33 ? vec3(1.0, 0.7, 0.45) : (h < 0.66 ? vec3(1.0, 0.62, 0.6) : vec3(1.0, 0.84, 0.5));
+			float inside = 1.0 - smoothstep(-0.8, 0.8, d);
+			col = mix(col, mix(col, lcol, 0.68), inside);
+			col = mix(col, mix(col, lcol * 0.8, 0.6), inside * vein);
+		}
+	}
 	col *= 1.0 - 0.04 * hash(floor(FRAGCOORD.xy / 2.0));
 	COLOR = vec4(col, 1.0);
 }

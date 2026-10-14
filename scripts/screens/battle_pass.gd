@@ -231,11 +231,11 @@ func _reward_card(tier: int, current: int, reward: Dictionary, premium: bool) ->
 func _item(icon: String, idx: int, caption: String) -> Control:
 	var v := TSUI.vbox(0)
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var ic := TSIcon.make(icon, 42, idx)
+	var ic := TSIcon.make(icon, 56, idx)
 	ic.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	v.add_child(ic)
-	var l := TSUI.label(caption, 15, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER)
-	l.custom_minimum_size.x = 54
+	var l := TSUI.label(caption, 19, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER)
+	l.custom_minimum_size.x = 64
 	v.add_child(l)
 	return v
 
