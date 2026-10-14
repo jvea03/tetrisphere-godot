@@ -10,6 +10,7 @@ extends RefCounted
 const SAMPLE_RATE := 22050
 const MUSIC_BUS := "Music"
 const SFX_BUS := "SFX"
+const VOICES := 4   # how many of one sound can ring at once
 const MENU_MUSIC := "res://audio/main_menu.mp3"
 const LEVEL_MUSIC := [
 	"res://audio/level_song_1.mp3",
@@ -23,7 +24,7 @@ const MUSIC_FADE_IN := 1.2
 const MUSIC_FADE_OUT := 0.6
 
 static var _streams := {}
-static var _players := {}
+static var _players := {}   # sound name -> its voices (AudioStreamPlayers)
 static var _music_mode := ""         # "menu", "level" or "" (silence)
 static var _music_players := {}      # mode -> AudioStreamPlayer
 static var _music_tweens := {}       # mode -> Tween
@@ -58,8 +59,10 @@ static func music(mode: String) -> void:
 ## nothing is left playing (or held) while the engine shuts down.
 static func release() -> void:
 	for group in [_music_players, _players]:
-		for p in group.values():
-			if is_instance_valid(p):
+		for entry in group.values():
+			for p in (entry if entry is Array else [entry]):
+				if not is_instance_valid(p):
+					continue
 				(p as AudioStreamPlayer).stop()
 				(p as AudioStreamPlayer).stream = null
 				(p as AudioStreamPlayer).queue_free()   # still parented while the tree shuts down: free() would error
@@ -134,16 +137,28 @@ static func play(name: String, pitch: float = 1.0) -> void:
 	if tree == null:
 		return
 	ensure_buses()
-	var player: AudioStreamPlayer = _players.get(name)
-	if not is_instance_valid(player):
+	# A few voices per sound, so quick repeats (a clear's pops) ring over each
+	# other instead of cutting the last one off: a free voice, else the oldest.
+	var voices: Array = _players.get(name, [])
+	var player: AudioStreamPlayer = null
+	for v in voices:
+		if is_instance_valid(v) and not (v as AudioStreamPlayer).playing:
+			player = v
+			break
+	if player == null and voices.size() < VOICES:
 		player = AudioStreamPlayer.new()
 		player.bus = SFX_BUS
 		player.stream = _stream(name)
+		player.pitch_scale = pitch
 		tree.root.add_child.call_deferred(player)
-		_players[name] = player
+		voices.append(player)
+		_players[name] = voices
 		player.ready.connect(func(): player.play(), CONNECT_ONE_SHOT)
 		return
-	if not player.is_inside_tree():
+	if player == null:
+		player = voices.pop_front()
+		voices.append(player)
+	if not is_instance_valid(player) or not player.is_inside_tree():
 		return # still being added; its first play is already queued
 	player.pitch_scale = pitch
 	player.play()
@@ -172,13 +187,19 @@ static func _stream(name: String) -> AudioStreamWAV:
 			"drop":
 				_streams[name] = _tone(420.0, 0.12, "triangle", 0.4, 300.0)
 			"match":
-				_streams[name] = _arpeggio([523.0, 659.0, 784.0], 0.07, "square", 0.3)
+				_streams[name] = _chime([659.0, 784.0, 1047.0], 0.055, 0.3)
 			"chain":
-				_streams[name] = _arpeggio([523.0, 659.0, 784.0, 1047.0, 1319.0], 0.06, "square", 0.3)
-			"pop":
-				_streams[name] = _tone(520.0, 0.07, "sine", 0.32, 1250.0)
+				_streams[name] = _chime([659.0, 784.0, 988.0, 1319.0, 1568.0], 0.05, 0.3)
+			"pop", "pop0":
+				_streams[name] = _pop(0)
+			"pop1":
+				_streams[name] = _pop(1)
+			"pop2":
+				_streams[name] = _pop(2)
 			"crack":
-				_streams[name] = _tone(260.0, 0.06, "square", 0.2, 110.0)
+				_streams[name] = _crack()
+			"shimmer":
+				_streams[name] = _chime([1568.0, 2093.0, 2637.0, 3136.0, 2637.0, 3136.0], 0.04, 0.14)
 			"miss":
 				_streams[name] = _tone(220.0, 0.28, "triangle", 0.4, 90.0)
 			"win":
@@ -260,4 +281,77 @@ static func _explosion() -> AudioStreamWAV:
 		low += (rng.randf_range(-1.0, 1.0) - low) * lerpf(0.55, 0.04, minf(t / 0.6, 1.0))
 		var thump := sin(TAU * lerpf(90.0, 38.0, minf(t / 0.35, 1.0)) * t) * exp(-t * 6.0)
 		samples[i] = (low * exp(-t * 3.2) * 0.9 + thump * 0.8) * attack * 0.7
+	return _make_stream(samples)
+
+
+## A block breaking: a candy pop -- a tiny click, a bubble that chirps up as it
+## bursts, and a sugary crunch of filtered noise under it. `variant` (0-2)
+## nudges the bubble's note and the crunch, so a clear's pops don't all match.
+static func _pop(variant: int) -> AudioStreamWAV:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 31 + variant
+	var n := int(SAMPLE_RATE * 0.14)
+	var samples := PackedFloat32Array()
+	samples.resize(n)
+	var f0: float = [430.0, 480.0, 400.0][variant]
+	var phase := 0.0
+	var fast := 0.0
+	var slow := 0.0
+	for i in range(n):
+		var t := float(i) / SAMPLE_RATE
+		var noise := rng.randf_range(-1.0, 1.0)
+		# The bubble: up from f0 to about 2.4x as it bursts, gone in ~70 ms.
+		var f := f0 * (1.0 + 1.4 * (1.0 - exp(-t * 55.0)))
+		phase += TAU * f / SAMPLE_RATE
+		var bubble := (sin(phase) + 0.28 * sin(phase * 2.0) * exp(-t * 40.0)) * exp(-t * 34.0)
+		# The crunch: noise band-passed (a fast low-pass less a slow one).
+		fast += (noise - fast) * 0.55
+		slow += (noise - slow) * (0.08 + 0.03 * float(variant))
+		var crunch := (fast - slow) * exp(-t * 42.0) * (0.75 + 0.25 * sin(t * 900.0))
+		var click := noise * exp(-t * 1100.0)
+		var attack := minf(t / 0.0015, 1.0)
+		samples[i] = (bubble * 0.55 + crunch * 0.45 + click * 0.3) * attack * 0.6
+	return _make_stream(samples)
+
+
+## Stone breaking: a low thud and a gritty crackle of chips settling.
+static func _crack() -> AudioStreamWAV:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 77
+	var n := int(SAMPLE_RATE * 0.2)
+	var samples := PackedFloat32Array()
+	samples.resize(n)
+	var phase := 0.0
+	var grain := 0.0
+	var low := 0.0
+	for i in range(n):
+		var t := float(i) / SAMPLE_RATE
+		phase += TAU * lerpf(160.0, 62.0, minf(t / 0.09, 1.0)) / SAMPLE_RATE
+		var thud := sin(phase) * exp(-t * 26.0)
+		# Crackle: little impulses, thick at first and thinning out, each ringing off.
+		if rng.randf() < 0.12 * exp(-t * 18.0):
+			grain = rng.randf_range(-1.0, 1.0)
+		grain *= 0.86
+		low += (grain - low) * 0.45
+		var click := rng.randf_range(-1.0, 1.0) * exp(-t * 700.0)
+		var attack := minf(t / 0.001, 1.0)
+		samples[i] = (thud * 0.6 + low * 0.9 + click * 0.35) * attack * 0.6
+	return _make_stream(samples)
+
+
+## Bell-like notes struck one after another `step` seconds apart, each ringing
+## on under the next (a fundamental, an octave and a faint glassy partial).
+static func _chime(freqs: Array, step: float, vol: float) -> AudioStreamWAV:
+	var ring := 0.32
+	var n := int(SAMPLE_RATE * (step * float(freqs.size() - 1) + ring))
+	var samples := PackedFloat32Array()
+	samples.resize(n)
+	for k in freqs.size():
+		var f: float = freqs[k]
+		var start := int(SAMPLE_RATE * step * float(k))
+		for i in range(start, mini(start + int(SAMPLE_RATE * ring), n)):
+			var t := float(i - start) / SAMPLE_RATE
+			var env := minf(t / 0.002, 1.0) * exp(-t * 11.0)
+			var s := sin(TAU * f * t) + 0.35 * sin(TAU * f * 2.0 * t) * exp(-t * 8.0) + 0.12 * sin(TAU * f * 3.01 * t) * exp(-t * 20.0)
+			samples[i] += s * env * vol * 0.75
 	return _make_stream(samples)

@@ -129,6 +129,9 @@ const BOMB_DROP_PX := 96.0
 const BOMB_DROP_SECONDS := 0.32
 var _fx: TSFxLayer          # the boosters' sparks, puffs, rings and flashes
 var _pop_clock := 0         # when the last block-pop sound played (msec), so a big clear is one pop per beat
+var _shimmer_clock := 0     # when the last big clear's shimmer played (msec)
+const POP_SCALE := [0, 2, 4, 7, 9, 12, 14, 16]   # semitones up for chain waves 1, 2, 3...: major pentatonic
+const SHIMMER_CLEAR := 12   # blocks in one clear for the sparkle on top of the pops
 var _shake := 0.0           # how hard the camera shakes, in world units, fading out
 var _sparkle_clock := 0.0   # paces the armed bomb's fuse sparks and the Any Piece's shimmer
 var _swap_flyer: Control    # the Any Piece's icon while it flies to the tray
@@ -2417,7 +2420,14 @@ func _on_tile_popped(at: Vector3, outward: Vector3, kind: int, step: int, total:
 	var now := Time.get_ticks_msec()
 	if now - _pop_clock > 45:   # one pop sound, ring and nudge per beat, not per block
 		_pop_clock = now
-		TSSfx.play("crack" if stone else "pop", 1.0 + 0.12 * float(mini(step - 1, 6)) + randf_range(-0.04, 0.04))
+		# Each wave of a chain a step up the major pentatonic scale, so a long
+		# chain climbs like a tune; a hair of detune keeps repeats alive.
+		var note: int = POP_SCALE[mini(step - 1, POP_SCALE.size() - 1)]
+		var pitch := pow(2.0, float(note) / 12.0) * randf_range(0.985, 1.015)
+		TSSfx.play("crack" if stone else "pop%d" % (randi() % 3), pitch)
+		if total >= SHIMMER_CLEAR and step == 1 and now - _shimmer_clock > 400:   # a big clear sparkles on top, once
+			_shimmer_clock = now
+			TSSfx.play("shimmer", pitch)
 		_shake_screen(0.05 + 0.02 * float(mini(step, 4)))
 		if seen:
 			_fx.ring(p, Color(colour.lightened(0.5), 0.9), 10.0, 70.0 + 10.0 * float(mini(step, 4)), 0.3)
