@@ -85,8 +85,12 @@ func build() -> void:
 	if features:
 		TSHunt.roll()
 	_refresh_side()
-	var walkthrough := false
-	if features and not TSProfile.home_tutorial_seen:
+	# Off on the season's voyage first: walkthroughs, the sale and the board
+	# results wait for Home on the new planet.
+	var walkthrough := TSProfile.voyage_due()
+	if walkthrough:
+		pass
+	elif features and not TSProfile.home_tutorial_seen:
 		_start_home_tutorial()
 		walkthrough = true
 	elif daily_btn.visible and not TSProfile.daily_callout_seen:

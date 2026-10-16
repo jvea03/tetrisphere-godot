@@ -269,10 +269,12 @@ func _test_collection() -> void:
 	TSProfile.planet_theme = "autumn"
 	_check("a planet with no season yet takes this one: no voyage straight away", not TSProfile.voyage_due() and TSProfile.planet_season == TSProfile.battle_pass_season_number())
 	_check("no voyage within the season", TSProfile.take_voyage() == 0)
+	TSProfile.part_level[TSProfile.PART_NOSE] = 1
+	TSProfile.part_builds[TSProfile.PART_NOSE] = {"end": int(Time.get_unix_time_from_system()) + 999999, "critter": 0}   # mid-build at the turn of the season
 	TSClock.offset = Time.get_unix_time_from_datetime_string("2026-12-02T10:00:00") - Time.get_unix_time_from_system()
 	var points := TSProfile.collection_points()
 	var planet := TSProfile.planet_number
-	var reward := TSProfile.launch_reward()
+	var reward := TSProfile.launch_reward() + TSProfile.LAUNCH_REWARD_PER_LEVEL   # the running build counts
 	_check("a new season: the voyage is due", TSProfile.voyage_due())
 	var paid := TSProfile.take_voyage()
 	_check("the voyage pays %s (more for the ship's upgrades)" % TSProfile.fmt_coins(reward), paid >= reward and reward > TSProfile.LAUNCH_REWARD_BASE and TSProfile.last_voyage_reward == paid)

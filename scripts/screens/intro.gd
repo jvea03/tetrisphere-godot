@@ -62,7 +62,12 @@ var _tap_hint: Label
 ## sits in the middle and the background carries on past both sides.
 func _recenter() -> void:
 	if _stage != null:
-		_stage.position.x = maxf(0.0, (get_viewport_rect().size.x - 720.0) * 0.5)
+		_stage.position = _stage_origin()
+
+
+## Where the 720 px stage sits: centred on a wider screen (the shake adds to it).
+func _stage_origin() -> Vector2:
+	return Vector2(maxf(0.0, (get_viewport_rect().size.x - 720.0) * 0.5), 0.0)
 
 
 func _ready() -> void:
@@ -168,7 +173,7 @@ func _process(delta: float) -> void:
 	_flash.modulate.a = clampf(1.0 - (_t - IMPACT) / 0.5, 0.0, 1.0) if _t >= IMPACT else 0.0
 	_tap_hint.visible = _t >= DONE + 0.4
 	_tap_hint.modulate.a = 0.8 + 0.2 * sin(_t * 4.0)
-	_stage.position = _shake()
+	_stage.position = _stage_origin() + _shake()
 	_stage.queue_redraw()
 
 
@@ -219,7 +224,7 @@ func _captions() -> Array:
 
 ## The colours of the planet the ship crashes on: ground, ground_dark, sky_top, sky_low.
 func _planet() -> Dictionary:
-	return TSShipScene.PLANETS[0]
+	return TSShipScene.planet_colours(1, TSShipScene.theme_name())   # as Home shows the first planet
 
 
 ## Scenery over the crash site's ground, before the crater (the voyage dresses
@@ -385,7 +390,7 @@ func _draw_space() -> void:
 
 func _draw_crash_site() -> void:
 	var planet := _planet()
-	_stage.draw_polygon(PackedVector2Array([Vector2(-WIDE, -40), Vector2(720 + WIDE, -40), Vector2(720 + WIDE, HORIZON), Vector2(-WIDE, HORIZON)]),
+	_stage.draw_polygon(PackedVector2Array([Vector2(-WIDE, -40), Vector2(720 + WIDE, -40), Vector2(720 + WIDE, HORIZON + 60.0), Vector2(-WIDE, HORIZON + 60.0)]),
 		PackedColorArray([planet["sky_top"], planet["sky_top"], planet["sky_low"], planet["sky_low"]]))
 	# Gentle hills along the horizon, then the ground.
 	var ground := PackedVector2Array([Vector2(-WIDE, 1320.0 + TALL)])

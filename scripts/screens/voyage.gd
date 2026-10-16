@@ -48,7 +48,7 @@ func _process(delta: float) -> void:
 			TSSfx.play("whoosh", 0.8)
 			TSHaptics.heavy()
 		_update_lift_smoke(delta)
-		_stage.position = Vector2(sin(_v * 53.0), cos(_v * 47.0)) * (3.0 if _v < LIFT_RUMBLE else 6.0 * clampf(1.0 - (_v - LIFT_RUMBLE) / 1.4, 0.0, 1.0))
+		_stage.position = _stage_origin() + Vector2(sin(_v * 53.0), cos(_v * 47.0)) * (3.0 if _v < LIFT_RUMBLE else 6.0 * clampf(1.0 - (_v - LIFT_RUMBLE) / 1.4, 0.0, 1.0))
 		_stage.queue_redraw()
 		return
 	super(delta)

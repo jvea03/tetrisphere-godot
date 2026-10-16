@@ -1081,6 +1081,9 @@ static func voyage_due() -> bool:
 static func take_voyage() -> int:
 	if not voyage_due():
 		return 0
+	# Builds still running were paid for: they finish on the way, so they count.
+	for i in part_builds.keys():
+		_complete_build(int(i))
 	var reward := boost_earned_coins(launch_reward())
 	coin_count += reward
 	part_builds.clear()   # a new planet: every builder is free
