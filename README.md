@@ -461,7 +461,22 @@ A cute, hand-drawn style, all in `scripts/toon.gd` (`TSToon`):
   blockers. From level 100 on every third level (100, 103, 106...; never a
   vine level), 3 padlocks (4 in Expert and Extreme), in place of tie-downs
   (`TSLevels.LOCK_FROM_LEVEL`, `LOCK_COUNT`).
-- **A new blocker's first egg is a breather**: it plays at Intermediate at
+- **Prism stones** (`TSBoard.prisms`): clear crystal blockers tinted one of
+  the level's colours, with a gem of it on top. **Only a match of that colour
+  popping beside one breaks it** -- the Any Piece counts as every colour --
+  while other pops, bombs and rocks just make it chime, and slides can't
+  smash it. Never two of a colour touching. From level 150 on every third
+  level (150, 153...), 2 to an egg (3 in Expert and Extreme), in place of
+  tie-downs (`TSLevels.PRISM_FROM_LEVEL`, `PRISM_COUNT`).
+- **Fog** (`TSBoard.fog`): soft white clouds over 2x2 patches of the egg that
+  **hide the colours under them** (they show grey, and the aim's glow is
+  hidden too). A pop beside a fogged cell blows it clear; a bomb or rock that
+  touches a cloud blows it all away. Never over the key. From level 200 on
+  every third level, 1 cloud (2 in Expert and Extreme); fog only hides, so it
+  can share an egg with other blockers (`TSLevels.FOG_FROM_LEVEL`,
+  `FOG_COUNT`). The sim's bot sees through fog, so its numbers for fog
+  levels run a little kind.
+- **A new blocker's first egg is a breather** (levels 50, 100, 150, 200): it plays at Intermediate at
   most (`TSLevels.difficulty_for_level`), with 2 of the blocker
   (`INTRO_COUNT`), a friendlier deal (`INTRO_BIAS`) and a lesson card -- level
   50 (vines) plays at 96% for the casual bot, level 100 (padlocks) at 67%.

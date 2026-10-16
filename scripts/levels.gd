@@ -186,6 +186,7 @@ const SEED_SHIFT := {
 	34: 3, 42: 1, 58: 6, 63: 6, 64: 2,                 # Hard
 	22: 10, 54: 5, 60: 4, 46: 8,                       # Expert (46 softened from Extreme)
 	100: 6,                                            # lock & key's first egg (Intermediate: see difficulty_for_level)
+	200: 10,                                           # fog's first egg (a breather; the sim sees through fog, so it is kinder still)
 	61: 2, 70: 3,                                      # Extreme
 }
 

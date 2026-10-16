@@ -1162,7 +1162,8 @@ func _show_aim() -> void:
 	aim_combo = board.combo_preview(current_offsets(), cursor, cur_type, _current_depth())
 	# The Any Piece's footprint wears the colour it will turn into there.
 	var shown := board.wild_kind(current_offsets(), cursor, _current_depth()) if cur_type == TSBoard.WILD else cur_type
-	if aim_combo > 0:
+	# Fog hides what is under it, the aim's glow included.
+	if aim_combo > 0 and not _near_fog(cols):
 		_ghost_root.add_child(view.make_plate(shown, cols, depths, 0.75, 0.45))
 	else:
 		_ghost_root.add_child(view.make_plate(shown, cols, depths, 0.32, 0.0))
@@ -2308,6 +2309,10 @@ func _maybe_start_tutorials() -> void:
 		_start_vine_tutorial()
 	elif not board.locked.is_empty() and not TSProfile.lock_tutorial_seen:
 		_start_lock_tutorial()
+	elif not board.prisms.is_empty() and not TSProfile.prism_tutorial_seen:
+		_start_blocker_card(board.prisms.keys()[0], func() -> void: TSProfile.prism_tutorial_seen = true, "Prism stones! Only a match of the prism's own colour, popped right next to it, breaks it -- bombs and rocks just bounce off. The Any Piece counts as every colour.")
+	elif not board.fog.is_empty() and not TSProfile.fog_tutorial_seen:
+		_start_blocker_card(board.top_piece(board.fog.keys()[0].x, board.fog.keys()[0].y), func() -> void: TSProfile.fog_tutorial_seen = true, "Fog! You can't see the colours under a cloud. Pop a piece right next to it to blow that part clear -- a bomb or a rock clears the whole cloud.")
 	elif TSProfile.swaps_unlocked and not TSProfile.swap_tutorial_seen:
 		_start_booster_tutorial(_btn_swap, "swap", "The Any Piece! Tap it to turn your piece into a wild block that becomes whatever it touches -- drop it by any pair to make a match. Here are %d to start." % TSProfile.SWAP_UNLOCK_GRANT)
 	elif TSProfile.rocks_unlocked and not TSProfile.rocks_tutorial_seen:
@@ -2399,6 +2404,21 @@ func _start_lock_tutorial() -> void:
 			return _piece_rect(key),
 			"text": "The key is buried under the gold glint. Dig down to it and pop it, and every padlock on the egg snaps open!"})
 	_tutorial.start(steps)
+
+
+## A new blocker's first egg: the camera turns to piece `id` and one card
+## explains it; `seen` marks it seen.
+func _start_blocker_card(id: int, seen: Callable, text: String) -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if not is_inside_tree() or not board.plate_cols.has(id):
+		return
+	_face(Vector2(board.plate_cols[id][0]))
+	_snap_camera()
+	_tutorial.finished.connect(func():
+		seen.call()
+		TSProfile.save(), CONNECT_ONE_SHOT)
+	_tutorial.start([{"rect": func() -> Rect2: return _piece_rect(id), "text": text}])
 
 
 ## Level 1's walkthrough: the ball, the gestures, the pieces, the aim, the hearts.
@@ -2662,7 +2682,15 @@ func _on_tile_popped(at: Vector3, outward: Vector3, kind: int, step: int, total:
 	# and shatters into crystal when it opens, a stone cracks; pieces pop. Each
 	# sound plays once a beat, so a clear of mixed blocks is heard as all of them.
 	var sound := "pop"
-	if event == "vine":
+	if event == "prism":
+		sound = "prism"
+		colour = (TSBoardView.TYPE_COLORS[kind] as Color).lerp(Color.WHITE, 0.3)
+	elif event == "prism_break":
+		sound = "shatter"
+	elif event == "fog":
+		sound = "puff"
+		colour = TSBoardView.FOG_PUFF
+	elif event == "vine":
 		sound = "snip"
 		colour = TSBoardView.VINE_LEAF
 	elif event == "locked":
@@ -2697,12 +2725,19 @@ func _on_tile_popped(at: Vector3, outward: Vector3, kind: int, step: int, total:
 				_fx.burst(p, [Color(1.0, 0.86, 0.42), Color.WHITE], 5, 360.0, 0.35, 6.0, 500.0, true)
 			"snap":    # splinters of the stake
 				_fx.burst(p, [colour, colour.lightened(0.3)], 6, 420.0, 0.5, 5.0, 900.0)
+			"shatter" when event == "prism_break":   # a rainbow of crystal
+				_fx.burst(p, TSFxLayer.RAINBOW, 10, 420.0, 0.6, 8.0, 300.0, true)
 			"shatter": # crystal glinting out of the geode
 				_fx.burst(p, [Color(0.82, 1.0, 0.98), Color(0.55, 0.92, 0.9), Color.WHITE], 7, 380.0, 0.6, 8.0, 300.0, true)
 			"snip":    # leaves fluttering down
 				_fx.burst(p, [TSBoardView.VINE_LEAF, TSBoardView.VINE_GREEN], 6, 300.0, 0.7, 7.0, 500.0)
 			"clink":   # a glint off the padlock
 				_fx.burst(p, [TSBoardView.LOCK_GOLD, Color.WHITE], 3, 220.0, 0.3, 6.0, 0.0, true)
+			"prism":   # a glint off the crystal
+				_fx.burst(p, [colour, Color.WHITE], 3, 200.0, 0.3, 6.0, 0.0, true)
+			"puff":    # wisps of cloud drifting off
+				for k in 3:
+					_fx.puff(p + Vector2(randf_range(-20.0, 20.0), randf_range(-12.0, 12.0)), Color(1, 1, 1, 0.8), 18.0, 0.6, Vector2(randf_range(-40.0, 40.0), -50.0))
 			"unlock":  # the padlock springing open
 				_fx.burst(p, [TSBoardView.LOCK_GOLD, Color(1.0, 0.95, 0.7), Color.WHITE], 9, 420.0, 0.6, 9.0, 300.0, true)
 				_fx.ring(p, Color(TSBoardView.LOCK_GOLD, 0.9), 10.0, 80.0, 0.35)
@@ -2749,3 +2784,18 @@ func _vines_spread(id: int) -> void:
 		var v: Vector2i = board.plate_cols[id][0]
 		var at := _camera.unproject_position(view.to_global(TSBoardView.cell_transform(v.x, v.y, float(board.depth_of(id))).origin))
 		_fx.burst(at, [TSBoardView.VINE_LEAF, TSBoardView.VINE_GREEN], 8, 260.0, 0.7, 8.0, 200.0))
+
+
+## Whether any of `cols` -- or a cell beside one -- is under fog (TSBoard.fog).
+func _near_fog(cols: Array) -> bool:
+	if board.fog.is_empty():
+		return false
+	for col in cols:
+		var v: Vector2i = col
+		if board.fog.has(v):
+			return true
+		for dir in TSBoard.DIRS:
+			var dv: Vector2i = dir
+			if board.fog.has(Vector2i(board.wrap_col(v.x + dv.x), v.y + dv.y)):
+				return true
+	return false

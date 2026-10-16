@@ -88,6 +88,12 @@ const LOCK_GOLD := Color(1.0, 0.78, 0.28)
 const LOCK_HOLE := Color(0.27, 0.16, 0.19)
 const KEY_GOLD := Color(1.0, 0.86, 0.36)
 const KEY_GLINT := Color(1.0, 0.93, 0.62)
+## Prisms: the stone glassy, half way to white in its colour, with a gem of the
+## colour itself and a glint on top. Fog: whatever is under it shows grey, with
+## a soft cloud of white puffs over it.
+const PRISM_GLASS := 0.55
+const FOG_GREY := Color(0.9, 0.91, 0.95)
+const FOG_PUFF := Color(0.98, 0.98, 1.0)
 ## The cable from a tie-down to the critter: rope tan.
 const WIRE_COLOR := Color(0.93, 0.76, 0.5)
 const WIRE_RADIUS := 0.05
@@ -385,6 +391,16 @@ func rebuild() -> void:
 					sets[key] = []
 				var shade := depth_shade(d, board.shell_depth)
 				var colour: Color = ARMOR_COLOR if board.armored.has(p) else TYPE_COLORS[kind]
+				var fogged := board.fog.has(Vector2i(c, r)) and _open_above(stack, d)
+				if board.prisms.has(p):
+					colour = (TYPE_COLORS[int(board.prisms[p])] as Color).lerp(Color.WHITE, PRISM_GLASS)
+				if fogged:
+					# Under fog: grey, nothing on it shown, a cloud of puffs above.
+					sets[key].append([FOG_GREY, Color(c, r, d, shade)])
+					for k in 3:   # big soft puffs, overlapping into one cloud
+						var off: Vector2 = [Vector2(-0.2, 0.12), Vector2(0.2, 0.12), Vector2(0.0, -0.16)][k]
+						studs.append([FOG_PUFF, Color(c + off.x, r + off.y, d + ARMOR_STUD_RISE * (2.0 + float(k)), shade)])
+					continue
 				if board.vined.has(p):
 					colour = colour.lerp(VINE_GREEN, VINE_TINT)
 				sets[key].append([colour, Color(c, r, d, shade)])
@@ -395,6 +411,9 @@ func rebuild() -> void:
 					for k in [-1.0, 0.0, 1.0]:
 						pips.append([VINE_GREEN, Color(c + k * 0.26, r + k * 0.26 * zig, d + ARMOR_STUD_RISE, shade)])
 					pips.append([VINE_LEAF, Color(c + 0.24, r - 0.24 * zig, d + ARMOR_STUD_RISE * 1.5, shade)])
+				if board.prisms.has(p) and open:
+					studs.append([TYPE_COLORS[int(board.prisms[p])], Color(c, r, d + ARMOR_STUD_RISE, shade)])
+					pips.append([Color.WHITE, Color(c - 0.12, r - 0.12, d + ARMOR_STUD_RISE * 2.0, shade)])
 				if board.locked.has(p) and open:
 					studs.append([LOCK_GOLD, Color(c, r, d + ARMOR_STUD_RISE, shade)])
 					pips.append([LOCK_HOLE, Color(c, r, d + ARMOR_STUD_RISE * 2.0, shade)])
@@ -536,8 +555,9 @@ func spawn_clear_fx(fx: Array) -> void:
 			colour = VINE_LEAF      # the vine flies off; the piece stays
 		elif event == "unlock":
 			colour = LOCK_GOLD      # the padlock flies off; a plain blocker stays
-		elif event == "locked":
-			# A padlock shrugs the hit off: nothing breaks, it only clinks.
+		elif event in ["locked", "prism", "fog"]:
+			# A padlock or a prism shrugs the hit off, or a wisp of fog blows
+			# away: nothing breaks -- it only clinks, chimes or puffs.
 			var at := _fx_root.to_global(xf.origin)
 			var out := (at - global_position).normalized()
 			var wait := create_tween()

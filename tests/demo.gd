@@ -28,6 +28,11 @@ func _ready() -> void:
 	# The camera no longer follows the aim by itself; turn to the last drop.
 	if state == State.PLAYING:
 		_face(_piece_centre())
+	for a in OS.get_cmdline_user_args():
+		if a == "--face=prism" and not board.prisms.is_empty():   # store_shot: show a prism
+			_face(Vector2(board.plate_cols[board.prisms.keys()[0]][0]))
+		elif a == "--face=fog" and not board.fog.is_empty():
+			_face(Vector2(board.fog.keys()[0]))
 
 
 func _aim_best(rng: RandomNumberGenerator) -> void:

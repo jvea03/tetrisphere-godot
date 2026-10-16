@@ -230,6 +230,10 @@ static func _stream(name: String) -> AudioStreamWAV:
 				_streams[name] = _glass([1568.0], 0.0, 0.16)
 			"unlock":
 				_streams[name] = _unlock()
+			"prism":
+				_streams[name] = _glass([2093.0, 2637.0], 0.05, 0.22)
+			"puff":
+				_streams[name] = _puff()
 			"win":
 				_streams[name] = _fanfare()
 			"windup":
@@ -870,4 +874,23 @@ static func _unlock() -> AudioStreamWAV:
 				var f: float = notes[k]
 				s += (sin(TAU * f * tn) + 0.3 * sin(TAU * f * 2.0 * tn)) * exp(-tn * 9.0) * 0.16
 		samples[i] = s * minf(t / 0.0008, 1.0)
+	return _make_stream(samples)
+
+
+## Fog blowing away: a soft breathy whoosh of filtered noise.
+static func _puff() -> AudioStreamWAV:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 101
+	var n := int(SAMPLE_RATE * 0.35)
+	var samples := PackedFloat32Array()
+	samples.resize(n)
+	var fast := 0.0
+	var slow := 0.0
+	for i in range(n):
+		var t := float(i) / SAMPLE_RATE
+		var p := t / 0.35
+		var noise := rng.randf_range(-1.0, 1.0)
+		fast += (noise - fast) * lerpf(0.3, 0.08, p)
+		slow += (noise - slow) * 0.02
+		samples[i] = (fast - slow) * sin(PI * minf(p * 2.5, 1.0)) * (1.0 - p) * 0.9
 	return _make_stream(samples)

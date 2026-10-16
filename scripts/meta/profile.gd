@@ -34,6 +34,8 @@ static func use_test_profile(level := 1) -> void:
 	geode_tutorial_seen = true
 	vine_tutorial_seen = true
 	lock_tutorial_seen = true
+	prism_tutorial_seen = true
+	fog_tutorial_seen = true
 	bomb_tutorial_seen = true
 	slide_tutorial_seen = true
 	bombs_unlocked = true
@@ -246,6 +248,8 @@ static var tie_tutorial_seen: bool = false # the tie-down walkthrough, once, on 
 static var geode_tutorial_seen: bool = false # the geode walkthrough, once, on the first egg with them
 static var vine_tutorial_seen: bool = false # the creeping-vines card, once, on the first egg with them
 static var lock_tutorial_seen: bool = false # the lock-and-key card, once, on the first egg with padlocks
+static var prism_tutorial_seen: bool = false # the prism card, once, on the first egg with prisms
+static var fog_tutorial_seen: bool = false # the fog card, once, on the first egg with fog
 static var bomb_tutorial_seen: bool = false # the bomb walkthrough, once, when bombs arrive
 static var slide_tutorial_seen: bool = false # the sliding walkthrough, once, at level 2
 static var club_intro_seen: bool = false
@@ -2411,6 +2415,8 @@ static func ensure_loaded() -> void:
 	geode_tutorial_seen = bool(g.call("geode_tutorial_seen", false))
 	vine_tutorial_seen = bool(g.call("vine_tutorial_seen", false))
 	lock_tutorial_seen = bool(g.call("lock_tutorial_seen", false))
+	prism_tutorial_seen = bool(g.call("prism_tutorial_seen", false))
+	fog_tutorial_seen = bool(g.call("fog_tutorial_seen", false))
 	bomb_tutorial_seen = bool(g.call("bomb_tutorial_seen", false))
 	slide_tutorial_seen = bool(g.call("slide_tutorial_seen", false))
 	club_intro_seen = bool(g.call("club_intro_seen", false))
@@ -2524,6 +2530,8 @@ static func save() -> void:
 	s.call("geode_tutorial_seen", geode_tutorial_seen)
 	s.call("vine_tutorial_seen", vine_tutorial_seen)
 	s.call("lock_tutorial_seen", lock_tutorial_seen)
+	s.call("prism_tutorial_seen", prism_tutorial_seen)
+	s.call("fog_tutorial_seen", fog_tutorial_seen)
 	s.call("bomb_tutorial_seen", bomb_tutorial_seen)
 	s.call("slide_tutorial_seen", slide_tutorial_seen)
 	s.call("club_intro_seen", club_intro_seen)

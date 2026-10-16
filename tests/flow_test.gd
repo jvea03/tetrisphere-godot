@@ -308,6 +308,19 @@ func _run() -> void:
 	_tutorial._finish()
 	_check("and it is marked seen", TSProfile.lock_tutorial_seen)
 
+	for debut in [[TSLevels.PRISM_FROM_LEVEL, "prism"], [TSLevels.FOG_FROM_LEVEL, "fog"]]:
+		if debut[1] == "prism":
+			TSProfile.prism_tutorial_seen = false
+		else:
+			TSProfile.fog_tutorial_seen = false
+		_start_level(int(debut[0]))
+		for _i in 4:
+			await get_tree().process_frame
+		var has: bool = not board.prisms.is_empty() if debut[1] == "prism" else not board.fog.is_empty()
+		_check("level %d has %s and opens its card (a breather)" % [debut[0], debut[1]], has and _tutorial.visible and difficulty <= 1)
+		_tutorial._finish()
+		_check("and it is marked seen", TSProfile.prism_tutorial_seen if debut[1] == "prism" else TSProfile.fog_tutorial_seen)
+
 	# A real drop on a vine egg with nothing cut, three times: the vines spread.
 	_start_level(TSLevels.VINE_FROM_LEVEL + 3)
 	for _i in 4:
