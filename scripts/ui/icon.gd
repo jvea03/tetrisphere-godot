@@ -610,9 +610,16 @@ func _draw_calendar() -> void:
 ## The Battle Pass: an autumn maple leaf, orange with red-gold veins and a
 ## curling stem, for the season.
 func _draw_pass() -> void:
-	if TSProfile.season_theme() == "christmas":
-		_draw_pass_tree()
-		return
+	match TSProfile.season_theme():
+		"christmas":
+			_draw_pass_tree()
+			return
+		"newyear":
+			_draw_pass_firework()
+			return
+		"valentine":
+			_draw_pass_heart()
+			return
 	var leaf := [
 		Vector2(0.50, 0.04), Vector2(0.57, 0.21), Vector2(0.67, 0.15), Vector2(0.64, 0.32),
 		Vector2(0.82, 0.22), Vector2(0.77, 0.38), Vector2(0.94, 0.42), Vector2(0.79, 0.52),
@@ -1127,3 +1134,33 @@ func _draw_pass_tree() -> void:
 	for b in baubles:
 		_circle(b[0], 0.045, b[1])
 	_poly(_star_pts(Vector2(0.5, 0.13), 0.12, 0.055), Color(1.0, 0.84, 0.3))
+
+
+## The Battle Pass at New Year's: a firework bursting -- rays of colour flying
+## out from a gold star, each ending in a spark.
+func _draw_pass_firework() -> void:
+	var c := Vector2(0.5, 0.5)
+	var colours := [Color(1.0, 0.5, 0.66), Color(1.0, 0.84, 0.36), Color(0.56, 0.8, 1.0), Color(0.62, 0.92, 0.66)]
+	for k in 8:
+		var a := TAU * float(k) / 8.0 - PI / 8.0
+		var dir := Vector2(cos(a), sin(a))
+		var col: Color = colours[k % colours.size()]
+		_line([c + dir * 0.17, c + dir * 0.34], _col(col) if not silhouette else _col(GOLD), 1.6)
+		_circle(c + dir * 0.4, 0.05, col)
+	_poly(_star_pts(c, 0.16, 0.07), _col(Color(1.0, 0.84, 0.3)))
+
+
+## The Battle Pass on Valentine's: a heart with a shine, Cupid's gold arrow
+## through it.
+func _draw_pass_heart() -> void:
+	if not silhouette:
+		_line([Vector2(0.12, 0.8), Vector2(0.88, 0.22)], Color(0.86, 0.62, 0.2), 1.4)
+	var pts: Array = []
+	for k in 32:
+		var t := TAU * float(k) / 32.0
+		pts.append(Vector2(0.5, 0.52) + Vector2(16.0 * pow(sin(t), 3.0), -(13.0 * cos(t) - 5.0 * cos(2.0 * t) - 2.0 * cos(3.0 * t) - cos(4.0 * t))) * 0.022)
+	_poly(pts, _col(Color(1.0, 0.4, 0.54)))
+	if silhouette:
+		return
+	_ellipse(Vector2(0.37, 0.38), 0.07, 0.045, Color(1, 1, 1, 0.65), false, -0.6)
+	_poly([Vector2(0.88, 0.22), Vector2(0.8, 0.22), Vector2(0.86, 0.3)], Color(1.0, 0.84, 0.36))

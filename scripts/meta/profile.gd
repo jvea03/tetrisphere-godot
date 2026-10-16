@@ -608,7 +608,7 @@ static func critter_level_up_cost(i: int) -> int:
 
 
 static func unlock_critter(i: int) -> bool:
-	if is_critter_unlocked(i) or is_critter_hidden(i) or coin_count < critter_unlock_cost(i):
+	if is_critter_unlocked(i) or is_critter_hidden(i) or is_critter_pass_exclusive(i) or coin_count < critter_unlock_cost(i):
 		return false
 	coin_count -= critter_unlock_cost(i)
 	var level_before := collection_level()
@@ -2043,19 +2043,23 @@ static func purchase_battle_pass() -> bool:
 ## the premium one (a free fix or upgrade of that ship part); coins and bombs
 ## are the same every season -- and its "theme", which dresses the pass (the
 ## banner, the icon). Season 1 is the autumn one that was running when the
-## calendar came in (so what players saw stays put); season 2 is Christmas.
+## calendar came in (so what players saw stays put); season 2 is Christmas,
+## 3 New Year's, 4 Valentine's.
 ## Later seasons walk the list and wrap. Each season's premium critters are
 ## pass-only.
 const BATTLE_PASS_SEASON_REWARDS := [
 	{"theme": "autumn", "free_critters": {15: 31, 30: 99}, "paid_critters": {1: 52, 30: 82}, "paid_parts": {25: PART_COCKPIT}}, # Autumn, Patch; Camper, Turkey; the cockpit
 	{"theme": "christmas", "free_critters": {15: 70, 30: 3}, "paid_critters": {1: 91, 30: 71}, "paid_parts": {25: PART_ENGINE}}, # Snowman, Ginger; Santa, Frost Queen; the engine
+	{"theme": "newyear", "free_critters": {15: 49, 30: 56}, "paid_critters": {1: 32, 30: 4}, "paid_parts": {25: PART_FINS}}, # Party, Flurry; Firework, Goldie; the fins
+	{"theme": "valentine", "free_critters": {15: 87, 30: 11}, "paid_critters": {1: 42, 30: 101}, "paid_parts": {25: PART_PORTHOLES}}, # Rosie, Smooch; Cupid, Princess; the portholes
 ]
 ## Pass-only: the premium critters -- the Camper and the Turkey (autumn),
-## Santa and the Frost Queen (Christmas).
-const BATTLE_PASS_EXCLUSIVE_CRITTERS := [52, 82, 91, 71]
+## Santa and the Frost Queen (Christmas), Firework and Goldie (New Year),
+## Cupid and the Princess (Valentine's).
+const BATTLE_PASS_EXCLUSIVE_CRITTERS := [52, 82, 91, 71, 32, 4, 42, 101]
 
 
-## The theme dressing the pass this season ("autumn", "christmas").
+## The theme dressing the pass this season ("autumn", "christmas", "newyear", "valentine").
 static func season_theme() -> String:
 	return str(season_rewards().get("theme", "autumn"))
 

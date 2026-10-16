@@ -382,16 +382,19 @@ func on_back_requested() -> bool:
 
 
 ## The banner across the top, dressed for the season: the autumn picture, or
-## for Christmas the drawn snowy scene (TSHolidayBanner), its corners rounded
-## by the panel it sits in. Both share the picture's proportions.
+## for a holiday season the drawn scene (TSHolidayBanner: Christmas, New
+## Year's, Valentine's), its corners rounded by the panel it sits in. Both
+## share the picture's proportions.
 func _season_banner() -> Control:
-	if TSProfile.season_theme() == "christmas":
+	var theme := TSProfile.season_theme()
+	if TSHolidayBanner.THEMES.has(theme):
 		var frame := Panel.new()
-		frame.add_theme_stylebox_override("panel", TSUI.sb(TSHolidayBanner.SKY_TOP, 30, 0))
+		frame.add_theme_stylebox_override("panel", TSUI.sb(TSHolidayBanner.sky_color(theme), 30, 0))
 		frame.clip_children = CanvasItem.CLIP_CHILDREN_AND_DRAW
 		frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		frame.custom_minimum_size = Vector2(0, roundf((TSUI.WIDTH - 48.0) * float(BANNER.get_height()) / float(BANNER.get_width())))
 		var art := TSHolidayBanner.new()
+		art.holiday = theme
 		art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		frame.add_child(art)

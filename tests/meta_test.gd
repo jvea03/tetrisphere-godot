@@ -91,11 +91,20 @@ func _test_battle_pass() -> void:
 	var s2 := TSProfile.battle_pass_season_number() == 2 and TSProfile.season_theme() == "christmas" and int(TSProfile.season_rewards()["paid_critters"][1]) == 91
 	var s2_left := absi(TSProfile.battle_pass_seconds_remaining() - (TSProfile.BATTLE_PASS_DAYS * 86400 - 30)) <= 2
 	at.call("2026-12-29T00:00:30")
-	var s3 := TSProfile.battle_pass_season_number() == 3
+	var s3 := TSProfile.battle_pass_season_number() == 3 and TSProfile.season_theme() == "newyear" and int(TSProfile.season_rewards()["paid_critters"][1]) == 32
+	at.call("2027-01-26T00:00:30")
+	var s4 := TSProfile.battle_pass_season_number() == 4 and TSProfile.season_theme() == "valentine" and int(TSProfile.season_rewards()["paid_critters"][1]) == 42
+	at.call("2027-02-14T12:00:00")
+	var vday := TSProfile.season_theme() == "valentine"
 	TSClock.offset = was
 	_check("season 1 runs Oct 16 - Nov 30 (autumn, the old season's key); time left counts to Dec 1", s1 and s1_left and still_1)
-	_check("season 2 is Christmas from Dec 1 for %d days (Santa at premium tier 1); season 3 follows" % TSProfile.BATTLE_PASS_DAYS, s2 and s2_left and s3)
-	_check("the Christmas premium critters are pass-only", TSProfile.is_critter_pass_exclusive(91) and TSProfile.is_critter_pass_exclusive(71))
+	_check("season 2 is Christmas from Dec 1 for %d days (Santa at premium tier 1)" % TSProfile.BATTLE_PASS_DAYS, s2 and s2_left)
+	_check("season 3 is New Year's from Dec 29 (Firework), season 4 Valentine's from Jan 26 (Cupid), over Feb 14", s3 and s4 and vday)
+	var was_coins := TSProfile.coin_count
+	TSProfile.coin_count = 10000000
+	_check("pass-only critters can't be bought with coins", not TSProfile.is_critter_unlocked(101) and not TSProfile.unlock_critter(101))
+	TSProfile.coin_count = was_coins
+	_check("every season's premium critters are pass-only", TSProfile.BATTLE_PASS_SEASON_REWARDS.all(func(s: Dictionary) -> bool: return (s["paid_critters"] as Dictionary).values().all(func(c) -> bool: return TSProfile.is_critter_pass_exclusive(int(c)))))
 	TSProfile._roll_battle_pass()
 	TSProfile.last_level = 12
 	TSProfile.battle_pass_xp = 0
