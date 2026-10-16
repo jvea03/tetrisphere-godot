@@ -368,14 +368,13 @@ func _test_levels() -> void:
 	var sheet := {1: 0, 6: 0, 7: 1, 9: 0, 15: 2, 22: 3, 25: 4, 30: 3, 37: 4, 46: 4, 50: 0, 51: 1, 54: 3, 56: 4, 61: 4, 70: 4}
 	var wrong: Array = []
 	for lvl in sheet:
-		if TSLevels.difficulty_for_level(lvl) != sheet[lvl]:
+		if TSLevels._planned_tier(lvl) != sheet[lvl]:
 			wrong.append(lvl)
+	_check("softened levels play a tier easier", TSLevels.difficulty_for_level(46) == 3 and TSLevels.difficulty_for_level(23) == 1 and TSLevels.difficulty_for_level(101) == 2)
 	_check("the tiers follow Duckdoku's curve (wrong at %s)" % [wrong], wrong.is_empty())
 	var loops := true
-	for lvl in range(71, 131):
-		if lvl == TSLevels.LOCK_FROM_LEVEL or lvl - 20 == TSLevels.LOCK_FROM_LEVEL:
-			continue   # a blocker's first egg is a breather (below)
-		loops = loops and TSLevels.difficulty_for_level(lvl) == TSLevels.difficulty_for_level(lvl - 20)
+	for lvl in range(71, 131):   # (as planned: a few levels play easier, below)
+		loops = loops and TSLevels._planned_tier(lvl) == TSLevels._planned_tier(lvl - 20)
 	_check("after level 70 the 51-70 stretch repeats", loops)
 	_check("a new blocker's first egg is a breather: Intermediate at most", TSLevels.difficulty_for_level(TSLevels.LOCK_FROM_LEVEL) <= 1 and TSLevels.difficulty_for_level(TSLevels.VINE_FROM_LEVEL) <= 1)
 	var baked := true

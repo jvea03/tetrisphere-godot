@@ -126,10 +126,21 @@ static var _bank_loaded := false
 
 ## The tier a level plays at.
 static func difficulty_for_level(level: int) -> int:
+	if SOFTENED.has(level):
+		return int(SOFTENED[level])
 	# A blocker's first egg is a breather: Intermediate at most.
 	if level == VINE_FROM_LEVEL or level == LOCK_FROM_LEVEL:
 		return mini(_planned_tier(level), 1)
 	return _planned_tier(level)
+
+
+## Levels played a tier easier than the plan has them, to ease the curve where
+## it fell too fast (picked with `tests/sim.gd`): level 23 was a second hard
+## level straight after the Expert 22; Extreme levels 46 and 101 (straight
+## after the padlocks' breather) were lost on every egg, so 46 plays as Expert
+## and 101 as Hard. The pieces each level gets still take
+## turns by the plan (tier_mix counts _planned_tier), so no other level changes.
+const SOFTENED := {23: 1, 46: 3, 101: 2}
 
 
 static func _planned_tier(level: int) -> int:
@@ -161,12 +172,12 @@ static func shifted_seed(level: int, shift: int) -> int:
 
 
 const SEED_SHIFT := {
-	14: 6, 16: 1, 18: 11, 52: 7, 57: 4,                # Intermediate
-	17: 12, 20: 2, 23: 9,                              # Hard: the first stretch of them (15-23) smoothed
+	14: 6, 16: 1, 18: 11, 52: 7, 57: 4, 102: 4,        # Intermediate (23, softened from Hard, keeps its own egg)
+	17: 12, 20: 2, 39: 2, 101: 2,                      # Hard: the first stretch of them (15-23) smoothed; 39; 101 (softened from Extreme)
 	34: 3, 42: 1, 58: 6, 63: 6, 64: 2,                 # Hard
-	22: 10, 54: 5, 60: 4,                              # Expert
+	22: 10, 54: 5, 60: 4, 46: 8,                       # Expert (46 softened from Extreme)
 	100: 6,                                            # lock & key's first egg (Intermediate: see difficulty_for_level)
-	46: 2, 61: 2, 70: 3,                               # Extreme
+	61: 2, 70: 3,                                      # Extreme
 }
 
 
@@ -268,9 +279,21 @@ static func _combos(k: int, from := 0) -> Array:
 static func tier_mix(level: int) -> Array:
 	var tier := difficulty_for_level(level)
 	var combos := _combos(int(TIER_MIX[tier]))
+	# A softened level takes the first mix unlike its new tier's neighbours.
+	if SOFTENED.has(level):
+		var near: Array = []
+		for step: int in [-1, 1]:
+			var l := level + step
+			while l >= 1 and l < level + 200 and (difficulty_for_level(l) != tier or SOFTENED.has(l)):
+				l += step
+			if l >= 1 and l < level + 200:
+				near.append(tier_mix(l))
+		for c in combos:
+			if not near.has(c):
+				return c
 	var before := 0
 	for l in range(1, level):
-		if difficulty_for_level(l) == tier:
+		if _planned_tier(l) == tier:
 			before += 1
 	return combos[before % combos.size()]
 
@@ -279,7 +302,7 @@ static func tier_mix(level: int) -> Array:
 static func beginner_pair(level: int) -> Array:
 	var before := 0
 	for l in range(BEGINNER_MIX_FROM, level):
-		if difficulty_for_level(l) == 0:
+		if _planned_tier(l) == 0:
 			before += 1
 	return BEGINNER_PAIRS[before % BEGINNER_PAIRS.size()]
 
