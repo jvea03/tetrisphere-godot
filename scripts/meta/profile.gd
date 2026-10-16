@@ -1892,9 +1892,19 @@ static func standings_for(period: String) -> Array:
 
 
 # -- Battle Pass ------------------------------------------------------------------
-# A season is a rolling BATTLE_PASS_DAYS bucket; the season state resets on
-# its own the next time anything touches the pass after a boundary.
+# Seasons follow BATTLE_PASS_CALENDAR, then every BATTLE_PASS_DAYS after the
+# last date in it; the season state resets on its own the next time anything
+# touches the pass after a boundary.
 const BATTLE_PASS_DAYS := 28
+## Each season's first day, midnight UTC, in order. Season 1 opened on the
+## day this calendar came in and runs to five weeks past Oct 27 (Dec 1); season
+## 2, the Christmas one, starts then. After the last date, seasons run
+## BATTLE_PASS_DAYS each.
+const BATTLE_PASS_CALENDAR := ["2026-10-16", "2026-12-01"]
+## Season 1 carries on the season that was running when the calendar came in
+## (the old 28-day bucket 740): same saved key, so its stars, claims and any
+## bought pass carry over.
+const BATTLE_PASS_FIRST_KEY := "BP740"
 const BATTLE_PASS_TIER_COUNT := 30
 const BATTLE_PASS_TIER_BASE := 30
 const BATTLE_PASS_TIER_STEP := 1
@@ -1922,10 +1932,25 @@ static func battle_pass_stars_for_tier(tier: int) -> int:
 
 
 static func _battle_pass_key() -> String:
-	@warning_ignore("integer_division")
-	var epoch_day: int = int(TSClock.now()) / 86400
-	@warning_ignore("integer_division")
-	return "BP%d" % (epoch_day / BATTLE_PASS_DAYS)
+	var n := battle_pass_season_number()
+	return BATTLE_PASS_FIRST_KEY if n == 1 else "S%d" % n
+
+
+## The calendar's first days, in unix seconds (UTC midnight).
+static func _season_starts() -> Array:
+	var out: Array = []
+	for d in BATTLE_PASS_CALENDAR:
+		out.append(Time.get_unix_time_from_datetime_string("%sT00:00:00" % d))
+	return out
+
+
+## When season `n` (1-based) ends: the next date in the calendar, or past the
+## last one, every BATTLE_PASS_DAYS.
+static func _season_end(n: int) -> int:
+	var starts := _season_starts()
+	if n < starts.size():
+		return int(starts[n])
+	return int(starts[starts.size() - 1]) + (n - starts.size() + 1) * BATTLE_PASS_DAYS * 86400
 
 
 static func _sized_claim_array(arr: Array) -> Array:
@@ -1953,10 +1978,7 @@ static func _roll_battle_pass() -> void:
 
 static func battle_pass_seconds_remaining() -> int:
 	_roll_battle_pass()
-	var now := int(TSClock.now())
-	@warning_ignore("integer_division")
-	var season_index: int = (now / 86400) / BATTLE_PASS_DAYS
-	return maxi((season_index + 1) * BATTLE_PASS_DAYS * 86400 - now, 0)
+	return maxi(_season_end(battle_pass_season_number()) - int(TSClock.now()), 0)
 
 
 static func battle_pass_tier() -> int:
@@ -2018,22 +2040,39 @@ static func purchase_battle_pass() -> bool:
 
 
 ## Collectibles per season -- {tier: critter} per track, and {tier: part} on
-## the premium one (a free fix or upgrade of that ship part);
-## coins and bombs are the same every season. Later seasons walk the list
-## and wrap. Each season's paid tier-1 critter is pass-only.
-const BATTLE_PASS_SEASON_ONE := 739 # epoch_day / BATTLE_PASS_DAYS for the first season
+## the premium one (a free fix or upgrade of that ship part); coins and bombs
+## are the same every season -- and its "theme", which dresses the pass (the
+## banner, the icon). Season 1 is the autumn one that was running when the
+## calendar came in (so what players saw stays put); season 2 is Christmas.
+## Later seasons walk the list and wrap. Each season's premium critters are
+## pass-only.
 const BATTLE_PASS_SEASON_REWARDS := [
-	{"free_critters": {15: 31, 30: 12}, "paid_critters": {1: 52, 30: 82}, "paid_parts": {25: PART_ENGINE}}, # Autumn, Knight; Camper, Turkey; the engine
-	{"free_critters": {15: 31, 30: 99}, "paid_critters": {1: 52, 30: 82}, "paid_parts": {25: PART_COCKPIT}}, # Autumn, Patch; Camper, Turkey; the cockpit
+	{"theme": "autumn", "free_critters": {15: 31, 30: 99}, "paid_critters": {1: 52, 30: 82}, "paid_parts": {25: PART_COCKPIT}}, # Autumn, Patch; Camper, Turkey; the cockpit
+	{"theme": "christmas", "free_critters": {15: 70, 30: 3}, "paid_critters": {1: 91, 30: 71}, "paid_parts": {25: PART_ENGINE}}, # Snowman, Ginger; Santa, Frost Queen; the engine
 ]
-## Pass-only: the Camper (premium tier 1) and the Turkey (premium tier 30).
-const BATTLE_PASS_EXCLUSIVE_CRITTERS := [52, 82]
+## Pass-only: the premium critters -- the Camper and the Turkey (autumn),
+## Santa and the Frost Queen (Christmas).
+const BATTLE_PASS_EXCLUSIVE_CRITTERS := [52, 82, 91, 71]
 
 
+## The theme dressing the pass this season ("autumn", "christmas").
+static func season_theme() -> String:
+	return str(season_rewards().get("theme", "autumn"))
+
+
+## The season running now, from 1 (BATTLE_PASS_CALENDAR).
 static func battle_pass_season_number() -> int:
-	@warning_ignore("integer_division")
-	var idx: int = (int(TSClock.now()) / 86400) / BATTLE_PASS_DAYS
-	return maxi(idx - BATTLE_PASS_SEASON_ONE, 0) + 1
+	var now := int(TSClock.now())
+	var starts := _season_starts()
+	var n := 1
+	for i in starts.size():
+		if now >= int(starts[i]):
+			n = i + 1
+	var last := int(starts[starts.size() - 1])
+	if now >= last:
+		@warning_ignore("integer_division")
+		n = starts.size() + (now - last) / (BATTLE_PASS_DAYS * 86400)
+	return n
 
 
 static func season_rewards() -> Dictionary:
@@ -2389,6 +2428,11 @@ static func ensure_loaded() -> void:
 				part_builds[int(k)] = {"end": int(pb[k]["end"]), "critter": int(pb[k].get("critter", 0))}
 	planet_number = maxi(1, int(g.call("planet_number", 1)))
 	launched_season = int(g.call("launched_season", 0))
+	# Saved before BATTLE_PASS_CALENDAR: the season then running was numbered 2,
+	# and is season 1 now -- so a launch in it still counts for it, not for the
+	# Christmas season.
+	if int(g.call("pass_calendar", 1)) < 2 and launched_season > 0:
+		launched_season -= 1
 	_blank_collection()
 	for i in CRITTER_COUNT:
 		if i < cu.size():
@@ -2497,6 +2541,7 @@ static func save() -> void:
 	s.call("time_skips", time_skips)
 	s.call("planet_number", planet_number)
 	s.call("launched_season", launched_season)
+	s.call("pass_calendar", 2)
 	s.call("has_club", has_club)
 	s.call("club_name", club_name)
 	s.call("club_is_owner", club_is_owner)

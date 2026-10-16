@@ -610,6 +610,9 @@ func _draw_calendar() -> void:
 ## The Battle Pass: an autumn maple leaf, orange with red-gold veins and a
 ## curling stem, for the season.
 func _draw_pass() -> void:
+	if TSProfile.season_theme() == "christmas":
+		_draw_pass_tree()
+		return
 	var leaf := [
 		Vector2(0.50, 0.04), Vector2(0.57, 0.21), Vector2(0.67, 0.15), Vector2(0.64, 0.32),
 		Vector2(0.82, 0.22), Vector2(0.77, 0.38), Vector2(0.94, 0.42), Vector2(0.79, 0.52),
@@ -1105,3 +1108,22 @@ func _draw_milky(c: Vector2, r: float) -> void:
 		draw_circle(_u(e + Vector2(0.05, 0.06) * r), 0.028 * r * _s, WHITE, true, -1.0, true)
 		_ellipse(c + Vector2(side * 0.6 * r, 0.22 * r), 0.13 * r, 0.07 * r, Color(1.0, 0.58, 0.68, 0.8), false)
 	draw_arc(_u(c + Vector2(0, 0.14) * r), 0.1 * r * _s, 0.25, PI - 0.25, 12, INK, _w() * 0.8, true)
+
+
+## The Battle Pass in the Christmas season: a little Christmas tree -- three
+## tiers of pine with bright baubles and a gold star on top.
+func _draw_pass_tree() -> void:
+	var pine := _col(Color(0.3, 0.68, 0.42))
+	_poly([Vector2(0.44, 0.82), Vector2(0.56, 0.82), Vector2(0.56, 0.94), Vector2(0.44, 0.94)], Color(0.6, 0.4, 0.27))
+	for k in 3:
+		var top := 0.16 + 0.2 * k
+		var bottom := 0.44 + 0.2 * k
+		var wide := 0.2 + 0.08 * k
+		_poly([Vector2(0.5, top), Vector2(0.5 + wide, bottom), Vector2(0.5 - wide, bottom)], pine if k != 1 else pine.darkened(0.12))
+	if silhouette:
+		return
+	var baubles := [[Vector2(0.42, 0.42), Color(1.0, 0.36, 0.42)], [Vector2(0.6, 0.6), Color(1.0, 0.84, 0.36)],
+		[Vector2(0.38, 0.72), Color(0.56, 0.78, 1.0)], [Vector2(0.64, 0.8), Color(1.0, 0.36, 0.42)], [Vector2(0.52, 0.66), Color(0.96, 0.96, 1.0)]]
+	for b in baubles:
+		_circle(b[0], 0.045, b[1])
+	_poly(_star_pts(Vector2(0.5, 0.13), 0.12, 0.055), Color(1.0, 0.84, 0.3))

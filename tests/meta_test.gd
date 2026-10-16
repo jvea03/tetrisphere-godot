@@ -77,6 +77,26 @@ func _test_chests() -> void:
 
 
 func _test_battle_pass() -> void:
+	# The calendar: season 1 from Oct 16 to Dec 1 (carrying on the old bucket
+	# 740), season 2 -- Christmas -- for BATTLE_PASS_DAYS from Dec 1, then on.
+	var was := TSClock.offset
+	var at := func(when: String) -> void:
+		TSClock.offset = Time.get_unix_time_from_datetime_string(when) - Time.get_unix_time_from_system()
+	at.call("2026-10-16T09:00:00")
+	var s1 := TSProfile.battle_pass_season_number() == 1 and TSProfile._battle_pass_key() == TSProfile.BATTLE_PASS_FIRST_KEY and TSProfile.season_theme() == "autumn"
+	var s1_left := absi(TSProfile.battle_pass_seconds_remaining() - (Time.get_unix_time_from_datetime_string("2026-12-01T00:00:00") - Time.get_unix_time_from_datetime_string("2026-10-16T09:00:00"))) <= 2
+	at.call("2026-11-30T23:59:00")
+	var still_1 := TSProfile.battle_pass_season_number() == 1
+	at.call("2026-12-01T00:00:30")
+	var s2 := TSProfile.battle_pass_season_number() == 2 and TSProfile.season_theme() == "christmas" and int(TSProfile.season_rewards()["paid_critters"][1]) == 91
+	var s2_left := absi(TSProfile.battle_pass_seconds_remaining() - (TSProfile.BATTLE_PASS_DAYS * 86400 - 30)) <= 2
+	at.call("2026-12-29T00:00:30")
+	var s3 := TSProfile.battle_pass_season_number() == 3
+	TSClock.offset = was
+	_check("season 1 runs Oct 16 - Nov 30 (autumn, the old season's key); time left counts to Dec 1", s1 and s1_left and still_1)
+	_check("season 2 is Christmas from Dec 1 for %d days (Santa at premium tier 1); season 3 follows" % TSProfile.BATTLE_PASS_DAYS, s2 and s2_left and s3)
+	_check("the Christmas premium critters are pass-only", TSProfile.is_critter_pass_exclusive(91) and TSProfile.is_critter_pass_exclusive(71))
+	TSProfile._roll_battle_pass()
 	TSProfile.last_level = 12
 	TSProfile.battle_pass_xp = 0
 	TSProfile.battle_pass_purchased = false

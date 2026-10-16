@@ -37,11 +37,7 @@ func build() -> void:
 	content.add_child(timer_pill)
 	# The season's banner: the critters' autumn feast, its title in the sky
 	# over them, inked round like the cards.
-	var banner := TextureRect.new()
-	banner.texture = BANNER
-	banner.expand_mode = TextureRect.EXPAND_FIT_HEIGHT_PROPORTIONAL
-	banner.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var banner := _season_banner()
 	var rim := Panel.new()
 	var rim_style := TSUI.sb(Color.TRANSPARENT, 30, TSUI.BORDER)
 	rim_style.draw_center = false
@@ -383,3 +379,26 @@ func on_back_requested() -> bool:
 			TSUI.conceal(d["root"])
 			return true
 	return false
+
+
+## The banner across the top, dressed for the season: the autumn picture, or
+## for Christmas the drawn snowy scene (TSHolidayBanner), its corners rounded
+## by the panel it sits in. Both share the picture's proportions.
+func _season_banner() -> Control:
+	if TSProfile.season_theme() == "christmas":
+		var frame := Panel.new()
+		frame.add_theme_stylebox_override("panel", TSUI.sb(TSHolidayBanner.SKY_TOP, 30, 0))
+		frame.clip_children = CanvasItem.CLIP_CHILDREN_AND_DRAW
+		frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		frame.custom_minimum_size = Vector2(0, roundf((TSUI.WIDTH - 48.0) * float(BANNER.get_height()) / float(BANNER.get_width())))
+		var art := TSHolidayBanner.new()
+		art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		frame.add_child(art)
+		return frame
+	var picture := TextureRect.new()
+	picture.texture = BANNER
+	picture.expand_mode = TextureRect.EXPAND_FIT_HEIGHT_PROPORTIONAL
+	picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	picture.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return picture

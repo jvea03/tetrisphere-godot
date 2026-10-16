@@ -16,7 +16,15 @@
 # --fresh        first-visit walkthroughs not yet seen (Collection, Home)
 # --advance=<n>  press Next n times on the first-visit walkthrough (with --fresh)
 # --wait=<s>      seconds to let animations settle (default 1.5)
+# --date=<Y-M-D> pretend it is that day: a later Battle Pass season, say
 extends Node
+
+var _date_offset := 0.0   # --date: kept in place every frame, as the network clock sync would undo it
+
+
+func _process(_delta: float) -> void:
+	if _date_offset != 0.0:
+		TSClock.offset = _date_offset
 
 
 func _ready() -> void:
@@ -40,6 +48,9 @@ func _ready() -> void:
 			advance = int(a.substr(10))
 		elif a.begins_with("--wait="):
 			wait = float(a.substr(7))
+		elif a.begins_with("--date="):   # pretend it is this day (UTC noon): a future season, sale...
+			_date_offset = Time.get_unix_time_from_datetime_string(a.substr(7) + "T12:00:00") - Time.get_unix_time_from_system()
+			TSClock.offset = _date_offset
 		elif a.begins_with("--level="):
 			level = int(a.substr(8))
 		elif a.begins_with("--size="):
