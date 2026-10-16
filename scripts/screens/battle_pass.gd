@@ -19,6 +19,7 @@ var _quest_tabs: PanelContainer
 var _pass_content: VBoxContainer
 var _quest_content: VBoxContainer
 var _tier_list: VBoxContainer
+var _tier_scroll: ScrollContainer
 var _quest_list: VBoxContainer
 var _buy_btn: Button
 var _purchased: Label
@@ -70,7 +71,8 @@ func build() -> void:
 	heads.add_child(TSUI.expand(TSUI.label("PREMIUM", 24, COL_PREMIUM_RIM.darkened(0.2), HORIZONTAL_ALIGNMENT_CENTER)))
 	_pass_content.add_child(heads)
 	_tier_list = TSUI.vbox(10)
-	_pass_content.add_child(TSUI.scroll(_tier_list))
+	_tier_scroll = TSUI.scroll(_tier_list)
+	_pass_content.add_child(_tier_scroll)
 
 	_quest_content = TSUI.vbox(10)
 	_quest_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -94,6 +96,7 @@ func build() -> void:
 	_build_dialogs()
 	_refresh()
 	_build_quests()
+	_scroll_to_tier.call_deferred(_focus_tier())   # open where the player is
 
 
 func _process(delta: float) -> void:
@@ -162,6 +165,7 @@ func _on_quest_tab(i: int) -> void:
 
 func _build_tiers() -> void:
 	for c in _tier_list.get_children():
+		_tier_list.remove_child(c)   # gone at once, so the rows line up with their tiers
 		c.queue_free()
 	var current := TSProfile.battle_pass_tier()
 	for tier in range(1, TSProfile.BATTLE_PASS_TIER_COUNT + 1):
@@ -405,3 +409,25 @@ func _season_banner() -> Control:
 	picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	picture.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return picture
+
+
+## The tier the pass opens on: the first with a reward still waiting to be
+## claimed -- so none is ever out of sight above -- or else the most recent
+## one unlocked.
+func _focus_tier() -> int:
+	var current := TSProfile.battle_pass_tier()
+	for tier in range(1, current + 1):
+		if TSProfile.can_claim_battle_pass_free(tier) or TSProfile.can_claim_battle_pass_paid(tier):
+			return tier
+	return clampi(current, 1, TSProfile.BATTLE_PASS_TIER_COUNT)
+
+
+## Scrolls the tier list so `tier`'s row is at the top (as far as the list
+## goes), once the rows have been laid out.
+func _scroll_to_tier(tier: int) -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if not is_inside_tree() or tier - 1 >= _tier_list.get_child_count():
+		return
+	var row := _tier_list.get_child(tier - 1) as Control
+	_tier_scroll.scroll_vertical = int(row.position.y)
