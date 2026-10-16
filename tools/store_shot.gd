@@ -80,7 +80,7 @@ func _ready() -> void:
 	var game_cards := ["pause", "lose", "bomb_empty", "swap_empty", "rocks_empty"]
 	if scene_name == "game" or scene_name == "win" or game_cards.has(scene_name):
 		path = "res://tests/demo.tscn"   # the real game, six greedy drops in
-	elif scene_name == "settings":
+	elif scene_name == "settings" or scene_name == "camp":
 		path = "res://scenes/home.tscn"
 	var packed: PackedScene = load(path)
 	if packed == null:
@@ -108,7 +108,7 @@ func _ready() -> void:
 	if scene_name == "win":
 		inst._debug_win()
 		await get_tree().create_timer(wait).timeout
-	elif game_cards.has(scene_name) or scene_name == "settings":
+	elif game_cards.has(scene_name) or scene_name == "settings" or scene_name == "camp":
 		match scene_name:   # the same hooks tests/card_capture.gd and menu_capture.gd use
 			"pause": inst._open_pause()
 			"lose":
@@ -125,6 +125,7 @@ func _ready() -> void:
 				TSProfile.rock_count = 0
 				inst._fire_rocks()
 			"settings": inst._open_settings()
+			"camp": inst._on_camp_badge_pressed()
 		await get_tree().create_timer(wait).timeout
 	await RenderingServer.frame_post_draw
 	var err := sub.get_texture().get_image().save_png(out)

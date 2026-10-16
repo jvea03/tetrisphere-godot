@@ -266,11 +266,60 @@ func _refresh_camp_badge() -> void:
 
 ## Glides to the next camp spot (or, once the camp is done, the ship) with a
 ## step left.
+## The Camp badge explains the camp: what it is, how it grows and what it
+## gives -- with this camp's own numbers -- and offers to go to the next build.
 func _on_camp_badge_pressed() -> void:
+	var card := TSUI.dialog(self, 600)
+	var box: VBoxContainer = card["box"]
+	box.add_child(TSUI.ribbon("Your Camp", TSUI.MINT, 40, 420.0))
+	box.add_child(TSUI.halo(TSIcon.make("part", 110, TSProfile.CAMP_TENT), 170.0, TSUI.MINT, false))
+	var lv := TSProfile.camp_level()
+	var status := TSUI.hbox(10)
+	status.alignment = BoxContainer.ALIGNMENT_CENTER
+	status.add_child(TSUI.label("Camp Lv %d" % lv, 30))
+	box.add_child(status)
+	if lv < TSProfile.CAMP_MAX_LEVEL:
+		var bar := TSUI.bar(TSUI.GREEN, 18)
+		bar.max_value = 1.0
+		bar.step = 0.0
+		bar.value = TSProfile.camp_level_progress()
+		box.add_child(bar)
+	var lines := [
+		["part", "Your critters set up camp where they crash-landed. Spend coins and materials to build each spot -- a critter gets to work on it."],
+		["star", "Finish every spot in a wave to raise your Camp level. Each spot builds up in stages."],
+		["coin", "Every Camp level adds +%d%% to the coins you win. Yours: +%d%%." % [TSProfile.CAMP_COIN_BONUS_PERCENT, TSProfile.camp_coin_bonus_percent()]],
+		["materials", "Materials come from winning levels and from your mine -- tap the cart to collect."],
+		["ship", "At Camp Lv %d the camp is done and your ship opens to fix up. Each new season it flies you to a new planet -- and a new camp!" % TSProfile.CAMP_MAX_LEVEL],
+	]
+	for line in lines:
+		var row := TSUI.hbox(12)
+		var name_idx := str(line[0]).split(":")
+		var ic := TSIcon.make(name_idx[0], 40, int(name_idx[1]) if name_idx.size() > 1 else (TSProfile.CAMP_TENT if name_idx[0] == "part" else 0))
+		ic.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+		row.add_child(ic)
+		row.add_child(TSUI.expand(TSUI.wrap(TSUI.label(str(line[1]), 21))))
+		box.add_child(row)
+	var next := -1
 	for i in TSProfile.PART_COUNT:
 		if TSProfile.is_part_available(i) and not TSProfile.is_part_max_level(i):
-			_world.glide_to_part(i)
-			return
+			next = i
+			break
+	var close := func() -> void:   # built afresh each time, so let it go once hidden
+		TSUI.conceal(card["root"])
+		get_tree().create_timer(0.4).timeout.connect((card["root"] as Node).queue_free)
+	var buttons := TSUI.hbox(12)
+	if next >= 0:
+		var go := TSUI.expand(TSUI.button("Next Build", TSUI.GREEN, 26)) as Button
+		go.pressed.connect(func():
+			close.call()
+			_world.glide_to_part(next))
+		buttons.add_child(go)
+	var ok := TSUI.expand(TSUI.button("Got it", TSUI.PINK, 26)) as Button
+	ok.pressed.connect(close)
+	buttons.add_child(ok)
+	box.add_child(buttons)
+	TSUI.juice(box)
+	TSUI.reveal(card["root"], card["panel"])
 
 
 func _refresh_avatar() -> void:

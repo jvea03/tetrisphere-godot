@@ -59,6 +59,18 @@ func _run() -> void:
 		only_camp = only_camp and TSProfile.is_camp(p)
 	_check("the first wave's five camp nodes show, and no ship part's (%d nodes)" % parts.size(), _world.nodes_enabled and only_camp and parts.size() == 5)
 	_check("the Camp level and materials show on Home", camp_badge.visible and camp_label.text == "Camp Lv 1" and materials_pill.visible and materials_label.text == "10,000")
+	var dialogs_before := get_child_count()
+	_on_camp_badge_pressed()
+	var camp_card: Node = get_child(get_child_count() - 1)
+	var card_text := ""
+	for l in camp_card.find_children("*", "Label", true, false):
+		card_text += (l as Label).text + " "
+	_check("tapping the Camp badge explains the camp, with its level and coin bonus", get_child_count() == dialogs_before + 1 and card_text.contains("Camp Lv 1") and card_text.contains("+%d%%" % TSProfile.camp_coin_bonus_percent()))
+	for b in camp_card.find_children("*", "Button", true, false):
+		if (b as Button).text == "Got it":
+			(b as Button).pressed.emit()
+	await get_tree().create_timer(0.6).timeout
+	_check("and Got it closes it for good", not is_instance_valid(camp_card) or camp_card.is_queued_for_deletion())
 
 	var points := TSProfile.collection_points()
 	var coins := TSProfile.coin_count

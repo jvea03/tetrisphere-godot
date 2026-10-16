@@ -206,6 +206,7 @@ func _draw() -> void:
 		"part": _draw_part(index, variant == "broken")
 		"critter": _draw_critter(index, Vector2(0.5, 0.56), 0.4)
 		"milky": _draw_milky(Vector2(0.5, 0.55), 0.38)
+		"ship": _draw_ship_icon()
 		"badge": _draw_badge(index)
 		_: _circle(Vector2(0.5, 0.5), 0.4, _col(GOLD))
 	if silhouette and icon != "lock":
@@ -1164,3 +1165,22 @@ func _draw_pass_heart() -> void:
 		return
 	_ellipse(Vector2(0.37, 0.38), 0.07, 0.045, Color(1, 1, 1, 0.65), false, -0.6)
 	_poly([Vector2(0.88, 0.22), Vector2(0.8, 0.22), Vector2(0.86, 0.3)], Color(1.0, 0.84, 0.36))
+
+
+## The critters' ship, nose up: the pink hull with its blue stripe, a porthole,
+## cream fins and a little flame.
+func _draw_ship_icon() -> void:
+	_poly([Vector2(0.42, 0.78), Vector2(0.5, 0.96), Vector2(0.58, 0.78)], Color(1.0, 0.6, 0.3))
+	_poly([Vector2(0.34, 0.56), Vector2(0.2, 0.8), Vector2(0.36, 0.76)], Color(1.0, 0.97, 0.9))
+	_poly([Vector2(0.66, 0.56), Vector2(0.8, 0.8), Vector2(0.64, 0.76)], Color(1.0, 0.97, 0.9))
+	var hull: Array = []
+	for k in 13:
+		var a := PI + PI * float(k) / 12.0
+		hull.append(Vector2(0.5 + cos(a) * 0.17, 0.36 + sin(a) * 0.3))
+	hull.append(Vector2(0.67, 0.78))
+	hull.append(Vector2(0.33, 0.78))
+	_poly(hull, _col(Color(1.0, 0.74, 0.82)))
+	if silhouette:
+		return
+	_line([Vector2(0.6, 0.2), Vector2(0.6, 0.76)], Color(0.62, 0.8, 1.0), 1.4)
+	_circle(Vector2(0.48, 0.42), 0.08, Color(0.62, 0.84, 1.0))
