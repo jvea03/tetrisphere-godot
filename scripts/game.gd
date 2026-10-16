@@ -1162,6 +1162,8 @@ func _show_aim() -> void:
 	aim_combo = board.combo_preview(current_offsets(), cursor, cur_type, _current_depth())
 	# The Any Piece's footprint wears the colour it will turn into there.
 	var shown := board.wild_kind(current_offsets(), cursor, _current_depth()) if cur_type == TSBoard.WILD else cur_type
+	if cur_type == TSBoard.WILD and _near_fog(cols):
+		shown = TSBoard.WILD   # it would give away the colours hidden under the fog
 	# Fog hides what is under it, the aim's glow included.
 	if aim_combo > 0 and not _near_fog(cols):
 		_ghost_root.add_child(view.make_plate(shown, cols, depths, 0.75, 0.45))

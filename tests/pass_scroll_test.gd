@@ -51,6 +51,20 @@ func _run() -> void:
 	TSProfile.battle_pass_xp = 0
 	at = await _open()
 	_check("a new pass opens at the top (found %d)" % at, at == 1)
+	# Claiming deep in the list keeps the list where it is.
+	TSProfile.battle_pass_xp = TSProfile.battle_pass_stars_for_tier(20)
+	for t in 30:
+		TSProfile.battle_pass_free_claimed[t] = t < 19
+	var screen: Control = (load("res://scenes/battle_pass.tscn") as PackedScene).instantiate()
+	add_child(screen)
+	for _i in 6:
+		await get_tree().process_frame
+	var before: int = screen._tier_scroll.scroll_vertical
+	screen._claim(20, false, screen._tier_list.get_child(19))
+	for _i in 6:
+		await get_tree().process_frame
+	_check("claiming a tier keeps the list where it was (%d -> %d)" % [before, screen._tier_scroll.scroll_vertical], before > 0 and absi(screen._tier_scroll.scroll_vertical - before) <= 2)
+	screen.queue_free()
 	print("")
 	print("ALL PASSED" if _failures == 0 else "%d FAILED" % _failures)
 	get_tree().quit(0 if _failures == 0 else 1)

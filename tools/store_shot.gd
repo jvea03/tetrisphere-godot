@@ -36,6 +36,7 @@ func _ready() -> void:
 	var fresh := false
 	var advance := 0
 	var planet := ""
+	var home_zoom := 0.0
 	var size := Vector2i(1290, 2796)
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--scene="):
@@ -50,6 +51,8 @@ func _ready() -> void:
 			advance = int(a.substr(10))
 		elif a.begins_with("--wait="):
 			wait = float(a.substr(7))
+		elif a.begins_with("--zoom="):   # Home zoomed (a pinch): 0.7 to 1.6
+			home_zoom = float(a.substr(7))
 		elif a.begins_with("--planet="):   # the planet dressed for this season (TSShipScene.THEMES)
 			planet = a.substr(9)
 		elif a.begins_with("--date="):   # pretend it is this day (UTC noon): a future season, sale...
@@ -105,6 +108,10 @@ func _ready() -> void:
 	for i in advance:   # step the walkthrough on (fresh shots)
 		inst._tutorial._advance()
 		await get_tree().create_timer(0.8).timeout
+	if home_zoom > 0.0 and scene_name == "home":
+		var w = inst._world
+		w.zoom_at(home_zoom, w.get_global_rect().get_center())
+		await get_tree().create_timer(0.6).timeout
 	if scene_name == "win":
 		inst._debug_win()
 		await get_tree().create_timer(wait).timeout
