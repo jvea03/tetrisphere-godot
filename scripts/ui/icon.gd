@@ -205,6 +205,7 @@ func _draw() -> void:
 		"egg": _draw_shell(index, Vector2(0.5, 0.52), 0.44)
 		"part": _draw_part(index, variant == "broken")
 		"critter": _draw_critter(index, Vector2(0.5, 0.56), 0.4)
+		"milky": _draw_milky(Vector2(0.5, 0.55), 0.38)
 		"badge": _draw_badge(index)
 		_: _circle(Vector2(0.5, 0.5), 0.4, _col(GOLD))
 	if silhouette and icon != "lock":
@@ -1078,3 +1079,29 @@ func _draw_badge(i: int) -> void:
 		"note":
 			_line([Vector2(0.46, 0.64), Vector2(0.46, 0.3), Vector2(0.62, 0.34)], WHITE, 1.4)
 			_ellipse(Vector2(0.4, 0.64), 0.08, 0.06, WHITE)
+
+
+## Milky: the little creature sealed in every egg -- a soft, milky-white,
+## slightly bottom-heavy blob with big shiny eyes, pink cheeks and a smile,
+## drawn as it was before the sticker critters came. c/r in unit coordinates.
+const MILKY := Color(1.0, 0.97, 0.93)
+func _draw_milky(c: Vector2, r: float) -> void:
+	var body: Color = tint if tint.a > 0.0 else MILKY
+	var pts: Array = []
+	for k in 40:
+		var a := TAU * float(k) / 40.0
+		var rr := r * (1.0 + 0.06 * sin(a))
+		pts.append(c + Vector2(cos(a) * rr * 1.06, sin(a) * rr * 0.94))
+	_poly(pts, body)
+	if silhouette:
+		return
+	# A soft shine on the upper left.
+	_ellipse(c + Vector2(-0.42, -0.5) * r, 0.2 * r, 0.11 * r, Color(1, 1, 1, 0.75), false, -0.6)
+	var eye_y := -0.06 * r
+	for side in [-1.0, 1.0]:
+		var e := c + Vector2(side * 0.34 * r, eye_y)
+		_ellipse(e, 0.15 * r, 0.19 * r, INK, false)
+		draw_circle(_u(e + Vector2(-0.05, -0.07) * r), 0.06 * r * _s, WHITE, true, -1.0, true)
+		draw_circle(_u(e + Vector2(0.05, 0.06) * r), 0.028 * r * _s, WHITE, true, -1.0, true)
+		_ellipse(c + Vector2(side * 0.6 * r, 0.22 * r), 0.13 * r, 0.07 * r, Color(1.0, 0.58, 0.68, 0.8), false)
+	draw_arc(_u(c + Vector2(0, 0.14) * r), 0.1 * r * _s, 0.25, PI - 0.25, 12, INK, _w() * 0.8, true)

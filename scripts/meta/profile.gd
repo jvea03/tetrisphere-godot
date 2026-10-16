@@ -1120,7 +1120,7 @@ static func avatar_color() -> Color:
 	return AVATAR_COLORS[avatar_index]
 
 
-## The avatar critter, falling back to Milky if the pick is not owned.
+## The avatar critter, falling back to the first critter (Blu) if the pick is not owned.
 static func avatar() -> int:
 	return avatar_critter if is_critter_unlocked(avatar_critter) else 0
 
