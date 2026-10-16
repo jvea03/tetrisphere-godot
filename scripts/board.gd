@@ -115,6 +115,18 @@ var vine_clock := 0       # drops since a vine was last cut (or grew)
 var locked := {}          # blocker id -> true while padlocked
 var key_piece := HOLE     # the key's piece id, until it is popped
 var _vine_cut := false    # a vine was cut during this resolve
+## Prism stones (TSLevels.has_prisms): clear crystal blockers tinted one piece's
+## colour. Only a match of that colour popping beside one breaks it (the Any
+## Piece counts as every colour); any other hit -- another colour's pop, a
+## bomb, a rock -- just makes it chime. A slide can't smash one.
+var prisms := {}          # blocker id -> the piece kind (colour) that breaks it
+## Fog (TSLevels.has_fog): clouds of 2x2 cells hiding the colour of what is
+## under them. A pop beside a fogged cell blows that cell clear; a bomb or rock
+## that touches a cloud blows the whole cloud away.
+var fog := {}             # Vector2i cell -> its cloud's number
+var _matching := false    # breaking pieces by a match just now (only that breaks a prism)
+var _blast := false       # breaking pieces by a bomb or rock just now (it clears whole clouds)
+var _wild_id := HOLE      # the Any Piece just dropped, which counts as every colour
 var _geode_breaks: Array = []   # where geodes cracked open this resolve: each fires a rock
 var initial_blocks := 0
 var cleared_blocks := 0
@@ -175,6 +187,8 @@ func generate(seed_value: int, level: Dictionary) -> void:
 	_place_geodes(int(level.get("geodes", 0)))
 	_place_vines(int(level.get("vines", 0)))
 	_place_locks(int(level.get("locks", 0)))
+	_place_prisms(int(level.get("prisms", 0)))
+	_place_fog(int(level.get("fog", 0)))
 
 	initial_blocks = count_blocks()
 	cleared_blocks = 0
@@ -410,6 +424,82 @@ func _place_locks(count: int) -> void:
 		locked.clear()   # nowhere fair for the key: no padlocks either
 		return
 	key_piece = keys[_rng.randi_range(0, keys.size() - 1)]
+
+
+## Prism stones, after the padlocks: `count` plain grey blockers showing on the
+## surface become prisms, tinted in turn with the colours of the level's pieces
+## (so the colour that breaks each is always dealt), and never touching a prism
+## of the same colour -- one big match can't take them all at once.
+func _place_prisms(count: int) -> void:
+	prisms.clear()
+	if count <= 0 or _tile_kinds.is_empty():
+		return
+	var plain: Array = []
+	for id in plate_kind:
+		if int(plate_kind[id]) == BLOCKER and not armored.has(id) and not vined.has(id) and not locked.has(id):
+			var v: Vector2i = plate_cols[id][0]
+			if top_piece(v.x, v.y) == id:
+				plain.append(id)
+	plain.sort()
+	var colour := _rng.randi_range(0, _tile_kinds.size() - 1)
+	while prisms.size() < count and not plain.is_empty():
+		var pick: int = plain[_rng.randi_range(0, plain.size() - 1)]
+		plain.erase(pick)
+		var kind := int(_tile_kinds[colour % _tile_kinds.size()])
+		var clash := false
+		for n in _neighbors(pick):
+			if prisms.has(n) and int(prisms[n]) == kind:
+				clash = true
+		if clash:
+			continue
+		prisms[pick] = kind
+		colour += 1
+
+
+## Fog, last: `clouds` 2x2 patches of the surface, away from the caps where
+## they can be and apart from each other, never over the key.
+func _place_fog(clouds: int) -> void:
+	fog.clear()
+	if clouds <= 0:
+		return
+	var key_cells: Array = plate_cols[key_piece] if key_piece != HOLE and plate_cols.has(key_piece) else []
+	var tries := 0
+	var n := 0
+	while n < clouds and tries < 200:
+		tries += 1
+		var at := Vector2i(_rng.randi_range(0, COLS - 1), _rng.randi_range(1, ROWS - 3))
+		var patch: Array = []
+		var ok := true
+		for dc in 2:
+			for dr in 2:
+				var cell := Vector2i(wrap_col(at.x + dc), at.y + dr)
+				if key_cells.has(cell):
+					ok = false
+				for dir in DIRS:   # a cell clear of every other cloud, all round
+					var dv: Vector2i = dir
+					if fog.has(Vector2i(wrap_col(cell.x + dv.x), cell.y + dv.y)) or fog.has(cell):
+						ok = false
+				patch.append(cell)
+		if not ok:
+			continue
+		for cell in patch:
+			fog[cell] = n
+		n += 1
+
+
+## Clears the fog over `cell` -- and, by a bomb or rock, its whole cloud --
+## logging each cleared cell to `fx` ("fog").
+func _clear_fog(cell: Vector2i, step: int, fx: Array) -> void:
+	if not fog.has(cell):
+		return
+	var cloud := int(fog[cell])
+	var gone: Array = [cell]
+	if _blast:
+		gone = fog.keys().filter(func(c: Vector2i) -> bool: return int(fog[c]) == cloud)
+	for c in gone:
+		var v: Vector2i = c
+		fog.erase(v)
+		fx.append([v.x, v.y, maxi((cells[v.x][v.y] as Array).size() - 1, 0), BLOCKER, step, "fog"])
 
 
 ## Whether a pop beside piece `n` hits it: blockers, tie-downs and geodes
@@ -658,6 +748,7 @@ func _remove_plate(id: int) -> void:
 	geodes.erase(id)
 	vined.erase(id)
 	locked.erase(id)
+	prisms.erase(id)
 
 
 # A hole with nothing above it is just open space; drop it from the stack.
@@ -815,6 +906,21 @@ func _destroy(doomed: Dictionary, step: int, fx: Array) -> int:
 			for col in plate_cols[p]:
 				var v: Vector2i = col
 				fx.append([v.x, v.y, (cells[v.x][v.y] as Array).find(p), int(plate_kind[p]), step, "vine"])
+	# A prism breaks only to a match of its own colour popping beside it (the
+	# Any Piece counting as every colour); any other hit, it chimes ("prism").
+	for p in doomed.keys():
+		if not prisms.has(p):
+			continue
+		var want := int(prisms[p])
+		var right := false
+		if _matching:
+			for n in _neighbors(p):
+				if doomed.has(n) and not is_obstacle(int(plate_kind[n])) and (int(plate_kind[n]) == want or n == _wild_id):
+					right = true
+		if not right:
+			doomed.erase(p)
+			var pv: Vector2i = plate_cols[p][0]
+			fx.append([pv.x, pv.y, (cells[pv.x][pv.y] as Array).find(p), want, step, "prism"])
 	# A padlocked blocker shrugs the hit off ("locked": a clink, nothing breaks).
 	for p in doomed.keys():
 		if locked.has(p):
@@ -863,8 +969,21 @@ func _destroy(doomed: Dictionary, step: int, fx: Array) -> int:
 		var kind: int = plate_kind[p]
 		for col in plate_cols[p]:
 			var v: Vector2i = col
-			fx.append([v.x, v.y, (cells[v.x][v.y] as Array).find(p), kind, step])
+			if prisms.has(p):   # a prism shattering, in its colour
+				fx.append([v.x, v.y, (cells[v.x][v.y] as Array).find(p), int(prisms[p]), step, "prism_break"])
+			else:
+				fx.append([v.x, v.y, (cells[v.x][v.y] as Array).find(p), kind, step])
 		removed += (plate_cols[p] as Array).size()
+	# The fog over and beside every block broken blows away.
+	if not fog.is_empty():
+		for p in doomed:
+			for col in plate_cols[p]:
+				var v: Vector2i = col
+				_clear_fog(v, step, fx)
+				for dir in DIRS:
+					var dv: Vector2i = dir
+					if in_rows(v.y + dv.y):
+						_clear_fog(Vector2i(wrap_col(v.x + dv.x), v.y + dv.y), step, fx)
 	for p in doomed:
 		_remove_plate(p)
 	cleared_blocks += removed
@@ -888,7 +1007,9 @@ func _chain(seeds: Array, fx: Array, step: int) -> Dictionary:
 		for p in doomed:
 			if not is_obstacle(int(plate_kind[p])) and not vined.has(p):
 				pieces += 1
+		_matching = true
 		removed += _destroy(doomed, step + chain - 1, fx)
+		_matching = false
 		seeds = _settle()
 	return {"chain": chain, "removed": removed, "pieces": pieces}
 
@@ -1104,7 +1225,7 @@ func slide_preview(id: int, dir: Vector2i) -> int:
 		var p := _occupant(n.x, n.y, d)
 		if p == HOLE or p == id:
 			continue
-		if int(plate_kind[p]) != BLOCKER or armored.has(p) or vined.has(p) or locked.has(p):   # pieces, armour, vines and padlocks stop a slide
+		if int(plate_kind[p]) != BLOCKER or armored.has(p) or vined.has(p) or locked.has(p) or prisms.has(p):   # pieces, armour, vines, padlocks and prisms stop a slide
 			return -1
 		smash += 1
 	return smash
@@ -1156,11 +1277,14 @@ func place_and_resolve(offsets: Array, at: Vector2i, kind: int, depth: int = -1)
 	_vine_cut = false
 	if depth < 0:
 		depth = landing_depth(offsets, at)
-	if kind == WILD:
+	var wild := kind == WILD
+	if wild:
 		kind = wild_kind(offsets, at, depth)
 	var id := _add_plate(kind, footprint_cells(offsets, at), depth)
+	_wild_id = id if wild else HOLE
 	var fx: Array = []
 	var res := _chain([id], fx, 1)
+	_wild_id = HOLE
 	res["fx"] = fx
 	res["overload"] = _overloaded()
 	res["geode_shots"] = _geode_breaks.duplicate()   # a rock from each geode that cracked open
@@ -1222,7 +1346,9 @@ func detonate(at: Vector2i, radius: int) -> Dictionary:
 			if _hit_by_pop(n):
 				doomed[n] = true
 	var fx: Array = []
+	_blast = true
 	var blasted := _destroy(doomed, 1, fx)
+	_blast = false
 	var res := _chain(_settle(), fx, 2)
 	res["removed"] = int(res["removed"]) + blasted
 	res["pieces"] = int(res["pieces"]) + pieces
@@ -1299,7 +1425,9 @@ func rock_strike(groups: Array) -> Dictionary:
 				if _hit_by_pop(n):
 					doomed[n] = true
 	var fx: Array = []
+	_blast = true
 	var hit := _destroy(doomed, 1, fx)
+	_blast = false
 	var res := _chain(_settle(), fx, 2)
 	res["removed"] = int(res["removed"]) + hit
 	res["pieces"] = int(res["pieces"]) + pieces
@@ -1475,6 +1603,16 @@ func to_dict() -> Dictionary:
 		out["locks"] = locked.keys()
 	if key_piece != HOLE:
 		out["key"] = key_piece
+	if not prisms.is_empty():
+		var tints := {}
+		for id in prisms:
+			tints[str(id)] = int(prisms[id])
+		out["prisms"] = tints
+	if not fog.is_empty():
+		var clouds := {}
+		for c in fog:
+			clouds["%d,%d" % [(c as Vector2i).x, (c as Vector2i).y]] = int(fog[c])
+		out["fog"] = clouds
 	return out
 
 
@@ -1486,6 +1624,8 @@ func load_dict(data: Dictionary) -> void:
 	armored.clear()
 	ties.clear()
 	geodes.clear()
+	prisms.clear()
+	fog.clear()
 	vined.clear()
 	locked.clear()
 	key_piece = HOLE
@@ -1533,6 +1673,14 @@ func load_dict(data: Dictionary) -> void:
 			locked[int(id)] = true
 	if plate_kind.has(int(data.get("key", HOLE))):
 		key_piece = int(data["key"])
+	var tints: Dictionary = data.get("prisms", {})
+	for id_str in tints:
+		if plate_kind.has(int(id_str)):
+			prisms[int(id_str)] = int(tints[id_str])
+	var clouds: Dictionary = data.get("fog", {})
+	for k in clouds:
+		var xy: PackedStringArray = str(k).split(",")
+		fog[Vector2i(int(xy[0]), int(xy[1]))] = int(clouds[k])
 	initial_blocks = count_blocks()
 	cleared_blocks = 0
 
@@ -1552,6 +1700,8 @@ func clone() -> TSBoard:
 	b.vine_clock = vine_clock
 	b.locked = locked.duplicate()
 	b.key_piece = key_piece
+	b.prisms = prisms.duplicate()
+	b.fog = fog.duplicate()
 	b.cells = []
 	for c in COLS:
 		var column: Array = []

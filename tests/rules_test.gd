@@ -30,6 +30,8 @@ func _initialize() -> void:
 	_test_geodes()
 	_test_vines()
 	_test_locks()
+	_test_prisms()
+	_test_fog()
 	_test_pieces_stay_whole()
 	print("")
 	print("ALL PASSED" if _failures == 0 else "%d FAILED" % _failures)
@@ -810,3 +812,97 @@ func _test_locks() -> void:
 		if ok:
 			fair += 1
 	_check("five lock eggs: the level's padlocks, a key one layer down with none above it, kept through saving", fair == 5)
+
+
+# Prism stones: only a match of their own colour popping beside them breaks
+# them (the Any Piece counts as every colour); anything else just chimes.
+func _test_prisms() -> void:
+	var flat_shape: Array = TSBoard.SHAPES[FLAT]["offsets"]
+	var b := _empty_board()
+	_flat(b, 0, 5)
+	_flat(b, 4, 5)
+	var blue := b._add_plate(TSBoard.BLOCKER, [Vector2i(8, 5)])
+	b.prisms[blue] = TSBoard.O
+	var wrong := b.clone()
+	var res := wrong.place_and_resolve(flat_shape, Vector2i(2, 5), FLAT)
+	var chimed := false
+	for e in res["fx"]:
+		if (e as Array).size() > 5 and str(e[5]) == "prism":
+			chimed = true
+	_check("another colour's match beside a prism doesn't break it (it chimes)", int(res["chain"]) == 1 and wrong.prisms.has(blue) and chimed)
+	var bomb := b.clone()
+	bomb.detonate(Vector2i(8, 5), 1)
+	_check("nor does a bomb", bomb.prisms.has(blue))
+
+	var o := _empty_board()
+	var prism := o._add_plate(TSBoard.BLOCKER, [Vector2i(6, 3)])
+	o.prisms[prism] = TSBoard.O
+	o._add_plate(TSBoard.O, [Vector2i(2, 3), Vector2i(3, 3), Vector2i(2, 4), Vector2i(3, 4)])
+	o._add_plate(TSBoard.O, [Vector2i(4, 3), Vector2i(5, 3), Vector2i(4, 4), Vector2i(5, 4)])
+	var wild_board := o.clone()
+	var o_shape: Array = TSBoard.SHAPES[TSBoard.O]["offsets"]
+	var hit := o.place_and_resolve(o_shape, Vector2i(2, 5), TSBoard.O)
+	var shattered := false
+	for e in hit["fx"]:
+		if (e as Array).size() > 5 and str(e[5]) == "prism_break":
+			shattered = true
+	_check("its own colour's match beside it breaks it", not o.plate_kind.has(prism) and shattered)
+	var w := wild_board.place_and_resolve(TSBoard.SHAPES[TSBoard.WILD]["offsets"], Vector2i(4, 5), TSBoard.WILD)
+	_check("and so does the Any Piece's match", int(w["chain"]) >= 1 and not wild_board.plate_kind.has(prism))
+
+	var s := _empty_board()
+	var mover := _flat(s, 0, 3)
+	var p := s._add_plate(TSBoard.BLOCKER, [Vector2i(4, 3)])
+	s.prisms[p] = FLAT
+	_check("a slide can't smash a prism", s.slide_preview(mover, Vector2i(1, 0)) < 0)
+	var back := TSBoard.new()
+	back.load_dict(b.to_dict())
+	_check("prisms survive saving and copying", back.prisms == b.prisms and b.clone().prisms == b.prisms)
+
+	var lvl := TSLevels.PRISM_FROM_LEVEL
+	_check("prisms arrive at level %d and come every third level, a breather first" % lvl, TSLevels.rules_for_level(lvl).has("prisms") and not TSLevels.rules_for_level(lvl - 3).has("prisms") and TSLevels.rules_for_level(lvl + 3).has("prisms") and TSLevels.difficulty_for_level(lvl) <= 1)
+	var ok := 0
+	for l in [lvl, lvl + 3, lvl + 6]:
+		var r := TSLevels.rules_for_level(l)
+		var ball := TSBoard.new()
+		ball.generate(TSLevels.seed_for_level(l), r)
+		var good := ball.prisms.size() == int(r["prisms"])
+		for id in ball.prisms:
+			good = good and (r["pieces"] as Array).has(int(ball.prisms[id])) and int(ball.plate_kind[id]) == TSBoard.BLOCKER
+			for n in ball._neighbors(id):
+				good = good and not (ball.prisms.has(n) and int(ball.prisms[n]) == int(ball.prisms[id]))
+		if good:
+			ok += 1
+	_check("generated prisms: the level's count, in colours it deals, no two alike touching", ok == 3)
+
+
+# Fog: hides colours; a pop beside a fogged cell clears it, a bomb clears the
+# whole cloud.
+func _test_fog() -> void:
+	var flat_shape: Array = TSBoard.SHAPES[FLAT]["offsets"]
+	var b := _empty_board()
+	_flat(b, 0, 5)
+	_flat(b, 4, 5)
+	_upright(b, 9, 2)
+	for c in [Vector2i(8, 5), Vector2i(9, 5), Vector2i(8, 6), Vector2i(9, 6)]:
+		b.fog[c] = 0
+	var bombed := b.clone()
+	var res := b.place_and_resolve(flat_shape, Vector2i(2, 5), FLAT)
+	var cleared := 0
+	for e in res["fx"]:
+		if (e as Array).size() > 5 and str(e[5]) == "fog":
+			cleared += 1
+	_check("a pop beside fog blows away only the cells next to it", int(res["chain"]) == 1 and not b.fog.has(Vector2i(8, 5)) and b.fog.has(Vector2i(9, 6)) and cleared >= 1)
+	bombed.detonate(Vector2i(9, 5), 0)   # the upright under the cloud
+	_check("a bomb that touches a cloud clears all of it", bombed.fog.is_empty())
+	var back := TSBoard.new()
+	back.load_dict(b.to_dict())
+	_check("fog survives saving and copying", back.fog == b.fog and b.clone().fog == b.fog)
+
+	var lvl := TSLevels.FOG_FROM_LEVEL
+	_check("fog arrives at level %d and comes every third level, a breather first" % lvl, TSLevels.rules_for_level(lvl).has("fog") and not TSLevels.rules_for_level(lvl - 3).has("fog") and TSLevels.rules_for_level(lvl + 3).has("fog") and TSLevels.difficulty_for_level(lvl) <= 1)
+	var ball := TSBoard.new()
+	var r := TSLevels.rules_for_level(lvl + 3)
+	ball.generate(TSLevels.seed_for_level(lvl + 3), r)
+	var key_ok := ball.key_piece == TSBoard.HOLE or not (ball.plate_cols[ball.key_piece] as Array).any(func(c) -> bool: return ball.fog.has(c))
+	_check("a generated egg gets its clouds (2x2 each), never over the key", ball.fog.size() == int(r["fog"]) * 4 and key_ok)

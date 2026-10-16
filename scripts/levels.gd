@@ -95,6 +95,15 @@ const VINE_COUNT := [2, 2, 2, 3, 3]
 ## one buried key.
 const LOCK_FROM_LEVEL := 100
 const LOCK_COUNT := [3, 3, 3, 4, 4]
+## Prism stones (TSBoard.prisms): from PRISM_FROM_LEVEL on every third level
+## (one of their own: never with vines or padlocks), PRISM_COUNT[tier] of them,
+## in place of tie-downs.
+const PRISM_FROM_LEVEL := 150
+const PRISM_COUNT := [2, 2, 2, 3, 3]
+## Fog (TSBoard.fog): from FOG_FROM_LEVEL on every third level, FOG_COUNT[tier]
+## clouds. It only hides colours, so it may share an egg with other blockers.
+const FOG_FROM_LEVEL := 200
+const FOG_COUNT := [1, 1, 1, 2, 2]
 ## A blocker's first egg (VINE_FROM_LEVEL, LOCK_FROM_LEVEL) is its lesson:
 ## INTRO_COUNT of it, and a deal that helps INTRO_BIAS more than the tier's.
 const INTRO_COUNT := 2
@@ -129,7 +138,7 @@ static func difficulty_for_level(level: int) -> int:
 	if SOFTENED.has(level):
 		return int(SOFTENED[level])
 	# A blocker's first egg is a breather: Intermediate at most.
-	if level == VINE_FROM_LEVEL or level == LOCK_FROM_LEVEL:
+	if is_debut(level):
 		return mini(_planned_tier(level), 1)
 	return _planned_tier(level)
 
@@ -330,6 +339,12 @@ static func rules_for_level(level: int) -> Dictionary:
 		rules["locks"] = LOCK_COUNT[difficulty_for_level(level)]
 		rules.erase("ties")
 		rules.erase("tie_layers")
+	if has_prisms(level):
+		rules["prisms"] = PRISM_COUNT[difficulty_for_level(level)]
+		rules.erase("ties")
+		rules.erase("tie_layers")
+	if has_fog(level):
+		rules["fog"] = FOG_COUNT[difficulty_for_level(level)]
 	if level == 1:
 		rules["shell_depth"] = 2
 	if LEVEL_PIECES.has(level):
@@ -348,11 +363,13 @@ static func rules_for_level(level: int) -> Dictionary:
 	# Past the baked fifty, the slow ramp (ramp_step).
 	var step := ramp_step(level)
 	rules["common_bias"] = float(DIFFICULTIES[difficulty_for_level(level)]["common_bias"]) - RAMP_BIAS * step
-	if level == VINE_FROM_LEVEL or level == LOCK_FROM_LEVEL:
+	if is_debut(level):
 		rules["common_bias"] = minf(float(rules["common_bias"]) + INTRO_BIAS, 0.95)
-		for k in ["vines", "locks"]:
+		for k in ["vines", "locks", "prisms"]:
 			if rules.has(k):
 				rules[k] = mini(int(rules[k]), INTRO_COUNT)
+		if rules.has("fog"):
+			rules["fog"] = 1
 	if step > 0:
 		rules["blocker_share"] = float(rules["blocker_share"]) + RAMP_GREY * step
 		rules["armor_share"] = minf(float(rules["armor_share"]) + RAMP_ARMOR * step, 0.9)
@@ -420,3 +437,18 @@ static func has_vines(level: int) -> bool:
 ## Whether this level's egg has padlocks and a key (see LOCK_FROM_LEVEL).
 static func has_locks(level: int) -> bool:
 	return level >= LOCK_FROM_LEVEL and (level - LOCK_FROM_LEVEL) % 3 == 0
+
+
+## Whether this level's egg has prism stones (see PRISM_FROM_LEVEL).
+static func has_prisms(level: int) -> bool:
+	return level >= PRISM_FROM_LEVEL and (level - PRISM_FROM_LEVEL) % 3 == 0
+
+
+## Whether this level's egg has fog (see FOG_FROM_LEVEL).
+static func has_fog(level: int) -> bool:
+	return level >= FOG_FROM_LEVEL and (level - FOG_FROM_LEVEL) % 3 == 0
+
+
+## A new blocker's first egg: a breather (see difficulty_for_level).
+static func is_debut(level: int) -> bool:
+	return level in [VINE_FROM_LEVEL, LOCK_FROM_LEVEL, PRISM_FROM_LEVEL, FOG_FROM_LEVEL]
