@@ -147,6 +147,41 @@ func _run() -> void:
 	_check("with coins again, the engine is fixed", TSProfile.part_level_of(TSProfile.PART_ENGINE) == level + 1)
 	_check("a node's screen spot is somewhere real", _world.node_screen_position(TSProfile.PART_ENGINE).is_finite())
 
+	# Pinch to zoom: two fingers spreading apart zoom in about their middle,
+	# which stays over the same spot of the camp.
+	var w = _world
+	var origin: Vector2 = w.get_global_rect().position
+	var mid: Vector2 = origin + w.size * 0.5
+	var spot_before: Vector2 = (mid - origin - w._world.position) / w._zoom   # the world point under the middle
+	var zoom_before: float = w._zoom
+	var card_before: bool = _part["root"].visible
+	var pinch := func(i: int, at: Vector2, pressed: bool, drag := false) -> void:
+		var ev: InputEvent
+		if drag:
+			ev = InputEventScreenDrag.new()
+		else:
+			ev = InputEventScreenTouch.new()
+			ev.pressed = pressed
+		ev.index = i
+		ev.position = at
+		w._unhandled_input(ev)
+	pinch.call(0, mid + Vector2(-60, 0), true)
+	pinch.call(1, mid + Vector2(60, 0), true)
+	pinch.call(0, mid + Vector2(-90, 0), false, true)
+	pinch.call(1, mid + Vector2(90, 0), false, true)
+	var spot_after: Vector2 = (mid - origin - w._world.position) / w._zoom
+	_check("spreading two fingers zooms in (%.2f -> %.2f)" % [zoom_before, w._zoom], w._zoom > zoom_before * 1.3)
+	_check("...about the point between them", spot_after.distance_to(spot_before) < 3.0)
+	pinch.call(0, mid + Vector2(-400, 0), false, true)
+	pinch.call(1, mid + Vector2(400, 0), false, true)
+	_check("zooming in stops at %.1fx" % w.ZOOM_MAX, is_equal_approx(w._zoom, w.ZOOM_MAX))
+	pinch.call(0, mid + Vector2(-2, 0), false, true)
+	pinch.call(1, mid + Vector2(2, 0), false, true)
+	_check("and zooming out stops before the ground runs short of the screen", w._zoom >= w.ZOOM_MIN and w._world.position.y >= w.size.y - w.H * w._zoom - 1.0)
+	pinch.call(0, mid, false)
+	pinch.call(1, mid, false)
+	_check("lifting the fingers ends the pinch, and no part was tapped", w._touches.is_empty() and _part["root"].visible == card_before)
+
 	print("")
 	print("ALL PASSED" if _failures == 0 else "%d FAILED" % _failures)
 	get_tree().quit(0 if _failures == 0 else 1)

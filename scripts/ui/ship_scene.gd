@@ -32,7 +32,7 @@ signal mine_tapped
 ## which glides the world over to them.
 
 const W := 2600.0                # the world, in the menus' 720-wide units
-const H := 2900.0                # deep enough to scroll the far south (the camp's last wave) up into view
+const H := 2610.0                # 10% less ground than it was (2900): still deep enough to scroll the far south (the camp's last wave) up into view
 const INK := Color(0.27, 0.16, 0.19)
 const GLASS := Color(0.62, 0.84, 1.0)
 const DIRT := Color(0.74, 0.58, 0.44)
@@ -244,7 +244,14 @@ var _glide_to = null            # an offset the world is gliding to, or null
 var _builder_icons := {}        # part -> the TSIcon of the critter building it
 
 var _offset := Vector2.ZERO     # where the world sits on screen
-const ZOOM := 0.85              # the world drawn a little small, so more of the camp shows
+const ZOOM := 0.85              # the world as Home opens: drawn a little small, so more of the camp shows
+const ZOOM_MIN := 0.7           # the furthest a pinch zooms out
+const ZOOM_MAX := 1.6           # and the closest it zooms in
+var _zoom := ZOOM               # the zoom now (pinch, or the mouse wheel)
+var _touches := {}              # finger index -> where it is, for the pinch
+var _pinch_from := 0.0          # the fingers' spread as the pinch began, and the zoom then
+var _pinch_zoom := ZOOM
+var _pinch_mid := Vector2.ZERO   # the fingers' middle at the last pinch step
 var _velocity := Vector2.ZERO   # a flick's glide
 var _dragging := false
 var _drag_moved := 0.0
@@ -265,7 +272,7 @@ func _ready() -> void:
 
 	_world = Control.new()
 	_world.size = Vector2(W, H)
-	_world.scale = Vector2.ONE * ZOOM
+	_world.scale = Vector2.ONE * _zoom
 	_world.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_world)
 	_sky_layer = _layer(_draw_sky, -2.0)
@@ -442,7 +449,7 @@ func _depth_scale(y: float) -> float:
 func _home_view() -> void:
 	var view := _view_size()
 	# Centred on the ship as it stands (tall when it is upright on the pad).
-	_offset = Vector2(view.x * 0.56, view.y * (0.39 if _stage < 2 else 0.33)) - (_ship_at + Vector2(-10.0, -10.0)) * ZOOM
+	_offset = Vector2(view.x * 0.56, view.y * (0.39 if _stage < 2 else 0.33)) - (_ship_at + Vector2(-10.0, -10.0)) * _zoom
 	_clamp_offset()
 
 
@@ -452,13 +459,13 @@ func _view_size() -> Vector2:
 
 ## The part of the world on screen now, in world coordinates.
 func _visible_world() -> Rect2:
-	return Rect2(-_world.position / ZOOM, _view_size() / ZOOM)
+	return Rect2(-_world.position / _zoom, _view_size() / _zoom)
 
 
 func _clamp_offset() -> void:
 	var view := _view_size()
-	_offset.x = clampf(_offset.x, view.x - W * ZOOM, 0.0)
-	_offset.y = clampf(_offset.y, view.y - H * ZOOM, 0.0)
+	_offset.x = clampf(_offset.x, view.x - W * _zoom, 0.0)
+	_offset.y = clampf(_offset.y, view.y - H * _zoom, 0.0)
 
 
 # Drags on any part of Home the menus leave uncovered (the buttons and cards
@@ -467,6 +474,44 @@ func _clamp_offset() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not is_visible_in_tree():
 		return
+	# Zooming: two fingers pinch (about their middle), or the mouse wheel and a
+	# trackpad pinch (about the pointer).
+	if event is InputEventMouseButton and (event as InputEventMouseButton).pressed:
+		var mb := event as InputEventMouseButton
+		if mb.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN] and get_global_rect().has_point(mb.position):
+			zoom_at(_zoom * (1.1 if mb.button_index == MOUSE_BUTTON_WHEEL_UP else 1.0 / 1.1), mb.position)
+			return
+	if event is InputEventMagnifyGesture:
+		var mg := event as InputEventMagnifyGesture
+		zoom_at(_zoom * mg.factor, mg.position)
+		return
+	if event is InputEventScreenTouch or event is InputEventScreenDrag:
+		var at: Vector2 = event.position
+		var idx: int = event.index
+		if event is InputEventScreenTouch and not (event as InputEventScreenTouch).pressed:
+			_touches.erase(idx)
+		elif event is InputEventScreenDrag or get_global_rect().has_point(at):
+			_touches[idx] = at
+		if _touches.size() >= 2:
+			var pts: Array = _touches.values()
+			var spread := (pts[0] as Vector2).distance_to(pts[1])
+			var middle := ((pts[0] as Vector2) + (pts[1] as Vector2)) * 0.5
+			if event is InputEventScreenTouch:
+				# The second finger down: a pinch begins, and the drag (or a tap) ends.
+				_pinch_from = spread
+				_pinch_zoom = _zoom
+				_pinch_mid = middle
+				_dragging = false
+				_velocity = Vector2.ZERO
+			elif _pinch_from > 0.0:
+				# The camp follows the fingers' middle as it moves, and zooms about it.
+				_offset += middle - _pinch_mid
+				_pinch_mid = middle
+				_clamp_offset()
+				zoom_at(_pinch_zoom * spread / _pinch_from, middle)
+				_world.position = _offset.round()
+			return
+		_pinch_from = 0.0
 	if event is InputEventScreenTouch:
 		var touch := event as InputEventScreenTouch
 		if touch.index != 0:
@@ -491,6 +536,24 @@ func _unhandled_input(event: InputEvent) -> void:
 		_drag_moved += drag.relative.length()
 		_velocity = drag.velocity
 		_clamp_offset()
+
+
+## Zooms the world to `z` (kept between ZOOM_MIN and ZOOM_MAX, and never so far
+## out that the ground runs short of the screen), keeping the world point under
+## `at` (a screen point) where it is.
+func zoom_at(z: float, at: Vector2) -> void:
+	var view := _view_size()
+	var lowest := maxf(ZOOM_MIN, maxf(view.x / W, view.y / H))
+	z = clampf(z, lowest, ZOOM_MAX)
+	if is_equal_approx(z, _zoom):
+		return
+	var local := at - get_global_rect().position
+	_offset = local - (local - _offset) * (z / _zoom)
+	_zoom = z
+	_world.scale = Vector2.ONE * _zoom
+	_glide_to = null
+	_clamp_offset()
+	_world.position = _offset.round()
 
 
 func _poke(at: Vector2) -> void:
@@ -539,7 +602,7 @@ func _node_world(i: int) -> Vector2:
 
 ## Where a part's node is on screen (this control's space).
 func node_screen_position(i: int) -> Vector2:
-	return _world.position + _node_world(i) * ZOOM
+	return _world.position + _node_world(i) * _zoom
 
 
 ## The open part of Home the nodes keep to.
@@ -551,9 +614,9 @@ func _area() -> Rect2:
 ## (for a ship part, the ship and its whole ring of nodes).
 func glide_to_part(i: int) -> void:
 	var at := _xf * SHIP_MIDDLE if SHIP_SLOTS.has(i) else _node_world(i)
-	var o := _area().get_center() - at * ZOOM
+	var o := _area().get_center() - at * _zoom
 	var view := _view_size()
-	_glide_to = Vector2(clampf(o.x, view.x - W * ZOOM, 0.0), clampf(o.y, view.y - H * ZOOM, 0.0))
+	_glide_to = Vector2(clampf(o.x, view.x - W * _zoom, 0.0), clampf(o.y, view.y - H * _zoom, 0.0))
 	_velocity = Vector2.ZERO
 
 
@@ -577,7 +640,7 @@ func _draw_nodes() -> void:
 	var inner := area.grow(-NODE_R - 6.0)
 	# The mine under the ship, whenever the nodes are out.
 	if nodes_enabled and _launch_start == -1.0:
-		var mp := _world.position + MINE_NODE * ZOOM
+		var mp := _world.position + MINE_NODE * _zoom
 		if inner.has_point(mp):
 			_draw_mine_node(mp + Vector2(0.0, sin(_t * 2.4) * 4.0))
 	var parts := _node_parts()
@@ -587,7 +650,7 @@ func _draw_nodes() -> void:
 	# The ship's dotted lines first, under every node.
 	for i in parts:
 		if SHIP_SPOTS.has(i) and inner.has_point(node_screen_position(i)):
-			_leader(node_screen_position(i), _world.position + _xf * (SHIP_SPOTS[i] as Vector2) * ZOOM)
+			_leader(node_screen_position(i), _world.position + _xf * (SHIP_SPOTS[i] as Vector2) * _zoom)
 	for i in parts:
 		var p := node_screen_position(i)
 		if inner.has_point(p):
