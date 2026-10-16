@@ -50,7 +50,7 @@ func _advance() -> void:
 		SceneFlow.go(INTRO)
 		return
 	var first_launch := not TSProfile.tutorial_seen and TSProfile.last_level <= 1
-	Loading.target_scene_path = SceneFlow.GAME if first_launch else SceneFlow.HOME
+	Loading.target_scene_path = SceneFlow.GAME if first_launch else ("res://scenes/voyage.tscn" if TSProfile.voyage_due() else SceneFlow.HOME)
 	SceneFlow.go("res://scenes/loading.tscn")
 
 

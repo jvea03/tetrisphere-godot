@@ -1009,20 +1009,21 @@ static func parts_fixed() -> int:
 	return n
 
 
-# -- the launch -------------------------------------------------------------------
-# As the ship is fixed it is readied for launch, and at the end of each season
-# (its last LAUNCH_WINDOW_DAYS) a ship with every part fixed can take off. The
-# launch pays LAUNCH_REWARD_BASE plus LAUNCH_REWARD_PER_LEVEL for every ship
-# part level -- so upgrades make it pay more -- and carries the critters to a
-# new planet, where the camp and the ship start again from scratch. One
-# launch per season.
-const LAUNCH_WINDOW_DAYS := 3
+# -- the voyage -------------------------------------------------------------------
+# Every Battle Pass season the critters fly on to a new planet. The first time
+# the player comes in after a season starts, the ship launches (a cutscene:
+# lift-off, space, a crash landing -- scenes/voyage.tscn) and lands on a planet
+# dressed for the new season (planet_theme: autumn, christmas, newyear,
+# valentine). It pays LAUNCH_REWARD_BASE plus LAUNCH_REWARD_PER_LEVEL for
+# every ship part level fixed on the old planet -- so the work on it still pays
+# -- and the camp and the ship start again from scratch there.
 const LAUNCH_REWARD_BASE := 5000
 const LAUNCH_REWARD_PER_LEVEL := 500
 
 static var planet_number: int = 1          # which planet the critters are on (1, 2, ...)
-static var launched_season: int = 0        # the season of the last launch
-static var launch_window_forced := false   # tests and captures only: the window is open
+static var planet_season: int = 0          # the Battle Pass season the planet was reached in (0: not yet set)
+static var planet_theme: String = "autumn" # the season the planet is dressed for (TSShipScene.THEMES)
+static var last_voyage_reward: int = 0     # coins the last voyage paid, for its cutscene
 
 
 static func _is_ship_part(i: int) -> bool:
@@ -1048,24 +1049,10 @@ static func is_ship_ready() -> bool:
 	return true
 
 
-static func is_launch_window() -> bool:
-	return launch_window_forced or battle_pass_seconds_remaining() <= LAUNCH_WINDOW_DAYS * 86400
-
-
-## Days until the launch window opens (0 while it is open).
-static func days_to_launch_window() -> int:
-	if is_launch_window():
-		return 0
+## Days until the next voyage: the season's end, counted up.
+static func days_to_voyage() -> int:
 	@warning_ignore("integer_division")
-	return (battle_pass_seconds_remaining() - LAUNCH_WINDOW_DAYS * 86400 + 86399) / 86400
-
-
-static func has_launched_this_season() -> bool:
-	return launched_season == battle_pass_season_number()
-
-
-static func can_launch() -> bool:
-	return is_ship_ready() and is_launch_window() and not has_launched_this_season()
+	return maxi((battle_pass_seconds_remaining() + 86399) / 86400, 1)
 
 
 static func launch_reward() -> int:
@@ -1076,11 +1063,23 @@ static func launch_reward() -> int:
 	return LAUNCH_REWARD_BASE + LAUNCH_REWARD_PER_LEVEL * levels
 
 
-## Launches the ship: pays the reward, banks the part levels, and moves the
-## critters to the next planet with a fresh camp and ship. Returns the coins
-## paid, or 0 if it can't launch now.
-static func launch_ship() -> int:
-	if not can_launch():
+## Whether a new season has started since the critters reached this planet --
+## and the player is past the opening -- so the ship flies on now. A planet
+## with no season yet (a new player, or a save from before voyages) takes the
+## current one, so nobody flies off the moment they arrive.
+static func voyage_due() -> bool:
+	if planet_season <= 0:
+		planet_season = battle_pass_season_number()
+		save()
+		return false
+	return intro_seen and tutorial_seen and planet_season < battle_pass_season_number()
+
+
+## The voyage: pays the reward, moves the critters to the next planet --
+## dressed for this season -- with a fresh camp and ship. Returns the coins
+## paid (also kept in last_voyage_reward), or 0 if no voyage is due.
+static func take_voyage() -> int:
+	if not voyage_due():
 		return 0
 	var reward := boost_earned_coins(launch_reward())
 	coin_count += reward
@@ -1088,7 +1087,9 @@ static func launch_ship() -> int:
 	for i in PART_COUNT:
 		part_level[i] = 0
 	planet_number += 1
-	launched_season = battle_pass_season_number()
+	planet_season = battle_pass_season_number()
+	planet_theme = season_theme()
+	last_voyage_reward = reward
 	save()
 	return reward
 
@@ -2431,12 +2432,8 @@ static func ensure_loaded() -> void:
 			if int(k) >= 0 and int(k) < PART_COUNT and (pb[k] is Dictionary) and (pb[k] as Dictionary).has("end"):
 				part_builds[int(k)] = {"end": int(pb[k]["end"]), "critter": int(pb[k].get("critter", 0))}
 	planet_number = maxi(1, int(g.call("planet_number", 1)))
-	launched_season = int(g.call("launched_season", 0))
-	# Saved before BATTLE_PASS_CALENDAR: the season then running was numbered 2,
-	# and is season 1 now -- so a launch in it still counts for it, not for the
-	# Christmas season.
-	if int(g.call("pass_calendar", 1)) < 2 and launched_season > 0:
-		launched_season -= 1
+	planet_season = int(g.call("planet_season", 0))
+	planet_theme = str(g.call("planet_theme", "autumn"))
 	_blank_collection()
 	for i in CRITTER_COUNT:
 		if i < cu.size():
@@ -2544,8 +2541,8 @@ static func save() -> void:
 	s.call("mine_since", mine_since)
 	s.call("time_skips", time_skips)
 	s.call("planet_number", planet_number)
-	s.call("launched_season", launched_season)
-	s.call("pass_calendar", 2)
+	s.call("planet_season", planet_season)
+	s.call("planet_theme", planet_theme)
 	s.call("has_club", has_club)
 	s.call("club_name", club_name)
 	s.call("club_is_owner", club_is_owner)

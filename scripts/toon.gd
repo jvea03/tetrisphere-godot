@@ -159,7 +159,12 @@ uniform vec2 orb_uv = vec2(0.82, 0.24);
 uniform float orb_px = 44.0;
 uniform float crescent = 0.0;     // 1: a crescent moon
 uniform float grad_start = 0.45;  // how far down the sky starts to turn
-uniform float autumn = 0.0;       // 1: rolling hills with orange trees below, and leaves drifting down
+uniform float autumn = 0.0;       // 1: rolling hills with the season's trees below, and leaves (or snow) drifting down
+uniform vec4 leaf_a : source_color = vec4(1.0, 0.56, 0.22, 1.0);   // the season's three crown colours
+uniform vec4 leaf_b : source_color = vec4(0.94, 0.36, 0.26, 1.0);
+uniform vec4 leaf_c : source_color = vec4(1.0, 0.78, 0.3, 1.0);
+uniform vec4 meadow_col : source_color = vec4(0.9, 0.76, 0.46, 1.0);   // the near hill
+uniform float snow = 0.0;         // 1: round white snowflakes fall instead of leaves
 uniform vec4 world : source_color = vec4(1.0);   // tints the hills and leaves (moonlit at night)
 uniform vec4 ink : source_color = vec4(0.27, 0.16, 0.19, 1.0);
 
@@ -214,9 +219,9 @@ void fragment() {
 		float yp = px.y;
 		float H = VIEWPORT_SIZE.y;
 		float W = VIEWPORT_SIZE.x;
-		vec3 far_hill = mix(blush.rgb, vec3(0.86, 0.68, 0.5), 0.55) * world.rgb;
-		vec3 near_hill = vec3(0.9, 0.76, 0.46) * world.rgb;
-		vec3 near_low = vec3(0.84, 0.68, 0.4) * world.rgb;
+		vec3 far_hill = mix(blush.rgb, meadow_col.rgb * vec3(0.96, 0.9, 1.0), 0.55) * world.rgb;
+		vec3 near_hill = meadow_col.rgb * world.rgb;
+		vec3 near_low = meadow_col.rgb * 0.92 * world.rgb;
 		float hf = hill(sx, 0.74, 0.04, 5.0, 1.3) * H;
 		// Trees, one per slot along the far hill, standing on it.
 		float slot = W / 7.0;
@@ -233,7 +238,7 @@ void fragment() {
 			col = shape(col, trunk, vec3(0.62, 0.42, 0.3) * world.rgb, rim);
 			float blob = min(distance(px, c) - r, min(distance(px, c + vec2(-r * 0.55, r * 0.3)) - r * 0.7, distance(px, c + vec2(r * 0.55, r * 0.3)) - r * 0.7));
 			float h = hash(vec2(n, 5.0));
-			vec3 leaf = h < 0.33 ? vec3(1.0, 0.56, 0.22) : (h < 0.66 ? vec3(0.94, 0.36, 0.26) : vec3(1.0, 0.78, 0.3));
+			vec3 leaf = h < 0.33 ? leaf_a.rgb : (h < 0.66 ? leaf_b.rgb : leaf_c.rgb);
 			col = shape(col, blob, leaf * world.rgb, rim);
 			// A soft highlight on the canopy's upper left.
 			float shine = 1.0 - smoothstep(r * 0.3, r * 0.42, distance(px, c + vec2(-r * 0.32, -r * 0.35)));
@@ -261,9 +266,9 @@ void fragment() {
 			float a = TIME * (0.8 + hash(lc + 2.0) * 1.6) + hash(lc) * 6.28;
 			lq = mat2(vec2(cos(a), sin(a)), vec2(-sin(a), cos(a))) * lq;
 			float ls = lp * (0.07 + 0.04 * hash(lc + 4.0));
-			float ld = length(lq / vec2(1.0, 0.5)) - ls;
+			float ld = mix(length(lq / vec2(1.0, 0.5)) - ls, length(lq) - ls * 0.55, snow);
 			float lh = hash(lc + 8.0);
-			vec3 lcol = lh < 0.33 ? vec3(1.0, 0.56, 0.22) : (lh < 0.66 ? vec3(0.94, 0.36, 0.26) : vec3(1.0, 0.78, 0.3));
+			vec3 lcol = mix(lh < 0.33 ? leaf_a.rgb : (lh < 0.66 ? leaf_b.rgb : leaf_c.rgb), vec3(1.0), snow);
 			col = mix(col, lcol * world.rgb, (1.0 - smoothstep(-0.75, 0.75, ld)) * 0.85);
 		}
 	}
@@ -358,7 +363,14 @@ static func apply_sky(mat: ShaderMaterial, sky: Dictionary) -> void:
 	mat.set_shader_parameter("orb_uv", sky["orb_uv"])
 	mat.set_shader_parameter("crescent", sky["crescent"])
 	mat.set_shader_parameter("world", sky["world"])
-	mat.set_shader_parameter("autumn", 1.0 if TSShipScene.SEASON == "autumn" else 0.0)
+	# The countryside below, dressed for the planet's season (TSShipScene.THEMES).
+	var look := TSShipScene.theme()
+	mat.set_shader_parameter("autumn", 1.0)
+	mat.set_shader_parameter("leaf_a", look["leaves"][0])
+	mat.set_shader_parameter("leaf_b", look["leaves"][2])
+	mat.set_shader_parameter("leaf_c", look["leaves"][1] if look["fall"] != "snow" else look["leaves"][3])
+	mat.set_shader_parameter("meadow_col", look["ground"])
+	mat.set_shader_parameter("snow", 1.0 if look["fall"] == "snow" else 0.0)
 
 
 static func paper() -> ShaderMaterial:

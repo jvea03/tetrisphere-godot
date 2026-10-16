@@ -345,7 +345,11 @@ static func paper_rect() -> ColorRect:
 	var mat := ShaderMaterial.new()
 	mat.shader = shader
 	mat.set_shader_parameter("paper", PAPER)
-	mat.set_shader_parameter("autumn", 1.0 if TSShipScene.SEASON == "autumn" else 0.0)
+	var look := TSShipScene.theme()
+	mat.set_shader_parameter("autumn", 1.0)
+	for k in 3:
+		mat.set_shader_parameter(["leaf_a", "leaf_b", "leaf_c"][k], (look["leaves"][[0, 2, 1][k]] as Color).lerp(Color.WHITE, 0.3))
+	mat.set_shader_parameter("snow", 1.0 if look["fall"] == "snow" else 0.0)
 	r.material = mat
 	return r
 
@@ -356,6 +360,10 @@ uniform vec4 paper : source_color = vec4(1.0, 0.96, 0.88, 1.0);
 uniform vec4 blush : source_color = vec4(1.0, 0.88, 0.89, 1.0);
 uniform vec4 dots : source_color = vec4(0.99, 0.89, 0.89, 1.0);
 uniform float autumn = 0.0;   // 1: soft leaves drift down the paper instead of the polka dots
+uniform vec4 leaf_a : source_color = vec4(1.0, 0.7, 0.45, 1.0);   // the season's colours, paled
+uniform vec4 leaf_b : source_color = vec4(1.0, 0.62, 0.6, 1.0);
+uniform vec4 leaf_c : source_color = vec4(1.0, 0.84, 0.5, 1.0);
+uniform float snow = 0.0;     // 1: soft round snowflakes instead of leaves
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 void fragment() {
 	vec3 col = mix(paper.rgb, blush.rgb, smoothstep(0.45, 1.0, UV.y));
@@ -377,11 +385,12 @@ void fragment() {
 			float a = TIME * (0.3 + 0.5 * hash(lc + 2.0)) + hash(lc) * 6.28;
 			q = mat2(vec2(cos(a), sin(a)), vec2(-sin(a), cos(a))) * q;
 			float s = 11.0 + 7.0 * hash(lc + 4.0);
-			float d = length(q / vec2(1.0, 0.5)) - s;
+			float d = mix(length(q / vec2(1.0, 0.5)) - s, length(q) - s * 0.5, snow);
 			// a vein down the middle
 			float vein = (1.0 - smoothstep(0.6, 1.4, abs(q.y))) * step(abs(q.x), s * 0.8);
 			float h = hash(lc + 8.0);
-			vec3 lcol = h < 0.33 ? vec3(1.0, 0.7, 0.45) : (h < 0.66 ? vec3(1.0, 0.62, 0.6) : vec3(1.0, 0.84, 0.5));
+			vec3 lcol = mix(h < 0.33 ? leaf_a.rgb : (h < 0.66 ? leaf_b.rgb : leaf_c.rgb), vec3(0.8, 0.86, 1.0), snow);
+			vein *= 1.0 - snow;
 			float inside = 1.0 - smoothstep(-0.8, 0.8, d);
 			col = mix(col, mix(col, lcol, 0.68), inside);
 			col = mix(col, mix(col, lcol * 0.8, 0.6), inside * vein);

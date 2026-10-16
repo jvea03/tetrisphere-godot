@@ -39,7 +39,7 @@ var camp_label: Label
 var camp_bar: ProgressBar
 var materials_pill: Button   # building materials, beside the coins
 var materials_label: Label
-var _launch_btn: Button      # shown at a season's end when the ship is ready
+const VOYAGE := "res://scenes/voyage.tscn"   # the flight to a new planet, each new season
 
 var _chest_slots: Array = [] # per slot: {btn, plate, art, pill, pill_label, band}
 var _settings: Dictionary
@@ -357,17 +357,10 @@ func _build_showcase() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	content.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	(content.get_parent() as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# At the end of a season, a readied ship can launch (TSProfile.can_launch).
-	if TSProfile.can_launch():
-		gap.add_child(TSUI.spacer(0, true))
-		_launch_btn = TSUI.button("LAUNCH!  +%s" % TSProfile.fmt_coins(TSProfile.launch_reward()), TSUI.GOLD, 30, Vector2(320, 80))   # narrow enough to clear the side tiles
-		_launch_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		_launch_btn.pressed.connect(_on_launch_pressed)
-		gap.add_child(_launch_btn)
-		_launch_btn.pivot_offset = _launch_btn.custom_minimum_size * 0.5
-		var beat := _launch_btn.create_tween().set_loops()
-		beat.tween_property(_launch_btn, "scale", Vector2.ONE * 1.06, 0.5).set_trans(Tween.TRANS_SINE)
-		beat.tween_property(_launch_btn, "scale", Vector2.ONE, 0.5).set_trans(Tween.TRANS_SINE)
+	# A new season since the critters landed here: the ship flies on to the
+	# next planet (the voyage cutscene), the first time they come in.
+	if TSProfile.voyage_due():
+		_fly_on.call_deferred()
 
 
 ## The open part of Home, in the crash site's space: the gap between the top
@@ -652,11 +645,6 @@ func _built(i: int, camp_before: int) -> void:
 	TSFX.sparkle_burst_at(self, Rect2(at - Vector2(50, 50), Vector2(100, 100)))
 	_world.refresh_parts()
 	_refresh_camp_badge()
-	if TSProfile.can_launch() and _launch_btn == null:
-		# The last ship part fixed in the launch window: Home reopens with LAUNCH!
-		TSUI.conceal(_part["root"])
-		SceneFlow.go(SceneFlow.HOME)
-		return
 	var camp_now := TSProfile.camp_level()
 	if camp_now > camp_before:
 		TSUI.conceal(_part["root"])
@@ -695,33 +683,6 @@ func _camp_banner(title: String, sub: String, glide_to: int) -> void:
 	TSFX.confetti(self)
 	TSHaptics.heavy()
 	_world.glide_to_part(glide_to)
-
-
-## Lift-off: the ship roars away with its crew aboard; then the reward and the
-## news -- a new planet, a new camp to build -- and Home reopens there.
-func _on_launch_pressed() -> void:
-	_launch_btn.disabled = true
-	_launch_btn.visible = false
-	TSSfx.play("win")
-	TSHaptics.heavy()
-	_world.launched.connect(_on_launched, CONNECT_ONE_SHOT)
-	_world.launch()
-
-
-func _on_launched() -> void:
-	var before := TSProfile.coin_count
-	var coins := TSProfile.launch_ship()
-	var card := TSUI.dialog(self, 600)
-	var box: VBoxContainer = card["box"]
-	box.add_child(TSUI.title("Lift-off!", 48))
-	box.add_child(TSUI.wrap(TSUI.label("Your critters flew to Planet %d! A new crash site means a new camp to build and a new ship to fix." % TSProfile.planet_number, 24, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER), 540))
-	box.add_child(TSUI.label("+%s coins" % TSProfile.fmt_coins(coins), 36, TSFX.COL_GAIN, HORIZONTAL_ALIGNMENT_CENTER))
-	var go := TSUI.button("Explore Planet %d" % TSProfile.planet_number, TSUI.GREEN, 28, Vector2(0, 76))
-	go.pressed.connect(func(): SceneFlow.go(SceneFlow.HOME))
-	box.add_child(go)
-	TSUI.reveal(card["root"], card["panel"])
-	coin_pill.receive(card["panel"].get_global_rect(), before, TSProfile.coin_count)
-	TSFX.confetti(self)
 
 
 func _build_chest_tray() -> void:
@@ -1392,3 +1353,12 @@ func on_back_requested() -> bool:
 			TSUI.conceal(d["root"])
 			return true
 	return false
+
+
+## Off to the voyage once Home's own fade-in has finished (SceneFlow ignores
+## a scene change asked for mid-transition).
+func _fly_on() -> void:
+	while SceneFlow.in_flight:
+		await get_tree().process_frame
+	if is_inside_tree():
+		SceneFlow.go(VOYAGE)

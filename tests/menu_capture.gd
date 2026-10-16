@@ -53,7 +53,6 @@ func _ready() -> void:
 		var t := get_tree()
 		t.create_timer(0.8).timeout.connect(func(): t.current_scene._world.glide_to_part(spot))
 	if last_arg == "max":
-		TSProfile.launch_window_forced = true   # the ship on its pad, LAUNCH! showing
 		TSProfile.part_level = []
 		for i in TSProfile.PART_COUNT:
 			TSProfile.part_level.append(TSProfile.PART_MAX_LEVEL)

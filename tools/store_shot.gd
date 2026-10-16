@@ -17,6 +17,7 @@
 # --advance=<n>  press Next n times on the first-visit walkthrough (with --fresh)
 # --wait=<s>      seconds to let animations settle (default 1.5)
 # --date=<Y-M-D> pretend it is that day: a later Battle Pass season, say
+# --planet=<theme> the critters' planet dressed for a season: christmas, newyear...
 extends Node
 
 var _date_offset := 0.0   # --date: kept in place every frame, as the network clock sync would undo it
@@ -34,6 +35,7 @@ func _ready() -> void:
 	var wait := 1.5
 	var fresh := false
 	var advance := 0
+	var planet := ""
 	var size := Vector2i(1290, 2796)
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--scene="):
@@ -48,6 +50,8 @@ func _ready() -> void:
 			advance = int(a.substr(10))
 		elif a.begins_with("--wait="):
 			wait = float(a.substr(7))
+		elif a.begins_with("--planet="):   # the planet dressed for this season (TSShipScene.THEMES)
+			planet = a.substr(9)
 		elif a.begins_with("--date="):   # pretend it is this day (UTC noon): a future season, sale...
 			_date_offset = Time.get_unix_time_from_datetime_string(a.substr(7) + "T12:00:00") - Time.get_unix_time_from_system()
 			TSClock.offset = _date_offset
@@ -61,6 +65,8 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	_profile(level)
+	if planet != "":
+		TSProfile.planet_theme = planet
 	if fresh:   # a brand-new player: the first-visit walkthroughs still to come
 		TSProfile.collection_tutorial_seen = false
 		TSProfile.home_tutorial_seen = false

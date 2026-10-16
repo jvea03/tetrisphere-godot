@@ -173,13 +173,14 @@ func _process(delta: float) -> void:
 
 
 func _update_caption() -> void:
+	var lines := _captions()
 	var i := -1
-	for k in CAPTIONS.size():
-		if _t >= float(CAPTIONS[k][0]):
+	for k in lines.size():
+		if _t >= float(lines[k][0]):
 			i = k
 	if i != _caption_i and i >= 0:
 		_caption_i = i
-		_caption_label.text = CAPTIONS[i][1]
+		_caption_label.text = lines[i][1]
 		_caption.modulate.a = 0.0
 		_caption.create_tween().tween_property(_caption, "modulate:a", 1.0, 0.3)
 
@@ -209,6 +210,22 @@ func _impact() -> void:
 	for i in 14:
 		var a := PI + _rng.randf_range(0.2, PI - 0.2)
 		_rocks.append({"pos": CRASH_AT, "vel": Vector2(cos(a), sin(a)) * _rng.randf_range(500.0, 900.0), "r": _rng.randf_range(6.0, 13.0), "spin": _rng.randf() * TAU})
+
+
+## The captions, [time, text] in order (the voyage has its own).
+func _captions() -> Array:
+	return CAPTIONS
+
+
+## The colours of the planet the ship crashes on: ground, ground_dark, sky_top, sky_low.
+func _planet() -> Dictionary:
+	return TSShipScene.PLANETS[0]
+
+
+## Scenery over the crash site's ground, before the crater (the voyage dresses
+## its planet for the season).
+func _dress_crash_site() -> void:
+	pass
 
 
 # -- the ship's path -------------------------------------------------------------
@@ -357,17 +374,17 @@ func _draw_space() -> void:
 	var radius := 1400.0
 	var centre := Vector2(360.0, top + radius)
 	_stage.draw_circle(centre, radius + 34.0, Color(0.62, 0.84, 1.0, 0.35), true, -1.0, true)
-	_stage.draw_circle(centre, radius, TSShipScene.PLANETS[0]["ground"], true, -1.0, true)
+	_stage.draw_circle(centre, radius, _planet()["ground"], true, -1.0, true)
 	for spot in [Vector2(-260, 70), Vector2(150, 140), Vector2(330, 60), Vector2(-60, 230)]:
 		var sv: Vector2 = spot
-		_stage.draw_circle(Vector2(360.0 + sv.x, top + sv.y), 46.0, TSShipScene.PLANETS[0]["ground_dark"], true, -1.0, true)
+		_stage.draw_circle(Vector2(360.0 + sv.x, top + sv.y), 46.0, _planet()["ground_dark"], true, -1.0, true)
 	_stage.draw_arc(centre, radius, 0.0, TAU, 256, INK, 5.0, true)
 	var pose := _ship_pose()
 	_draw_ship(pose[0], float(pose[1]), 1.0)
 
 
 func _draw_crash_site() -> void:
-	var planet: Dictionary = TSShipScene.PLANETS[0]
+	var planet := _planet()
 	_stage.draw_polygon(PackedVector2Array([Vector2(-WIDE, -40), Vector2(720 + WIDE, -40), Vector2(720 + WIDE, HORIZON), Vector2(-WIDE, HORIZON)]),
 		PackedColorArray([planet["sky_top"], planet["sky_top"], planet["sky_low"], planet["sky_low"]]))
 	# Gentle hills along the horizon, then the ground.
@@ -381,6 +398,7 @@ func _draw_crash_site() -> void:
 	_stage.draw_polyline(edge, INK, 5.0, true)
 	for spot in [Vector2(110, 1000), Vector2(600, 940), Vector2(520, 1180), Vector2(160, 1210)]:
 		_ellipse(spot, 70.0, 20.0, planet["ground_dark"], false)
+	_dress_crash_site()
 	# The crater, the ship nose-down in it, and a lip of thrown-up dirt that
 	# hides the buried nose.
 	_ellipse(CRASH_AT + Vector2(40.0, 20.0), 190.0, 46.0, planet["ground_dark"].darkened(0.12), true)
