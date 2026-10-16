@@ -225,7 +225,8 @@ func _build_camp_badge(parent: Control) -> void:
 	row.add_child(lead)
 	row.add_child(camp_badge)
 	parent.resized.connect(func():
-		lead.custom_minimum_size.x = maxf(0.0, get_viewport_rect().size.x * 0.5 - parent.global_position.x - camp_badge.custom_minimum_size.x * 0.5))
+		# Measured within Home, not on screen: Home may be sliding in from a side.
+		lead.custom_minimum_size.x = maxf(0.0, size.x * 0.5 - (parent.global_position.x - global_position.x) - camp_badge.custom_minimum_size.x * 0.5))
 	var tent := TSIcon.make("part", 44, TSProfile.CAMP_TENT)
 	tent.position = Vector2(10, 6)
 	tent.size = Vector2(44, 44)
@@ -1352,8 +1353,7 @@ func _on_profile_save() -> void:
 # -- walkthroughs -----------------------------------------------------------------------
 
 func _start_home_tutorial() -> void:
-	await get_tree().process_frame
-	await get_tree().process_frame
+	await _settled()
 	if not is_inside_tree():
 		return
 	tutorial.finished.connect(func():
@@ -1368,8 +1368,7 @@ func _start_home_tutorial() -> void:
 
 
 func _start_daily_callout() -> void:
-	await get_tree().process_frame
-	await get_tree().process_frame
+	await _settled()
 	if not is_inside_tree():
 		return
 	tutorial.finished.connect(func():
@@ -1381,8 +1380,7 @@ func _start_daily_callout() -> void:
 ## The first visit once the camp's nodes appear: the world glides to the
 ## campfire and the walkthrough points at its plus.
 func _start_camp_callout() -> void:
-	await get_tree().process_frame
-	await get_tree().process_frame
+	await _settled()
 	if not is_inside_tree():
 		return
 	_world.glide_to_part(TSProfile.CAMP_FIRE)
@@ -1415,3 +1413,13 @@ func _fly_on() -> void:
 		await get_tree().process_frame
 	if is_inside_tree():
 		SceneFlow.go(VOYAGE)
+
+
+## Waits until Home is in place: a couple of frames for the layout, and any
+## slide in from a tab finished -- a walkthrough's spotlight is measured on
+## screen, and mid-slide Home is still a screen's width off to the side.
+func _settled() -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	while SceneFlow.in_flight and is_inside_tree():
+		await get_tree().process_frame

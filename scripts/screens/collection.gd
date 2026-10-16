@@ -443,6 +443,8 @@ func _maybe_start_tutorial() -> void:
 		return
 	await get_tree().process_frame
 	await get_tree().process_frame
+	while SceneFlow.in_flight and is_inside_tree():   # sliding in from a tab: wait till it is in place
+		await get_tree().process_frame
 	if not is_inside_tree():
 		return
 	var before := TSProfile.coin_count
