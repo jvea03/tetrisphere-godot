@@ -172,6 +172,9 @@ func _profile(level: int) -> void:
 	TSProfile.use_test_profile(level)
 	TSProfile.home_tutorial_seen = true
 	TSProfile.daily_callout_seen = true
+	# no Double Coins button on a win card in the store art: the day's ads are used up
+	TSProfile.ad_rewards_date = TSClock.date_string()
+	TSProfile.ad_rewards_used = {"win_coins": 99}
 	TSProfile.camp_callout_seen = true
 	TSProfile.collection_tutorial_seen = true
 	TSProfile.club_intro_seen = true
