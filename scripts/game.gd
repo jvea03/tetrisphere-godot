@@ -1955,7 +1955,11 @@ func _show_win_card() -> void:
 		box.add_child(TSUI.label("First try! +%d bonus stars" % FIRST_ATTEMPT_STAR_BONUS, 22, TSFX.COL_GAIN, HORIZONTAL_ALIGNMENT_CENTER))
 	if _win_bonus != "":
 		box.add_child(TSUI.label(_win_bonus, 22, TSFX.COL_GAIN, HORIZONTAL_ALIGNMENT_CENTER))
-	var next := TSUI.button("Back to Home" if is_daily else "Next Level", TSUI.GREEN, 34, Vector2(0, 90))
+	if _win_coins > 0 and TSProfile.ad_rewards_left("win_coins") > 0:
+		var double := TSUI.button(TSAdReward.text("Double Coins (+%s)" % TSProfile.fmt_coins(_win_coins)), TSUI.SKY, 28, Vector2(0, 76))
+		double.pressed.connect(func(): _double_win_coins(double, coin_amount))
+		box.add_child(double)
+	var next :=TSUI.button("Back to Home" if is_daily else "Next Level", TSUI.GREEN, 34, Vector2(0, 90))
 	next.pressed.connect(_on_next_pressed)
 	box.add_child(next)
 	TSUI.juice(box)
@@ -1975,6 +1979,27 @@ func _show_win_card() -> void:
 					if is_instance_valid(coin_amount):
 						TSSfx.play("tick", pow(2.0, float(POP_SCALE[k]) / 12.0)))
 			count.tween_callback(func(): TSSfx.play("ding")))
+
+
+## The win card's rewarded ad: the win's coins again (ad_win_coins_per_day a
+## day). Having sat through it, the player is spared the next interstitial.
+func _double_win_coins(button: Button, coin_amount: Label) -> void:
+	if TSProfile.ad_rewards_left("win_coins") <= 0:
+		return
+	var coins := _win_coins
+	TSAdReward.watch(_hud, button, func():
+		TSProfile.coin_count += coins
+		TSProfile.use_ad_reward("win_coins")
+		_win_ad_due = false,
+	func():
+		button.disabled = true
+		button.text = "Coins doubled!"
+		TSSfx.play("coin")
+		TSFX.sparkle_burst(_hud, coin_amount)
+		var count := coin_amount.create_tween()
+		count.tween_method(func(v: float): coin_amount.text = "+%s" % TSProfile.fmt_coins(int(v)), float(coins), float(coins * 2), 0.5)
+		count.tween_callback(func(): TSSfx.play("ding"))
+		_refresh_hud())
 
 
 func _reward_stack(icon: String, amount: Label) -> Control:

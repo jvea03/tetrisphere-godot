@@ -90,6 +90,37 @@ static func roll_starter_claims() -> void:
 		save()
 
 
+## Rewarded ads around the game, each with its own daily cap (TSTunables
+## "ad_<kind>_per_day"): "win_coins" doubles a win's coins, "chest" and "build"
+## take AD_SKIP_SECONDS off a chest's or a build's timer. The mine's and the
+## daily reward's doubling go by their own state, not a count.
+const AD_SKIP_SECONDS := 30 * 60
+static var ad_rewards_used: Dictionary = {}   # kind -> times today
+static var ad_rewards_date: String = ""
+
+
+static func ad_rewards_left(kind: String) -> int:
+	if ad_rewards_date != TSClock.date_string():
+		ad_rewards_date = TSClock.date_string()
+		ad_rewards_used = {}
+	return maxi(TSTunables.get_int("ad_%s_per_day" % kind) - int(ad_rewards_used.get(kind, 0)), 0)
+
+
+static func use_ad_reward(kind: String) -> void:
+	ad_rewards_left(kind)   # rolls the day over
+	ad_rewards_used[kind] = int(ad_rewards_used.get(kind, 0)) + 1
+	save()
+
+
+## The ad's half hour off a build under way (finishing it if that is all it had).
+static func ad_skip_build(i: int) -> bool:
+	if not is_part_building(i) or is_part_build_done(i):
+		return false
+	part_builds[i]["end"] = maxi(int(part_builds[i]["end"]) - AD_SKIP_SECONDS, _now_unix())
+	save()
+	return true
+
+
 ## The Shop's No Ads pass: every "watch an ad" step is skipped and its reward
 ## granted outright, and earned coins get a bonus on top (boost_earned_coins).
 static var no_ads: bool = false
@@ -859,6 +890,21 @@ static func collect_mine() -> int:
 		return 0
 	add_materials(n)
 	mine_since = _now_unix()
+	mine_last_haul = n
+	save()
+	return n
+
+
+## The last haul from the mine, which a rewarded ad can double once (0 after).
+static var mine_last_haul: int = 0
+
+
+static func double_mine_haul() -> int:
+	var n := mine_last_haul
+	if n <= 0:
+		return 0
+	add_materials(n)
+	mine_last_haul = 0
 	save()
 	return n
 
@@ -1601,8 +1647,28 @@ static func claim_login_reward() -> int:
 	var reward := login_reward_amount()
 	coin_count += reward
 	login_reward_claimed_date = login_streak_last_date
+	login_reward_claimed_amount = reward
 	save()
 	return reward
+
+
+## Today's login coins, claimed, can be doubled once by a rewarded ad.
+static var login_reward_claimed_amount: int = 0
+static var login_reward_doubled_date: String = ""
+
+
+static func can_double_login_reward() -> bool:
+	var today := TSClock.date_string()
+	return login_reward_claimed_date == today and login_reward_doubled_date != today and login_reward_claimed_amount > 0
+
+
+static func double_login_reward() -> int:
+	if not can_double_login_reward():
+		return 0
+	coin_count += login_reward_claimed_amount
+	login_reward_doubled_date = TSClock.date_string()
+	save()
+	return login_reward_claimed_amount
 
 
 static func can_claim_daily_reward() -> bool:
@@ -2397,6 +2463,9 @@ static func ensure_loaded() -> void:
 	starter_coin_claims_date = str(g.call("starter_coin_claims_date", ""))
 	starter_material_claims = int(g.call("starter_material_claims", 0))
 	starter_material_claims_date = str(g.call("starter_material_claims_date", ""))
+	var used: Variant = g.call("ad_rewards_used", {})
+	ad_rewards_used = used if used is Dictionary else {}
+	ad_rewards_date = str(g.call("ad_rewards_date", ""))
 	no_ads = bool(g.call("no_ads", false))
 	is_payer = bool(g.call("is_payer", false)) or no_ads
 	interstitial_owed = bool(g.call("interstitial_owed", false))
@@ -2433,6 +2502,7 @@ static func ensure_loaded() -> void:
 	var pl: Array = g.call("camp_and_ship", [])   # the camp-first list (an older ship-only one is ignored)
 	materials = maxi(0, int(g.call("materials", 0)))
 	mine_since = maxi(0, int(g.call("mine_since", 0)))
+	mine_last_haul = maxi(0, int(g.call("mine_last_haul", 0)))
 	time_skips = maxi(0, int(g.call("time_skips", 0)))
 	part_builds = {}
 	var pb: Variant = g.call("part_builds", {})
@@ -2473,6 +2543,8 @@ static func ensure_loaded() -> void:
 	daily_streak_last_date = str(g.call("daily_streak_last_date", ""))
 	daily_completed_date = str(g.call("daily_completed_date", ""))
 	login_reward_claimed_date = str(g.call("login_reward_claimed_date", ""))
+	login_reward_claimed_amount = maxi(0, int(g.call("login_reward_claimed_amount", 0)))
+	login_reward_doubled_date = str(g.call("login_reward_doubled_date", ""))
 	daily_reward_claimed_date = str(g.call("daily_reward_claimed_date", ""))
 	daily_star_total = int(g.call("daily_star_total", 0))
 	daily_star_date = str(g.call("daily_star_date", ""))
@@ -2512,6 +2584,8 @@ static func save() -> void:
 	s.call("starter_material_claims", starter_material_claims)
 	s.call("starter_material_claims_date", starter_material_claims_date)
 	s.call("starter_coin_claims_date", starter_coin_claims_date)
+	s.call("ad_rewards_used", ad_rewards_used)
+	s.call("ad_rewards_date", ad_rewards_date)
 	s.call("no_ads", no_ads)
 	s.call("is_payer", is_payer)
 	s.call("interstitial_owed", interstitial_owed)
@@ -2550,6 +2624,7 @@ static func save() -> void:
 	s.call("part_builds", part_builds)
 	s.call("materials", materials)
 	s.call("mine_since", mine_since)
+	s.call("mine_last_haul", mine_last_haul)
 	s.call("time_skips", time_skips)
 	s.call("planet_number", planet_number)
 	s.call("planet_season", planet_season)
@@ -2569,6 +2644,8 @@ static func save() -> void:
 	s.call("daily_streak_last_date", daily_streak_last_date)
 	s.call("daily_completed_date", daily_completed_date)
 	s.call("login_reward_claimed_date", login_reward_claimed_date)
+	s.call("login_reward_claimed_amount", login_reward_claimed_amount)
+	s.call("login_reward_doubled_date", login_reward_doubled_date)
 	s.call("daily_reward_claimed_date", daily_reward_claimed_date)
 	s.call("daily_star_total", daily_star_total)
 	s.call("daily_star_date", daily_star_date)

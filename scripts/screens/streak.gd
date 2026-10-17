@@ -72,11 +72,21 @@ func _make_card(title_text: String, pill_color: Color, icon: String, parts: Dict
 	parts["claim"] = claim
 	parts["collected"] = TSUI.label("", 22, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER)
 	v.add_child(parts["collected"])
+	if on_tap == _on_login_tap:   # today's login coins, doubled by a rewarded ad
+		var ad := TSUI.button("", TSUI.SKY, 24, Vector2(0, 66), 5)
+		ad.pressed.connect(func(): _on_login_ad(ad))
+		v.add_child(ad)
+		parts["ad"] = ad
 	return card
 
 
 func _refresh() -> void:
 	_fill(_login, _login_card, TSProfile.login_streak_count, TSProfile.can_claim_login_reward(), TSProfile.login_reward_amount(), true)
+	var ad: Button = _login["ad"]
+	if not Ads.is_busy():   # an ad is up: its button says so
+		ad.visible = TSProfile.can_double_login_reward()
+		ad.disabled = false
+		ad.text = TSAdReward.text("Double it (+%s)" % TSProfile.fmt_coins(TSProfile.login_reward_claimed_amount))
 	_fill(_daily, _daily_card, TSProfile.daily_streak_count, TSProfile.can_claim_daily_reward(), TSProfile.daily_reward_amount(), false)
 	if TSProfile.streak_reward_message != "":
 		(_banner.get_child(0) as Label).text = TSProfile.streak_reward_message
@@ -132,6 +142,16 @@ func _on_login_tap() -> void:
 	if TSProfile.claim_login_reward() <= 0:
 		return
 	_celebrate(_login_card, _login["icon"], before)
+
+
+func _on_login_ad(ad: Button) -> void:
+	if not TSProfile.can_double_login_reward():
+		return
+	var before := [TSProfile.coin_count]
+	TSAdReward.watch(self, ad, func():
+		before[0] = TSProfile.coin_count
+		TSProfile.double_login_reward(),
+	func(): _celebrate(_login_card, _login["icon"], before[0]))
 
 
 func _on_daily_tap() -> void:

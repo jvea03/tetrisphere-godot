@@ -277,6 +277,12 @@ parks it, and Home's PLAY becomes CONTINUE.
   live ads **unless `tetrisphere/test_ads` is on** (Android only: iOS release builds always show live ads) -- it is, for closed
   testing, as tapping your own live ads breaks AdMob policy. Turn it off for
   the public release. Debug builds always show test ads.
+  Rewarded ads (`TSAdReward`, with Remove Ads they grant at once, no video):
+  a booster or a heart mid-level, the Shop's free packs, double a win's coins
+  (5 a day), half an hour off an unlocking chest (3 a day) or a camp/ship
+  build (3 a day), double the mine's haul, and double today's login coins.
+  The daily caps are `ad_*_per_day` in `TSTunables`; doubling a win's coins
+  also skips the next interstitial.
 - **Leaderboards and Clubs** have no backend: rivals, clubs, members and chat
   replies are simulated locally and deterministically, as in Duckdoku.
 - **Music**: the main menu song (`audio/main_menu.mp3`) loops on Home and every

@@ -25,9 +25,58 @@ func _initialize() -> void:
 	_test_skies()
 	_test_parked_ball()
 	_test_clock()
+	_test_ad_rewards()
 	print("")
 	print("ALL PASSED" if _failures == 0 else "%d FAILED" % _failures)
 	quit(0 if _failures == 0 else 1)
+
+
+## The rewarded ads around the game: their daily caps, and what each pays.
+func _test_ad_rewards() -> void:
+	var was := TSClock.offset
+	TSProfile.ad_rewards_used = {}
+	_check("ads a day: 5 double a win's coins, 3 speed a chest, 3 speed a build", TSProfile.ad_rewards_left("win_coins") == 5 and TSProfile.ad_rewards_left("chest") == 3 and TSProfile.ad_rewards_left("build") == 3)
+	for k in 3:
+		TSProfile.use_ad_reward("chest")
+	_check("the chest's are used up after 3, the others untouched", TSProfile.ad_rewards_left("chest") == 0 and TSProfile.ad_rewards_left("build") == 3)
+	TSClock.offset = was + 86400
+	_check("and back the next day", TSProfile.ad_rewards_left("chest") == 3)
+	TSClock.offset = was
+	# A chest: half an hour off, opening it if that is all it had left.
+	TSChests.slots[0] = {"rarity": TSChests.LEGENDARY, "unlock_end": TSChests._now() + 3 * 3600}
+	var left := TSChests.seconds_left(0)
+	_check("an ad takes half an hour off a chest", TSChests.ad_skip(0) and TSChests.seconds_left(0) <= left - 1800 and TSChests.is_unlocking(0))
+	TSChests.slots[0]["unlock_end"] = TSChests._now() + 600
+	_check("and opens one with less left", TSChests.ad_skip(0) and TSChests.is_ready(0))
+	TSChests.open(0)
+	# A build: the same.
+	TSProfile.materials = 100000
+	TSProfile.coin_count = 10000000
+	var p := -1
+	for i in TSProfile.PART_COUNT:
+		if not TSProfile.is_part_building(i) and TSProfile.part_build_block(i) == "":
+			p = i
+			break
+	_check("a build to speed up (%d)" % p, p >= 0 and TSProfile.start_part_build(p))
+	TSProfile.part_builds[p]["end"] = TSProfile._now_unix() + 3 * 3600
+	left = TSProfile.part_build_seconds_left(p)
+	_check("an ad takes half an hour off a build", TSProfile.ad_skip_build(p) and TSProfile.part_build_seconds_left(p) <= left - 1800 and not TSProfile.is_part_build_done(p))
+	TSProfile.part_builds[p]["end"] = TSProfile._now_unix() + 600
+	_check("and finishes one with less left", TSProfile.ad_skip_build(p) and TSProfile.is_part_build_done(p) and not TSProfile.ad_skip_build(p))
+	TSProfile.finish_part_build(p)
+	# The mine: its last haul again, once.
+	TSProfile.mine_since = TSProfile._now_unix() - 3600
+	var mats := TSProfile.materials
+	var n := TSProfile.collect_mine()
+	_check("an ad doubles the mine's haul (%d), once" % n, n > 0 and TSProfile.double_mine_haul() == n and TSProfile.materials == mats + 2 * n and TSProfile.double_mine_haul() == 0)
+	# Today's login coins: again, once, only once claimed.
+	TSProfile.login_streak_last_date = TSClock.date_string()
+	TSProfile.login_reward_claimed_date = ""
+	TSProfile.login_reward_doubled_date = ""
+	_check("the login coins can't be doubled before they are claimed", not TSProfile.can_double_login_reward())
+	var coins := TSProfile.coin_count
+	var got := TSProfile.claim_login_reward()
+	_check("an ad doubles the login coins (%d), once a day" % got, got > 0 and TSProfile.double_login_reward() == got and TSProfile.coin_count == coins + 2 * got and not TSProfile.can_double_login_reward() and TSProfile.double_login_reward() == 0)
 
 
 func _check(label: String, cond: bool) -> void:

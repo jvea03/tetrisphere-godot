@@ -47,6 +47,7 @@ const PRIVACY_URL := "https://jvea03.github.io/duckdoku-privacy/egg-escape.html"
 var _profile: Dictionary
 var _sale: Dictionary
 var _skip: Dictionary
+var _mine: Dictionary   # the mine's haul, which an ad can double
 var _chest: Dictionary
 var _results: Dictionary
 var _ad_wait: Dictionary
@@ -482,6 +483,10 @@ func _build_part_card() -> void:
 	all.pressed.connect(func(): _use_skips(TSProfile.time_skips_to_finish(_part_index)))
 	skips.add_child(all)
 	_part["skip_all"] = all
+	var build_ad := TSUI.button("", TSUI.SKY, 22, Vector2(0, 64), 4)
+	build_ad.pressed.connect(_on_build_ad)
+	box.add_child(build_ad)
+	_part["ad"] = build_ad
 	var go := TSUI.button("", TSUI.GREEN, 28, Vector2(0, 76))
 	go.pressed.connect(_on_part_pressed)
 	box.add_child(go)
@@ -500,6 +505,26 @@ func _collect_mine() -> void:
 	_refresh_materials()
 	TSFX.pop_coin_change(self, materials_pill, n)
 	TSFX.sparkle_burst(self, materials_pill)
+	# Offer the ad that doubles it.
+	_mine["n"] = n
+	(_mine["body"] as Label).text = "+%d materials collected!" % n
+	var ad: Button = _mine["ad"]
+	ad.disabled = false
+	ad.visible = true
+	ad.text = TSAdReward.text("Double it (+%d)" % n)
+	TSUI.reveal(_mine["root"], _mine["panel"])
+
+
+func _on_mine_ad() -> void:
+	TSAdReward.watch(self, _mine["ad"], func(): TSProfile.double_mine_haul(), func():
+		var ad: Button = _mine["ad"]
+		ad.visible = false
+		var n: int = _mine["n"]
+		(_mine["body"] as Label).text = "+%d materials collected!" % (n * 2)
+		TSSfx.play("coin")
+		_refresh_materials()
+		TSFX.pop_coin_change(self, materials_pill, n)
+		TSFX.sparkle_burst(self, materials_pill))
 
 
 ## A node was tapped: a finished build is collected on the spot; anything else
@@ -561,6 +586,9 @@ func _fill_part_card() -> void:
 		c.queue_free()
 	go.disabled = false
 	(_part["skips"] as Control).visible = TSProfile.is_part_building(i) and not TSProfile.is_part_build_done(i)
+	if not Ads.is_busy():   # an ad is up: leave its button saying so
+		_fill_ad_button(_part["ad"], "build")
+		(_part["ad"] as Control).visible = (_part["ad"] as Control).visible and (_part["skips"] as Control).visible
 	if TSProfile.is_part_max_level(i):
 		note.text = "Fully upgraded!"
 		go.text = "Max Level"
@@ -682,6 +710,23 @@ func _use_skips(n: int) -> void:
 	else:
 		_fill_part_card()
 
+
+## The build card's rewarded ad: half an hour off the build under way.
+func _on_build_ad() -> void:
+	var i := _part_index
+	if TSProfile.ad_rewards_left("build") <= 0 or not TSProfile.is_part_building(i):
+		return
+	TSAdReward.watch(self, _part["ad"], func():
+		if TSProfile.ad_skip_build(i):
+			TSProfile.use_ad_reward("build"),
+	func():
+		TSSfx.play("coin")
+		TSFX.sparkle_burst(self, _part["ad"])
+		if TSProfile.is_part_build_done(i) and _part_index == i:
+			TSUI.conceal(_part["root"])
+			_finish_build(i)
+		elif _part["root"].visible:
+			_fill_part_card())
 
 ## A finished build, collected from its node: the part goes up a level.
 func _finish_build(i: int) -> void:
@@ -896,6 +941,30 @@ func _refresh_skip() -> void:
 	var b: Button = _skip["confirm"]
 	b.text = "Open for %s coins" % TSProfile.fmt_coins(cost)
 	b.disabled = TSProfile.coin_count < cost
+	if not Ads.is_busy():   # an ad is up: leave its button saying so
+		_fill_ad_button(_skip["ad"], "chest")
+
+
+## A chest's or a build's rewarded ad: half an hour off, so many a day.
+func _fill_ad_button(b: Button, kind: String) -> void:
+	var left := TSProfile.ad_rewards_left(kind)
+	b.visible = left > 0
+	b.disabled = false
+	b.text = TSAdReward.text("-30 min  (%d left today)" % left)
+
+
+func _on_chest_ad() -> void:
+	var i := _skip_slot
+	if TSProfile.ad_rewards_left("chest") <= 0 or not TSChests.is_unlocking(i):
+		return
+	TSAdReward.watch(self, _skip["ad"], func():
+		if TSChests.ad_skip(i):
+			TSProfile.use_ad_reward("chest"),
+	func():
+		TSSfx.play("coin")
+		TSFX.sparkle_burst(self, _skip["ad"])
+		_refresh_chest_tray()
+		_refresh_skip())
 
 
 func _on_skip_confirmed() -> void:
@@ -1151,6 +1220,27 @@ func _build_dialogs() -> void:
 	_chest = TSUI.dialog(self, 520)
 	_results = TSUI.dialog(self, 600)
 	_ad_wait = TSUI.dialog(self, 480)
+	_mine = TSUI.dialog(self, 520)
+
+	# the mine's haul, and its rewarded ad
+	var mbox: VBoxContainer = _mine["box"]
+	mbox.add_child(TSUI.title("Mine", 40))
+	var mine_art := TSIcon.make("materials", 110)
+	mine_art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	mbox.add_child(mine_art)
+	var mine_body := TSUI.label("", 30, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER)
+	mbox.add_child(mine_body)
+	_mine["body"] = mine_body
+	var mine_ad := TSUI.button("", TSUI.SKY, 26)
+	mine_ad.pressed.connect(_on_mine_ad)
+	mbox.add_child(mine_ad)
+	_mine["ad"] = mine_ad
+	var mine_done := TSUI.button("Done", TSUI.GREY, 26)
+	mine_done.pressed.connect(func():
+		if not Ads.is_busy():
+			TSUI.conceal(_mine["root"]))
+	mbox.add_child(mine_done)
+	_mine["done"] = mine_done
 
 	# skip a chest timer
 	var sbox: VBoxContainer = _skip["box"]
@@ -1164,6 +1254,10 @@ func _build_dialogs() -> void:
 	confirm.pressed.connect(_on_skip_confirmed)
 	sbox.add_child(confirm)
 	_skip["confirm"] = confirm
+	var chest_ad := TSUI.button("", TSUI.SKY, 26)
+	chest_ad.pressed.connect(_on_chest_ad)
+	sbox.add_child(chest_ad)
+	_skip["ad"] = chest_ad
 	var wait := TSUI.button("Wait", TSUI.GREY, 26)
 	wait.pressed.connect(func(): TSUI.conceal(_skip["root"]))
 	sbox.add_child(wait)
@@ -1399,7 +1493,7 @@ func on_back_requested() -> bool:
 	if _chest["root"].visible:
 		_close_chest()
 		return true
-	for d in [_sale, _skip, _settings, _profile, _results, _part]:
+	for d in [_sale, _skip, _settings, _profile, _results, _part, _mine]:
 		if d["root"].visible:
 			TSUI.conceal(d["root"])
 			return true

@@ -18,6 +18,9 @@
 # --wait=<s>      seconds to let animations settle (default 1.5)
 # --date=<Y-M-D> pretend it is that day: a later Battle Pass season, say
 # --planet=<theme> the critters' planet dressed for a season: christmas, newyear...
+# Over Home: camp (its info card), mine (a haul, and the ad to double it),
+# chest_skip (an unlocking chest's card), build (a build under way). And
+# streak_double: Daily Streaks with today's login coins claimed.
 extends Node
 
 var _date_offset := 0.0   # --date: kept in place every frame, as the network clock sync would undo it
@@ -81,9 +84,13 @@ func _ready() -> void:
 		TSProfile.coin_count = 600
 	var path := "res://scenes/%s.tscn" % scene_name
 	var game_cards := ["pause", "lose", "bomb_empty", "swap_empty", "rocks_empty"]
+	var home_cards := ["settings", "camp", "mine", "chest_skip", "build"]
+	if scene_name == "streak_double":
+		TSProfile.claim_login_reward()
+		path = "res://scenes/streak.tscn"
 	if scene_name == "game" or scene_name == "win" or game_cards.has(scene_name):
 		path = "res://tests/demo.tscn"   # the real game, six greedy drops in
-	elif scene_name == "settings" or scene_name == "camp":
+	elif home_cards.has(scene_name):
 		path = "res://scenes/home.tscn"
 	var packed: PackedScene = load(path)
 	if packed == null:
@@ -115,7 +122,7 @@ func _ready() -> void:
 	if scene_name == "win":
 		inst._debug_win()
 		await get_tree().create_timer(wait).timeout
-	elif game_cards.has(scene_name) or scene_name == "settings" or scene_name == "camp":
+	elif game_cards.has(scene_name) or home_cards.has(scene_name):
 		match scene_name:   # the same hooks tests/card_capture.gd and menu_capture.gd use
 			"pause": inst._open_pause()
 			"lose":
@@ -133,6 +140,21 @@ func _ready() -> void:
 				inst._fire_rocks()
 			"settings": inst._open_settings()
 			"camp": inst._on_camp_badge_pressed()
+			"mine":
+				TSProfile.mine_since = int(Time.get_unix_time_from_system()) - 4000
+				inst._collect_mine()
+			"chest_skip":
+				TSChests.slots[0] = {"rarity": "rare", "unlock_end": TSChests._now() + 2400}
+				inst._refresh_chest_tray()
+				inst._open_skip(0)
+			"build":
+				TSProfile.materials = 100000
+				TSProfile.coin_count = 900000
+				for i in TSProfile.PART_COUNT:
+					if TSProfile.part_build_block(i) == "" and TSProfile.start_part_build(i):
+						TSProfile.part_builds[i]["end"] = int(Time.get_unix_time_from_system()) + 5000
+						inst._open_part(i)
+						break
 		await get_tree().create_timer(wait).timeout
 	await RenderingServer.frame_post_draw
 	var err := sub.get_texture().get_image().save_png(out)

@@ -231,6 +231,16 @@ static func skip_unlock(i: int) -> bool:
 	return true
 
 
+## A rewarded ad's half hour off an unlocking chest (opening it if that is all
+## it had left).
+static func ad_skip(i: int) -> bool:
+	if not is_unlocking(i):
+		return false
+	slots[i]["unlock_end"] = maxi(int(slots[i]["unlock_end"]) - TSProfile.AD_SKIP_SECONDS, _now())
+	TSProfile.save()
+	return true
+
+
 static func format_countdown(seconds: int) -> String:
 	if seconds >= 3600:
 		return "%dh %02dm" % [seconds / 3600, (seconds % 3600) / 60]
