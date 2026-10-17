@@ -9,6 +9,8 @@ extends RefCounted
 ## screen catching up, skipped if it has gone). With Remove Ads there is no
 ## video: the reward is granted at once. While the ad runs the button is
 ## disabled and says so; an ad that doesn't finish gives the button back.
+## grant() must not use its screen (a lambda that touches a freed screen can't
+## be called): only statics and captured values.
 
 
 ## The button's text: "Watch Ad · <what>", or "Free · <what>" with Remove Ads.
@@ -30,7 +32,7 @@ static func watch(host: Control, button: Button, grant: Callable, shown: Callabl
 	button.disabled = true
 	button.text = "Ad playing..." if ads.simulated else "Loading ad..."
 	ads.rewarded_result.connect(func(earned: bool) -> void:
-		if earned:
+		if earned and grant.is_valid():
 			grant.call()
 		if not is_instance_valid(button) or not button.is_inside_tree():
 			return

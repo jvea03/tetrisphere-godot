@@ -69,6 +69,7 @@ var continues_bought := 0   # hearts refills bought for this ball: the first is 
 var _win_ad_due := false    # this win falls on an interstitial
 var _win_stars := 0
 var _win_coins := 0
+var _win_count: Tween   # the win card's coins counting up (a doubling takes over from it)
 var _win_materials := 0       # building materials the win paid
 var _win_chest := ""
 var _win_bonus := ""
@@ -1973,6 +1974,7 @@ func _show_win_card() -> void:
 			TSSfx.play("coin")
 			TSFX.sparkle_burst(_hud, coin_amount)
 			var count := coin_amount.create_tween()
+			_win_count = count
 			count.tween_method(func(v: float): coin_amount.text = "+%s" % TSProfile.fmt_coins(int(v)), 0.0, float(_win_coins), 0.6)
 			for k in COUNT_TICKS:
 				get_tree().create_timer(0.6 * float(k) / float(COUNT_TICKS)).timeout.connect(func():
@@ -1987,11 +1989,14 @@ func _double_win_coins(button: Button, coin_amount: Label) -> void:
 	if TSProfile.ad_rewards_left("win_coins") <= 0:
 		return
 	var coins := _win_coins
+	# The grant mustn't touch the game: it is paid even if the card has gone.
 	TSAdReward.watch(_hud, button, func():
 		TSProfile.coin_count += coins
-		TSProfile.use_ad_reward("win_coins")
-		_win_ad_due = false,
+		TSProfile.use_ad_reward("win_coins"),
 	func():
+		_win_ad_due = false
+		if _win_count != null and _win_count.is_valid():
+			_win_count.kill()
 		button.disabled = true
 		button.text = "Coins doubled!"
 		TSSfx.play("coin")
@@ -2013,6 +2018,8 @@ func _reward_stack(icon: String, amount: Label) -> Control:
 
 
 func _on_win_close() -> void:
+	if Ads.is_busy():
+		return
 	if not is_daily and _win_ad_due and not TSProfile.no_ads:
 		TSProfile.interstitial_owed = true
 		TSProfile.save()
@@ -2022,6 +2029,8 @@ func _on_win_close() -> void:
 ## Next Level -- through an interstitial when one is due, and past the first
 ## visits to features that have just unlocked (Duckdoku's detours).
 func _on_next_pressed() -> void:
+	if Ads.is_busy():   # the double-coins ad is still up
+		return
 	if is_daily:
 		SceneFlow.go(SceneFlow.HOME)
 		return
