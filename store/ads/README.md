@@ -37,11 +37,34 @@ Five ideas, each in all three shapes App campaigns use. Upload all 15.
 
 All are PNG, no transparency, under 1.1 MB each (the limit is 5 MB).
 
-## Videos
+## Videos (3, one per shape)
 
-None yet. Without a video, Google builds simple ones from the images
-above. Real gameplay video usually performs better; YouTube links are added
-under the campaign's asset group.
+Real gameplay: level 8 played by a bot, the egg turning to each piece as it
+drops, blocks popping, the critter escaping and the "Rescued!" card, then an
+end card with the title, the ship of critters, "Can you save them all?" and
+"Play free!". The game's own music and sound effects are the soundtrack.
+
+| File (store/ads/video/) | Shape | Length |
+|---|---|---|
+| `egg_escape_portrait_720x1280.avi` | Portrait 9:16 (the game full screen, captions over it) | ~24 s |
+| `egg_escape_landscape_1920x1080.avi` | Landscape 16:9 (title and captions left, the game on a phone right) | ~18 s |
+| `egg_escape_square_1080x1080.avi` | Square 1:1 (title and caption over the phone) | ~18 s |
+
+Captions: "Can you free the critter?", "Spin. Match. Escape!", "Critter saved!".
+
+Google Ads takes videos as YouTube links: upload each to YouTube (Unlisted
+is fine; YouTube takes AVI as it is), then add the links to the campaign's
+asset group under Videos. The files are 60-100 MB each and are not kept in
+git; rebuild them with:
+
+```
+powershell -ExecutionPolicy Bypass -File tools/make_videos.ps1
+```
+
+(`-Snaps <dir>` also saves a still at each beat.) Movie Maker records the
+window, so a shape can't be bigger than the screen: portrait is the game's
+own 720 x 1280. The bot's game differs a little from run to run, so the
+length does too.
 
 ## Rebuilding the images
 

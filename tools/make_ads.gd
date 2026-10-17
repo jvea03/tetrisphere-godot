@@ -44,13 +44,19 @@ var _sky_bottom: Color
 var _feather: Shader
 
 
-func _ready() -> void:
+## The key art and the feathering shader, ready for the layout helpers
+## (tools/make_video.gd uses them too, for its titles and end card).
+func setup() -> void:
 	_key = Image.load_from_file(ProjectSettings.globalize_path(KEY_ART))
 	_key.convert(Image.FORMAT_RGBA8)
 	_sky_top = _key.get_pixel(20, 60)
 	_sky_bottom = _key.get_pixel(20, 1100)
 	_feather = Shader.new()
 	_feather.code = FEATHER
+
+
+func _ready() -> void:
+	setup()
 	var only := ""
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--only="):

@@ -19,3 +19,8 @@ Thumbs.db
 # AdMob addon: its downloader cache and the 12 MB iOS binaries (copied from Duckdoku or re-fetched by the addon)
 addons/admob/downloads/
 addons/admob/ios/bin/
+
+# Recorded ad videos (tools/make_videos.ps1): 60-100 MB each, rebuilt on demand.
+/store/ads/video/
+# Movie Maker window settings, written and removed by tools/make_videos.ps1.
+/override.cfg
