@@ -123,12 +123,34 @@ func _run() -> void:
 		_on_ad_buy()
 		_check("an empty %s button opens its buy card, and buying works" % id, opened and TSProfile.booster_count(id) == TSProfile.booster_buy_count(id) and TSProfile.coin_count == had - TSProfile.booster_buy_cost(id))
 
+	# bombs in play: a big chain earns one, once a ball
+	_start_level(current_level)
+	TSProfile.bombs_unlocked = true
+	var bombs := TSProfile.bomb_count
+	_finish_drop({"pieces": 9, "chain": 2, "fx": [], "overload": false}, false)
+	_check("a small chain or a big clear no longer earns a bomb", TSProfile.bomb_count == bombs)
+	_finish_drop({"pieces": 4, "chain": TSTunables.get_int("bomb_earn_chain"), "fx": [], "overload": false}, false)
+	_check("a chain of %d earns one" % TSTunables.get_int("bomb_earn_chain"), TSProfile.bomb_count == bombs + 1)
+	_finish_drop({"pieces": 4, "chain": 6, "fx": [], "overload": false}, false)
+	_check("but only one a ball", TSProfile.bomb_count == bombs + 1)
+	_start_level(current_level)
+	_finish_drop({"pieces": 4, "chain": 5, "fx": [], "overload": false}, false)
+	_check("a new ball can earn one again", TSProfile.bomb_count == bombs + 2)
+	_start_level(current_level)
+
 	# losing, then the coin refill
 	lives = 0
 	lose_reason = "OUT OF LIVES"
 	TSProfile.coin_count = 5000
 	_lose()
+	_check("the lose card waits a beat before it shows", state == State.LOST and not _lose_card["root"].visible)
+	await get_tree().create_timer(LOSE_CARD_DELAY + 0.1).timeout
 	_check("running out of hearts shows the lose card", state == State.LOST and _lose_card["root"].visible)
+	var shielded := (_lose_card["root"] as Node).has_node("Shield")
+	_check("and its buttons don't take a tap at first", shielded)
+	await get_tree().create_timer(LOSE_CARD_LOCK + 0.1).timeout
+	shielded = (_lose_card["root"] as Node).has_node("Shield")
+	_check("...then they do", not shielded)
 	var first_offer := ""
 	for b in (_lose_card["box"] as Node).get_children():
 		if b is Button and (b as Button).text.begins_with("Continue"):

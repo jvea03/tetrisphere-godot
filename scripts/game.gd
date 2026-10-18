@@ -11,8 +11,9 @@ const CAM_DIST_MAX := 28.0
 const CAM_LAG := 5.0
 const BOARD_ZOOM := 0.93   # camera distance scale: under 1 draws the egg bigger
 const NEXT_TRAY_H := 86.0        # the next piece's tray: room for any piece at NEXT_PX
-# A bomb is earned by a chain reaction, or by destroying this many pieces at once.
-const BOMB_PIECES := 5
+# A bomb is earned by a big chain reaction -- TSTunables "bomb_earn_chain" links or
+# more -- at most "bomb_earn_per_level" a ball. (Any chain of 2 or a clear of 5
+# used to earn one: some four a level, and a test device sat on 172.)
 const HOLD_PX := 24.0      # cell size of the held-piece preview
 const NEXT_PX := 18.0
 const PIECE_COLUMN_X := 20.0   # the next piece and the holding tray, down the left
@@ -88,8 +89,13 @@ var _creature: TSCreature # core + face: the character you are digging out
 var _env: Environment
 var _key_light: DirectionalLight3D
 var _sky_mat: ShaderMaterial   # the background: a sky for the time of day (TSToon.SKIES)
+const LOSE_CARD_DELAY := 0.9   # the loss sinks in before its card shows...
+const LOSE_CARD_LOCK := 0.6    # ...and the card's buttons wait a moment more
+var _lose_seq := 0          # each loss; a card due from an earlier one stays away
+var _bombs_earned := 0     # bombs this ball has earned (TSTunables bomb_earn_per_level)
 var _escaping := false    # true while it flies out, before the win banner shows
 var _escape_tween: Tween
+const ESCAPE_RISE := 40.0   # how far up the camera's screen the critter flies off: well past the top
 var _cam_theta := 0.0
 var _cam_phi := 0.0
 var _cam_dist := 21.0
@@ -539,9 +545,11 @@ func _start(seed_value: int, baked: Dictionary = {}) -> void:
 	_escaping = false
 	_creature.position = Vector3.ZERO
 	_creature.scale = Vector3.ONE * _creature_scale()
+	_creature.visible = true
 	_creature.react(TSCreature.Mood.IDLE)
 	cursor = Vector2i(0, TSBoard.ROWS / 2)
 	best_clear = 0
+	_bombs_earned = 0
 	best_chain = 0
 	bomb_armed = false
 	_rocks_flying = false
@@ -583,9 +591,12 @@ func _resume() -> void:
 	is_first_attempt = bool(s["first_attempt"])
 	lose_ad_used = bool(s["lose_ad_used"])
 	continues_bought = int(s.get("continues_bought", 0))
+	_bombs_earned = int(s.get("bombs_earned", 0))
 	state = State.PLAYING
 	_escaping = false
+	_creature.position = Vector3.ZERO
 	_creature.scale = Vector3.ONE * _creature_scale()
+	_creature.visible = true
 	_creature.react(TSCreature.Mood.IDLE)
 	_update_creature()
 	selected = TSBoard.HOLE
@@ -616,6 +627,7 @@ func _snapshot() -> Dictionary:
 		"board": board, "daily": is_daily, "level": current_level, "difficulty": difficulty,
 		"cur_type": cur_type, "next_type": next_type, "cursor": cursor, "lives": lives,
 		"first_attempt": is_first_attempt, "lose_ad_used": lose_ad_used, "continues_bought": continues_bought,
+		"bombs_earned": _bombs_earned,
 	}
 
 
@@ -984,7 +996,9 @@ func _finish_drop(res: Dictionary, bomb_was_armed: bool) -> void:
 		view.spawn_popup("CHAIN x%d" % chain, res["fx"])
 	# Bombs are earned only once they have arrived (and been taught), at
 	# TSProfile.BOMB_UNLOCK_LEVEL.
-	if not bomb_was_armed and TSProfile.bombs_unlocked and (chain >= 2 or pieces >= BOMB_PIECES):
+	if not bomb_was_armed and TSProfile.bombs_unlocked and chain >= TSTunables.get_int("bomb_earn_chain") \
+			and _bombs_earned < TSTunables.get_int("bomb_earn_per_level"):
+		_bombs_earned += 1
 		TSProfile.bomb_count += 1
 		_pulse_bomb_button()
 	TSProfile.save()
@@ -1734,9 +1748,18 @@ func _win() -> void:
 	_escape_tween.tween_property(_creature, "scale", Vector3.ONE * 0.25, 0.5) \
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
 	_escape_tween.tween_callback(func() -> void: TSSfx.play("whoosh"))
-	_escape_tween.tween_property(_creature, "position", out * 16.0, 1.1) \
+	# Out of the hole -- which the camera faces, so straight at it -- then
+	# up and away off the top of the screen. (Flying on out alone it stopped
+	# short of the camera and hung there, big, behind the win card.)
+	var clear := out * (view.max_radius + 3.0)   # just outside the shell
+	var away := clear + _camera.transform.basis.y * ESCAPE_RISE + out * 4.0
+	_escape_tween.tween_property(_creature, "position", clear, 0.45) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	_escape_tween.tween_property(_creature, "position", away, 0.65) \
 		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	_escape_tween.parallel().tween_property(_creature, "scale", Vector3.ONE * 0.18, 0.65)
 	_escape_tween.tween_callback(func() -> void:
+		_creature.visible = false   # gone: nothing left to hang about on screen
 		_escaping = false
 		_refresh_hud()
 		_show_win_card())
@@ -1822,7 +1845,28 @@ func _lose() -> void:
 			TSSfx.play("lose"))
 	TSHaptics.heavy()
 	_refresh_lose_card()
-	TSUI.reveal(_lose_card["root"], _lose_card["panel"])
+	# The card waits a beat, and its buttons a beat more: a player tapping
+	# away at the egg as the last heart goes mustn't land a tap on Give Up
+	# or a Continue they never saw.
+	_lose_seq += 1
+	var seq := _lose_seq
+	get_tree().create_timer(LOSE_CARD_DELAY).timeout.connect(func() -> void:
+		if state != State.LOST or seq != _lose_seq or not is_inside_tree():
+			return
+		TSUI.reveal(_lose_card["root"], _lose_card["panel"])
+		_shield(_lose_card["root"], LOSE_CARD_LOCK))
+
+
+## Blocks every tap on oot for seconds: a clear cover over it.
+func _shield(root: Control, seconds: float) -> void:
+	var cover := Control.new()
+	cover.set_anchors_preset(Control.PRESET_FULL_RECT)
+	cover.mouse_filter = Control.MOUSE_FILTER_STOP
+	cover.name = "Shield"
+	root.add_child(cover)
+	get_tree().create_timer(seconds).timeout.connect(func() -> void:
+		if is_instance_valid(cover):
+			cover.queue_free())
 
 
 # -- cards: pause, win, lose, ads --------------------------------------------------
@@ -2619,7 +2663,7 @@ func _start_bomb_tutorial() -> void:
 			"text": "Bombs! Here are %d to start. Tap the bomb to arm one." % TSProfile.BOMB_UNLOCK_GRANT},
 		{"id": "blast", "gate": true, "rect": _ball_rect(),
 			"text": "Armed! Now double-tap the egg: the bomb blasts every piece around the spot."},
-		{"rect": _btn_bomb.get_global_rect(), "text": "Boom! Bombs never cost a heart. A chain reaction or a big clear earns another, and an empty button offers more."},
+		{"rect": _btn_bomb.get_global_rect(), "text": "Boom! Bombs never cost a heart. A big chain reaction earns another, and an empty button offers more."},
 	])
 
 

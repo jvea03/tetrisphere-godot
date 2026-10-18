@@ -153,8 +153,8 @@ static func buy_no_ads_pass() -> void:
 
 
 # -- bombs -----------------------------------------------------------------
-# The first booster. Bombs are kept between balls; a chain reaction or
-# a big clear earns one in play, the Shop sells packs, and an empty bomb
+# The first booster. Bombs are kept between balls; a big chain reaction
+# earns one in play (one a ball: see game.gd), the Shop sells packs, and an empty bomb
 # button offers an ad or a coin buy.
 
 const BOMB_PACK_AMOUNT := 5

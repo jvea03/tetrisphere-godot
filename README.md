@@ -520,8 +520,8 @@ A cute, hand-drawn style, all in `scripts/toon.gd` (`TSToon`):
   into the grey row beside it (smashing the four grey squares) so it lies
   against the flats beyond, then drop a flat line onto them. A slide is not
   a drop, so it never costs a life.
-- Scoring: each link of a chain multiplies the points. A **chain reaction, or
-  5+ pieces destroyed at once, earns a bomb**, which destroys every piece
+- Scoring: each link of a chain multiplies the points. A **chain reaction of 4+ links earns a bomb**, one a level
+  at most (TSTunables `bomb_earn_chain`, `bomb_earn_per_level`). A bomb destroys every piece
   showing within 2 cells of where it lands -- **whole pieces**, never part
   of one, so no line is left as a stub -- shatters the grey touching them,
   and lets gravity and chains follow.
