@@ -123,19 +123,13 @@ func _run() -> void:
 		_on_ad_buy()
 		_check("an empty %s button opens its buy card, and buying works" % id, opened and TSProfile.booster_count(id) == TSProfile.booster_buy_count(id) and TSProfile.coin_count == had - TSProfile.booster_buy_cost(id))
 
-	# bombs in play: a big chain earns one, once a ball
+	# bombs aren't earned in play: no chain or clear pays one
 	_start_level(current_level)
 	TSProfile.bombs_unlocked = true
 	var bombs := TSProfile.bomb_count
-	_finish_drop({"pieces": 9, "chain": 2, "fx": [], "overload": false}, false)
-	_check("a small chain or a big clear no longer earns a bomb", TSProfile.bomb_count == bombs)
-	_finish_drop({"pieces": 4, "chain": TSTunables.get_int("bomb_earn_chain"), "fx": [], "overload": false}, false)
-	_check("a chain of %d earns one" % TSTunables.get_int("bomb_earn_chain"), TSProfile.bomb_count == bombs + 1)
-	_finish_drop({"pieces": 4, "chain": 6, "fx": [], "overload": false}, false)
-	_check("but only one a ball", TSProfile.bomb_count == bombs + 1)
-	_start_level(current_level)
-	_finish_drop({"pieces": 4, "chain": 5, "fx": [], "overload": false}, false)
-	_check("a new ball can earn one again", TSProfile.bomb_count == bombs + 2)
+	for c in [2, 4, 8]:
+		_finish_drop({"pieces": 12, "chain": c, "fx": [], "overload": false})
+	_check("no chain, however big, earns a bomb", TSProfile.bomb_count == bombs)
 	_start_level(current_level)
 
 	# losing, then the coin refill

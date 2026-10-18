@@ -11,9 +11,8 @@ const CAM_DIST_MAX := 28.0
 const CAM_LAG := 5.0
 const BOARD_ZOOM := 0.93   # camera distance scale: under 1 draws the egg bigger
 const NEXT_TRAY_H := 86.0        # the next piece's tray: room for any piece at NEXT_PX
-# A bomb is earned by a big chain reaction -- TSTunables "bomb_earn_chain" links or
-# more -- at most "bomb_earn_per_level" a ball. (Any chain of 2 or a clear of 5
-# used to earn one: some four a level, and a test device sat on 172.)
+# Bombs aren't earned in play: chains only score. (Any chain of 2 or a clear of
+# 5 used to earn one -- some four a level; a test device sat on 172.)
 const HOLD_PX := 24.0      # cell size of the held-piece preview
 const NEXT_PX := 18.0
 const PIECE_COLUMN_X := 20.0   # the next piece and the holding tray, down the left
@@ -92,7 +91,6 @@ var _sky_mat: ShaderMaterial   # the background: a sky for the time of day (TSTo
 const LOSE_CARD_DELAY := 0.9   # the loss sinks in before its card shows...
 const LOSE_CARD_LOCK := 0.6    # ...and the card's buttons wait a moment more
 var _lose_seq := 0          # each loss; a card due from an earlier one stays away
-var _bombs_earned := 0     # bombs this ball has earned (TSTunables bomb_earn_per_level)
 var _escaping := false    # true while it flies out, before the win banner shows
 var _escape_tween: Tween
 const ESCAPE_RISE := 40.0   # how far up the camera's screen the critter flies off: well past the top
@@ -549,7 +547,6 @@ func _start(seed_value: int, baked: Dictionary = {}) -> void:
 	_creature.react(TSCreature.Mood.IDLE)
 	cursor = Vector2i(0, TSBoard.ROWS / 2)
 	best_clear = 0
-	_bombs_earned = 0
 	best_chain = 0
 	bomb_armed = false
 	_rocks_flying = false
@@ -591,7 +588,6 @@ func _resume() -> void:
 	is_first_attempt = bool(s["first_attempt"])
 	lose_ad_used = bool(s["lose_ad_used"])
 	continues_bought = int(s.get("continues_bought", 0))
-	_bombs_earned = int(s.get("bombs_earned", 0))
 	state = State.PLAYING
 	_escaping = false
 	_creature.position = Vector3.ZERO
@@ -627,7 +623,6 @@ func _snapshot() -> Dictionary:
 		"board": board, "daily": is_daily, "level": current_level, "difficulty": difficulty,
 		"cur_type": cur_type, "next_type": next_type, "cursor": cursor, "lives": lives,
 		"first_attempt": is_first_attempt, "lose_ad_used": lose_ad_used, "continues_bought": continues_bought,
-		"bombs_earned": _bombs_earned,
 	}
 
 
@@ -932,7 +927,7 @@ func _drop() -> void:
 			TSHaptics.light()
 			if int(res["chain"]) >= 2:
 				_creature.react(TSCreature.Mood.HAPPY)
-	_finish_drop(res, false)
+	_finish_drop(res)
 
 
 ## A bomb falls from the top of the screen onto `cell` (`at` on screen),
@@ -976,12 +971,12 @@ func _bomb_lands(cell: Vector2i, at: Vector2) -> void:
 	TSHaptics.heavy()
 	if _tutorial.on_step("blast"):
 		_tutorial.gate_passed()
-	_finish_drop(res, true)
+	_finish_drop(res)
 
 
 ## Everything after a drop's (or a bomb's) clear: the quests, the chain
 ## call-out, a bomb earned, the next piece dealt, and a win or a loss.
-func _finish_drop(res: Dictionary, bomb_was_armed: bool) -> void:
+func _finish_drop(res: Dictionary) -> void:
 	_update_creature()
 	if int(res["pieces"]) > 0:
 		TSProfile.record_quest_event("clear", int(res["pieces"]))
@@ -994,14 +989,8 @@ func _finish_drop(res: Dictionary, bomb_was_armed: bool) -> void:
 	view.spawn_clear_fx(res["fx"])
 	if chain >= 2:
 		view.spawn_popup("CHAIN x%d" % chain, res["fx"])
-	# Bombs are earned only once they have arrived (and been taught), at
-	# TSProfile.BOMB_UNLOCK_LEVEL.
-	if not bomb_was_armed and TSProfile.bombs_unlocked and chain >= TSTunables.get_int("bomb_earn_chain") \
-			and _bombs_earned < TSTunables.get_int("bomb_earn_per_level"):
-		_bombs_earned += 1
-		TSProfile.bomb_count += 1
-		_pulse_bomb_button()
 	TSProfile.save()
+
 
 	cur_type = _fair(next_type)
 	next_type = _deal()
@@ -1356,12 +1345,6 @@ func _bomb_blast(at: Vector2) -> void:
 		_fx.puff(at + Vector2(randf_range(-40.0, 40.0), randf_range(-30.0, 30.0)), Color(0.55, 0.5, 0.6), 30.0, 0.9, Vector2(randf_range(-60.0, 60.0), -80.0))
 	_shake_screen(0.45)
 
-
-# A bomb was earned: the button pops so the player notices.
-func _pulse_bomb_button() -> void:
-	var tw := _btn_bomb.create_tween()
-	tw.tween_property(_btn_bomb, "scale", Vector2.ONE * 1.25, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw.tween_property(_btn_bomb, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
 
 
 # The classic parametric heart, centred on the origin, `s` pixels per unit.
@@ -2663,7 +2646,7 @@ func _start_bomb_tutorial() -> void:
 			"text": "Bombs! Here are %d to start. Tap the bomb to arm one." % TSProfile.BOMB_UNLOCK_GRANT},
 		{"id": "blast", "gate": true, "rect": _ball_rect(),
 			"text": "Armed! Now double-tap the egg: the bomb blasts every piece around the spot."},
-		{"rect": _btn_bomb.get_global_rect(), "text": "Boom! Bombs never cost a heart. A big chain reaction earns another, and an empty button offers more."},
+		{"rect": _btn_bomb.get_global_rect(), "text": "Boom! Bombs never cost a heart. When you run out, the empty button offers more."},
 	])
 
 

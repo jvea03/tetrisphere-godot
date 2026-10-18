@@ -11,8 +11,6 @@ const DEFAULTS := {
 	"interstitial_every_win_from_level": 60,
 	"coins_per_star": 100, # base win payout per star
 	"no_ads_coin_bonus_percent": 5,
-	"bomb_earn_chain": 4, # a chain of this many links earns a bomb in play...
-	"bomb_earn_per_level": 1, # ...at most this many a ball
 	"bomb_buy_count": 3, # bombs per mid-game coin buy
 	"bomb_pack_cost": 4000, # the Shop's x5 price; the mid-game buy is pro rata
 	"swap_buy_count": 3, # swaps per mid-game coin buy

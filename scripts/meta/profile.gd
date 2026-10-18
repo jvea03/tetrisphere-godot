@@ -153,9 +153,9 @@ static func buy_no_ads_pass() -> void:
 
 
 # -- bombs -----------------------------------------------------------------
-# The first booster. Bombs are kept between balls; a big chain reaction
-# earns one in play (one a ball: see game.gd), the Shop sells packs, and an empty bomb
-# button offers an ad or a coin buy.
+# The first booster. Bombs are kept between balls and aren't earned in play:
+# they come from the level 3 lesson, the streaks, the Battle Pass, the
+# Shop's packs, and an empty bomb button's ad or coin buy.
 
 const BOMB_PACK_AMOUNT := 5
 const BOMB_UNLOCK_LEVEL := 3        # taught there, after sliding at level 2
