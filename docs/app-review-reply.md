@@ -2,7 +2,10 @@
 
 **Status 9-10 Oct 2026:** replied in the Resolution Center with these answers and a
 screen recording from an iPhone 16 Pro (TestFlight build 7), then resubmitted 1.0 (7)
-with its 19 purchases; "Waiting for Review".
+with its 19 purchases.
+
+**17-18 Oct 2026:** build 7 had waited 7 days, so version 1.0 was pulled from review and resubmitted
+with **build 8** (Shop scroll fix plus the 36 commits from GitHub) and the 19 purchases; "Waiting for Review".
 
 Apple's message (new developer account, little review history) asks for a
 screen recording from a physical iPhone plus seven written answers. The written
