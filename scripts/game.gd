@@ -2673,7 +2673,9 @@ func on_back_requested() -> bool:
 	if state == State.PLAYING:
 		_open_pause()
 		return true
-	return false
+	# Won or lost with its card still to come (the critter flying out, the
+	# loss sinking in): back waits for the card rather than skipping it.
+	return state == State.WON or state == State.LOST
 
 
 ## The next piece and the holding tray, for the walkthrough to point at.

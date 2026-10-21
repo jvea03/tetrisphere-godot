@@ -54,6 +54,22 @@ func _run() -> void:
 	tutorial._advance()
 	await get_tree().create_timer(0.5).timeout
 	_check("it finishes and is remembered", not tutorial.visible and TSProfile.ship_story_seen)
+	# Most new players first see Home at level 7 (Next Level runs on from
+	# level 1): the story still comes first, then straight on to the chest lesson.
+	TSProfile.last_level = TSNav.FEATURES_UNLOCK_LEVEL
+	TSProfile.ship_story_seen = false
+	TSProfile.home_tutorial_seen = false
+	TSChests.slots = [{}, {}, {}, {}]
+	_start_walkthrough()
+	await get_tree().create_timer(0.6).timeout
+	_check("a first visit at level 7 still opens with the story", tutorial.visible and str(tutorial.steps[0]["text"]).contains("crash-landed"))
+	tutorial._advance()
+	await get_tree().create_timer(0.4).timeout
+	tutorial._advance()
+	await get_tree().create_timer(1.0).timeout
+	_check("and goes straight on to the chest lesson", tutorial.visible and str(tutorial.steps[0]["text"]).contains("free chest"))
+	tutorial._finish()
+	await get_tree().create_timer(0.3).timeout
 	# Daily Streaks
 	_check("before the Daily Egg unlocks only the login streak shows", await _streak_cards(6) == 1)
 	TSProfile.login_streak_last_date = TSClock.date_string()

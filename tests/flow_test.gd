@@ -158,6 +158,7 @@ func _run() -> void:
 	TSProfile.coin_count = 5000
 	_lose()
 	_check("the lose card waits a beat before it shows", state == State.LOST and not _lose_card["root"].visible)
+	_check("and back waits for it rather than skipping it", on_back_requested())
 	await get_tree().create_timer(LOSE_CARD_DELAY + 0.1).timeout
 	_check("running out of hearts shows the lose card", state == State.LOST and _lose_card["root"].visible)
 	var shielded := (_lose_card["root"] as Node).has_node("Shield")

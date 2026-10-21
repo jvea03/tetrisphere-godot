@@ -88,21 +88,7 @@ func build() -> void:
 	_refresh_side()
 	# Off on the season's voyage first: walkthroughs, the sale and the board
 	# results wait for Home on the new planet.
-	var walkthrough := TSProfile.voyage_due()
-	if walkthrough:
-		pass
-	elif not TSProfile.ship_story_seen and TSProfile.last_level < TSNav.COLLECTION_UNLOCK_LEVEL:
-		_start_ship_story()
-		walkthrough = true
-	elif features and not TSProfile.home_tutorial_seen:
-		_start_home_tutorial()
-		walkthrough = true
-	elif daily_btn.visible and not TSProfile.daily_callout_seen:
-		_start_daily_callout()
-		walkthrough = true
-	elif _world.nodes_enabled and not TSProfile.camp_callout_seen:
-		_start_camp_callout()
-		walkthrough = true
+	var walkthrough := TSProfile.voyage_due() or _start_walkthrough()
 	TSProfile.settle_boards()
 	TSProfile.save()
 	var results := not walkthrough and not TSProfile.pending_board_prizes.is_empty()
@@ -1515,13 +1501,31 @@ func _tutorial_chest_slot() -> int:
 
 ## The first visit to Home (a player already past the camp's unlock has had
 ## it explained): where the story is going.
+## The first of Home's one-time walkthroughs still to see, if any: the story
+## first (a new player's first Home visit is often level 7, past the camp's
+## unlock), then the chests and pass, the Daily Egg, the camp.
+func _start_walkthrough() -> bool:
+	if not TSProfile.ship_story_seen:
+		_start_ship_story()
+	elif TSNav.features_unlocked() and not TSProfile.home_tutorial_seen:
+		_start_home_tutorial()
+	elif daily_btn.visible and not TSProfile.daily_callout_seen:
+		_start_daily_callout()
+	elif _world.nodes_enabled and not TSProfile.camp_callout_seen:
+		_start_camp_callout()
+	else:
+		return false
+	return true
+
+
 func _start_ship_story() -> void:
 	await _settled()
 	if not is_inside_tree():
 		return
 	tutorial.finished.connect(func():
 		TSProfile.ship_story_seen = true
-		TSProfile.save(), CONNECT_ONE_SHOT)
+		TSProfile.save()
+		_start_walkthrough.call_deferred(), CONNECT_ONE_SHOT)   # and on to whatever else is new here
 	var ship := _world.get_global_rect().position + _world.ship_screen_rect().position
 	var spot := Rect2(ship, _world.ship_screen_rect().size)
 	tutorial.start([

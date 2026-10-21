@@ -2498,7 +2498,8 @@ static func ensure_loaded() -> void:
 	collection_tutorial_seen = bool(g.call("collection_tutorial_seen", false))
 	daily_callout_seen = bool(g.call("daily_callout_seen", false))
 	camp_callout_seen = bool(g.call("camp_callout_seen", false))
-	ship_story_seen = bool(g.call("ship_story_seen", false))
+	# A save from before the story existed: anyone past level 1 has started without it.
+	ship_story_seen = bool(g.call("ship_story_seen", last_level > 1))
 	home_tutorial_seen = bool(g.call("home_tutorial_seen", false))
 	collection_gift_claimed = bool(g.call("collection_gift_claimed", false))
 	music_enabled = bool(g.call("music_enabled", true))
