@@ -144,12 +144,14 @@ static func difficulty_for_level(level: int) -> int:
 
 
 ## Levels played a tier easier than the plan has them, to ease the curve where
-## it fell too fast (picked with `tests/sim.gd`): level 23 was a second hard
+## it fell too fast (picked with `tests/sim.gd`): Expert 22 and Extreme 25
+## were walls before level 30 (20% and 10% for the casual bot), so both play
+## as Hard; level 23 was a second hard
 ## level straight after the Expert 22; Extreme levels 46 and 101 (straight
 ## after the padlocks' breather) were lost on every egg, so 46 plays as Expert
 ## and 101 as Hard. The pieces each level gets still take
 ## turns by the plan (tier_mix counts _planned_tier), so no other level changes.
-const SOFTENED := {23: 1, 46: 3, 101: 2}
+const SOFTENED := {22: 2, 23: 1, 25: 2, 46: 3, 101: 2}
 
 
 static func _planned_tier(level: int) -> int:
@@ -181,10 +183,10 @@ static func shifted_seed(level: int, shift: int) -> int:
 
 
 const SEED_SHIFT := {
-	14: 6, 16: 1, 18: 11, 52: 7, 57: 4, 102: 4,        # Intermediate (23, softened from Hard, keeps its own egg)
-	17: 12, 20: 2, 39: 2, 101: 2,                      # Hard: the first stretch of them (15-23) smoothed; 39; 101 (softened from Extreme)
+	14: 2, 16: 1, 18: 11, 24: 7, 52: 7, 57: 4, 102: 4,  # Intermediate (23, softened from Hard, keeps its own egg)
+	17: 12, 20: 2, 22: 6, 25: 2, 27: 4, 39: 2, 101: 2, # Hard: the first stretch (15-27) smoothed -- 22 and 25 softened from Expert and Extreme; 39; 101 (from Extreme)
 	34: 3, 42: 1, 58: 6, 63: 6, 64: 2,                 # Hard
-	22: 10, 54: 5, 60: 4, 46: 8,                       # Expert (46 softened from Extreme)
+	54: 5, 60: 4, 46: 8,                               # Expert (46 softened from Extreme)
 	100: 6,                                            # lock & key's first egg (Intermediate: see difficulty_for_level)
 	200: 10,                                           # fog's first egg (a breather; the sim sees through fog, so it is kinder still)
 	61: 2, 70: 3,                                      # Extreme
@@ -294,7 +296,9 @@ static func tier_mix(level: int) -> Array:
 		var near: Array = []
 		for step: int in [-1, 1]:
 			var l := level + step
-			while l >= 1 and l < level + 200 and (difficulty_for_level(l) != tier or SOFTENED.has(l)):
+			# Back, an earlier softened level counts too (22 and 25 are both
+			# Hard by softening); forward, they're skipped, so this never loops.
+			while l >= 1 and l < level + 200 and (difficulty_for_level(l) != tier or (step > 0 and SOFTENED.has(l))):
 				l += step
 			if l >= 1 and l < level + 200:
 				near.append(tier_mix(l))

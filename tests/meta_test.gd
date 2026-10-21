@@ -443,7 +443,7 @@ func _test_levels() -> void:
 	for lvl in sheet:
 		if TSLevels._planned_tier(lvl) != sheet[lvl]:
 			wrong.append(lvl)
-	_check("softened levels play a tier easier", TSLevels.difficulty_for_level(46) == 3 and TSLevels.difficulty_for_level(23) == 1 and TSLevels.difficulty_for_level(101) == 2)
+	_check("softened levels play a tier easier: no Expert or Extreme before level 30", TSLevels.difficulty_for_level(46) == 3 and TSLevels.difficulty_for_level(23) == 1 and TSLevels.difficulty_for_level(101) == 2 and range(1, 30).all(func(l): return TSLevels.difficulty_for_level(l) <= 2))
 	_check("the tiers follow Duckdoku's curve (wrong at %s)" % [wrong], wrong.is_empty())
 	var loops := true
 	for lvl in range(71, 131):   # (as planned: a few levels play easier, below)

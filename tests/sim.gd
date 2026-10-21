@@ -29,6 +29,20 @@ func _initialize() -> void:
 		_probe(levels, int(args[2]), int(args[3]) if args.size() > 3 else 24)
 		quit()
 		return
+	# `-- journey 1 30 40`: levels 1-30 as shipped (their baked or seeded
+	# eggs), each played 40 times by the casual bot -- the early curve, with
+	# less noise than the full run's 12 plays a level.
+	if args.size() >= 3 and args[0] == "journey":
+		var line := ""
+		for lvl in range(int(args[1]), int(args[2]) + 1):
+			line += "%2d %s %3d%%    " % [lvl, "BIHXE"[TSLevels.difficulty_for_level(lvl)], roundi(100.0 * _level(lvl, CASUAL, int(args[3]) if args.size() > 3 else 40))]
+			if lvl % 5 == 0:
+				print(line)
+				line = ""
+		if line != "":
+			print(line)
+		quit()
+		return
 	# `-- ramp 8`: the slow ramp past level 50 (TSLevels.ramp_step) -- for every
 	# other step, one full loop of tiers at that step, each level played 8 times
 	# by both bots, as average win rates per tier.
