@@ -1645,10 +1645,15 @@ func _draw_ship_props() -> void:
 	var w := 104.0 * (0.78 + 0.22 * dug)
 	var h := 58.0 * (0.72 + 0.28 * dug)
 	var mid := MOUND + Vector2(20.0 * (1.0 - dug), 14.0)
+	# Its top, then a shallow rounded base sunk into the ground, so the hull
+	# ploughed into it never shows underneath.
 	var heap := PackedVector2Array()
 	for k in 25:
 		var a := PI + PI * float(k) / 24.0
 		heap.append(mid + Vector2(cos(a) * w, sin(a) * h))
+	for k in range(1, 24):
+		var a := PI * float(k) / 24.0
+		heap.append(mid + Vector2(cos(a) * w, sin(a) * h * 0.14))
 	ci.draw_colored_polygon(heap, DIRT)
 	# Light on its upper slope, shade at its foot, so it reads as a heap.
 	var lit := PackedVector2Array()
@@ -1656,8 +1661,9 @@ func _draw_ship_props() -> void:
 		var a := PI * 1.12 + PI * 0.5 * float(k) / 12.0
 		lit.append(mid + Vector2(cos(a) * w * 0.72, sin(a) * h * 0.78))
 	ci.draw_polyline(lit, DIRT.lightened(0.25), 7.0, true)
-	ci.draw_line(mid + Vector2(-w * 0.9, -4.0), mid + Vector2(w * 0.9, -4.0), DIRT.darkened(0.15), 6.0, true)
-	ci.draw_polyline(heap, INK, 5.0, true)
+	_ellipse(ci, mid + Vector2(0.0, 2.0), w * 1.04, h * 0.2, SHADOW, false)   # its shadow on the ground, under the foot
+	# Only its top is inked: it rises out of the ground, no edge along its foot.
+	ci.draw_polyline(heap.slice(0, 25), INK, 5.0, true)
 	for clod in [Vector2(-0.5, -0.45), Vector2(0.12, -0.78), Vector2(0.52, -0.38), Vector2(-0.18, -0.2)]:
 		ci.draw_circle(mid + Vector2(clod.x * w, clod.y * h), 7.0, DIRT.darkened(0.2), true, -1.0, true)
 	if _lv(TSProfile.PART_LEGS) == 0:
