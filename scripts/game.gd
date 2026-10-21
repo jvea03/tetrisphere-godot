@@ -1783,17 +1783,20 @@ func _pay_win() -> void:
 func _roll_interstitial() -> bool:
 	if TSProfile.no_ads:
 		return false
-	var every_win_from: int = TSTunables.get_int("interstitial_every_win_from_level")
+	var late_from: int = TSTunables.get_int("interstitial_late_from_level")
+	var late := current_level >= late_from
 	if TSProfile.is_payer:
-		if current_level < every_win_from:
-			return false
-	elif current_level >= every_win_from:
-		return true
+		if not late:
+			return false   # anyone who has bought something sees none until the late levels
 	elif current_level < TSTunables.get_int("interstitial_from_level"):
 		return false
 	TSProfile.interstitial_win_count += 1
 	TSProfile.save()
-	return TSProfile.interstitial_win_count % maxi(TSTunables.get_int("interstitial_every_n_wins"), 1) == 0
+	# Every Nth win; from the late levels, non-payers see them a little more often.
+	var every: int = TSTunables.get_int("interstitial_every_n_wins")
+	if late and not TSProfile.is_payer:
+		every = TSTunables.get_int("interstitial_late_every_n_wins")
+	return TSProfile.interstitial_win_count % maxi(every, 1) == 0
 
 
 func _debug_win() -> void:

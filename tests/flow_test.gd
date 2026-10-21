@@ -132,6 +132,26 @@ func _run() -> void:
 	_check("no chain, however big, earns a bomb", TSProfile.bomb_count == bombs)
 	_start_level(current_level)
 
+	# interstitials: how often, by level, for non-payers and payers
+	var was_level := current_level
+	var was_payer := TSProfile.is_payer
+	var counts := {}
+	for who in ["free", "payer"]:
+		for lvl in [20, 40, 70]:
+			TSProfile.is_payer = who == "payer"
+			TSProfile.interstitial_win_count = 0
+			current_level = lvl
+			var shown := 0
+			for _w in 12:
+				shown += 1 if _roll_interstitial() else 0
+			counts["%s %d" % [who, lvl]] = shown
+	current_level = was_level
+	TSProfile.is_payer = was_payer
+	TSProfile.interstitial_win_count = 0
+	_check("no interstitials before level 30 (%s)" % counts, counts["free 20"] == 0 and counts["payer 20"] == 0)
+	_check("from level 30, every 3rd win for non-payers; none yet for payers", counts["free 40"] == 4 and counts["payer 40"] == 0)
+	_check("from level 60, every 2nd win for non-payers and every 3rd for payers", counts["free 70"] == 6 and counts["payer 70"] == 4)
+
 	# losing, then the coin refill
 	lives = 0
 	lose_reason = "OUT OF LIVES"
