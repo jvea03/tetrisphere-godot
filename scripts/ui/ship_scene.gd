@@ -184,7 +184,9 @@ const CHASE := Vector2(840.0, 1420.0)       # the middle of the bug chase's loop
 var _t := 0.0
 var _xf := Transform2D()        # ship coordinates -> world coordinates
 var _world: Control             # everything that pans
-var _sky_layer: Control         # the sky: its time of day, stars, sun or moon, the ringed planet
+var _sky_layer: Control         # the sky: its time of day (drawn once)
+var _stars_layer: Control       # its twinkling stars or dots, the one part that moves
+var _sky_bodies: Control        # the sun or moon, the ringed planet and its moon (drawn once)
 var _ground: Control            # ground, scenery and shadows
 var _lights: Control            # night only: the fire's glow, the ship's lights, lanterns
 var _painters: Array = []       # layers that redraw every frame
@@ -275,7 +277,13 @@ func _ready() -> void:
 	_world.scale = Vector2.ONE * _zoom
 	_world.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_world)
+	# The sky in three layers, so only its twinkling stars repaint each frame
+	# (the whole sky did, 60 times a second, for a few stars).
 	_sky_layer = _layer(_draw_sky, -2.0)
+	_stars_layer = _layer(_draw_stars, -1.99)
+	_sky_bodies = _layer(_draw_sky_bodies, -1.98)
+	_painters.erase(_sky_layer)
+	_painters.erase(_sky_bodies)
 	# The ground itself -- its colours, horizon, trees on it and everything
 	# strewn about -- never changes, so it is drawn once; the pond's shimmer and
 	# the moving shadows go on the layer above it, redrawn every frame.
@@ -325,7 +333,7 @@ func _ready() -> void:
 	if float(_sky["stars"]) > 0.5:
 		_spot_layer(_draw_spot_lamps, _ship_depth + 40.0)
 	for child in _world.get_children():
-		if child != _sky_layer:
+		if child != _sky_layer and child != _stars_layer and child != _sky_bodies:
 			(child as CanvasItem).modulate = _sky["world"]
 	# At night the camp lights up: the fire, the ship, lanterns. Added on
 	# top, untinted, brightening what is under them.
@@ -1218,10 +1226,20 @@ func _draw_sky() -> void:
 	var low: Color = _sky["bottom"]
 	ci.draw_polygon(PackedVector2Array([Vector2(0, 0), Vector2(W, 0), Vector2(W, 420), Vector2(0, 420)]),
 		PackedColorArray([top, top, low, low]))
+
+
+func _draw_stars() -> void:
+	var ci := _stars_layer
 	var night := float(_sky["stars"]) > 0.5
 	for st in _stars:
 		var r: float = float(st[1]) * (0.7 + 0.3 * sin(_t * 2.2 + float(st[2])))
 		_sparkle(ci, st[0], r, Color(1.0, 0.9, 0.6, 0.95) if night else Color(_sky["dots"], 0.9))
+
+
+func _draw_sky_bodies() -> void:
+	var ci := _sky_bodies
+	var top: Color = _sky["top"]
+	var low: Color = _sky["bottom"]
 	var orb: Color = _sky["orb"]
 	if orb.a > 0.0:
 		ci.draw_circle(SUN, SUN_R * 1.8, Color(orb, 0.2 * orb.a), true, -1.0, true)
@@ -1331,9 +1349,26 @@ func _draw_spot_lamps(ci: Control) -> void:
 
 # A soft halo of light: rings of `colour`, adding up to `strength` at the
 # middle and fading smoothly to nothing at `radius` (on the additive layer).
+## A soft halo: one quad of a radial fade, tinted. (It was ten stacked
+## antialiased discs; the night camp drew some fifty a frame, a few
+## milliseconds of the frame on its own.)
+static var _glow_tex: GradientTexture2D
+
 func _glow(ci: CanvasItem, at: Vector2, radius: float, colour: Color, strength: float) -> void:
-	for k in 10:
-		ci.draw_circle(at, radius * (1.0 - float(k) * 0.095), Color(colour, strength / 10.0), true, -1.0, true)
+	if _glow_tex == null:
+		var g := Gradient.new()
+		# The old ten discs' falloff: strong in the middle, fading out to the rim.
+		g.set_color(0, Color(1, 1, 1, 1))
+		g.set_color(1, Color(1, 1, 1, 0))
+		g.add_point(0.5, Color(1, 1, 1, 0.5))
+		_glow_tex = GradientTexture2D.new()
+		_glow_tex.gradient = g
+		_glow_tex.fill = GradientTexture2D.FILL_RADIAL
+		_glow_tex.fill_from = Vector2(0.5, 0.5)
+		_glow_tex.fill_to = Vector2(1.0, 0.5)
+		_glow_tex.width = 128
+		_glow_tex.height = 128
+	ci.draw_texture_rect(_glow_tex, Rect2(at - Vector2(radius, radius), Vector2(radius, radius) * 2.0), false, Color(colour, strength))
 
 
 # The light a lamp casts on the ground: a halo squashed flat to lie on the
