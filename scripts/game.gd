@@ -1958,7 +1958,7 @@ func _show_win_card() -> void:
 	close.pressed.connect(_on_win_close)
 	top.add_child(close)
 	# The creature that was sealed in the egg: a Milky, safe and sound.
-	box.add_child(TSUI.halo(TSIcon.make("milky", 180), 280.0))
+	box.add_child(TSUI.halo(TSIcon.make("milky", 200, 0, "rescued"), 280.0))
 	box.add_child(TSUI.label("You saved a Milky!", 30, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER))
 	var rewards := TSUI.card(Color(1.0, 0.95, 0.84), 24, 16, 2)
 	var row := TSUI.hbox(28)

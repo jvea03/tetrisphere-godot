@@ -91,14 +91,17 @@ func _run() -> void:
 			var view := sc.get_global_rect()
 			var stuck := 0
 			for f in [Vector2(0.15, 0.35), Vector2(0.5, 0.5), Vector2(0.85, 0.65)]:
-				sc.scroll_vertical = int(sc.get_v_scroll_bar().max_value / 3)
+				sc.scroll_vertical = int((sc.get_v_scroll_bar().max_value - sc.get_v_scroll_bar().page) / 3)   # a third of the way down its travel
 				await get_tree().create_timer(1.2).timeout   # any fling settles
 				var before := sc.scroll_vertical
 				await _touch(view.position + view.size * f, -220)
-				stuck += 1 if sc.scroll_vertical <= before + 100 else 0
+				# A short list has little room to move: most of what's left counts.
+				var bar := sc.get_v_scroll_bar()
+				var room := bar.max_value - bar.page - before
+				stuck += 1 if sc.scroll_vertical <= before + minf(100.0, room * 0.6) else 0
 			_check("%s: a drag scrolls its list from anywhere (%d of 3 stuck)" % [name, stuck], stuck == 0)
 			# From a button: it scrolls, and the button isn't pressed.
-			sc.scroll_vertical = int(sc.get_v_scroll_bar().max_value / 3)
+			sc.scroll_vertical = int((sc.get_v_scroll_bar().max_value - sc.get_v_scroll_bar().page) / 3)   # a third of the way down its travel
 			await get_tree().create_timer(1.2).timeout
 			var b := _button_in(sc)
 			if b != null:

@@ -98,8 +98,47 @@ func _refresh() -> void:
 		if entries[i].get("is_player", false):
 			_player_row = row
 			_pinned.add_child(_row(i + 1, entries[i]))
+	if entries.size() >= 3:
+		_list.add_child(_podium(entries))
 	_refresh_countdown()
 	_scroll_to_player()
+
+
+## Under the list, the board's top three on a podium: gold in the middle,
+## silver and bronze either side, each critter standing on its step.
+func _podium(entries: Array) -> Control:
+	var row := TSUI.hbox(10)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var steps := {1: [TSUI.GOLD, 132.0, 104.0], 2: [Color(0.84, 0.87, 0.93), 96.0, 88.0], 3: [Color(0.94, 0.73, 0.55), 72.0, 84.0]}
+	for rank in [2, 1, 3]:
+		var entry: Dictionary = entries[rank - 1]
+		var me: bool = entry.get("is_player", false)
+		var col := TSUI.vbox(0)
+		col.size_flags_vertical = Control.SIZE_SHRINK_END
+		col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var who := TSIcon.make("critter", steps[rank][2], TSProfile.avatar() if me else TSProfile.npc_critter(hash(str(entry["name"]))))
+		who.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		if rank == 1:   # the winner's crown, tipped on its head
+			var crown := TSIcon.make("crown", 70)
+			crown.size = Vector2(70, 70)
+			crown.position = Vector2(steps[rank][2] * 0.5 - 35.0, -40.0)
+			crown.rotation = -0.12
+			who.add_child(crown)
+			col.add_child(TSUI.spacer(34))
+		col.add_child(who)
+		var step := PanelContainer.new()
+		step.add_theme_stylebox_override("panel", TSUI.sb(steps[rank][0], 14, 3, 4, 8))
+		step.custom_minimum_size = Vector2(150, steps[rank][1])
+		step.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		step.add_child(TSUI.label(str(rank), 40, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER))
+		col.add_child(step)
+		row.add_child(col)
+	var box := TSUI.vbox(6)
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(TSUI.spacer(12))
+	box.add_child(row)
+	return box
 
 
 func _refresh_pinned() -> void:

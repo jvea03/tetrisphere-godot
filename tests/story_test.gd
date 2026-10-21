@@ -39,7 +39,7 @@ func _streak_cards(level: int) -> int:
 	await get_tree().process_frame
 	var n := 0
 	for l in s.find_children("*", "Label", true, false):
-		if (l as Label).text.ends_with("STREAK"):
+		if (l as Label).text.ends_with("STREAK") and (l as Label).get_parent() is PanelContainer:   # a card's title pill, not the locked card's grey line
 			n += 1
 	s.queue_free()
 	await get_tree().process_frame

@@ -18,9 +18,22 @@ func build() -> void:
 	_banner.add_child(TSUI.wrap(TSUI.label("", 24, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER)))
 	content.add_child(_banner)
 	content.add_child(TSUI.spacer(0, true))
-	# The streak's prize -- bombs -- on a sunburst, filling the space above the cards.
-	var hero := TSIcon.make("bomb", 120)
-	content.add_child(TSUI.halo(hero, 230.0, TSUI.PEACH))
+	# The 7th day's prize -- bombs and time skips -- piled on a sunburst,
+	# filling the space above the cards.
+	var prize := Control.new()
+	prize.custom_minimum_size = Vector2(230, 190)
+	prize.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var skip := TSIcon.make("skip", 104)
+	skip.position = Vector2(118, 74)
+	skip.rotation = 0.18
+	var bomb := TSIcon.make("bomb", 156)
+	bomb.position = Vector2(6, 6)
+	prize.add_child(bomb)
+	prize.add_child(skip)
+	content.add_child(TSUI.halo(prize, 330.0, TSUI.PEACH))
+	var day7 := TSUI.pill("DAY 7 PRIZE  ·  %d bombs + %d skips" % [TSProfile.STREAK_REWARD_BOMBS, TSProfile.STREAK_REWARD_SKIPS], TSUI.BUTTER, 22)
+	day7.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	content.add_child(day7)
 	content.add_child(TSUI.spacer(0, true))
 	_login_card = _make_card("LOGIN STREAK", TSUI.BUTTER, "flame", _login, _on_login_tap)
 	content.add_child(_login_card)
@@ -29,8 +42,25 @@ func build() -> void:
 	if TSNav.daily_unlocked():
 		_daily_card = _make_card("DAILY EGG STREAK", TSUI.SKY, "calendar", _daily, _on_daily_tap)
 		content.add_child(_daily_card)
+	else:
+		content.add_child(_locked_card())
 	content.add_child(TSUI.spacer(0, true))
 	_refresh()
+
+
+## Before the Daily Egg unlocks: its streak's place, greyed, saying when.
+func _locked_card() -> PanelContainer:
+	var card := TSUI.card(Color(0.95, 0.93, 0.92), 30, 22, 3)
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var row := TSUI.hbox(16)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	card.add_child(row)
+	row.add_child(TSIcon.make("lock", 64))
+	var text := TSUI.vbox(2)
+	text.add_child(TSUI.label("DAILY EGG STREAK", 26, TSUI.MUTED))
+	text.add_child(TSUI.label("Unlocks at level %d" % TSNav.DAILY_UNLOCK_LEVEL, 22, TSUI.MUTED))
+	row.add_child(text)
+	return card
 
 
 func _make_card(title_text: String, pill_color: Color, icon: String, parts: Dictionary, on_tap: Callable) -> PanelContainer:

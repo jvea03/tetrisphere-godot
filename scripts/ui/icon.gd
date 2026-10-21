@@ -205,7 +205,7 @@ func _draw() -> void:
 		"egg": _draw_shell(index, Vector2(0.5, 0.52), 0.44)
 		"part": _draw_part(index, variant == "broken")
 		"critter": _draw_critter(index, Vector2(0.5, 0.56), 0.4)
-		"milky": _draw_milky(Vector2(0.5, 0.55), 0.38)
+		"milky": _draw_milky_rescued() if variant == "rescued" else _draw_milky(Vector2(0.5, 0.55), 0.38)
 		"ship": _draw_ship_icon()
 		"badge": _draw_badge(index)
 		_: _circle(Vector2(0.5, 0.5), 0.4, _col(GOLD))
@@ -1116,6 +1116,50 @@ func _draw_milky(c: Vector2, r: float) -> void:
 		draw_circle(_u(e + Vector2(0.05, 0.06) * r), 0.028 * r * _s, WHITE, true, -1.0, true)
 		_ellipse(c + Vector2(side * 0.6 * r, 0.22 * r), 0.13 * r, 0.07 * r, Color(1.0, 0.58, 0.68, 0.8), false)
 	draw_arc(_u(c + Vector2(0, 0.14) * r), 0.1 * r * _s, 0.25, PI - 0.25, 12, INK, _w() * 0.8, true)
+
+
+## The win card's Milky: just hatched -- sitting in the bottom of its cracked
+## shell, arms up, the shell's cap tipped on its head, sparkles all round.
+const SHELL := Color(1.0, 0.94, 0.82)
+const SHELL_IN := Color(0.96, 0.86, 0.7)
+
+func _draw_milky_rescued() -> void:
+	var c := Vector2(0.5, 0.44)
+	var r := 0.26
+	# Arms flung up and out, behind the body.
+	for side in [-1.0, 1.0]:
+		_ellipse(c + Vector2(side * 0.31, -0.03), 0.055, 0.115, MILKY, true, side * 1.0)
+	_draw_milky(c, r)
+	# The shell's bottom half round its middle: a zigzag rim, the inside shown
+	# in a darker cream behind the front.
+	var rim: Array = []
+	var teeth := 9
+	for k in teeth * 2 + 1:
+		var x := 0.18 + 0.64 * float(k) / float(teeth * 2)
+		rim.append(Vector2(x, 0.6 + (0.0 if k % 2 == 0 else 0.055)))
+	var cup: Array = rim.duplicate()
+	for k in 21:
+		var a := PI * float(k) / 20.0
+		cup.append(Vector2(0.5 + cos(a) * 0.32, 0.62 + sin(a) * 0.3))
+	_poly(cup, SHELL)
+	_poly([Vector2(0.22, 0.66), Vector2(0.78, 0.66), Vector2(0.74, 0.7), Vector2(0.26, 0.7)], SHELL_IN, false)
+	_ellipse(Vector2(0.36, 0.78), 0.035, 0.05, Color(1, 1, 1, 0.7), false, 0.3)   # a shine on the shell
+	# The cap, tipped on its head.
+	var cap: Array = []
+	for k in 13:
+		var a := PI + PI * float(k) / 12.0
+		cap.append(Vector2(0.5 + cos(a) * 0.15, 0.25 + sin(a) * 0.13))
+	for k in 7:
+		cap.append(Vector2(0.65 - 0.3 * float(k) / 6.0, 0.25 + (0.0 if k % 2 == 0 else 0.04)))
+	var tipped: Array = []
+	for v in cap:
+		tipped.append(Vector2(0.53, 0.24) + ((v as Vector2) - Vector2(0.5, 0.2)).rotated(0.32))
+	_poly(tipped, SHELL)
+	# Sparkles.
+	_sparkle(Vector2(0.1, 0.42), 0.09, Color(1.0, 0.82, 0.3))
+	_sparkle(Vector2(0.9, 0.5), 0.08, Color(1.0, 0.82, 0.3))
+	_sparkle(Vector2(0.84, 0.12), 0.06, Color(1.0, 0.6, 0.76))
+	_sparkle(Vector2(0.17, 0.12), 0.055, Color(0.56, 0.8, 1.0))
 
 
 ## The Battle Pass in the Christmas season: a little Christmas tree -- three
