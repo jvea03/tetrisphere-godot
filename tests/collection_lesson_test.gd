@@ -1,4 +1,4 @@
-# Plays the Collection walkthrough as a brand-new player. Its "Tap Grad" step
+# Plays the Collection walkthrough as a brand-new player. Its "Tap Doc" step
 # spotlights one critter far down the alphabetical list, and the walkthrough
 # blocks scrolling, so that tile has to be on screen -- clear of the bottom bar --
 # when the step arrives, and a tap on it has to get through. Run with:
@@ -39,11 +39,11 @@ func _run() -> void:
 	await get_tree().create_timer(0.6).timeout
 	_tutorial._advance()   # past the gift of coins
 	await get_tree().create_timer(0.8).timeout
-	_check("it reaches the Tap Grad step", _tutorial.visible and _tutorial.steps[_tutorial.step_index].get("gate", false))
+	_check("it reaches the Tap Doc step", _tutorial.visible and _tutorial.steps[_tutorial.step_index].get("gate", false))
 	var rect := _tile_rect(TUTORIAL_CRITTER)
 	var view := get_viewport().get_visible_rect()
 	var scroll_box := _critter_scroll.get_global_rect()
-	_check("the Grad tile is on screen", view.encloses(rect))
+	_check("the Doc tile is on screen", view.encloses(rect))
 	_check("and inside the critter list, not under the bottom bar", scroll_box.encloses(rect))
 	_check("and the tile is not hidden under the navigation bar", not rect.intersects(nav.get_global_rect()))
 	# The spotlight must leave the tile reachable: no dark panel over its centre.
@@ -55,7 +55,7 @@ func _run() -> void:
 	_check("no dark panel covers the tile, so a tap reaches it", not covered)
 	# Pressing the tile (what a tap does) moves the walkthrough on to Buy.
 	var button := _tile_button_for(TUTORIAL_CRITTER)
-	_check("the Grad tile has a button", button != null)
+	_check("the Doc tile has a button", button != null)
 	if button != null:
 		button.pressed.emit()
 	await get_tree().create_timer(1.0).timeout

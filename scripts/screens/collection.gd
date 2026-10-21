@@ -10,7 +10,7 @@ extends TSScreen
 
 const TILE := 118.0
 const COLUMNS := 5
-const TUTORIAL_CRITTER := 5 # Grad: the Common one the walkthrough's gift buys
+const TUTORIAL_CRITTER := 24 # Doc: the Common one the walkthrough's gift buys
 
 var _level_label: Label
 var _bonus_label: Label
