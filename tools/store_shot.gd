@@ -18,6 +18,7 @@
 # --wait=<s>      seconds to let animations settle (default 1.5)
 # --date=<Y-M-D> pretend it is that day: a later Battle Pass season, say
 # --planet=<theme> the critters' planet dressed for a season: christmas, newyear...
+# --crashed      Home with the ship as it crash-landed: no part fixed or built
 # Over Home: camp (its info card), mine (a haul, and the ad to double it),
 # chest_skip (an unlocking chest's card), build (a build under way). And
 # streak_double: Daily Streaks with today's login coins claimed.
@@ -71,6 +72,9 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	_profile(level)
+	if OS.get_cmdline_user_args().has("--crashed"):   # the ship as it lands: nothing fixed, nothing built
+		for i in TSProfile.part_level.size():
+			TSProfile.part_level[i] = 0
 	if planet != "":
 		TSProfile.planet_theme = planet
 	if fresh:   # a brand-new player: the first-visit walkthroughs still to come
