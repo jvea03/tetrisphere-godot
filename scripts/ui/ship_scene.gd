@@ -1639,14 +1639,27 @@ func _draw_ship_props() -> void:
 	# The heap the nose ploughed into: half of it dug away once the nose cone
 	# is fixed.
 	var dug: float = [1.0 if _lv(TSProfile.PART_NOSE) == 0 else 0.55, 0.45, 0.3][_stage]
+	# A proper mound however far it is dug: it narrows and settles a little,
+	# rather than flattening to a sliver (which left the scaffold's post and
+	# brace looking sliced off where they met it).
+	var w := 104.0 * (0.78 + 0.22 * dug)
+	var h := 58.0 * (0.72 + 0.28 * dug)
+	var mid := MOUND + Vector2(20.0 * (1.0 - dug), 14.0)
 	var heap := PackedVector2Array()
-	for k in 19:
-		var a := PI + PI * float(k) / 18.0
-		heap.append(MOUND + Vector2(20.0 * (1.0 - dug), 0.0) + Vector2(cos(a) * 80.0, sin(a) * 36.0 * dug + 10.0))
+	for k in 25:
+		var a := PI + PI * float(k) / 24.0
+		heap.append(mid + Vector2(cos(a) * w, sin(a) * h))
 	ci.draw_colored_polygon(heap, DIRT)
+	# Light on its upper slope, shade at its foot, so it reads as a heap.
+	var lit := PackedVector2Array()
+	for k in 13:
+		var a := PI * 1.12 + PI * 0.5 * float(k) / 12.0
+		lit.append(mid + Vector2(cos(a) * w * 0.72, sin(a) * h * 0.78))
+	ci.draw_polyline(lit, DIRT.lightened(0.25), 7.0, true)
+	ci.draw_line(mid + Vector2(-w * 0.9, -4.0), mid + Vector2(w * 0.9, -4.0), DIRT.darkened(0.15), 6.0, true)
 	ci.draw_polyline(heap, INK, 5.0, true)
-	for clod in [Vector2(-40, -6), Vector2(16, -20), Vector2(46, 0)]:
-		ci.draw_circle(MOUND + Vector2(clod.x, clod.y * dug), 6.0, DIRT.darkened(0.2), true, -1.0, true)
+	for clod in [Vector2(-0.5, -0.45), Vector2(0.12, -0.78), Vector2(0.52, -0.38), Vector2(-0.18, -0.2)]:
+		ci.draw_circle(mid + Vector2(clod.x * w, clod.y * h), 7.0, DIRT.darkened(0.2), true, -1.0, true)
 	if _lv(TSProfile.PART_LEGS) == 0:
 		# A snapped landing leg in the dirt beside the ship.
 		var leg := SHIP_AT + Vector2(-120.0, 100.0)
