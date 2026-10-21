@@ -76,12 +76,15 @@ func _ready() -> void:
 	if fresh:   # a brand-new player: the first-visit walkthroughs still to come
 		TSProfile.collection_tutorial_seen = false
 		TSProfile.home_tutorial_seen = false
+		TSProfile.ship_story_seen = false
 		TSProfile.collection_gift_claimed = false
 		for i in TSProfile.CRITTER_COUNT:   # only the starter critter, as in a new game
 			TSProfile.critter_unlocked[i] = i == 0
 			TSProfile.critter_level[i] = 1 if i == 0 else 0
 		TSProfile.avatar_critter = 0
 		TSProfile.coin_count = 600
+		TSChests.slots = [{}, {}, {}, {}]   # no chests yet: the Home walkthrough hands over the first
+		TSChests.win_progress = 0
 	var path := "res://scenes/%s.tscn" % scene_name
 	var game_cards := ["pause", "lose", "bomb_empty", "swap_empty", "rocks_empty"]
 	var home_cards := ["settings", "camp", "mine", "chest_skip", "build"]
@@ -113,7 +116,7 @@ func _ready() -> void:
 	# Wait in seconds, not frames: a big off-screen render runs slower than 60 fps.
 	await get_tree().create_timer(wait).timeout
 	for i in advance:   # step the walkthrough on (fresh shots)
-		inst._tutorial._advance()
+		(inst.tutorial if "tutorial" in inst else inst._tutorial)._advance()
 		await get_tree().create_timer(0.8).timeout
 	if home_zoom > 0.0 and scene_name == "home":
 		var w = inst._world

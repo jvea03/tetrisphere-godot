@@ -91,6 +91,9 @@ func build() -> void:
 	var walkthrough := TSProfile.voyage_due()
 	if walkthrough:
 		pass
+	elif not TSProfile.ship_story_seen and TSProfile.last_level < TSNav.COLLECTION_UNLOCK_LEVEL:
+		_start_ship_story()
+		walkthrough = true
 	elif features and not TSProfile.home_tutorial_seen:
 		_start_home_tutorial()
 		walkthrough = true
@@ -920,6 +923,7 @@ func _on_chest_slot_pressed(i: int) -> void:
 	if TSChests.start_unlock(i):
 		TSUI.note(self, btn, "Unlocking -- %s" % TSChests.format_unlock_time(TSChests.rarity_of(i)))
 		_refresh_chest_tray()
+		tutorial.gate_passed()   # the walkthrough's "Tap it to start unlocking"
 	else:
 		var limit := TSChests.max_concurrent_unlocks()
 		TSUI.note(self, btn, "One chest at a time" if limit == 1 else "Only %d chests at a time" % limit)
@@ -1453,11 +1457,46 @@ func _start_home_tutorial() -> void:
 	tutorial.finished.connect(func():
 		TSProfile.home_tutorial_seen = true
 		TSProfile.save(), CONNECT_ONE_SHOT)
+	# A free Common chest to start with, for the player to unlock themselves --
+	# unless they already have one (the walkthrough was cut short before).
+	var slot := _tutorial_chest_slot()
+	if slot < 0:
+		slot = TSChests.give(TSChests.COMMON)
+		_refresh_chest_tray()
+	var steps: Array = []
+	if slot >= 0 and not TSChests.is_unlocking(slot) and not TSChests.is_ready(slot):
+		var chest_rect := func() -> Rect2: return (_chest_slots[slot]["btn"] as Control).get_global_rect()
+		steps.append({"rect": chest_rect, "text": "Here's a free chest to get you started!"})
+		steps.append({"rect": chest_rect, "text": "Tap it to start unlocking.", "gate": true})
+		steps.append({"rect": tray.get_global_rect(), "text": "It opens in %s. Tap it again then to collect coins, or open it sooner with coins. One chest unlocks at a time." % TSChests.format_unlock_time(TSChests.COMMON)})
+	steps.append({"rect": tray.get_global_rect(), "text": "Win 3 levels to earn another chest."})
+	steps.append({"rect": pass_btn.get_global_rect(), "text": "The Battle Pass is open! Hearts left on a win become stars, and stars climb the tiers for coins."})
+	steps.append({"rect": hunt_btn.get_global_rect(), "text": "And the 7-Day Eggsperience: three quests a day for a week, with coins for every day you finish."})
+	tutorial.start(steps)
+
+
+## The slot holding the walkthrough's chest: the first with any chest in it.
+func _tutorial_chest_slot() -> int:
+	for i in TSChests.SLOT_COUNT:
+		if not TSChests.is_empty(i):
+			return i
+	return -1
+
+
+## The first visit to Home (a player already past the camp's unlock has had
+## it explained): where the story is going.
+func _start_ship_story() -> void:
+	await _settled()
+	if not is_inside_tree():
+		return
+	tutorial.finished.connect(func():
+		TSProfile.ship_story_seen = true
+		TSProfile.save(), CONNECT_ONE_SHOT)
+	var ship := _world.get_global_rect().position + _world.ship_screen_rect().position
+	var spot := Rect2(ship, _world.ship_screen_rect().size)
 	tutorial.start([
-		{"rect": tray.get_global_rect(), "text": "Win 3 levels to earn a chest."},
-		{"rect": tray.get_global_rect(), "text": "Tap a chest to start unlocking it, then tap again when it's ready to collect coins. One chest unlocks at a time."},
-		{"rect": pass_btn.get_global_rect(), "text": "The Battle Pass is open! Hearts left on a win become stars, and stars climb the tiers for coins."},
-		{"rect": hunt_btn.get_global_rect(), "text": "And the 7-Day Eggsperience: three quests a day for a week, with coins for every day you finish."},
+		{"rect": spot, "text": "Our ship crash-landed on this planet! To get off it, we have to rebuild the camp and fix up the ship."},
+		{"rect": spot, "text": "Rescue the critters from their eggs, win coins and building materials, and the camp will grow. Then we fly!"},
 	])
 
 

@@ -605,6 +605,14 @@ func node_screen_position(i: int) -> Vector2:
 	return _world.position + _node_world(i) * _zoom
 
 
+## The ship and its scaffold on screen (a walkthrough's spotlight), in the
+## world's own coordinates at its current zoom.
+func ship_screen_rect() -> Rect2:
+	var at := _world.position + (_xf * SHIP_MIDDLE) * _zoom
+	var size := Vector2(560.0, 410.0) * _zoom
+	return Rect2(at - size * 0.5 - Vector2(0.0, 35.0 * _zoom), size)
+
+
 ## The open part of Home the nodes keep to.
 func _area() -> Rect2:
 	return node_area if node_area.has_area() else Rect2(Vector2.ZERO, _view_size())

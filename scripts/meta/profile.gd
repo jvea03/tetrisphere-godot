@@ -30,6 +30,7 @@ static func use_test_profile(level := 1) -> void:
 	ensure_loaded()
 	tutorial_seen = true
 	intro_seen = true
+	ship_story_seen = true
 	tie_tutorial_seen = true
 	geode_tutorial_seen = true
 	vine_tutorial_seen = true
@@ -286,6 +287,7 @@ static var slide_tutorial_seen: bool = false # the sliding walkthrough, once, at
 static var club_intro_seen: bool = false
 static var collection_tutorial_seen: bool = false
 static var daily_callout_seen: bool = false
+static var ship_story_seen: bool = false   # the first Home visit's "we have to rebuild the camp and ship", once
 static var camp_callout_seen: bool = false   # Home's one-time pointer to the camp's build nodes
 static var home_tutorial_seen: bool = false
 static var collection_gift_claimed: bool = false
@@ -1692,7 +1694,8 @@ static func claim_daily_reward() -> int:
 
 static func has_claimed_all_streak_rewards_today() -> bool:
 	var today := TSClock.date_string()
-	return login_reward_claimed_date == today and daily_reward_claimed_date == today
+	# Before the Daily Egg unlocks there is only the login streak to collect.
+	return login_reward_claimed_date == today and (daily_reward_claimed_date == today or not TSNav.daily_unlocked())
 
 
 static func mark_daily_completed() -> void:
@@ -2492,6 +2495,7 @@ static func ensure_loaded() -> void:
 	collection_tutorial_seen = bool(g.call("collection_tutorial_seen", false))
 	daily_callout_seen = bool(g.call("daily_callout_seen", false))
 	camp_callout_seen = bool(g.call("camp_callout_seen", false))
+	ship_story_seen = bool(g.call("ship_story_seen", false))
 	home_tutorial_seen = bool(g.call("home_tutorial_seen", false))
 	collection_gift_claimed = bool(g.call("collection_gift_claimed", false))
 	music_enabled = bool(g.call("music_enabled", true))
@@ -2612,6 +2616,7 @@ static func save() -> void:
 	s.call("collection_tutorial_seen", collection_tutorial_seen)
 	s.call("daily_callout_seen", daily_callout_seen)
 	s.call("camp_callout_seen", camp_callout_seen)
+	s.call("ship_story_seen", ship_story_seen)
 	s.call("home_tutorial_seen", home_tutorial_seen)
 	s.call("collection_gift_claimed", collection_gift_claimed)
 	s.call("music_enabled", music_enabled)

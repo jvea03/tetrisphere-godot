@@ -126,6 +126,17 @@ static func record_win() -> String:
 	return rarity
 
 
+## A chest handed over outside the win count (the Home walkthrough's free
+## Common one): its slot, or -1 with no room.
+static func give(rarity: String) -> int:
+	var slot := free_slot()
+	if slot < 0:
+		return -1
+	slots[slot] = {"rarity": rarity, "unlock_end": 0}
+	TSProfile.save()
+	return slot
+
+
 static func start_unlock(i: int) -> bool:
 	if is_empty(i) or int(slots[i]["unlock_end"]) > 0 or not can_start_another():
 		return false

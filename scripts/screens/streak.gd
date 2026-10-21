@@ -25,8 +25,10 @@ func build() -> void:
 	_login_card = _make_card("LOGIN STREAK", TSUI.BUTTER, "flame", _login, _on_login_tap)
 	content.add_child(_login_card)
 	content.add_child(TSUI.spacer(10))
-	_daily_card = _make_card("DAILY EGG STREAK", TSUI.SKY, "calendar", _daily, _on_daily_tap)
-	content.add_child(_daily_card)
+	# The Daily Egg's own streak waits until the Daily Egg unlocks.
+	if TSNav.daily_unlocked():
+		_daily_card = _make_card("DAILY EGG STREAK", TSUI.SKY, "calendar", _daily, _on_daily_tap)
+		content.add_child(_daily_card)
 	content.add_child(TSUI.spacer(0, true))
 	_refresh()
 
@@ -87,7 +89,8 @@ func _refresh() -> void:
 		ad.visible = TSProfile.can_double_login_reward()
 		ad.disabled = false
 		ad.text = TSAdReward.text("Double it (+%s)" % TSProfile.fmt_coins(TSProfile.login_reward_claimed_amount))
-	_fill(_daily, _daily_card, TSProfile.daily_streak_count, TSProfile.can_claim_daily_reward(), TSProfile.daily_reward_amount(), false)
+	if _daily_card != null:
+		_fill(_daily, _daily_card, TSProfile.daily_streak_count, TSProfile.can_claim_daily_reward(), TSProfile.daily_reward_amount(), false)
 	if TSProfile.streak_reward_message != "":
 		(_banner.get_child(0) as Label).text = TSProfile.streak_reward_message
 		_banner.visible = true
