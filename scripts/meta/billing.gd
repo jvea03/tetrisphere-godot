@@ -34,16 +34,16 @@ const PRODUCTS := {
 	"egg_materials_5000": {"materials": 5000, "consumable": true},
 	"egg_materials_12000": {"materials": 12000, "consumable": true},
 	"egg_materials_32000": {"materials": 32000, "consumable": true},
-	"egg_bundle_starter": {"coins": 10000, "bomb": 4, "consumable": true},
-	"egg_bundle_value": {"coins": 50000, "bomb": 11, "materials": 1500, "consumable": true},
-	"egg_bundle_mega": {"coins": 150000, "bomb": 26, "materials": 5000, "consumable": true},
-	"egg_featured_hatchers_hoard": {"coins": 130000, "bomb": 15, "materials": 2000, "consumable": true},
+	"egg_bundle_starter": {"coins": 10000, "bomb": 4, "skips": 10, "consumable": true},
+	"egg_bundle_value": {"coins": 50000, "bomb": 11, "skips": 30, "materials": 1500, "consumable": true},
+	"egg_bundle_mega": {"coins": 150000, "bomb": 26, "skips": 80, "materials": 5000, "consumable": true},
+	"egg_featured_hatchers_hoard": {"coins": 130000, "bomb": 15, "skips": 40, "materials": 2000, "consumable": true},
 	NO_ADS: {"no_ads": true, "consumable": false},
 	"egg_battle_pass": {"battle_pass": true, "consumable": true}, # one season; consumed so next season can buy again
 	# Pop-up sales (TSSales.OFFERS) -- Home only, never in the Shop.
-	"egg_popup_hatch_day_2026": {"coins": 130000, "bomb": 30, "consumable": true},
-	"egg_popup_starter_sprinkle": {"coins": 25000, "bomb": 9, "consumable": true},
-	"egg_popup_flash_sale": {"coins": 75000, "bomb": 15, "consumable": true},
+	"egg_popup_hatch_day_2026": {"coins": 130000, "bomb": 30, "skips": 60, "consumable": true},
+	"egg_popup_starter_sprinkle": {"coins": 25000, "bomb": 9, "skips": 20, "consumable": true},
+	"egg_popup_flash_sale": {"coins": 75000, "bomb": 15, "skips": 40, "consumable": true},
 }
 
 const SINGLETON := "GodotGooglePlayBilling"
@@ -173,6 +173,7 @@ func _grant(product_id: String) -> void:
 		return
 	TSProfile.coin_count += int(p.get("coins", 0))
 	TSProfile.add_materials(int(p.get("materials", 0)))
+	TSProfile.time_skips += int(p.get("skips", 0))
 	if int(p.get("bomb", 0)) > 0:
 		TSProfile.bomb_count += int(p["bomb"])
 		TSProfile.bombs_unlocked = true

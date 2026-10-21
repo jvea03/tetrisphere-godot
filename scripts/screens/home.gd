@@ -607,7 +607,7 @@ func _fill_part_card() -> void:
 		var left := TSProfile.part_build_seconds_left(i)
 		costs.add_child(_cost_chip("clock", fmt_time(left) + " left", false))
 		costs.add_child(_cost_chip("skip", "%d skips" % TSProfile.time_skips, false))
-		note.text = "Each time skip takes a minute off. Get them from the Battle Pass." if TSProfile.time_skips == 0 else ""
+		note.text = "Each time skip takes a minute off. Earn them from streaks, the Battle Pass and bundles." if TSProfile.time_skips == 0 else ""
 		var need := TSProfile.time_skips_to_finish(i)
 		var one: Button = _part["skip_one"]
 		var all: Button = _part["skip_all"]
@@ -947,7 +947,23 @@ func _refresh_skip() -> void:
 	b.disabled = TSProfile.coin_count < cost
 	if not Ads.is_busy():   # an ad is up: leave its button saying so
 		_fill_ad_button(_skip["ad"], "chest")
+	var have := TSProfile.time_skips
+	var need := TSChests.time_skips_to_finish(_skip_slot)
+	(_skip["skips"] as Control).visible = have > 0
+	(_skip["skip_one"] as Button).text = "Skip 1 min"
+	(_skip["skip_all"] as Button).text = ("Use %d to finish" % need) if have >= need else ("Use all %d" % have)
+	(_skip["skip_all"] as Button).disabled = need <= 1
 
+
+## Time skips on the open chest: n minutes off. If that finishes it, its card
+## closes and it is ready to open.
+func _use_chest_skips(n: int) -> void:
+	if TSChests.use_time_skips(_skip_slot, n) <= 0:
+		return
+	TSSfx.play("coin")
+	TSFX.sparkle_burst(self, _skip["skip_all"] if n > 1 else _skip["skip_one"])
+	_refresh_chest_tray()
+	_refresh_skip()
 
 ## A chest's or a build's rewarded ad: half an hour off, so many a day.
 func _fill_ad_button(b: Button, kind: String) -> void:
@@ -1115,6 +1131,8 @@ func _open_sale() -> void:
 	row.add_child(_stack("coin", TSProfile.fmt_coins(int(got.get("coins", 0)))))
 	if int(got.get("bomb", 0)) > 0:
 		row.add_child(_stack("bomb", "x%d" % int(got["bomb"])))
+	if int(got.get("skips", 0)) > 0:
+		row.add_child(_stack("skip", "x%d" % int(got["skips"])))
 	box.add_child(strip)
 	var buy_row := TSUI.hbox(16)
 	buy_row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -1262,6 +1280,18 @@ func _build_dialogs() -> void:
 	chest_ad.pressed.connect(_on_chest_ad)
 	sbox.add_child(chest_ad)
 	_skip["ad"] = chest_ad
+	# Time skips, a minute off each: one, or as many as it takes.
+	var chest_skips := TSUI.hbox(12)
+	sbox.add_child(chest_skips)
+	_skip["skips"] = chest_skips
+	var one_skip := TSUI.expand(TSUI.button("", TSUI.SKY, 22, Vector2(0, 64), 4)) as Button
+	one_skip.pressed.connect(func(): _use_chest_skips(1))
+	chest_skips.add_child(one_skip)
+	_skip["skip_one"] = one_skip
+	var all_skips := TSUI.expand(TSUI.button("", TSUI.SKY, 22, Vector2(0, 64), 4)) as Button
+	all_skips.pressed.connect(func(): _use_chest_skips(TSChests.time_skips_to_finish(_skip_slot)))
+	chest_skips.add_child(all_skips)
+	_skip["skip_all"] = all_skips
 	var wait := TSUI.button("Wait", TSUI.GREY, 26)
 	wait.pressed.connect(func(): TSUI.conceal(_skip["root"]))
 	sbox.add_child(wait)

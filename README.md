@@ -158,7 +158,7 @@ way its node is a clock filling round, the time left under it, its critter
 hopping beside it; when it is done, a bouncing tick to tap and collect. A
 build can be sped up with **time skips** -- each takes a minute off, one at
 a time or as many as it takes, from the Battle Pass (every 5th tier: 5 free, 10
-premium) -- or finished early for
+premium), the 7-day streaks (10 with the bombs) and the Shop's bundles and sales -- on a chest too -- or finished early for
 20 coins a minute left. Materials
 (`TSProfile.PART_MATERIALS`: 20 a level in the first wave, 40, 60 and 80 in the
 next three, 100 on the ship -- 19,000 for the whole camp and ship) come from

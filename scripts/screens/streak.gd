@@ -13,7 +13,7 @@ var _banner: PanelContainer
 
 func build() -> void:
 	add_header("Daily Streaks", true)
-	content.add_child(TSUI.wrap(TSUI.label("Collect coins every day. Keep it up 7 days in a row for %d free bombs." % TSProfile.STREAK_REWARD_BOMBS, 24, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER)))
+	content.add_child(TSUI.wrap(TSUI.label("Collect coins every day. Keep it up 7 days in a row for %d free bombs and %d time skips." % [TSProfile.STREAK_REWARD_BOMBS, TSProfile.STREAK_REWARD_SKIPS], 24, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER)))
 	_banner = TSUI.card(TSUI.BUTTER, 22, 14, 2)
 	_banner.add_child(TSUI.wrap(TSUI.label("", 24, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER)))
 	content.add_child(_banner)

@@ -10,12 +10,12 @@ extends TSScreen
 ## and product ids exist.
 
 const FEATURED_SALES := [
-	{"name": "Hatcher's Hoard", "coins": 130000, "bomb": 15, "materials": 2000, "price": "$4.99", "orig_price": "$9.99", "product_id": "egg_featured_hatchers_hoard"},
+	{"name": "Hatcher's Hoard", "coins": 130000, "bomb": 15, "skips": 40, "materials": 2000, "price": "$4.99", "orig_price": "$9.99", "product_id": "egg_featured_hatchers_hoard"},
 ]
 const BUNDLES := [
-	{"name": "Starter", "coins": 10000, "bomb": 4, "price": "$0.99", "product_id": "egg_bundle_starter", "chest": "common"},
-	{"name": "Value", "coins": 50000, "bomb": 11, "materials": 1500, "price": "$2.99", "product_id": "egg_bundle_value", "chest": "rare"},
-	{"name": "Mega", "coins": 150000, "bomb": 26, "materials": 5000, "price": "$6.99", "product_id": "egg_bundle_mega", "chest": "legendary"},
+	{"name": "Starter", "coins": 10000, "bomb": 4, "skips": 10, "price": "$0.99", "product_id": "egg_bundle_starter", "chest": "common"},
+	{"name": "Value", "coins": 50000, "bomb": 11, "skips": 30, "materials": 1500, "price": "$2.99", "product_id": "egg_bundle_value", "chest": "rare"},
+	{"name": "Mega", "coins": 150000, "bomb": 26, "skips": 80, "materials": 5000, "price": "$6.99", "product_id": "egg_bundle_mega", "chest": "legendary"},
 ]
 const COIN_PACKS := [
 	{"coins": 1000, "price": "Free", "starter": true},
@@ -248,7 +248,7 @@ func _featured_card(item: Dictionary) -> Control:
 	v.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_child(v)
 	v.add_child(TSUI.title(item["name"], 34))
-	var lines := [["coin", "%s coins" % TSProfile.fmt_coins(int(item["coins"]))], ["bomb", "%d bombs" % int(item["bomb"])]]
+	var lines := [["coin", "%s coins" % TSProfile.fmt_coins(int(item["coins"]))], ["bomb", "%d bombs" % int(item["bomb"])], ["skip", "%d time skips" % int(item["skips"])]]
 	if item.has("materials"):
 		lines.append(["materials", "%s materials" % TSProfile.fmt_coins(int(item["materials"]))])
 	for l in lines:
@@ -312,7 +312,7 @@ func _bundle_card(b: Dictionary) -> Control:
 	var art := TSIcon.make("chest", 92, 0, b["chest"])
 	art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	v.add_child(art)
-	var lines := [["coin", TSProfile.fmt_coins(int(b["coins"]))], ["bomb", "%d" % int(b["bomb"])]]
+	var lines := [["coin", TSProfile.fmt_coins(int(b["coins"]))], ["bomb", "%d" % int(b["bomb"])], ["skip", "%d" % int(b["skips"])]]
 	if b.has("materials"):
 		lines.append(["materials", TSProfile.fmt_coins(int(b["materials"]))])
 	for l in lines:

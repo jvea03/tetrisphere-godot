@@ -14,6 +14,7 @@ func _initialize() -> void:
 	_test_battle_pass()
 	_test_quests()
 	_test_streaks()
+	_test_time_skips()
 	_test_building()
 	_test_collection()
 	_test_clubs()
@@ -208,8 +209,31 @@ func _test_streaks() -> void:
 	TSProfile.login_streak_last_date = TSProfile._yesterday_of(Time.get_date_string_from_system())
 	TSProfile.login_streak_count = 6
 	var bombs := TSProfile.bomb_count
+	var skips_before := TSProfile.time_skips
 	TSProfile.record_login()
 	_check("the 7th day in a row pays %d bombs" % TSProfile.STREAK_REWARD_BOMBS, TSProfile.login_streak_count == 7 and TSProfile.bomb_count == bombs + TSProfile.STREAK_REWARD_BOMBS)
+	_check("...and %d time skips" % TSProfile.STREAK_REWARD_SKIPS, TSProfile.time_skips == skips_before + TSProfile.STREAK_REWARD_SKIPS)
+
+
+## Time skips: bundles carry them, and they work on a chest as on a build.
+func _test_time_skips() -> void:
+	TSProfile.time_skips = 0
+	var coins := TSProfile.coin_count
+	var billing: Node = (load("res://scripts/meta/billing.gd") as GDScript).new()
+	billing._grant("egg_bundle_starter")
+	var products: Dictionary = billing.PRODUCTS
+	_check("a bundle carries time skips (10)", TSProfile.time_skips == 10 and TSProfile.coin_count == coins + 10000)
+	_check("every bundle and pop-up sale does", products.keys().all(func(k): return not (str(k).begins_with("egg_bundle") or str(k).begins_with("egg_popup") or str(k).begins_with("egg_featured")) or int(products[k].get("skips", 0)) > 0))
+	TSChests.slots[0] = {"rarity": TSChests.RARE, "unlock_end": TSChests._now() + 1000}   # a bit under 17 minutes
+	var need := TSChests.time_skips_to_finish(0)
+	_check("a chest's timer counts in time skips (%d)" % need, need == 17)
+	TSProfile.time_skips = 5
+	var left := TSChests.seconds_left(0)
+	_check("5 skips take 5 minutes off it", TSChests.use_time_skips(0, 5) == 5 and TSProfile.time_skips == 0 and TSChests.seconds_left(0) <= left - 300 and TSChests.is_unlocking(0))
+	TSProfile.time_skips = 99
+	_check("no more are used than it needs", TSChests.use_time_skips(0, 99) == 12 and TSProfile.time_skips == 87 and TSChests.is_ready(0))
+	_check("a ready or empty chest takes none", TSChests.use_time_skips(0, 5) == 0 and TSChests.use_time_skips(1, 5) == 0)
+	TSChests.slots[0] = {}
 
 
 func _test_building() -> void:

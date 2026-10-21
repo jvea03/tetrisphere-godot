@@ -65,6 +65,26 @@ func _run() -> void:
 	await _ad_done()
 	_check("a chest with less than half an hour left is ready, its card gone", TSChests.is_ready(0) and not _skip["root"].visible)
 
+	# Time skips on a chest: a minute each.
+	TSProfile.time_skips = 0
+	TSChests.slots[0] = {"rarity": TSChests.RARE, "unlock_end": TSChests._now() + 600}
+	_open_skip(0)
+	_check("with no time skips the chest card doesn't offer them", not (_skip["skips"] as Control).visible)
+	TSUI.conceal(_skip["root"])
+	TSProfile.time_skips = 4
+	_open_skip(0)
+	_check("with some it offers them", (_skip["skips"] as Control).visible and (_skip["skip_one"] as Button).text == "Skip 1 min" and (_skip["skip_all"] as Button).text == "Use all 4")
+	left = TSChests.seconds_left(0)
+	(_skip["skip_one"] as Button).pressed.emit()
+	_check("one takes a minute off", TSProfile.time_skips == 3 and TSChests.seconds_left(0) <= left - 60 and TSChests.is_unlocking(0))
+	TSProfile.time_skips = 99
+	_refresh_skip()
+	(_skip["skip_all"] as Button).pressed.emit()
+	await get_tree().create_timer(0.4).timeout
+	_check("enough finish it, and its card closes", TSChests.is_ready(0) and not _skip["root"].visible and TSProfile.time_skips > 80)
+	TSChests.slots[0] = {}
+	_refresh_chest_tray()
+
 	# A build.
 	var p := -1
 	for i in TSProfile.PART_COUNT:

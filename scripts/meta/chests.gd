@@ -252,6 +252,25 @@ static func ad_skip(i: int) -> bool:
 	return true
 
 
+## How many time skips (a minute each) would finish an unlocking chest.
+static func time_skips_to_finish(i: int) -> int:
+	return ceili(seconds_left(i) / float(TSProfile.TIME_SKIP_SECONDS)) if is_unlocking(i) else 0
+
+
+## Spends up to n time skips on an unlocking chest -- never more than it
+## needs. Returns how many were used.
+static func use_time_skips(i: int, n: int) -> int:
+	if not is_unlocking(i):
+		return 0
+	var used := mini(mini(n, TSProfile.time_skips), time_skips_to_finish(i))
+	if used <= 0:
+		return 0
+	TSProfile.time_skips -= used
+	slots[i]["unlock_end"] = maxi(int(slots[i]["unlock_end"]) - used * TSProfile.TIME_SKIP_SECONDS, _now())
+	TSProfile.save()
+	return used
+
+
 static func format_countdown(seconds: int) -> String:
 	if seconds >= 3600:
 		return "%dh %02dm" % [seconds / 3600, (seconds % 3600) / 60]

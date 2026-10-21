@@ -1576,6 +1576,7 @@ static func seconds_until_weekly_reset() -> int:
 # Egg. Every 7th day of either pays bombs; each day also has a coin claim.
 const STREAK_REWARD_INTERVAL := 7
 const STREAK_REWARD_BOMBS := 5
+const STREAK_REWARD_SKIPS := 10   # time skips with the 7th day's bombs
 const DAILY_LOGIN_REWARD_COINS := 100
 const STREAK_MILESTONE_REWARD_COINS := 500
 
@@ -1612,8 +1613,9 @@ static func record_login() -> void:
 	record_quest_event("login")
 	if login_streak_count % STREAK_REWARD_INTERVAL == 0:
 		bomb_count += STREAK_REWARD_BOMBS
+		time_skips += STREAK_REWARD_SKIPS
 		bombs_unlocked = true
-		_append_streak_message("Login streak: %d days! +%d bombs" % [login_streak_count, STREAK_REWARD_BOMBS])
+		_append_streak_message("Login streak: %d days! +%d bombs, +%d time skips" % [login_streak_count, STREAK_REWARD_BOMBS, STREAK_REWARD_SKIPS])
 	save()
 
 
@@ -1629,8 +1631,9 @@ static func record_daily_play() -> void:
 	daily_streak_last_date = today
 	if daily_streak_count % STREAK_REWARD_INTERVAL == 0:
 		bomb_count += STREAK_REWARD_BOMBS
+		time_skips += STREAK_REWARD_SKIPS
 		bombs_unlocked = true
-		_append_streak_message("Daily Egg streak: %d days! +%d bombs" % [daily_streak_count, STREAK_REWARD_BOMBS])
+		_append_streak_message("Daily Egg streak: %d days! +%d bombs, +%d time skips" % [daily_streak_count, STREAK_REWARD_BOMBS, STREAK_REWARD_SKIPS])
 	save()
 
 
