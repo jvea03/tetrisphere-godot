@@ -7,6 +7,9 @@
 #   (override.cfg setting the window size, stretch off) then
 #   Godot --path . --write-movie <out>.avi --fixed-fps 30 res://tools/make_video.tscn -- --shape=landscape
 # --snaps=<dir> also saves a PNG at each beat, to check the cut without a player.
+# For other cuts (tools/make_shorts.ps1): --level=<n> plays that level;
+# --cap1= and --cap2= replace the two captions and --end= the end card's
+# headline, with "|" for a line break.
 extends Control
 
 const ADS := preload("res://tools/make_ads.gd")
@@ -16,8 +19,9 @@ const GAME_SIZE := Vector2i(720, 1280)
 ## Each shape is laid out at a design size like the images' and scaled to
 ## the window.
 const DESIGN := {"portrait": Vector2(720, 1280), "landscape": Vector2(1200, 675), "square": Vector2(1200, 1200)}
-const CAPTIONS := ["Can you free\nthe critter?", "Spin. Match.\nEscape!"]
-const END_HEADLINE := "Can you save\nthem all?"
+var CAPTIONS := ["Can you free\nthe critter?", "Spin. Match.\nEscape!"]
+var END_HEADLINE := "Can you save\nthem all?"
+var _level := 8
 
 var _shape := "portrait"
 var _snaps := ""
@@ -26,6 +30,7 @@ var _game: Node
 var _stage: Control      # the design-size layer, scaled to the window
 var _caption: Label
 var _snap_n := 0
+var _sub: SubViewport   # what the phone / full screen shows: the game, then Home's camp and the Collection
 
 
 func _ready() -> void:
@@ -34,6 +39,14 @@ func _ready() -> void:
 			_shape = a.substr(8)
 		elif a.begins_with("--snaps="):
 			_snaps = a.substr(8)
+		elif a.begins_with("--level="):
+			_level = int(a.substr(8))
+		elif a.begins_with("--cap1="):
+			CAPTIONS[0] = a.substr(7).replace("|", "\n")
+		elif a.begins_with("--cap2="):
+			CAPTIONS[1] = a.substr(7).replace("|", "\n")
+		elif a.begins_with("--end="):
+			END_HEADLINE = a.substr(6).replace("|", "\n")
 	_art = ADS.new()
 	_art.setup()
 	var win := Vector2(get_viewport().get_visible_rect().size)
@@ -46,12 +59,14 @@ func _ready() -> void:
 	add_child(_stage)
 	# The game, in a viewport of its own at its native size.
 	var sub := SubViewport.new()
+	_sub = sub
 	sub.size = GAME_SIZE
 	sub.own_world_3d = true
 	sub.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	add_child(sub)
 	_game = Node3D.new()
 	_game.set_script(GAME)
+	_game.video_level = _level
 	sub.add_child(_game)
 	if _shape == "portrait":
 		_full_screen(sub.get_texture(), design)
@@ -176,7 +191,9 @@ func _snap(tag: String) -> void:
 
 
 func _run() -> void:
-	await _wait(0.3)
+	await _wait(0.1)
+	_game.face_blocker()   # a blocker level opens on its blocker
+	await _wait(0.2)
 	_say(CAPTIONS[0])
 	await _wait(0.8)
 	_snap("hook")
@@ -189,14 +206,76 @@ func _run() -> void:
 	_snap("play")
 	while not won[0] and _game.playing():
 		await get_tree().process_frame
-	# The critter shoots out and the win card lands; beside the phone the
-	# caption cheers (full screen, the card says it).
-	_say("" if _shape == "portrait" else "Critter saved!")
-	await _wait(3.0)
-	_snap("win")
-	await _wait(1.6)
+	# The critter shoots out of the egg -- cut before the win card lands.
+	_say("Critter saved!")
+	await _wait(1.8)
+	await _snap("win")
+	await _showcase()
 	await _end_card()
 	get_tree().quit()
+
+
+## After the level: the camp the critters are rebuilding, the world gliding
+## past its spots, then the Collection's critters scrolling by -- each under
+## its own caption, in the same frame the game was in.
+func _showcase() -> void:
+	_game.queue_free()
+	_showcase_profile()
+	var home: Control = (load("res://scenes/home.tscn") as PackedScene).instantiate()
+	_sub.add_child(home)
+	_say("Rebuild your camp!")
+	await _wait(0.6)
+	var world = home._world
+	# Just the camp: Home's buttons, tray and bars put away for the shot.
+	await get_tree().process_frame
+	for c in home.find_children("*", "Control", true, false):
+		var ctl := c as Control
+		if ctl != world and not ctl.is_ancestor_of(world) and not world.is_ancestor_of(ctl) and ctl.get_parent() != null \
+				and (ctl.get_parent() == home or ctl.get_parent().is_ancestor_of(world) or ctl.get_parent() == world.get_parent()):
+			ctl.visible = false
+	for part in [TSProfile.PART_ENGINE, TSProfile.CAMP_WELL, TSProfile.CAMP_FIRE]:   # the ship, then on round the finished camp
+		world.glide_to_part(part)
+		await _wait(1.1)
+	await _snap("camp")
+	home.queue_free()
+	var coll: Control = (load("res://scenes/collection.tscn") as PackedScene).instantiate()
+	_sub.add_child(coll)
+	_say("Collect cute\ncritters!")
+	await _wait(0.5)
+	var sc: ScrollContainer = coll._critter_scroll
+	var t := sc.create_tween()
+	t.tween_property(sc, "scroll_vertical", 260, 2.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	await _wait(1.4)
+	await _snap("critters")
+	await _wait(1.3)
+	_say("")
+	coll.queue_free()
+
+
+## A player well into the game: the camp and ship fully upgraded,
+## a crowd of critters to show off -- and no pop-ups or walkthroughs.
+func _showcase_profile() -> void:
+	TSProfile.home_tutorial_seen = true
+	TSProfile.daily_callout_seen = true
+	TSProfile.camp_callout_seen = true
+	TSProfile.collection_tutorial_seen = true
+	TSProfile.ship_story_seen = true
+	TSProfile.club_intro_seen = true
+	TSProfile.coin_count = 48250
+	TSProfile.materials = 2400
+	var owned := [0, 1, 2, 4, 8, 11, 15, 20, 23, 24, 33, 40, 47, 51, 60, 66, 70, 75]
+	for i in owned:
+		if i < TSProfile.CRITTER_COUNT and not TSProfile.is_critter_pass_exclusive(i):
+			TSProfile.critter_unlocked[i] = true
+			TSProfile.critter_level[i] = 2 + i % 6
+	TSProfile.part_level = []
+	for i in TSProfile.PART_COUNT:
+		TSProfile.part_level.append(TSProfile.PART_MAX_LEVEL)   # every spot fully upgraded: no build markers over the camp
+	TSProfile._fill_parts()
+	TSProfile.part_builds = {}
+	TSChests.slots = [{"rarity": "rare", "unlock_end": 0}, {"rarity": "common", "unlock_end": 0}, {}, {}]
+	TSSales.roll()
+	TSSales.mark_popup_shown()
 
 
 ## The end card: the images' "adventure" layout -- title, ship, headline and

@@ -3,7 +3,7 @@
 # -- drops it, and goes again until the critter is out.
 extends "res://scripts/game.gd"
 
-const LEVEL := 8
+var video_level := 8   # make_video sets it (--level) before the game is added
 const MAX_DROPS := 16
 const AIM_SECONDS := 0.55    # the egg turns to the aimed piece
 const SETTLE_SECONDS := 0.8  # the clear plays out before the next aim
@@ -13,10 +13,29 @@ signal won
 
 func _ready() -> void:
 	seed(1234)
-	TSProfile.use_test_profile(LEVEL)
+	TSProfile.use_test_profile(video_level)
 	TSProfile.ad_rewards_date = TSClock.date_string()
 	TSProfile.ad_rewards_used = {"win_coins": 99}   # no Double Coins ad on the win card
 	super()
+
+
+## Turns the egg to the level's blocker -- fog, a prism, a padlock, a vine --
+## so the opening shot shows what the caption is about. False if it has none.
+func face_blocker() -> bool:
+	var at := Vector2(-1, -1)
+	if not board.fog.is_empty():
+		at = Vector2(board.fog.keys()[0])
+	else:
+		for group in [board.prisms, board.locked, board.vined]:
+			if not (group as Dictionary).is_empty():
+				var id: int = (group as Dictionary).keys()[0]
+				if board.plate_cols.has(id):
+					at = Vector2((board.plate_cols[id] as Array)[0])
+				break
+	if at.x < 0:
+		return false
+	_face(at)
+	return true
 
 
 func playing() -> bool:

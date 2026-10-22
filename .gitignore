@@ -24,3 +24,5 @@ addons/admob/ios/bin/
 /store/ads/video/
 # Movie Maker window settings, written and removed by tools/make_videos.ps1.
 /override.cfg
+# Recorded YouTube Shorts (tools/make_shorts.ps1): 50-130 MB each, rebuilt on demand.
+/store/youtube/shorts/
