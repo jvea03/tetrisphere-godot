@@ -48,6 +48,7 @@ func setup(units: Dictionary) -> void:
 	_interstitial_screen.on_ad_dismissed_full_screen_content = _interstitial_done
 	_interstitial_screen.on_ad_failed_to_show_full_screen_content = func(_e: AdError) -> void: _interstitial_done()
 	_init_listener.on_initialization_complete = func(_status: InitializationStatus) -> void:
+		_ads_ready = true
 		_load_rewarded()
 		_load_interstitial()
 	_gather_consent()
@@ -61,6 +62,8 @@ func setup(units: Dictionary) -> void:
 # only what the stored answer allows.
 
 var _ads_started := false
+var _ads_ready := false     # MobileAds initialised: nothing loads before consent is settled and this is set
+var _wait_id := 0           # the rewarded request a wait timer belongs to
 
 
 func _gather_consent() -> void:
@@ -102,15 +105,17 @@ func show_rewarded() -> void:
 		_show_rewarded_now()
 		return
 	_waiting = true
-	_load_rewarded()
+	_wait_id += 1
+	var id := _wait_id
+	_load_rewarded()   # before consent and start-up it waits for them: they load it
 	get_tree().create_timer(WAIT_SECONDS).timeout.connect(func() -> void:
-		if _waiting:
+		if _waiting and id == _wait_id:   # an older request's timer can't cut a newer one short
 			_waiting = false
 			rewarded_result.emit(false))
 
 
 func _load_rewarded() -> void:
-	if _loading_rewarded or _rewarded != null:
+	if not _ads_ready or _loading_rewarded or _rewarded != null:
 		return
 	_loading_rewarded = true
 	RewardedAdLoader.new().load(str(_units.get("rewarded", "")), AdRequest.new(), _rewarded_load)
@@ -160,7 +165,7 @@ func show_interstitial() -> void:
 
 
 func _load_interstitial() -> void:
-	if _loading_interstitial or _interstitial != null:
+	if not _ads_ready or _loading_interstitial or _interstitial != null:
 		return
 	_loading_interstitial = true
 	InterstitialAdLoader.new().load(str(_units.get("interstitial", "")), AdRequest.new(), _interstitial_load)
