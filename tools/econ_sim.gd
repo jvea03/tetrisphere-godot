@@ -57,7 +57,7 @@ func _initialize() -> void:
 	var mats_left := 0
 	for i in TSProfile.PART_COUNT:
 		for l in range(TSProfile.part_level[i], TSProfile.PART_MAX_LEVEL):
-			parts_left += int(TSProfile.PARTS[i]["fix"]) * (l + 1)
+			parts_left += roundi(int(TSProfile.PARTS[i]["fix"]) * (l + 1) * (TSProfile.CAMP_COIN_SCALE if TSProfile.is_camp(i) else TSProfile.SHIP_COIN_SCALE) / 10.0) * 10
 			mats_left += _mats_at(i, l)
 	var critters_left := 0
 	for i in TSProfile.CRITTER_COUNT:

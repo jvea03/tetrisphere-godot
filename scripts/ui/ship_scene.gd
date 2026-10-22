@@ -737,7 +737,7 @@ func _draw_node(i: int, p: Vector2) -> void:
 
 
 ## The mine's node: a ring filling round a heap of materials as the mine fills
-## up (two hours to full), what it holds on a pill below. Full, it turns gold
+## up (six hours to full), what it holds on a pill below. Full, it turns gold
 ## and bounces. Tapping it empties the mine.
 func _draw_mine_node(p: Vector2) -> void:
 	var ci := _nodes

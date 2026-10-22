@@ -160,8 +160,10 @@ build can be sped up with **time skips** -- each takes a minute off, one at
 a time or as many as it takes, from the Battle Pass (every 5th tier: 5 free, 10
 premium), the 7-day streaks (10 with the bombs) and the Shop's bundles and sales -- on a chest too -- or finished early for
 20 coins a minute left. Materials
-(`TSProfile.PART_MATERIALS`: 20 a level in the first wave, 40, 60 and 80 in the
-next three, 100 on the ship -- 19,000 for the whole camp and ship) come from
+(`TSProfile.PART_MATERIALS`: 40 a level in the first wave, 80, 120 and 160 in the
+next three, 200 on the ship -- 38,000 for the whole camp and ship; coins are
+the part's price scaled by `CAMP_COIN_SCALE` and `SHIP_COIN_SCALE`, so materials
+set the pace and a few levels a day still open the ship within a season) come from
 every level won (30, or 50 for the Daily Egg), every chest (80-120 common, 200-300
 rare, 500-700 legendary), every quest (ten for every star) and every Battle
 Pass tier (50 + 10 a tier free, 100 + 20 a tier premium); the count shows
@@ -170,8 +172,8 @@ an arrow at its edge, with a count, that glides the world over to them; the
 first time the nodes appear, a walkthrough points at the campfire's plus.
 None of this counts toward the Collection level, which is critters only.
 **The mine.** Under the ship stands a mine cart that fills with building
-materials by itself: 20 an hour plus 5 more for every Collection level, up
-to two hours' worth, heaping up as it goes. Its node over the cart shows a
+materials by itself: 30 an hour plus 5 more for every Collection level, up
+to six hours' worth, heaping up as it goes. Its node over the cart shows a
 ring filling round, what it holds on a pill ("+50"), and turns gold and
 bounces once full ("Full! +90"); tap it to empty the cart into your materials.
 (The ship's ring of nodes leaves its belly free for it.)

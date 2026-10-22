@@ -709,8 +709,16 @@ static func part_stage(i: int, level: int) -> String:
 
 ## The price of the part's next step: fixing it, then each upgrade costing
 ## one more multiple of the fix.
+## Coins a step costs: its part's "fix" times the level it builds up to,
+## scaled for camp spots and ship parts. Materials (PART_MATERIALS) pace the
+## camp; coins are kept lighter so a few levels a day still reach the ship
+## within a season (tools/econ_sim.gd), and spare coins go to critters.
+const CAMP_COIN_SCALE := 0.35
+const SHIP_COIN_SCALE := 0.7
+
 static func part_next_cost(i: int) -> int:
-	return int(PARTS[i]["fix"]) * (part_level_of(i) + 1)
+	var scale := CAMP_COIN_SCALE if is_camp(i) else SHIP_COIN_SCALE
+	return roundi(int(PARTS[i]["fix"]) * (part_level_of(i) + 1) * scale / 10.0) * 10
 
 
 ## A camp spot, or a part of the ship.
@@ -809,8 +817,8 @@ static func _fill_parts() -> void:
 
 ## Materials for a step: this much times the level it builds up to, by wave
 ## (CAMP_WAVES), with the ship last.
-const PART_MATERIALS := [20, 40, 60, 80]
-const SHIP_MATERIALS := 100
+const PART_MATERIALS := [40, 80, 120, 160]
+const SHIP_MATERIALS := 200
 ## Build time for a step, in seconds: this times the level it builds up to.
 const PART_BUILD_SECONDS := [30, 120, 300, 600]
 const SHIP_BUILD_SECONDS := 1200
@@ -857,9 +865,9 @@ static func add_materials(n: int) -> void:
 ## The materials mine under the ship fills by itself -- more an hour the
 ## higher the Collection level -- up to MINE_CAP_SECONDS' worth, then waits
 ## to be emptied from its node on Home.
-const MINE_BASE_PER_HOUR := 20
+const MINE_BASE_PER_HOUR := 30
 const MINE_PER_LEVEL_PER_HOUR := 5
-const MINE_CAP_SECONDS := 7200
+const MINE_CAP_SECONDS := 6 * 3600
 static var mine_since: int = 0   # unix time it was last emptied (0: not started yet)
 
 
