@@ -276,9 +276,9 @@ parks it, and Home's PLAY becomes CONTINUE.
   Escape: Puzzle Break" (app id in `admob/general/android/app_id`), has the
   units `egg_escape_rewarded` and `egg_escape_interstitial`
   (`Ads.AD_UNITS_LIVE`); Duckdoku's are never reused. Release builds show those
-  live ads **unless `tetrisphere/test_ads` is on** (Android only: iOS release builds always show live ads) -- it is, for closed
-  testing, as tapping your own live ads breaks AdMob policy. Turn it off for
-  the public release. Debug builds always show test ads.
+  live ads **unless `tetrisphere/test_ads` is on** (Android only: iOS release builds always show live ads) -- it is off now,
+  for production (version code 4 on). Turn it back on for a build you will tap
+  through yourself: tapping your own live ads breaks AdMob policy. Debug builds always show test ads.
   Rewarded ads (`TSAdReward`, with Remove Ads they grant at once, no video):
   a booster or a heart mid-level, the Shop's free packs, double a win's coins
   (5 a day), half an hour off an unlocking chest (3 a day) or a camp/ship

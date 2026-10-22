@@ -56,4 +56,4 @@ anti_aliasing/quality/msaa_3d=2
 
 [tetrisphere]
 
-test_ads=true
+test_ads=false
