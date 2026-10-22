@@ -22,10 +22,10 @@ you can add other managers later.
 
     New Shorts every week: satisfying chains, tricky blockers and critter rescues.
 
-    ▶ Play free on Google Play: <your Play Store link>
+    ▶ Play free on Google Play: https://play.google.com/store/apps/details?id=com.jvea.eggescape
 
 **Links** (Basic info → Links): "Play on Google Play" → the Play Store link
-(`https://play.google.com/store/apps/details?id=<package name>`).
+(`https://play.google.com/store/apps/details?id=com.jvea.eggescape`).
 
 **Keywords** (Settings → Channel → Basic info): egg escape, block puzzle,
 puzzle game, match 3, cute games, cozy games, brain teaser, mobile game.
@@ -52,7 +52,7 @@ collection, then the end card.
 | `egg_escape_short_06_fog.avi` | ~26 s | What's hiding in the fog? 🌫️ #shorts | Clear the fog to find out! #puzzlegame #blockpuzzle #cozygames #mobilegame |
 
 Add to every Short: the Play Store link as a **pinned comment** ("▶ Play free:
-<link>"), and the game linked under **Related video / Links** where YouTube
+https://play.google.com/store/apps/details?id=com.jvea.eggescape"), and the game linked under **Related video / Links** where YouTube
 offers it.
 
 ### Trailer (`store/ads/video/`)
@@ -67,7 +67,7 @@ Trailer description:
 
     Spin the egg, match blocks and rescue the critters trapped inside! Egg Escape is a relaxing block puzzle game with hundreds of levels, clever blockers, 84 cute critters to collect and a camp to rebuild.
 
-    ▶ Play free on Google Play: <your Play Store link>
+    ▶ Play free on Google Play: https://play.google.com/store/apps/details?id=com.jvea.eggescape
 
     #puzzlegame #blockpuzzle #match3 #cozygames #mobilegame
 
