@@ -42,14 +42,25 @@ Each one: the hook caption over the egg, the level played to the rescue
 (cut as the critter flies out), the fully built camp, the critter
 collection, then the end card.
 
-| File | Length | Title | Description |
-|---|---|---|---|
-| `egg_escape_short_01_rescue.avi` | ~31 s | Can you free the critter? 🥚 #shorts | Spin, match and dig the critter out of its egg! Play Egg Escape free on Google Play. #puzzlegame #blockpuzzle #cozygames #mobilegame |
-| `egg_escape_short_02_chains.avi` | ~23 s | Wait for the chain reaction... 😮 #shorts | So satisfying! Line it up and watch the blocks pop. #satisfying #puzzlegame #match3 #blockpuzzle |
-| `egg_escape_short_03_vines.avi` | ~18 s | Vines are creeping in! 🌿 #shorts | Cut the vines before they spread across the egg. #puzzlegame #brainteaser #blockpuzzle #cozygames |
-| `egg_escape_short_04_locks.avi` | ~23 s | Locked in? Find the key! 🔑 #shorts | Dig down to the key to break the padlocks. #puzzlegame #brainteaser #mobilegame |
-| `egg_escape_short_05_prisms.avi` | ~18 s | Prism stones only break one way... 💎 #shorts | Match their color to crack them! Could you solve it faster? #puzzlegame #match3 #brainteaser |
-| `egg_escape_short_06_fog.avi` | ~26 s | What's hiding in the fog? 🌫️ #shorts | Clear the fog to find out! #puzzlegame #blockpuzzle #cozygames #mobilegame |
+Written for YouTube search: each title is its hook plus a search phrase
+(block puzzle, puzzle game, brain teaser, match 3); each description opens
+with the game's full name and those words, then the Play link, then
+hashtags. Tags on every video: egg escape, block puzzle, puzzle game,
+brain teaser, match 3, cozy games, mobile game, android game, casual game,
+satisfying, plus one naming the Short's blocker.
+
+Each description: "<line below> in Egg Escape: Block Puzzle Match, a cozy
+block puzzle game where you spin the egg, match blocks and rescue cute
+critters. ▶ Play free on Google Play: <link>" then the hashtags.
+
+| File | Length | Title | Opening line | Hashtags |
+|---|---|---|---|---|
+| `egg_escape_short_01_rescue.avi` | ~31 s | Can you free the critter? 🥚 Cozy Block Puzzle Game #shorts | Dig the critter out of its egg | #blockpuzzle #puzzlegame #cozygames #mobilegame #eggescape |
+| `egg_escape_short_02_chains.avi` | ~23 s | Wait for the chain reaction... 😮 Satisfying Block Puzzle #shorts | Line up a chain reaction and watch the blocks pop | #satisfying #blockpuzzle #match3 #puzzlegame #eggescape |
+| `egg_escape_short_03_vines.avi` | ~18 s | Vines are creeping in! 🌿 Block Puzzle Brain Teaser #shorts | Cut the vines before they spread | #blockpuzzle #puzzlegame #brainteaser #cozygames #eggescape |
+| `egg_escape_short_04_locks.avi` | ~23 s | Locked in? Find the key! 🔑 Puzzle Game Brain Teaser #shorts | Dig down to the key to break the padlocks | #puzzlegame #brainteaser #blockpuzzle #mobilegame #eggescape |
+| `egg_escape_short_05_prisms.avi` | ~18 s | Prism stones only break one way... 💎 Match 3 Puzzle #shorts | Match a prism's color to crack it | #match3 #puzzlegame #brainteaser #blockpuzzle #eggescape |
+| `egg_escape_short_06_fog.avi` | ~26 s | What's hiding in the fog? 🌫️ Cozy Puzzle Game #shorts | Clear the fog to see what's hiding | #puzzlegame #blockpuzzle #cozygames #mobilegame #eggescape |
 
 Add to every Short: the Play Store link as a **pinned comment** ("▶ Play free:
 https://play.google.com/store/apps/details?id=com.jvea.eggescape"), and the game linked under **Related video / Links** where YouTube
