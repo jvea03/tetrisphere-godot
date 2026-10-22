@@ -197,16 +197,22 @@ func _run() -> void:
 	_say(CAPTIONS[0])
 	await _wait(0.8)
 	_snap("hook")
-	var won := [false]
-	_game.won.connect(func(): won[0] = true)
+	# Play until the egg is won, watching every frame: a quick level is won
+	# in a few seconds, and the cut below must follow the win itself (a fixed
+	# wait let a three-move level's win card into the video).
 	_game.autoplay()
-	await _wait(3.2)
-	_say(CAPTIONS[1])
-	await _wait(1.0)
-	_snap("play")
-	while not won[0] and _game.playing():
+	var t := 0.0
+	var second := false
+	while _game.playing():
 		await get_tree().process_frame
-	# The critter shoots out of the egg -- cut before the win card lands.
+		t += get_process_delta_time()
+		if not second and t >= 2.0:
+			second = true
+			_say(CAPTIONS[1])
+		if second and t >= 3.0 and t - get_process_delta_time() < 3.0:
+			_snap("play")
+	# The critter shoots out of the egg -- cut before the win card lands
+	# (it shows some 2.1 s after the win).
 	_say("Critter saved!")
 	await _wait(1.8)
 	await _snap("win")
