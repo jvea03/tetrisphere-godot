@@ -1,8 +1,10 @@
-# Egg Escape: Puzzle Break
+# Egg Escape: Block Puzzle Match
+
+[Get it on Google Play](https://play.google.com/store/apps/details?id=com.jvea.eggescape)
 
 <img src="docs/screenshot.png" alt="Level 1 in portrait: hand-drawn pastel egg of yellow and green lines, gesture hints below" width="300"> <img src="docs/screenshot_home.png" alt="The Home screen: the crash-landed spaceship on its planet with the critters at work, under the avatar card, coins, side tiles, chest tray, PLAY and the bottom nav" width="300">
 
-**Egg Escape: Puzzle Break** is a playable recreation of the *Tetrisphere* (N64,
+**Egg Escape: Block Puzzle Match** is a playable recreation of the *Tetrisphere* (N64,
 1997) gameplay loop, written from scratch in Godot 4.7 / GDScript, as a
 **portrait mobile game**. **No code, art, audio, or data from the ROM is used or required** — see "Provenance" below.
 
