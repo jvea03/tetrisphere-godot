@@ -61,6 +61,7 @@ var best_clear := 0        # most pieces cleared by a single drop
 var best_chain := 0
 var bomb_armed := false     # bombs themselves are kept in TSProfile.bomb_count
 var _streak_lost := 0       # the run a loss just ended, given back if a continue saves the level
+var _ball_seq := 0          # bumped for each ball started or resumed: a late timer can tell it is stale
 var _streak_pill: PanelContainer   # under the hearts: the win streak so far
 var _streak_label: Label
 var lives := LIVES
@@ -570,6 +571,7 @@ func _start(seed_value: int, baked: Dictionary = {}) -> void:
 	best_chain = 0
 	bomb_armed = false
 	_streak_lost = 0
+	_ball_seq += 1
 	_rocks_flying = false
 	_rocks_shot += 1
 	_stop_deal_animation()
@@ -609,6 +611,7 @@ func _resume() -> void:
 	is_first_attempt = bool(s["first_attempt"])
 	lose_ad_used = bool(s["lose_ad_used"])
 	continues_bought = int(s.get("continues_bought", 0))
+	_ball_seq += 1
 	state = State.PLAYING
 	_escaping = false
 	_creature.position = Vector3.ZERO
@@ -1330,13 +1333,19 @@ func _refresh_streak_pill() -> void:
 ## At a level's start on a win streak: a banner, then one rock per tier
 ## thrown from the streak pill at the best near-matches (as the Rocks booster
 ## throws them), each finishing its match where it lands.
+## They wait for any lesson the level opens with (rocks could break the very
+## piece it points at), and are dropped if the ball is restarted meanwhile.
 func _streak_rocks() -> void:
+	var ball := _ball_seq
+	await get_tree().create_timer(0.5).timeout
+	while is_inside_tree() and ball == _ball_seq and _tutorial.visible:
+		await _tutorial.finished
 	var tier := TSProfile.win_streak_tier()
-	if not is_inside_tree() or tier <= 0:
+	if not is_inside_tree() or ball != _ball_seq or tier <= 0 or state != State.PLAYING:
 		return
 	_streak_banner(tier)
 	await get_tree().create_timer(STREAK_ROCK_DELAY).timeout
-	if not is_inside_tree() or state != State.PLAYING or _rocks_flying:
+	if not is_inside_tree() or ball != _ball_seq or state != State.PLAYING or _rocks_flying:
 		return
 	var targets := board.rock_targets(tier, cursor)
 	if targets.is_empty():
@@ -1858,6 +1867,7 @@ func _pay_win() -> void:
 		TSProfile.record_quest_event("daily_puzzle")
 	else:
 		TSProfile.record_quest_event("win")
+		TSProfile.won_since_home = true
 		if TSProfile.win_streak_counts(current_level):
 			TSProfile.add_win_streak()
 		TSHunt.note_level_reached(current_level + 1)

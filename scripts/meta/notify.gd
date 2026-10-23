@@ -44,7 +44,9 @@ func _notification(what: int) -> void:
 	if _plugin == null:
 		return
 	match what:
-		NOTIFICATION_APPLICATION_PAUSED, NOTIFICATION_WM_CLOSE_REQUEST:
+		# Into the background, or quitting (Back on Home quits without always
+		# pausing first): set the reminders.
+		NOTIFICATION_APPLICATION_PAUSED, NOTIFICATION_WM_CLOSE_REQUEST, NOTIFICATION_EXIT_TREE:
 			_plugin.cancelAll()
 			if TSProfile.notifications_enabled and has_permission():
 				for r in reminders():

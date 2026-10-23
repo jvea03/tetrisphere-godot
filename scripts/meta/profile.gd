@@ -303,8 +303,11 @@ static var review_asks: int = 0
 static var review_done: bool = false
 
 
+static var won_since_home: bool = false   # a level won since Home last showed (not saved): the happy moment to ask
+
+
 static func review_due() -> bool:
-	return not review_done and review_asks < REVIEW_MAX_ASKS and last_level >= review_next_level
+	return won_since_home and not review_done and review_asks < REVIEW_MAX_ASKS and last_level >= review_next_level
 
 
 ## Called as the ask goes up: counted whatever they answer, so closing it with

@@ -65,6 +65,24 @@ func _run() -> void:
 	_check("a longer run still throws three at most (%d)" % many, many >= 1 and many <= 3)
 	_check("the pill under the hearts shows the run", _streak_pill.visible and _streak_label.text == "9")
 
+	TSProfile.win_streak = 2
+	_thrown = 0
+	_start_level(41)
+	_open_pause()
+	(_pause["restart"] as Button).pressed.emit()
+	await get_tree().create_timer(STREAK_ROCK_DELAY + 1.5).timeout
+	_check("a restart straight away throws no stale rocks", _thrown == 0)
+
+	TSProfile.win_streak = 1
+	_thrown = 0
+	_start_level(41)
+	_tutorial.start([{"rect": Rect2(0, 0, 10, 10), "text": "a lesson"}])
+	await get_tree().create_timer(STREAK_ROCK_DELAY + 1.5).timeout
+	_check("the rocks wait while a lesson is up", _thrown == 0)
+	_tutorial._next.pressed.emit()
+	await get_tree().create_timer(STREAK_ROCK_DELAY + 1.0).timeout
+	_check("and fly once it's done", _thrown == 1)
+
 	TSProfile.win_streak = 10
 	_lose()
 	_check("a loss ends it...", TSProfile.win_streak == 0)

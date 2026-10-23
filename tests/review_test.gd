@@ -32,10 +32,14 @@ func _check(label: String, cond: bool) -> void:
 
 
 func _run() -> void:
+	TSProfile.won_since_home = true
 	TSProfile.last_level = 11
 	_check("not due before level 12", not TSProfile.review_due())
 	TSProfile.last_level = 12
 	_check("due at level 12", TSProfile.review_due())
+	TSProfile.won_since_home = false
+	_check("only on the way back from a win", not TSProfile.review_due())
+	TSProfile.won_since_home = true
 	_open_review()
 	await get_tree().create_timer(1.0).timeout
 	_check("the card is up", _review["root"].visible)

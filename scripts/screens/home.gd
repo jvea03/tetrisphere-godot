@@ -104,6 +104,7 @@ func build() -> void:
 		_open_notify_ask.call_deferred()
 	elif OS.get_name() == "Android" and TSProfile.review_due():
 		_open_review.call_deferred()
+	TSProfile.won_since_home = false
 	var tick := Timer.new()
 	tick.wait_time = 1.0
 	tick.autostart = true
