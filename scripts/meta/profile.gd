@@ -1617,6 +1617,31 @@ const STREAK_REWARD_SKIPS := 10   # time skips with the 7th day's bombs
 const DAILY_LOGIN_REWARD_COINS := 100
 const STREAK_MILESTONE_REWARD_COINS := 500
 
+# -- win streak ----------------------------------------------------------------
+# Levels won in a row, from level 7 (TSNav.FEATURES_UNLOCK_LEVEL) on. Three
+# tiers: 1, 2 and 3+ wins in a row, and each level then starts with that many
+# rocks thrown at it (game.gd). Losing a level ends the run unless a continue
+# saves it; restarting one ends it too. The Daily Egg neither counts nor
+# breaks it.
+const WIN_STREAK_TIERS := 3
+static var win_streak: int = 0
+static var win_streak_best: int = 0
+
+
+static func win_streak_counts(level_number: int) -> bool:
+	return level_number >= TSNav.FEATURES_UNLOCK_LEVEL
+
+
+static func add_win_streak() -> void:
+	win_streak += 1
+	win_streak_best = maxi(win_streak_best, win_streak)
+
+
+## 0 with no streak, else 1-3: the rocks a level starts with.
+static func win_streak_tier() -> int:
+	return mini(win_streak, WIN_STREAK_TIERS)
+
+
 static var login_streak_count: int = 0
 static var login_streak_last_date: String = ""
 static var daily_streak_count: int = 0
@@ -2587,6 +2612,8 @@ static func ensure_loaded() -> void:
 	club_leaderboard_key = str(g.call("club_leaderboard_key", ""))
 	if has_club and not club_is_owner and not _is_known_club_name(club_name):
 		club_is_owner = true
+	win_streak = maxi(0, int(g.call("win_streak", 0)))
+	win_streak_best = maxi(win_streak, int(g.call("win_streak_best", 0)))
 	login_streak_count = int(g.call("login_streak_count", 0))
 	login_streak_last_date = str(g.call("login_streak_last_date", ""))
 	daily_streak_count = int(g.call("daily_streak_count", 0))
@@ -2694,6 +2721,8 @@ static func save() -> void:
 	s.call("club_message", club_message)
 	s.call("club_chat", club_chat)
 	s.call("club_leaderboard_key", club_leaderboard_key)
+	s.call("win_streak", win_streak)
+	s.call("win_streak_best", win_streak_best)
 	s.call("login_streak_count", login_streak_count)
 	s.call("login_streak_last_date", login_streak_last_date)
 	s.call("daily_streak_count", daily_streak_count)

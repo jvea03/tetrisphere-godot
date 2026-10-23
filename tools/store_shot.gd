@@ -21,6 +21,7 @@
 # --crashed      Home with the ship as it crash-landed: no part fixed or built
 # --built        Home with every camp and ship part built to the top
 # --collected=<n> the first n critters collected (a fuller Collection)
+# --streak=<n>   on a win streak of n wins
 # Over Home: camp (its info card), mine (a haul, and the ad to double it),
 # chest_skip (an unlocking chest's card), build (a build under way). And
 # streak_double: Daily Streaks with today's login coins claimed.
@@ -81,6 +82,8 @@ func _ready() -> void:
 		for i in TSProfile.part_level.size():
 			TSProfile.part_level[i] = TSProfile.PART_MAX_LEVEL
 	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--streak="):   # on a win streak of n
+			TSProfile.win_streak = int(a.substr(9))
 		if a.begins_with("--collected="):   # the first n critters collected, at mixed levels
 			for i in mini(int(a.substr(12)), TSProfile.CRITTER_COUNT):
 				if not TSProfile.is_critter_hidden(i):

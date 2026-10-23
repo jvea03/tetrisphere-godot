@@ -22,6 +22,7 @@ const NEXT_MID_Y := 192.0       # below the top margin: the next piece, centred 
 const TRAY_TOP := 256.0         # below the top margin: the holding tray
 const BOOSTER_SPACING := 150.0  # the Any Piece and Rocks buttons, either side of the bomb
 const ROCKS_PER_SHOT := 2       # rocks fired per use of the Rocks booster
+const STREAK_ROCK_DELAY := 1.2  # a level's start on a win streak: its banner, then the rocks
 # A drop that makes no combo costs a life. The reference HUD shows three slots.
 const LIVES := 3
 const HEART_ALIVE := Color(1.0, 0.42, 0.55)
@@ -59,6 +60,9 @@ var next_type := 0
 var best_clear := 0        # most pieces cleared by a single drop
 var best_chain := 0
 var bomb_armed := false     # bombs themselves are kept in TSProfile.bomb_count
+var _streak_lost := 0       # the run a loss just ended, given back if a continue saves the level
+var _streak_pill: PanelContainer   # under the hearts: the win streak so far
+var _streak_label: Label
 var lives := LIVES
 var lose_reason := ""
 var current_level := 1
@@ -299,6 +303,19 @@ func _build_hud() -> void:
 	_tie_label = TSUI.label("", 28, TSUI.INK)
 	tie_row.add_child(_tie_label)
 	ties_at.add_child(_tie_pill)
+	# The win streak, a pill under the hearts once it has started.
+	var streak_at := _pin(root, Control.PRESET_CENTER_TOP, Vector2(-30.0, _top + 56.0))
+	_streak_pill = PanelContainer.new()
+	_streak_pill.add_theme_stylebox_override("panel", TSUI.sb(TSUI.CARD, 20, 3, 2, 6))
+	_streak_pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_streak_pill.visible = false
+	var streak_row := TSUI.hbox(4)
+	streak_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_streak_pill.add_child(streak_row)
+	streak_row.add_child(TSIcon.make("flame", 32))
+	_streak_label = TSUI.label("", 24, TSUI.INK)
+	streak_row.add_child(_streak_label)
+	streak_at.add_child(_streak_pill)
 	var pause_at := _pin(root, Control.PRESET_TOP_RIGHT, Vector2(-96.0, _top - 4.0))
 	_pause_btn = TSUI.icon_button("pause", 76, TSUI.CARD)
 	_pause_btn.pressed.connect(_open_pause)
@@ -511,6 +528,9 @@ func _start_level(level_number: int) -> void:
 	if TSSession.retried_level == level_number:
 		is_first_attempt = false
 		TSSession.retried_level = -1
+	_refresh_hud()
+	if TSProfile.win_streak_counts(level_number) and TSProfile.win_streak_tier() > 0:
+		_streak_rocks.call_deferred()
 	_maybe_start_tutorials()
 
 
@@ -549,6 +569,7 @@ func _start(seed_value: int, baked: Dictionary = {}) -> void:
 	best_clear = 0
 	best_chain = 0
 	bomb_armed = false
+	_streak_lost = 0
 	_rocks_flying = false
 	_rocks_shot += 1
 	_stop_deal_animation()
@@ -1295,6 +1316,76 @@ func _refresh_bomb_button() -> void:
 		btn.self_modulate.a = 1.0 if count > 0 else 0.55
 		(_booster_badges[id] as Label).text = str(count) if count > 0 else "+"
 		btn.visible = state == State.PLAYING and TSProfile.booster_unlocked(id)
+	_refresh_streak_pill()
+
+
+func _refresh_streak_pill() -> void:
+	if _streak_pill == null:
+		return
+	_streak_pill.visible = state == State.PLAYING and not is_daily and TSProfile.win_streak > 0 \
+		and TSProfile.win_streak_counts(current_level)
+	_streak_label.text = str(TSProfile.win_streak)
+
+
+## At a level's start on a win streak: a banner, then one rock per tier
+## thrown from the streak pill at the best near-matches (as the Rocks booster
+## throws them), each finishing its match where it lands.
+func _streak_rocks() -> void:
+	var tier := TSProfile.win_streak_tier()
+	if not is_inside_tree() or tier <= 0:
+		return
+	_streak_banner(tier)
+	await get_tree().create_timer(STREAK_ROCK_DELAY).timeout
+	if not is_inside_tree() or state != State.PLAYING or _rocks_flying:
+		return
+	var targets := board.rock_targets(tier, cursor)
+	if targets.is_empty():
+		return
+	_throw_rocks(_streak_pill.get_global_rect().get_center(), targets)
+	TSSfx.play("rock_launch")
+
+
+func _streak_banner(tier: int) -> void:
+	var holder := CenterContainer.new()
+	holder.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	holder.offset_top = _top + 104.0
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var card := TSUI.card(TSUI.CARD, 22, 12, 2)
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var row := TSUI.hbox(10)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(TSIcon.make("flame", 52))
+	var text := TSUI.vbox(0)
+	text.add_child(TSUI.label("Win streak %d!" % TSProfile.win_streak, 28, TSUI.CORAL))
+	text.add_child(TSUI.label("Here come %d rock%s!" % [tier, "" if tier == 1 else "s"], 22, TSUI.INK))
+	row.add_child(text)
+	card.add_child(row)
+	holder.add_child(card)
+	_hud.add_child(holder)
+	holder.modulate.a = 0.0
+	var t := holder.create_tween()
+	t.tween_property(holder, "modulate:a", 1.0, 0.25)
+	t.tween_interval(2.6)
+	t.tween_property(holder, "modulate:a", 0.0, 0.4)
+	t.tween_callback(holder.queue_free)
+	TSSfx.play("shimmer")
+
+
+## The win card's streak line: the run so far, and the rocks the next level
+## starts with.
+func _streak_line() -> Control:
+	var col := TSUI.vbox(0)
+	var row := TSUI.hbox(6)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_child(TSIcon.make("flame", 36))
+	row.add_child(TSUI.label("Win streak: %d" % TSProfile.win_streak, 26, TSUI.CORAL))
+	col.add_child(row)
+	var tier := TSProfile.win_streak_tier()
+	var line := "Next level starts with %d free rock%s" % [tier, "" if tier == 1 else "s"]
+	if tier < TSProfile.WIN_STREAK_TIERS:
+		line += " -- win again for %d!" % (tier + 1)
+	col.add_child(TSUI.label(line, 20, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	return col
 
 
 # -- booster animations -------------------------------------------------------------
@@ -1767,6 +1858,8 @@ func _pay_win() -> void:
 		TSProfile.record_quest_event("daily_puzzle")
 	else:
 		TSProfile.record_quest_event("win")
+		if TSProfile.win_streak_counts(current_level):
+			TSProfile.add_win_streak()
 		TSHunt.note_level_reached(current_level + 1)
 		TSProfile.last_level = maxi(TSProfile.last_level, current_level + 1)
 		if lives >= LIVES:
@@ -1819,6 +1912,11 @@ func _lose() -> void:
 	state = State.LOST
 	if not TSSession.has_saved_game:
 		TSSession.forget()
+	# The win streak ends here -- unless a continue saves the level (_revive).
+	if TSProfile.win_streak > 0 and not is_daily and TSProfile.win_streak_counts(current_level):
+		_streak_lost = TSProfile.win_streak
+		TSProfile.win_streak = 0
+		TSProfile.save()
 	_creature.react(TSCreature.Mood.SCARED, 9999.0)
 	# An overloaded egg groans first; then, as the card settles, the sad horn
 	# over the music pulled right down.
@@ -1865,9 +1963,13 @@ func _build_dialogs(root: Control) -> void:
 	resume.pressed.connect(func(): TSUI.conceal(_pause["root"]))
 	pbox.add_child(resume)
 	var restart := TSUI.button("Restart Level", TSUI.BUTTER, 26, Vector2(0, 64))
+	_pause["restart"] = restart
 	restart.pressed.connect(func():
 		TSUI.conceal(_pause["root"])
 		is_first_attempt = false
+		if not is_daily and TSProfile.win_streak_counts(current_level) and TSProfile.win_streak > 0:
+			TSProfile.win_streak = 0   # starting over counts as a loss
+			TSProfile.save()
 		_restart())
 	pbox.add_child(restart)
 	var help := TSUI.card(Color(1.0, 0.95, 0.86), 20, 14, 0)
@@ -1920,6 +2022,8 @@ func _open_pause() -> void:
 	if state != State.PLAYING or _any_card_open():
 		return
 	bomb_armed = false
+	var streak_on := not is_daily and TSProfile.win_streak > 0 and TSProfile.win_streak_counts(current_level)
+	(_pause["restart"] as Button).text = "Restart (ends your streak)" if streak_on else "Restart Level"
 	TSUI.reveal(_pause["root"], _pause["panel"])
 
 
@@ -1986,6 +2090,8 @@ func _show_win_card() -> void:
 		box.add_child(TSUI.label("First try! +%d bonus stars" % FIRST_ATTEMPT_STAR_BONUS, 22, TSFX.COL_GAIN, HORIZONTAL_ALIGNMENT_CENTER))
 	if _win_bonus != "":
 		box.add_child(TSUI.label(_win_bonus, 22, TSFX.COL_GAIN, HORIZONTAL_ALIGNMENT_CENTER))
+	if not is_daily and TSProfile.win_streak_counts(current_level) and TSProfile.win_streak > 0:
+		box.add_child(_streak_line())
 	if _win_coins > 0 and TSProfile.ad_rewards_left("win_coins") > 0:
 		var double := TSUI.button(TSAdReward.text("Double Coins (+%s)" % TSProfile.fmt_coins(_win_coins)), TSUI.SKY, 28, Vector2(0, 76))
 		double.pressed.connect(func(): _double_win_coins(double, coin_amount))
@@ -2087,6 +2193,8 @@ func _refresh_lose_card() -> void:
 	if overload:
 		box.add_child(TSUI.halo(TSIcon.make("heart_empty", 140), 220.0, TSUI.LILAC, false))
 		box.add_child(TSUI.wrap(TSUI.label("A stack grew too tall. Try the level again!", 24, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER)))
+		if _streak_lost > 0:
+			box.add_child(TSUI.label("Your %d-win streak ended" % _streak_lost, 22, TSUI.CORAL, HORIZONTAL_ALIGNMENT_CENTER))
 		var again := TSUI.button("Try Again", TSUI.GREEN, 30, Vector2(0, 84))
 		again.pressed.connect(func():
 			TSSession.retried_level = current_level
@@ -2105,6 +2213,12 @@ func _refresh_lose_card() -> void:
 		var ties := board.ties_left()
 		if ties > 0:
 			box.add_child(TSUI.label("%d tie-down%s still holding on" % [ties, "" if ties == 1 else "s"], 20, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+		if _streak_lost > 0:
+			var keep := TSUI.hbox(6)
+			keep.alignment = BoxContainer.ALIGNMENT_CENTER
+			keep.add_child(TSIcon.make("flame", 34))
+			keep.add_child(TSUI.label("Continue to keep your %d-win streak!" % _streak_lost, 22, TSUI.CORAL))
+			box.add_child(keep)
 		# Continue: the big button. Short of coins, it buys the smallest coin
 		# pack that covers the gap and carries straight on once it lands.
 		# The first continue on a ball is on sale (FIRST_CONTINUE_COST).
@@ -2201,6 +2315,10 @@ func _on_lose_purchase(product_id: String, success: bool) -> void:
 
 ## Back into the same egg with `count` hearts. Either rescue ends the first-try bonus.
 func _revive(count: int) -> void:
+	if _streak_lost > 0:   # saved: the win streak carries on
+		TSProfile.win_streak = _streak_lost
+		_streak_lost = 0
+		TSProfile.save()
 	lives = count
 	lose_reason = ""
 	state = State.PLAYING

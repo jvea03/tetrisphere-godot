@@ -858,8 +858,14 @@ func _build_play() -> void:
 	content.add_child(group)
 	var plate := TSUI.card(TSUI.BUTTER, 22, 10, 2)
 	plate.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	var plate_row := TSUI.hbox(8)
+	plate.add_child(plate_row)
 	level_label = TSUI.label("", 28, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER)
-	plate.add_child(level_label)
+	plate_row.add_child(level_label)
+	# The win streak beside the level, once it has started.
+	if TSProfile.win_streak > 0 and TSProfile.win_streak_counts(TSProfile.last_level):
+		plate_row.add_child(TSIcon.make("flame", 34))
+		plate_row.add_child(TSUI.label(str(TSProfile.win_streak), 28, TSUI.CORAL))
 	group.add_child(plate)
 	play_btn = TSUI.button("PLAY", TSUI.PINK, 60, Vector2(460, 124), 10)
 	play_btn.add_theme_color_override("font_color", Color.WHITE)
