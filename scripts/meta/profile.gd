@@ -31,6 +31,7 @@ static func use_test_profile(level := 1) -> void:
 	tutorial_seen = true
 	intro_seen = true
 	ship_story_seen = true
+	review_done = true
 	tie_tutorial_seen = true
 	geode_tutorial_seen = true
 	vine_tutorial_seen = true
@@ -289,6 +290,28 @@ static var collection_tutorial_seen: bool = false
 static var daily_callout_seen: bool = false
 static var ship_story_seen: bool = false   # the first Home visit's "we have to rebuild the camp and ship", once
 static var camp_callout_seen: bool = false   # Home's one-time pointer to the camp's build nodes
+
+# The rating ask: Home offers the Play listing's review page a few times, well
+# apart, on the way back from a win -- and never again once they've rated it
+# or said no thanks.
+const REVIEW_FIRST_LEVEL := 12
+const REVIEW_GAP := 25
+const REVIEW_MAX_ASKS := 3
+static var review_next_level: int = REVIEW_FIRST_LEVEL
+static var review_asks: int = 0
+static var review_done: bool = false
+
+
+static func review_due() -> bool:
+	return not review_done and review_asks < REVIEW_MAX_ASKS and last_level >= review_next_level
+
+
+## Called as the ask goes up: counted whatever they answer, so closing it with
+## Back is a "maybe later" too.
+static func note_review_asked() -> void:
+	review_asks += 1
+	review_next_level = last_level + REVIEW_GAP
+	save()
 static var home_tutorial_seen: bool = false
 static var collection_gift_claimed: bool = false
 static var _loaded: bool = false
@@ -2508,6 +2531,9 @@ static func ensure_loaded() -> void:
 	camp_callout_seen = bool(g.call("camp_callout_seen", false))
 	# A save from before the story existed: anyone past level 1 has started without it.
 	ship_story_seen = bool(g.call("ship_story_seen", last_level > 1))
+	review_next_level = int(g.call("review_next_level", REVIEW_FIRST_LEVEL))
+	review_asks = int(g.call("review_asks", 0))
+	review_done = bool(g.call("review_done", false))
 	home_tutorial_seen = bool(g.call("home_tutorial_seen", false))
 	collection_gift_claimed = bool(g.call("collection_gift_claimed", false))
 	music_enabled = bool(g.call("music_enabled", true))
@@ -2629,6 +2655,9 @@ static func save() -> void:
 	s.call("daily_callout_seen", daily_callout_seen)
 	s.call("camp_callout_seen", camp_callout_seen)
 	s.call("ship_story_seen", ship_story_seen)
+	s.call("review_next_level", review_next_level)
+	s.call("review_asks", review_asks)
+	s.call("review_done", review_done)
 	s.call("home_tutorial_seen", home_tutorial_seen)
 	s.call("collection_gift_claimed", collection_gift_claimed)
 	s.call("music_enabled", music_enabled)

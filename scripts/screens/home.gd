@@ -44,6 +44,8 @@ const VOYAGE := "res://scenes/voyage.tscn"   # the flight to a new planet, each 
 var _chest_slots: Array = [] # per slot: {btn, plate, art, pill, pill_label, band}
 var _settings: Dictionary
 const PRIVACY_URL := "https://jvea03.github.io/duckdoku-privacy/egg-escape.html"
+const STORE_URL := "https://play.google.com/store/apps/details?id=com.jvea.eggescape"
+var _review: Dictionary   # the rating ask
 var _profile: Dictionary
 var _sale: Dictionary
 var _skip: Dictionary
@@ -92,9 +94,12 @@ func build() -> void:
 	TSProfile.settle_boards()
 	TSProfile.save()
 	var results := not walkthrough and not TSProfile.pending_board_prizes.is_empty()
+	var sale_up := not TSSales.current().is_empty() and not TSSales.popup_shown
 	_setup_sale(walkthrough or results)
 	if results:
 		_open_board_results.call_deferred()
+	elif not walkthrough and not sale_up and OS.get_name() == "Android" and TSProfile.review_due():
+		_open_review.call_deferred()   # one pop-up at a time
 	var tick := Timer.new()
 	tick.wait_time = 1.0
 	tick.autostart = true
@@ -1079,6 +1084,44 @@ func _setup_sale(walkthrough: bool) -> void:
 		_open_sale.call_deferred()
 
 
+## Asks for a rating on the way back from a win, a few levels apart: a button
+## to the Play listing's review page, a later, or never. Counted as asked as it
+## goes up, so Back is a later.
+func _open_review() -> void:
+	await _settled()
+	if not is_inside_tree():
+		return
+	TSProfile.note_review_asked()
+	var box: VBoxContainer = _review["box"]
+	for c in box.get_children():
+		c.queue_free()
+	box.add_child(TSUI.title("Enjoying Egg Escape?", 38))
+	var art := TSIcon.make("milky", 150, 0, "rescued")
+	art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	box.add_child(art)
+	box.add_child(TSUI.wrap(TSUI.label("A quick rating on Google Play helps other puzzle fans find us. Thank you for playing!", 24, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER)))
+	var rate := TSUI.button("Rate Egg Escape", TSUI.GREEN, 30, Vector2(0, 84))
+	rate.pressed.connect(func():
+		TSProfile.review_done = true
+		TSProfile.save()
+		TSUI.conceal(_review["root"])
+		OS.shell_open(STORE_URL))
+	box.add_child(rate)
+	var row := TSUI.hbox(12)
+	var later := TSUI.expand(TSUI.button("Maybe later", TSUI.GREY, 22, Vector2(0, 64))) as Button
+	later.pressed.connect(func(): TSUI.conceal(_review["root"]))
+	row.add_child(later)
+	var never := TSUI.expand(TSUI.button("No thanks", TSUI.GREY, 22, Vector2(0, 64))) as Button
+	never.pressed.connect(func():
+		TSProfile.review_done = true
+		TSProfile.save()
+		TSUI.conceal(_review["root"]))
+	row.add_child(never)
+	box.add_child(row)
+	TSUI.juice(box)
+	TSUI.reveal(_review["root"], _review["panel"])
+
+
 func _refresh_sale_icon() -> void:
 	var running := not TSSales.current().is_empty()
 	sale_btn.visible = running
@@ -1229,6 +1272,7 @@ func _build_dialogs() -> void:
 	_results = TSUI.dialog(self, 600)
 	_ad_wait = TSUI.dialog(self, 480)
 	_mine = TSUI.dialog(self, 520)
+	_review = TSUI.dialog(self, 540)
 
 	# the mine's haul, and its rewarded ad
 	var mbox: VBoxContainer = _mine["box"]
@@ -1566,7 +1610,7 @@ func on_back_requested() -> bool:
 	if _chest["root"].visible:
 		_close_chest()
 		return true
-	for d in [_sale, _skip, _settings, _profile, _results, _part, _mine]:
+	for d in [_sale, _skip, _settings, _profile, _results, _part, _mine, _review]:
 		if d["root"].visible:
 			TSUI.conceal(d["root"])
 			return true
