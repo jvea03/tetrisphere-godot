@@ -32,6 +32,7 @@ static func use_test_profile(level := 1) -> void:
 	intro_seen = true
 	ship_story_seen = true
 	review_done = true
+	notify_asked = true
 	tie_tutorial_seen = true
 	geode_tutorial_seen = true
 	vine_tutorial_seen = true
@@ -320,14 +321,18 @@ static var _loaded: bool = false
 static var music_enabled: bool = true
 static var sfx_enabled: bool = true
 static var haptics_enabled: bool = true
+static var notifications_enabled: bool = true   # reminders (scripts/meta/notify.gd)
+static var notify_asked: bool = false   # Home's "want reminders?" ask, once
 
 
-## Settings toggles by name ("music_enabled", "sfx_enabled", "haptics_enabled").
+## Settings toggles by name ("music_enabled", "sfx_enabled", "haptics_enabled",
+## "notifications_enabled").
 static func get_toggle(name: String) -> bool:
 	match name:
 		"music_enabled": return music_enabled
 		"sfx_enabled": return sfx_enabled
 		"haptics_enabled": return haptics_enabled
+		"notifications_enabled": return notifications_enabled
 	return false
 
 
@@ -336,6 +341,7 @@ static func set_toggle(name: String, on: bool) -> void:
 		"music_enabled": music_enabled = on
 		"sfx_enabled": sfx_enabled = on
 		"haptics_enabled": haptics_enabled = on
+		"notifications_enabled": notifications_enabled = on
 	save()
 
 # -- critters (Collection) ---------------------------------------------------
@@ -2539,6 +2545,8 @@ static func ensure_loaded() -> void:
 	music_enabled = bool(g.call("music_enabled", true))
 	sfx_enabled = bool(g.call("sfx_enabled", true))
 	haptics_enabled = bool(g.call("haptics_enabled", true))
+	notifications_enabled = bool(g.call("notifications_enabled", true))
+	notify_asked = bool(g.call("notify_asked", false))
 	var cu: Array = g.call("critter_unlocked", [])
 	var cl: Array = g.call("critter_level", [])
 	var pl: Array = g.call("camp_and_ship", [])   # the camp-first list (an older ship-only one is ignored)
@@ -2663,6 +2671,8 @@ static func save() -> void:
 	s.call("music_enabled", music_enabled)
 	s.call("sfx_enabled", sfx_enabled)
 	s.call("haptics_enabled", haptics_enabled)
+	s.call("notifications_enabled", notifications_enabled)
+	s.call("notify_asked", notify_asked)
 	s.call("critter_unlocked", critter_unlocked)
 	s.call("critter_level", critter_level)
 	s.call("new_critters", new_critters)

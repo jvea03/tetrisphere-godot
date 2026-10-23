@@ -45,7 +45,7 @@ var _chest_slots: Array = [] # per slot: {btn, plate, art, pill, pill_label, ban
 var _settings: Dictionary
 const PRIVACY_URL := "https://jvea03.github.io/duckdoku-privacy/egg-escape.html"
 const STORE_URL := "https://play.google.com/store/apps/details?id=com.jvea.eggescape"
-var _review: Dictionary   # the rating ask
+var _review: Dictionary   # the rating ask, and the one-time reminders ask
 var _profile: Dictionary
 var _sale: Dictionary
 var _skip: Dictionary
@@ -98,8 +98,12 @@ func build() -> void:
 	_setup_sale(walkthrough or results)
 	if results:
 		_open_board_results.call_deferred()
-	elif not walkthrough and not sale_up and OS.get_name() == "Android" and TSProfile.review_due():
-		_open_review.call_deferred()   # one pop-up at a time
+	elif walkthrough or sale_up:
+		pass   # one pop-up at a time
+	elif not TSProfile.notify_asked and features and Notify.available():
+		_open_notify_ask.call_deferred()
+	elif OS.get_name() == "Android" and TSProfile.review_due():
+		_open_review.call_deferred()
 	var tick := Timer.new()
 	tick.wait_time = 1.0
 	tick.autostart = true
@@ -1122,6 +1126,38 @@ func _open_review() -> void:
 	TSUI.reveal(_review["root"], _review["panel"])
 
 
+## Once the chest tray is open (and its walkthrough done): would they like a
+## heads-up when a chest is ready? Yes brings up Android 13's own prompt; on
+## older phones, which need none, the reminders are simply on. Asked once.
+func _open_notify_ask() -> void:
+	await _settled()
+	if not is_inside_tree():
+		return
+	TSProfile.notify_asked = true
+	TSProfile.save()
+	if Notify.has_permission():
+		return
+	var box: VBoxContainer = _review["box"]
+	for c in box.get_children():
+		c.queue_free()
+	box.add_child(TSUI.title("Stay in the loop?", 38))
+	var art := TSIcon.make("chest", 140, 0, "rare")
+	art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	box.add_child(art)
+	box.add_child(TSUI.wrap(TSUI.label("We can let you know when a chest is ready, a build is done or a new Daily Egg hatches.", 24, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER)))
+	var yes := TSUI.button("Yes, remind me", TSUI.GREEN, 30, Vector2(0, 84))
+	yes.pressed.connect(func():
+		TSProfile.set_toggle("notifications_enabled", true)
+		TSUI.conceal(_review["root"])
+		Notify.request_permission())
+	box.add_child(yes)
+	var no := TSUI.button("Not now", TSUI.GREY, 22, Vector2(0, 64))
+	no.pressed.connect(func(): TSUI.conceal(_review["root"]))
+	box.add_child(no)
+	TSUI.juice(box)
+	TSUI.reveal(_review["root"], _review["panel"])
+
+
 func _refresh_sale_icon() -> void:
 	var running := not TSSales.current().is_empty()
 	sale_btn.visible = running
@@ -1378,7 +1414,10 @@ func _build_settings() -> void:
 	help_btn.pressed.connect(func(): help.visible = not help.visible)
 	box.add_child(help_btn)
 	box.add_child(help)
-	for row in [["music", "Music", "music_enabled"], ["sound", "Sound Effects", "sfx_enabled"], ["vibrate", "Haptics", "haptics_enabled"]]:
+	var rows := [["music", "Music", "music_enabled"], ["sound", "Sound Effects", "sfx_enabled"], ["vibrate", "Haptics", "haptics_enabled"]]
+	if Notify.available():
+		rows.append(["clock", "Reminders", "notifications_enabled"])
+	for row in rows:
 		box.add_child(_toggle_row(row[0], row[1], row[2]))
 	var restore := TSUI.expand(TSUI.button("Restore Purchases", TSUI.LILAC, 22, Vector2(0, 64))) as Button
 	restore.pressed.connect(func():
@@ -1426,7 +1465,9 @@ func _toggle_row(icon: String, text: String, prop: String) -> Control:
 		b.text = "On" if now else "Off"
 		TSUI.restyle(b, TSUI.MINT if now else TSUI.GREY, 4)
 		if prop == "haptics_enabled" and now:
-			TSHaptics.light())
+			TSHaptics.light()
+		if prop == "notifications_enabled" and now:
+			Notify.request_permission())
 	row.add_child(b)
 	return row
 

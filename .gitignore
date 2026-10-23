@@ -26,3 +26,8 @@ addons/admob/ios/bin/
 /override.cfg
 # Recorded YouTube Shorts (tools/make_shorts.ps1): 50-130 MB each, rebuilt on demand.
 /store/youtube/shorts/
+
+# The EggNotify plugin's Gradle output and SDK path (tools/build_notify_plugin.ps1); the AARs it makes live in addons/EggNotify/bin.
+/android_plugins/*/build/
+/android_plugins/*/.gradle/
+/android_plugins/*/local.properties
