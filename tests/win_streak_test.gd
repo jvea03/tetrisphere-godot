@@ -83,6 +83,27 @@ func _run() -> void:
 	await get_tree().create_timer(STREAK_ROCK_DELAY + 1.0).timeout
 	_check("and fly once it's done", _thrown == 1)
 
+	_thrown = 0
+	_start_level(41)
+	_open_pause()
+	await get_tree().create_timer(STREAK_ROCK_DELAY + 1.5).timeout
+	_check("they hold while paused", _thrown == 0)
+	TSUI.conceal(_pause["root"])
+	await get_tree().create_timer(STREAK_ROCK_DELAY + 1.5).timeout
+	_check("and fly on resuming", _thrown == 1)
+	_thrown = 0
+	_start_level(41)
+	var parked := _snapshot()
+	_check("left at once, the rocks are still due", bool(parked["streak_rocks_due"]))
+	TSSession.state = parked
+	_resume()
+	await get_tree().create_timer(STREAK_ROCK_DELAY + 1.5).timeout
+	_check("and fly when it is continued", _thrown == 1 and not bool(_snapshot()["streak_rocks_due"]))
+	_lose()
+	_check("a loss hides the streak pill", not _streak_pill.visible)
+	_revive(LIVES)
+	_check("a continue brings it back", _streak_pill.visible and _streak_label.text == "1")
+
 	TSProfile.win_streak = 10
 	_lose()
 	_check("a loss ends it...", TSProfile.win_streak == 0)

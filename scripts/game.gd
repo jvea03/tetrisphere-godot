@@ -62,6 +62,7 @@ var best_chain := 0
 var bomb_armed := false     # bombs themselves are kept in TSProfile.bomb_count
 var _streak_lost := 0       # the run a loss just ended, given back if a continue saves the level
 var _ball_seq := 0          # bumped for each ball started or resumed: a late timer can tell it is stale
+var _streak_rocks_due := false   # the win streak's rocks still to fly this ball (kept if it is parked first)
 var _streak_pill: PanelContainer   # under the hearts: the win streak so far
 var _streak_label: Label
 var lives := LIVES
@@ -531,6 +532,7 @@ func _start_level(level_number: int) -> void:
 		TSSession.retried_level = -1
 	_refresh_hud()
 	if TSProfile.win_streak_counts(level_number) and TSProfile.win_streak_tier() > 0:
+		_streak_rocks_due = true
 		_streak_rocks.call_deferred()
 	_maybe_start_tutorials()
 
@@ -571,6 +573,7 @@ func _start(seed_value: int, baked: Dictionary = {}) -> void:
 	best_chain = 0
 	bomb_armed = false
 	_streak_lost = 0
+	_streak_rocks_due = false
 	_ball_seq += 1
 	_rocks_flying = false
 	_rocks_shot += 1
@@ -631,6 +634,9 @@ func _resume() -> void:
 	view.rebuild()
 	_refresh_piece()
 	_refresh_hud()
+	_streak_rocks_due = bool(s.get("streak_rocks_due", false))
+	if _streak_rocks_due:   # left before the win streak's rocks flew: they fly now
+		_streak_rocks.call_deferred()
 
 
 ## Leaving mid-ball: park it so Home's PLAY (now CONTINUE) picks it back up.
@@ -647,6 +653,7 @@ func _snapshot() -> Dictionary:
 		"board": board, "daily": is_daily, "level": current_level, "difficulty": difficulty,
 		"cur_type": cur_type, "next_type": next_type, "cursor": cursor, "lives": lives,
 		"first_attempt": is_first_attempt, "lose_ad_used": lose_ad_used, "continues_bought": continues_bought,
+		"streak_rocks_due": _streak_rocks_due,
 	}
 
 
@@ -1338,20 +1345,32 @@ func _refresh_streak_pill() -> void:
 func _streak_rocks() -> void:
 	var ball := _ball_seq
 	await get_tree().create_timer(0.5).timeout
-	while is_inside_tree() and ball == _ball_seq and _tutorial.visible:
-		await _tutorial.finished
+	if not await _streak_clear(ball):
+		return
 	var tier := TSProfile.win_streak_tier()
-	if not is_inside_tree() or ball != _ball_seq or tier <= 0 or state != State.PLAYING:
+	if tier <= 0 or state != State.PLAYING:
 		return
 	_streak_banner(tier)
 	await get_tree().create_timer(STREAK_ROCK_DELAY).timeout
-	if not is_inside_tree() or ball != _ball_seq or state != State.PLAYING or _rocks_flying:
+	if not await _streak_clear(ball) or state != State.PLAYING or _rocks_flying:
 		return
+	_streak_rocks_due = false
 	var targets := board.rock_targets(tier, cursor)
 	if targets.is_empty():
 		return
 	_throw_rocks(_streak_pill.get_global_rect().get_center(), targets)
 	TSSfx.play("rock_launch")
+
+
+## Waits out a lesson or an open card (pause, an ad prompt); false if the
+## ball has gone meanwhile.
+func _streak_clear(ball: int) -> bool:
+	while is_inside_tree() and ball == _ball_seq and (_tutorial.visible or _any_card_open()):
+		if _tutorial.visible:
+			await _tutorial.finished
+		else:
+			await get_tree().create_timer(0.2).timeout
+	return is_inside_tree() and ball == _ball_seq
 
 
 func _streak_banner(tier: int) -> void:
@@ -1927,6 +1946,7 @@ func _lose() -> void:
 		_streak_lost = TSProfile.win_streak
 		TSProfile.win_streak = 0
 		TSProfile.save()
+	_refresh_streak_pill()
 	_creature.react(TSCreature.Mood.SCARED, 9999.0)
 	# An overloaded egg groans first; then, as the card settles, the sad horn
 	# over the music pulled right down.
