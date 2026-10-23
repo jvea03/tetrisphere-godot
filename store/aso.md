@@ -82,9 +82,15 @@ Release name: `1.0 (4) – Launch`
 
 - **Category and tags**: Game → Puzzle. Tags: Puzzle, Block puzzle, Match 3,
   Casual, Brain games (pick the closest Play offers).
-- **Screenshots**: the first two do most of the work. Put the spinning egg
-  mid-match first and the "You saved a Milky!" win second, each with a short
-  caption in big type ("Spin & match!", "Free the critters!").
+- **Screenshots**: the first two do most of the work. The phone set is
+  `store/screenshots_captioned/` (the egg mid-match, then the rescue, each
+  with a big caption). Rebuild: render the raw screens into
+  `store/screenshots_src/` with tools/store_shot (`--size=1080x1920`:
+  `game --level=14 --drops=3`, `win --level=8 --wait=4`,
+  `collection --collected=40`, `home --built`, `game --level=50 --drops=2`,
+  `game --level=37 --drops=2`), then run `res://tools/make_store_screens.tscn`.
+- **Promo video**: the YouTube trailer (https://www.youtube.com/watch?v=egDqiAWohac)
+  is the listing's video.
 - **Feature graphic**: shown with any promo video; worth a gameplay clip once
   the video ads are on YouTube.
 - **Ratings**: ask for a review after a happy moment (a win streak or a
