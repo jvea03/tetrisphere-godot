@@ -19,6 +19,8 @@
 # --date=<Y-M-D> pretend it is that day: a later Battle Pass season, say
 # --planet=<theme> the critters' planet dressed for a season: christmas, newyear...
 # --crashed      Home with the ship as it crash-landed: no part fixed or built
+# --built        Home with every camp and ship part built to the top
+# --collected=<n> the first n critters collected (a fuller Collection)
 # Over Home: camp (its info card), mine (a haul, and the ad to double it),
 # chest_skip (an unlocking chest's card), build (a build under way). And
 # streak_double: Daily Streaks with today's login coins claimed.
@@ -75,6 +77,15 @@ func _ready() -> void:
 	if OS.get_cmdline_user_args().has("--crashed"):   # the ship as it lands: nothing fixed, nothing built
 		for i in TSProfile.part_level.size():
 			TSProfile.part_level[i] = 0
+	if OS.get_cmdline_user_args().has("--built"):   # every part built to the top: no plus left on the camp
+		for i in TSProfile.part_level.size():
+			TSProfile.part_level[i] = TSProfile.PART_MAX_LEVEL
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--collected="):   # the first n critters collected, at mixed levels
+			for i in mini(int(a.substr(12)), TSProfile.CRITTER_COUNT):
+				if not TSProfile.is_critter_hidden(i):
+					TSProfile.critter_unlocked[i] = true
+					TSProfile.critter_level[i] = 1 + (i * 7) % 9
 	if planet != "":
 		TSProfile.planet_theme = planet
 	if fresh:   # a brand-new player: the first-visit walkthroughs still to come

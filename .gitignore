@@ -31,3 +31,5 @@ addons/admob/ios/bin/
 /android_plugins/*/build/
 /android_plugins/*/.gradle/
 /android_plugins/*/local.properties
+# Raw screens for the captioned Play screenshots (tools/store_shot), rebuilt on demand.
+/store/screenshots_src/
