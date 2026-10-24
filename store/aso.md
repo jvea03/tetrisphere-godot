@@ -78,6 +78,23 @@ Release name: `1.0 (4) – Launch`
     Thanks for playing!
     </en-US>
 
+## Release notes for version code 5 (1.1)
+
+Release name: `1.1 (5) – Win Streaks & Challenges`
+
+    <en-US>
+    New in Egg Escape: Block Puzzle Match!
+
+    • Win streaks: win levels in a row and each new level starts with free rocks
+    • Challenge levels: beat a tough egg against a 3-minute clock for a big coin bonus
+    • Reminders when your chest, build or Daily Egg is ready (you choose)
+    • Smoother early levels and a clearer first tutorial
+    • Leaderboards open November 11, and teams are coming December 9!
+    • A redesigned Daily Streaks screen, plus bug fixes
+
+    Thanks for playing!
+    </en-US>
+
 ## Other ASO levers
 
 - **Category and tags**: Game → Puzzle. Tags: Puzzle, Block puzzle, Match 3,
