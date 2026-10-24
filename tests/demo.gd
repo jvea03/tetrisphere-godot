@@ -13,6 +13,8 @@ func _ready() -> void:
 		if a.begins_with("--level="):   # tools/store_shot.gd: which level to show
 			level = int(a.substr(8))
 	TSProfile.use_test_profile(level)
+	if OS.get_cmdline_user_args().has("--challenge"):   # tools/store_shot.gd: the challenge behind --level
+		TSProfile.challenge_done_through = 0
 	super()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 4242

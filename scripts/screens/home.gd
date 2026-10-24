@@ -45,6 +45,7 @@ var _chest_slots: Array = [] # per slot: {btn, plate, art, pill, pill_label, ban
 var _settings: Dictionary
 const PRIVACY_URL := "https://jvea03.github.io/duckdoku-privacy/egg-escape.html"
 const EXTREME_RED := Color(0.86, 0.22, 0.3)   # PLAY on an Extreme level
+const CHALLENGE_PURPLE := Color(0.56, 0.38, 0.86)   # PLAY with a challenge level waiting
 const STORE_URL := "https://play.google.com/store/apps/details?id=com.jvea.eggescape"
 var _review: Dictionary   # the rating ask, and the one-time reminders ask
 var _profile: Dictionary
@@ -854,6 +855,18 @@ func _refresh_chest_tray() -> void:
 		(s["band"] as Label).text = band
 
 
+## A tilted tag on PLAY's top-right corner (EXTREME, a challenge's clock).
+func _play_tag(text: String) -> void:
+	var tag := TSUI.pill(text, TSUI.INK, 22, Color.WHITE)
+	tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tag.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	tag.offset_left = -150.0
+	tag.offset_right = -10.0
+	tag.offset_top = -20.0
+	tag.rotation = 0.1
+	play_btn.add_child(tag)
+
+
 func _build_play() -> void:
 	var group := TSUI.vbox(0)
 	group.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -883,18 +896,18 @@ func _build_play() -> void:
 		play_btn.text = "CONTINUE"
 		level = int(TSSession.state.get("level", level))   # the parked ball's level
 	level_label.text = "Level %d" % level
-	# An Extreme level says so on PLAY itself: the button deep red, with a
-	# tilted EXTREME tag on its corner.
-	if TSLevels.difficulty_for_level(level) >= TSLevels.DIFF_EXTREME:
+	# A challenge waiting (or parked) before the next level: PLAY turns purple
+	# with its clock on a tag. An Extreme level says so too: deep red, EXTREME.
+	var challenge := bool(TSSession.state.get("challenge", false)) if resuming else TSProfile.challenge_due() >= 0
+	if challenge:
+		if not resuming:
+			play_btn.text = "CHALLENGE"
+		level_label.text = "Challenge  ·  before level %d" % (level if not resuming else level + 1)
+		TSUI.restyle(play_btn, CHALLENGE_PURPLE, 10)
+		_play_tag("%d MIN" % (TSLevels.CHALLENGE_SECONDS / 60))
+	elif TSLevels.difficulty_for_level(level) >= TSLevels.DIFF_EXTREME:
 		TSUI.restyle(play_btn, EXTREME_RED, 10)
-		var tag := TSUI.pill("EXTREME", TSUI.INK, 22, Color.WHITE)
-		tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		tag.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-		tag.offset_left = -150.0
-		tag.offset_right = -10.0
-		tag.offset_top = -20.0
-		tag.rotation = 0.1
-		play_btn.add_child(tag)
+		_play_tag("EXTREME")
 	TSUI.breathe(play_btn)
 	content.add_child(TSUI.spacer(8))
 

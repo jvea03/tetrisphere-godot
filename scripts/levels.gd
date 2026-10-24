@@ -399,6 +399,49 @@ static func rules_for_level(level: int) -> Dictionary:
 	return rules
 
 
+## Challenge levels: an Extreme egg against a CHALLENGE_SECONDS clock, set
+## between two levels -- after level CHALLENGE_FIRST_AFTER, then every
+## CHALLENGE_EVERY -- and played once: won or lost, the journey goes on to the
+## next level. They are not levels themselves (no level number, no progress).
+const CHALLENGE_FIRST_AFTER := 40
+const CHALLENGE_EVERY := 20
+const CHALLENGE_SECONDS := 180
+const CHALLENGE_BONUS_COINS := 3000
+
+
+static func is_challenge_slot(after: int) -> bool:
+	return after >= CHALLENGE_FIRST_AFTER and (after - CHALLENGE_FIRST_AFTER) % CHALLENGE_EVERY == 0
+
+
+## The newest challenge at or before level `after`, or -1 (none yet).
+static func challenge_slot_at(after: int) -> int:
+	if after < CHALLENGE_FIRST_AFTER:
+		return -1
+	return after - (after - CHALLENGE_FIRST_AFTER) % CHALLENGE_EVERY
+
+
+## The challenge after level `after`: Extreme's rules, its pieces taking turns
+## through the four-piece mixes challenge by challenge, and the slow ramp of
+## the levels around it. No blockers: the clock is the challenge.
+static func challenge_rules(after: int) -> Dictionary:
+	var rules := rules_for_tier(DIFF_EXTREME)
+	var combos := _combos(int(TIER_MIX[DIFF_EXTREME]))
+	@warning_ignore("integer_division")
+	rules = _with_pieces(rules, combos[maxi(0, (after - CHALLENGE_FIRST_AFTER) / CHALLENGE_EVERY) % combos.size()])
+	if heavy_mix(rules["pieces"]):
+		rules["escape_size"] = int(DIFFICULTIES[DIFF_EXTREME]["escape_size"]) - 1
+	var step := ramp_step(after)
+	rules["common_bias"] = float(DIFFICULTIES[DIFF_EXTREME]["common_bias"]) - RAMP_BIAS * step
+	if step > 0:
+		rules["blocker_share"] = float(rules["blocker_share"]) + RAMP_GREY * step
+		rules["armor_share"] = minf(float(rules["armor_share"]) + RAMP_ARMOR * step, 0.9)
+	return rules
+
+
+static func challenge_seed(after: int) -> int:
+	return hash("tetrisphere_challenge_%d" % after)
+
+
 # The rules every level shares. This is Beginner's; rules_for_tier swaps in
 # each tier's pieces.
 const LEVELS := [

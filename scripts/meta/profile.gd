@@ -33,6 +33,8 @@ static func use_test_profile(level := 1) -> void:
 	ship_story_seen = true
 	review_done = true
 	notify_asked = true
+	challenge_done_through = 1 << 30   # no challenge levels unless a test asks for one
+	challenge_intro_seen = true
 	tie_tutorial_seen = true
 	geode_tutorial_seen = true
 	vine_tutorial_seen = true
@@ -1630,6 +1632,23 @@ const WIN_STREAK_TIERS := 3
 static var win_streak: int = 0
 static var win_streak_best: int = 0
 
+# Challenge levels (TSLevels.CHALLENGE_*): the newest one played, won or lost.
+static var challenge_done_through: int = 0
+static var challenge_intro_seen: bool = false
+
+
+## The challenge waiting before the next level -- the newest one behind the
+## player not yet played -- or -1.
+static func challenge_due() -> int:
+	var slot := TSLevels.challenge_slot_at(last_level - 1)
+	return slot if slot > challenge_done_through else -1
+
+
+## A challenge counts as played the moment it starts, so quitting can't buy a retry.
+static func mark_challenge_played(after: int) -> void:
+	challenge_done_through = maxi(challenge_done_through, after)
+	save()
+
 
 static func win_streak_counts(level_number: int) -> bool:
 	return level_number >= TSNav.FEATURES_UNLOCK_LEVEL
@@ -2650,6 +2669,8 @@ static func ensure_loaded() -> void:
 		club_is_owner = true
 	win_streak = maxi(0, int(g.call("win_streak", 0)))
 	win_streak_best = maxi(win_streak, int(g.call("win_streak_best", 0)))
+	challenge_done_through = int(g.call("challenge_done_through", 0))
+	challenge_intro_seen = bool(g.call("challenge_intro_seen", false))
 	login_streak_count = int(g.call("login_streak_count", 0))
 	login_streak_last_date = str(g.call("login_streak_last_date", ""))
 	daily_streak_count = int(g.call("daily_streak_count", 0))
@@ -2759,6 +2780,8 @@ static func save() -> void:
 	s.call("club_leaderboard_key", club_leaderboard_key)
 	s.call("win_streak", win_streak)
 	s.call("win_streak_best", win_streak_best)
+	s.call("challenge_done_through", challenge_done_through)
+	s.call("challenge_intro_seen", challenge_intro_seen)
 	s.call("login_streak_count", login_streak_count)
 	s.call("login_streak_last_date", login_streak_last_date)
 	s.call("daily_streak_count", daily_streak_count)

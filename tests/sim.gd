@@ -73,6 +73,34 @@ func _initialize() -> void:
 			print(row)
 		quit()
 		return
+	# `-- challenge 6 40`: the first 6 challenge levels (TSLevels.challenge_rules),
+	# each played 40 times by both bots -- win rate and the drops a win takes
+	# (against the clock: a player drops every few seconds).
+	if args.size() >= 2 and args[0] == "challenge":
+		print("after | careful: won drops hearts | casual: won drops hearts")
+		for k in int(args[1]):
+			var after := TSLevels.CHALLENGE_FIRST_AFTER + k * TSLevels.CHALLENGE_EVERY
+			var rules := TSLevels.challenge_rules(after)
+			var row := "%5d |" % after
+			for bot in [CAREFUL, CASUAL]:
+				var wins := 0
+				var drops := 0
+				var lost := 0
+				var n := int(args[2]) if args.size() > 2 else 40
+				var egg := TSBoard.new()
+				egg.generate(TSLevels.challenge_seed(after), rules)
+				for i in n:
+					var rng := RandomNumberGenerator.new()
+					rng.seed = after * 7919 + i
+					var r := _play(egg.clone(), TSLevels.DIFF_EXTREME, rules, rng, bot)
+					lost += int(r["lost"])
+					if bool(r["win"]):
+						wins += 1
+						drops += int(r["drops"])
+				row += "  %4d%%  %5.1f  %4.2f      |" % [roundi(100.0 * wins / n), float(drops) / maxi(wins, 1), float(lost) / n]
+			print(row)
+		quit()
+		return
 	# `-- ramp 8`: the slow ramp past level 50 (TSLevels.ramp_step) -- for every
 	# other step, one full loop of tiers at that step, each level played 8 times
 	# by both bots, as average win rates per tier.

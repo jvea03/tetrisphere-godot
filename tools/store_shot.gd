@@ -23,6 +23,7 @@
 # --collected=<n> the first n critters collected (a fuller Collection)
 # --streak=<n>   on a win streak of n wins
 # --release      as players see it: features the editor switches on early stay off
+# --challenge    a challenge level waiting (one sits behind --level, e.g. 41)
 # Over Home: camp (its info card), mine (a haul, and the ad to double it),
 # chest_skip (an unlocking chest's card), build (a build under way). And
 # streak_double: Daily Streaks with today's login coins claimed.
@@ -82,6 +83,8 @@ func _ready() -> void:
 	if OS.get_cmdline_user_args().has("--built"):   # every part built to the top: no plus left on the camp
 		for i in TSProfile.part_level.size():
 			TSProfile.part_level[i] = TSProfile.PART_MAX_LEVEL
+	if OS.get_cmdline_user_args().has("--challenge"):   # the challenge before --level is waiting
+		TSProfile.challenge_done_through = 0
 	if OS.get_cmdline_user_args().has("--release"):   # the tabs and features as players see them, not the editor
 		TSNav.as_released = true
 	for a in OS.get_cmdline_user_args():

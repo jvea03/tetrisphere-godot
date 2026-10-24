@@ -69,6 +69,10 @@ var lives := LIVES
 var lose_reason := ""
 var current_level := 1
 var is_daily := false       # a Daily Egg: never touches level progress
+var is_challenge := false   # a challenge level (TSLevels.CHALLENGE_*): between two levels, against the clock, played once
+var challenge_left := 0.0   # seconds left on a challenge's clock
+var _timer_pill: PanelContainer   # under the hearts on a challenge: its clock
+var _timer_label: Label
 var is_first_attempt := true # won without a lost ball or a paid rescue: +2 stars
 var lose_ad_used := false   # the lose card's ad life, once per ball
 var continues_bought := 0   # hearts refills bought for this ball: the first is at FIRST_CONTINUE_COST
@@ -181,6 +185,8 @@ func _ready() -> void:
 		_start_daily()
 	elif TSSession.has_saved_game:
 		_resume()
+	elif TSProfile.challenge_due() >= 0:   # a challenge waits between two levels
+		_start_challenge(TSProfile.challenge_due())
 	else:
 		_start_level(TSProfile.last_level)
 
@@ -318,6 +324,18 @@ func _build_hud() -> void:
 	_streak_label = TSUI.label("", 24, TSUI.INK)
 	streak_row.add_child(_streak_label)
 	streak_at.add_child(_streak_pill)
+	# A challenge's clock, in the same spot (a challenge has no streak).
+	_timer_pill = PanelContainer.new()
+	_timer_pill.add_theme_stylebox_override("panel", TSUI.sb(TSUI.CARD, 20, 3, 2, 6))
+	_timer_pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_timer_pill.visible = false
+	var timer_row := TSUI.hbox(4)
+	timer_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_timer_pill.add_child(timer_row)
+	timer_row.add_child(TSIcon.make("clock", 32))
+	_timer_label = TSUI.label("", 24, TSUI.INK)
+	timer_row.add_child(_timer_label)
+	streak_at.add_child(_timer_pill)
 	var pause_at := _pin(root, Control.PRESET_TOP_RIGHT, Vector2(-96.0, _top - 4.0))
 	_pause_btn = TSUI.icon_button("pause", 76, TSUI.CARD)
 	_pause_btn.pressed.connect(_open_pause)
@@ -522,6 +540,7 @@ static func _panel_style(bg: Color) -> StyleBoxFlat:
 func _start_level(level_number: int) -> void:
 	TSProfile.coin_notices.clear()
 	is_daily = false
+	is_challenge = false
 	current_level = level_number
 	TSProfile.last_level = maxi(TSProfile.last_level, level_number)
 	TSProfile.note_level_started(level_number)
@@ -541,10 +560,26 @@ func _start_level(level_number: int) -> void:
 func _start_daily() -> void:
 	TSProfile.coin_notices.clear()
 	is_daily = true
+	is_challenge = false
 	current_level = TSLevels.daily_level()
 	difficulty = TSLevels.difficulty_for_level(current_level)
 	TSProfile.record_daily_play()
 	_start(hash("daily_" + TSClock.date_string()))
+
+
+## A challenge level (TSLevels.challenge_rules), between level `after` and the
+## next: an Extreme egg against the clock, played once. It is marked played as
+## it starts -- won or lost (or the app closed), the next level comes after.
+func _start_challenge(after: int) -> void:
+	TSProfile.coin_notices.clear()
+	is_daily = false
+	is_challenge = true
+	current_level = after
+	difficulty = TSLevels.DIFF_EXTREME
+	TSProfile.mark_challenge_played(after)
+	_start(TSLevels.challenge_seed(after))
+	if not TSProfile.challenge_intro_seen:
+		_start_challenge_intro.call_deferred()
 
 
 ## A fresh ball: the baked one when the level has one (levels 1-50), else
@@ -552,7 +587,8 @@ func _start_daily() -> void:
 func _start(seed_value: int, baked: Dictionary = {}) -> void:
 	if not TSSession.has_saved_game:
 		TSSession.forget()   # a fresh ball: nothing to continue
-	level = TSLevels.rules_for_level(current_level)
+	level = TSLevels.challenge_rules(current_level) if is_challenge else TSLevels.rules_for_level(current_level)
+	challenge_left = float(TSLevels.CHALLENGE_SECONDS)
 	if baked.is_empty():
 		board.generate(seed_value, level)
 	else:
@@ -604,9 +640,11 @@ func _resume() -> void:
 	board = s["board"]
 	view.board = board
 	is_daily = bool(s["daily"])
+	is_challenge = bool(s.get("challenge", false))
 	current_level = int(s["level"])
 	difficulty = int(s["difficulty"])
-	level = TSLevels.rules_for_level(current_level)
+	level = TSLevels.challenge_rules(current_level) if is_challenge else TSLevels.rules_for_level(current_level)
+	challenge_left = float(s.get("challenge_left", TSLevels.CHALLENGE_SECONDS))
 	cur_type = int(s["cur_type"])
 	next_type = int(s["next_type"])
 	cursor = s["cursor"]
@@ -654,6 +692,7 @@ func _snapshot() -> Dictionary:
 		"cur_type": cur_type, "next_type": next_type, "cursor": cursor, "lives": lives,
 		"first_attempt": is_first_attempt, "lose_ad_used": lose_ad_used, "continues_bought": continues_bought,
 		"streak_rocks_due": _streak_rocks_due,
+		"challenge": is_challenge, "challenge_left": challenge_left,
 	}
 
 
@@ -1327,12 +1366,46 @@ func _refresh_bomb_button() -> void:
 		(_booster_badges[id] as Label).text = str(count) if count > 0 else "+"
 		btn.visible = state == State.PLAYING and TSProfile.booster_unlocked(id)
 	_refresh_streak_pill()
+	_refresh_timer()
 
+
+## A challenge's clock runs while the egg is in play -- not while paused, a
+## card or a lesson is up, or the critter is escaping -- and at 0 the
+## challenge is lost.
+func _tick_challenge(delta: float) -> void:
+	if not is_challenge or state != State.PLAYING or _escaping or _any_card_open() or _tutorial.visible:
+		return
+	var before := ceili(challenge_left)
+	challenge_left -= delta
+	if ceili(challenge_left) != before:
+		_refresh_timer()
+		if before <= 10 and before > 0:
+			TSSfx.play("tick")
+	if challenge_left <= 0.0:
+		challenge_left = 0.0
+		lose_reason = "TIME'S UP"
+		_lose()
+
+
+## A challenge's clock: m:ss, red in its last 30 seconds.
+func _refresh_timer() -> void:
+	if _timer_pill == null:
+		return
+	_timer_pill.visible = is_challenge and state == State.PLAYING
+	var secs := ceili(maxf(challenge_left, 0.0))
+	_timer_label.text = "%d:%02d" % [secs / 60, secs % 60]
+	_timer_label.add_theme_color_override("font_color", TSUI.CORAL if secs <= 30 else TSUI.INK)
+
+
+## Whether this ball is on the win streak's path: a level from 7 on -- not
+## the Daily Egg or a challenge, which neither count nor break it.
+func _streak_level() -> bool:
+	return not is_daily and not is_challenge and TSProfile.win_streak_counts(current_level)
 
 func _refresh_streak_pill() -> void:
 	if _streak_pill == null:
 		return
-	_streak_pill.visible = state == State.PLAYING and not is_daily and TSProfile.win_streak > 0 \
+	_streak_pill.visible = state == State.PLAYING and not is_daily and not is_challenge and TSProfile.win_streak > 0 \
 		and TSProfile.win_streak_counts(current_level)
 	_streak_label.text = str(TSProfile.win_streak)
 
@@ -1479,6 +1552,7 @@ static func _heart_shape(s: float) -> PackedVector2Array:
 
 func _process(delta: float) -> void:
 	_animate_boosters(delta)
+	_tick_challenge(delta)
 	# A touch held still long enough becomes a hold.
 	if _gesture == Gesture.PENDING and Time.get_ticks_msec() - _touch_ms >= int(HOLD_TIME * 1000.0):
 		_begin_hold()
@@ -1880,14 +1954,21 @@ func _pay_win() -> void:
 	_win_materials = TSProfile.win_materials(is_daily)
 	TSProfile.add_materials(_win_materials)
 	_win_chest = "" if is_daily else TSChests.record_win()
-	_win_ad_due = false if is_daily else _roll_interstitial()
+	_win_ad_due = false if is_daily or is_challenge else _roll_interstitial()
 	if is_daily:
 		TSProfile.mark_daily_completed()
 		TSProfile.record_quest_event("daily_puzzle")
+	elif is_challenge:
+		# Beaten against the clock: the bonus on top. No level progress, no streak.
+		TSProfile.record_quest_event("win")
+		TSProfile.won_since_home = true
+		var prize := TSProfile.boost_earned_coins(TSLevels.CHALLENGE_BONUS_COINS)
+		TSProfile.coin_count += prize
+		TSProfile.coin_notices.append({"label": "Challenge bonus", "coins": prize})
 	else:
 		TSProfile.record_quest_event("win")
 		TSProfile.won_since_home = true
-		if TSProfile.win_streak_counts(current_level):
+		if _streak_level():
 			TSProfile.add_win_streak()
 		TSHunt.note_level_reached(current_level + 1)
 		TSProfile.last_level = maxi(TSProfile.last_level, current_level + 1)
@@ -1942,11 +2023,12 @@ func _lose() -> void:
 	if not TSSession.has_saved_game:
 		TSSession.forget()
 	# The win streak ends here -- unless a continue saves the level (_revive).
-	if TSProfile.win_streak > 0 and not is_daily and TSProfile.win_streak_counts(current_level):
+	if TSProfile.win_streak > 0 and _streak_level():
 		_streak_lost = TSProfile.win_streak
 		TSProfile.win_streak = 0
 		TSProfile.save()
 	_refresh_streak_pill()
+	_refresh_timer()
 	_creature.react(TSCreature.Mood.SCARED, 9999.0)
 	# An overloaded egg groans first; then, as the card settles, the sad horn
 	# over the music pulled right down.
@@ -1997,7 +2079,7 @@ func _build_dialogs(root: Control) -> void:
 	restart.pressed.connect(func():
 		TSUI.conceal(_pause["root"])
 		is_first_attempt = false
-		if not is_daily and TSProfile.win_streak_counts(current_level) and TSProfile.win_streak > 0:
+		if _streak_level() and TSProfile.win_streak > 0:
 			TSProfile.win_streak = 0   # starting over counts as a loss
 			TSProfile.save()
 		_restart())
@@ -2052,8 +2134,9 @@ func _open_pause() -> void:
 	if state != State.PLAYING or _any_card_open():
 		return
 	bomb_armed = false
-	var streak_on := not is_daily and TSProfile.win_streak > 0 and TSProfile.win_streak_counts(current_level)
+	var streak_on := _streak_level() and TSProfile.win_streak > 0
 	(_pause["restart"] as Button).text = "Restart (ends your streak)" if streak_on else "Restart Level"
+	(_pause["restart"] as Button).visible = not is_challenge   # a challenge is played once
 	TSUI.reveal(_pause["root"], _pause["panel"])
 
 
@@ -2085,7 +2168,7 @@ func _show_win_card() -> void:
 	var top := TSUI.hbox(8)
 	box.add_child(top)
 	top.add_child(TSUI.spacer(60))
-	var banner := TSUI.ribbon("Rescued!", TSUI.PINK, 48, 400.0)
+	var banner := TSUI.ribbon("Challenge won!" if is_challenge else "Rescued!", TSUI.PINK, 48, 400.0)
 	banner.size_flags_horizontal = Control.SIZE_EXPAND | Control.SIZE_SHRINK_CENTER
 	top.add_child(banner)
 	var close := TSUI.close_button()
@@ -2120,7 +2203,7 @@ func _show_win_card() -> void:
 		box.add_child(TSUI.label("First try! +%d bonus stars" % FIRST_ATTEMPT_STAR_BONUS, 22, TSFX.COL_GAIN, HORIZONTAL_ALIGNMENT_CENTER))
 	if _win_bonus != "":
 		box.add_child(TSUI.label(_win_bonus, 22, TSFX.COL_GAIN, HORIZONTAL_ALIGNMENT_CENTER))
-	if not is_daily and TSProfile.win_streak_counts(current_level) and TSProfile.win_streak > 0:
+	if _streak_level() and TSProfile.win_streak > 0:
 		box.add_child(_streak_line())
 	if _win_coins > 0 and TSProfile.ad_rewards_left("win_coins") > 0:
 		var double := TSUI.button(TSAdReward.text("Double Coins (+%s)" % TSProfile.fmt_coins(_win_coins)), TSUI.SKY, 28, Vector2(0, 76))
@@ -2200,6 +2283,9 @@ func _on_next_pressed() -> void:
 	if is_daily:
 		SceneFlow.go(SceneFlow.HOME)
 		return
+	if is_challenge:
+		_play_after(current_level)
+		return
 	var next := current_level + 1
 	if _win_ad_due and not TSProfile.no_ads:
 		_open_ad("next_level")
@@ -2210,7 +2296,16 @@ func _on_next_pressed() -> void:
 			or (next == TSNav.DAILY_UNLOCK_LEVEL and not TSProfile.daily_callout_seen):
 		SceneFlow.go(SceneFlow.HOME)
 	else:
-		_start_level(next)
+		_play_after(current_level)
+
+
+## What follows level `n`: the challenge waiting there, if there is one, else
+## level n + 1. (After a challenge, its own n: the level it sits behind.)
+func _play_after(n: int) -> void:
+	if not is_challenge and TSProfile.challenge_due() == n:
+		_start_challenge(n)
+	else:
+		_start_level(n + 1)
 
 
 func _refresh_lose_card() -> void:
@@ -2218,6 +2313,9 @@ func _refresh_lose_card() -> void:
 	for c in box.get_children():
 		box.remove_child(c)   # gone at once, not at the end of the frame: the card is rebuilt in place
 		c.queue_free()
+	if is_challenge:
+		_fill_challenge_lose(box)
+		return
 	var overload := lose_reason == "SHELL OVERLOADED"
 	box.add_child(TSUI.ribbon("Egg overloaded!" if overload else "Out of hearts!", TSUI.LILAC, 40, 500.0))
 	if overload:
@@ -2299,6 +2397,39 @@ func _refresh_lose_card() -> void:
 		SceneFlow.go(SceneFlow.HOME))
 	box.add_child(quit)
 	TSUI.juice(box)
+
+
+## A lost challenge's card: no continue and no retry -- the journey moves on
+## to the level it sits before (or Home).
+func _fill_challenge_lose(box: VBoxContainer) -> void:
+	var timed_out := lose_reason == "TIME'S UP"
+	box.add_child(TSUI.ribbon("Time's up!" if timed_out else "Challenge over!", TSUI.LILAC, 40, 500.0))
+	box.add_child(TSUI.halo(TSIcon.make("clock" if timed_out else "heart_empty", 130), 210.0, TSUI.LILAC, false))
+	box.add_child(TSUI.wrap(TSUI.label("So close! A challenge is played once -- the next one comes along in %d levels." % TSLevels.CHALLENGE_EVERY, 24, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER)))
+	var next := TSUI.button("On to Level %d" % (current_level + 1), TSUI.GREEN, 30, Vector2(0, 84))
+	next.pressed.connect(func():
+		TSUI.conceal(_lose_card["root"])
+		_play_after(current_level))
+	box.add_child(next)
+	var home := TSUI.button("Home", TSUI.GREY, 24, Vector2(0, 60))
+	home.pressed.connect(func():
+		TSSession.clear()
+		SceneFlow.go(SceneFlow.HOME))
+	box.add_child(home)
+	TSUI.juice(box)
+
+
+## The first challenge: what it is, pointing at its clock (which waits).
+func _start_challenge_intro() -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if not is_inside_tree() or not is_challenge:
+		return
+	_tutorial.finished.connect(func():
+		TSProfile.challenge_intro_seen = true
+		TSProfile.save(), CONNECT_ONE_SHOT)
+	_tutorial.start([{"rect": _timer_pill.get_global_rect().grow(8.0),
+		"text": "A challenge level! An Extreme egg with %d minutes on the clock. Win for a big bonus -- and if not, you just move on to the next level." % (TSLevels.CHALLENGE_SECONDS / 60)}])
 
 
 ## What the next refill of hearts costs: the first on a ball is on sale.
@@ -2458,7 +2589,7 @@ func _on_ad_finished() -> void:
 	match _ad_reward:
 		"next_level":
 			_ad_card["root"].visible = false
-			_start_level(current_level + 1)
+			_play_after(current_level)
 		"life":
 			_ad_card["root"].visible = false
 			lose_ad_used = true
@@ -2984,7 +3115,7 @@ func _on_tile_popped(at: Vector3, outward: Vector3, kind: int, step: int, total:
 ## grows so it never runs into the hearts (LEVEL 10000 and on).
 const LEVEL_LABEL_WIDTH := 250.0
 func _set_level_text() -> void:
-	_lbl_level.text = "DAILY EGG" if is_daily else "LEVEL %d" % current_level
+	_lbl_level.text = "DAILY EGG" if is_daily else ("CHALLENGE" if is_challenge else "LEVEL %d" % current_level)
 	var font := _lbl_level.get_theme_font("font")
 	var px := 42
 	while px > 24 and font.get_string_size(_lbl_level.text, HORIZONTAL_ALIGNMENT_LEFT, -1, px).x > LEVEL_LABEL_WIDTH:
