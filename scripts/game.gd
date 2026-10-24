@@ -2405,8 +2405,32 @@ func _fill_challenge_lose(box: VBoxContainer) -> void:
 	var timed_out := lose_reason == "TIME'S UP"
 	box.add_child(TSUI.ribbon("Time's up!" if timed_out else "Challenge over!", TSUI.LILAC, 40, 500.0))
 	box.add_child(TSUI.halo(TSIcon.make("clock" if timed_out else "heart_empty", 130), 210.0, TSUI.LILAC, false))
-	box.add_child(TSUI.wrap(TSUI.label("So close! A challenge is played once -- the next one comes along in %d levels." % TSLevels.CHALLENGE_EVERY, 24, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER)))
-	var next := TSUI.button("On to Level %d" % (current_level + 1), TSUI.GREEN, 30, Vector2(0, 84))
+	if timed_out:
+		# The buy-out: a minute more, and a heart back if one was lost. Short
+		# of coins, it buys the smallest coin pack that covers it (as Continue).
+		var cost := TSLevels.CHALLENGE_BUYOUT_COINS
+		var short := cost - TSProfile.coin_count
+		var pack := _coin_pack_for(short) if short > 0 else {}
+		var gift := "+1 min" + ("  +1 heart" if lives < LIVES else "")
+		var price := "%s coins" % TSProfile.fmt_coins(cost) if pack.is_empty() else "Get %s coins  ·  %s" % [TSProfile.fmt_coins(int(pack["coins"])), pack["price"]]
+		var buy := TSUI.button("Keep going  %s\n%s" % [gift, price], TSUI.GREEN, 28, Vector2(0, 112))
+		buy.disabled = short > 0 and pack.is_empty()
+		buy.pressed.connect(func():
+			if TSProfile.coin_count >= TSLevels.CHALLENGE_BUYOUT_COINS:
+				_buy_challenge_time()
+			elif not pack.is_empty():   # Billing turns down a second buy while one is pending
+				_lose_pack = str(pack["product_id"])
+				Billing.purchase(_lose_pack))
+		box.add_child(buy)
+		TSUI.breathe(buy, 1.8)
+		var wallet := TSUI.hbox(6)
+		wallet.alignment = BoxContainer.ALIGNMENT_CENTER
+		wallet.add_child(TSIcon.make("coin", 26))
+		wallet.add_child(TSUI.label("You have %s" % TSProfile.fmt_coins(TSProfile.coin_count), 20, TSUI.MUTED))
+		box.add_child(wallet)
+	else:
+		box.add_child(TSUI.wrap(TSUI.label("So close! A challenge is played once -- the next one comes along in %d levels." % TSLevels.CHALLENGE_EVERY, 24, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER)))
+	var next := TSUI.button("On to Level %d" % (current_level + 1), TSUI.GREY if timed_out else TSUI.GREEN, 24 if timed_out else 30, Vector2(0, 64 if timed_out else 84))
 	next.pressed.connect(func():
 		TSUI.conceal(_lose_card["root"])
 		_play_after(current_level))
@@ -2468,11 +2492,26 @@ func _on_lose_purchase(product_id: String, success: bool) -> void:
 	_lose_pack = ""
 	if not is_inside_tree() or state != State.LOST:
 		return
-	if success and TSProfile.coin_count >= _continue_cost():
+	if is_challenge and success and TSProfile.coin_count >= TSLevels.CHALLENGE_BUYOUT_COINS:
+		TSSfx.play("coin")
+		_buy_challenge_time()
+	elif not is_challenge and success and TSProfile.coin_count >= _continue_cost():
 		TSSfx.play("coin")
 		_buy_continue()
 	else:
 		_refresh_lose_card()
+
+
+## A challenge's buy-out, out of time: coins for a minute more on the clock,
+## and a heart back if one was lost along the way.
+func _buy_challenge_time() -> void:
+	if not is_challenge or state != State.LOST or lose_reason != "TIME'S UP" \
+			or TSProfile.coin_count < TSLevels.CHALLENGE_BUYOUT_COINS:
+		return
+	TSProfile.coin_count -= TSLevels.CHALLENGE_BUYOUT_COINS
+	TSProfile.save()
+	challenge_left = float(TSLevels.CHALLENGE_BUYOUT_SECONDS)
+	_revive(mini(lives + 1, LIVES))
 
 
 ## Back into the same egg with `count` hearts. Either rescue ends the first-try bonus.

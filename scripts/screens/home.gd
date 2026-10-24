@@ -855,7 +855,7 @@ func _refresh_chest_tray() -> void:
 		(s["band"] as Label).text = band
 
 
-## A tilted tag on PLAY's top-right corner (EXTREME, a challenge's clock).
+## A tilted tag on PLAY's top-right corner (EXTREME).
 func _play_tag(text: String) -> void:
 	var tag := TSUI.pill(text, TSUI.INK, 22, Color.WHITE)
 	tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -896,15 +896,12 @@ func _build_play() -> void:
 		play_btn.text = "CONTINUE"
 		level = int(TSSession.state.get("level", level))   # the parked ball's level
 	level_label.text = "Level %d" % level
-	# A challenge waiting (or parked) before the next level: PLAY turns purple
-	# with its clock on a tag. An Extreme level says so too: deep red, EXTREME.
+	# A challenge waiting (or parked) before the next level: "Challenge" above
+	# a purple PLAY. An Extreme level says so too: deep red, EXTREME.
 	var challenge := bool(TSSession.state.get("challenge", false)) if resuming else TSProfile.challenge_due() >= 0
 	if challenge:
-		if not resuming:
-			play_btn.text = "CHALLENGE"
-		level_label.text = "Challenge  ·  before level %d" % (level if not resuming else level + 1)
+		level_label.text = "Challenge"
 		TSUI.restyle(play_btn, CHALLENGE_PURPLE, 10)
-		_play_tag("%d MIN" % (TSLevels.CHALLENGE_SECONDS / 60))
 	elif TSLevels.difficulty_for_level(level) >= TSLevels.DIFF_EXTREME:
 		TSUI.restyle(play_btn, EXTREME_RED, 10)
 		_play_tag("EXTREME")

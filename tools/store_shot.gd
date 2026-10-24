@@ -5,7 +5,7 @@
 # written, and Godot quits. A throwaway profile is used and never saved.
 # Run (see tools/ios-screenshots.sh, which runs the whole set):
 #   Godot --path . res://tools/store_shot.tscn -- --scene=home --size=1290x2796 --out=/abs/home.png
-# --scene=<name>  a screen in res://scenes, or an overlay: pause, lose, bomb_empty,
+# --scene=<name>  a screen in res://scenes, or an overlay: pause, lose, timeup (a challenge's), bomb_empty,
 #                 swap_empty, rocks_empty (over the game), settings (over Home);
 #                 a screen in res://scenes (home, shop, collection, battle_pass,
 #                 hunt, streak ...), `game` (a level part way dug) or `win`
@@ -110,7 +110,7 @@ func _ready() -> void:
 		TSChests.slots = [{}, {}, {}, {}]   # no chests yet: the Home walkthrough hands over the first
 		TSChests.win_progress = 0
 	var path := "res://scenes/%s.tscn" % scene_name
-	var game_cards := ["pause", "lose", "bomb_empty", "swap_empty", "rocks_empty"]
+	var game_cards := ["pause", "lose", "timeup", "bomb_empty", "swap_empty", "rocks_empty"]
 	var home_cards := ["settings", "camp", "mine", "chest_skip", "build"]
 	if scene_name == "streak_double":
 		TSProfile.claim_login_reward()
@@ -155,6 +155,10 @@ func _ready() -> void:
 			"lose":
 				inst.lives = 0
 				inst.lose_reason = "OUT OF LIVES"
+				inst._lose()
+			"timeup":   # a challenge's clock run out, a heart down (with --challenge)
+				inst.lives = 2
+				inst.lose_reason = "TIME'S UP"
 				inst._lose()
 			"bomb_empty":
 				TSProfile.bomb_count = 0

@@ -68,6 +68,23 @@ func _run() -> void:
 	_check("out of time, it's lost", state == State.LOST and lose_reason == "TIME'S UP")
 	_refresh_lose_card()
 	_check("no continue, no ad: on to level 41", _says(_lose_card, "Time's up!") and _says(_lose_card, "On to Level 41") and not _says(_lose_card, "Continue") and not _says(_lose_card, "Watch an ad"))
+	_check("but a buy-out: +1 min (no heart: none was lost)", _says(_lose_card, "+1 min") and not _says(_lose_card, "+1 heart"))
+	var wallet := TSProfile.coin_count
+	_buy_challenge_time()
+	_check("bought: a minute more, play on", state == State.PLAYING and is_equal_approx(challenge_left, 60.0) and lives == LIVES and TSProfile.coin_count == wallet - TSLevels.CHALLENGE_BUYOUT_COINS)
+	lives = LIVES - 1
+	challenge_left = 0.05
+	await get_tree().create_timer(0.3).timeout
+	_refresh_lose_card()
+	_check("out of time again, a heart down: the buy-out gives it back too", _says(_lose_card, "+1 min") and _says(_lose_card, "+1 heart"))
+	_buy_challenge_time()
+	_check("a minute and a heart", state == State.PLAYING and is_equal_approx(challenge_left, 60.0) and lives == LIVES)
+	lives = 0
+	lose_reason = "OUT OF LIVES"
+	_lose()
+	await get_tree().create_timer(0.3).timeout
+	_refresh_lose_card()
+	_check("out of hearts there's no buy-out", state == State.LOST and lose_reason != "TIME'S UP" and not _says(_lose_card, "+1 min") and _says(_lose_card, "On to Level 41"))
 	_play_after(current_level)
 	_check("which follows", not is_challenge and current_level == 41)
 

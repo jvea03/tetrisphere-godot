@@ -407,6 +407,10 @@ const CHALLENGE_FIRST_AFTER := 40
 const CHALLENGE_EVERY := 20
 const CHALLENGE_SECONDS := 180
 const CHALLENGE_BONUS_COINS := 3000
+## Out of time, a buy-out: CHALLENGE_BUYOUT_SECONDS more on the clock (and a
+## heart back, if one was lost) for CHALLENGE_BUYOUT_COINS. Out of hearts, none.
+const CHALLENGE_BUYOUT_SECONDS := 60
+const CHALLENGE_BUYOUT_COINS := 1000
 
 
 static func is_challenge_slot(after: int) -> bool:
