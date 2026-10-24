@@ -43,6 +43,35 @@ func _initialize() -> void:
 			print(line)
 		quit()
 		return
+	# `-- early 1 10 40`: levels A to B in detail, for both bots -- win rate,
+	# drops a win takes, hearts lost -- the first-session view.
+	if args.size() >= 3 and args[0] == "early":
+		print("lvl tier | careful: won drops hearts | casual: won drops hearts")
+		for lvl in range(int(args[1]), int(args[2]) + 1):
+			var row := "%3d  %s   |" % [lvl, "BIHXE"[TSLevels.difficulty_for_level(lvl)]]
+			for bot in [CAREFUL, CASUAL]:
+				var wins := 0
+				var drops := 0
+				var lost := 0
+				var n := int(args[3]) if args.size() > 3 else 40
+				for i in n:
+					var board := TSBoard.new()
+					var baked := TSLevels.baked_board(lvl)
+					if baked.is_empty():
+						board.generate(TSLevels.seed_for_level(lvl), TSLevels.rules_for_level(lvl))
+					else:
+						board.load_dict(baked)
+					var rng := RandomNumberGenerator.new()
+					rng.seed = lvl * 7919 + i
+					var r := _play(board, TSLevels.difficulty_for_level(lvl), TSLevels.rules_for_level(lvl), rng, bot)
+					if bool(r["win"]):
+						wins += 1
+						drops += int(r["drops"])
+					lost += int(r["lost"])
+				row += "  %4d%%  %5.1f  %4.2f      |" % [roundi(100.0 * wins / n), float(drops) / maxi(wins, 1), float(lost) / n]
+			print(row)
+		quit()
+		return
 	# `-- ramp 8`: the slow ramp past level 50 (TSLevels.ramp_step) -- for every
 	# other step, one full loop of tiers at that step, each level played 8 times
 	# by both bots, as average win rates per tier.
