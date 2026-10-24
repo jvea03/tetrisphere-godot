@@ -125,5 +125,17 @@ func _run() -> void:
 	_check("an Intermediate egg, 3 minutes", is_challenge and difficulty == 1 and _escape_size() == 3 and is_equal_approx(challenge_left, 180.0))
 	TSProfile.last_level = 41
 	_check("and once it's played, the one after 40 is next", TSProfile.challenge_due() == 40)
+	# The whole way through the tutorial one: win 17, Next, the challenge, win it, Next, 18.
+	TSProfile.challenge_done_through = 0
+	TSProfile.last_level = 17
+	_start_level(17)
+	_debug_win()
+	await get_tree().create_timer(3.0).timeout
+	_on_next_pressed()
+	_check("winning 17 leads into the tutorial challenge", is_challenge and current_level == 17 and difficulty == 1)
+	_debug_win()
+	await get_tree().create_timer(3.0).timeout
+	_on_next_pressed()
+	_check("and winning it on to level 18", not is_challenge and current_level == 18 and TSProfile.last_level == 18)
 	print("challenge_test: %d failure(s)" % _failures)
 	get_tree().quit(1 if _failures > 0 else 0)

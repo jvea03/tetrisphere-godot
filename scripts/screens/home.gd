@@ -877,8 +877,10 @@ func _build_play() -> void:
 	plate.add_child(plate_row)
 	level_label = TSUI.label("", 28, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER)
 	plate_row.add_child(level_label)
-	# The win streak beside the level, once it has started.
-	if TSProfile.win_streak > 0 and TSProfile.win_streak_counts(TSProfile.last_level):
+	# The win streak beside the level, once it has started -- not beside a
+	# challenge, which neither counts for it nor breaks it.
+	var challenge_next := TSProfile.challenge_due() >= 0 or (TSSession.has_saved_game and bool(TSSession.state.get("challenge", false)))
+	if TSProfile.win_streak > 0 and TSProfile.win_streak_counts(TSProfile.last_level) and not challenge_next:
 		plate_row.add_child(TSIcon.make("flame", 34))
 		plate_row.add_child(TSUI.label(str(TSProfile.win_streak), 28, TSUI.CORAL))
 	group.add_child(plate)
