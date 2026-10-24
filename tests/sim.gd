@@ -78,8 +78,10 @@ func _initialize() -> void:
 	# (against the clock: a player drops every few seconds).
 	if args.size() >= 2 and args[0] == "challenge":
 		print("after | careful: won drops hearts | casual: won drops hearts")
+		var slots := [TSLevels.CHALLENGE_TUTORIAL_AFTER]
 		for k in int(args[1]):
-			var after := TSLevels.CHALLENGE_FIRST_AFTER + k * TSLevels.CHALLENGE_EVERY
+			slots.append(TSLevels.CHALLENGE_FIRST_AFTER + k * TSLevels.CHALLENGE_EVERY)
+		for after in slots:
 			var rules := TSLevels.challenge_rules(after)
 			var row := "%5d |" % after
 			for bot in [CAREFUL, CASUAL]:
@@ -92,7 +94,7 @@ func _initialize() -> void:
 				for i in n:
 					var rng := RandomNumberGenerator.new()
 					rng.seed = after * 7919 + i
-					var r := _play(egg.clone(), TSLevels.DIFF_EXTREME, rules, rng, bot)
+					var r := _play(egg.clone(), TSLevels.challenge_tier(after), rules, rng, bot)
 					lost += int(r["lost"])
 					if bool(r["win"]):
 						wins += 1

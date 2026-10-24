@@ -403,6 +403,10 @@ static func rules_for_level(level: int) -> Dictionary:
 ## between two levels -- after level CHALLENGE_FIRST_AFTER, then every
 ## CHALLENGE_EVERY -- and played once: won or lost, the journey goes on to the
 ## next level. They are not levels themselves (no level number, no progress).
+## Before them, a tutorial one after CHALLENGE_TUTORIAL_AFTER: the same clock
+## on an Intermediate egg, to learn the rules on.
+const CHALLENGE_TUTORIAL_AFTER := 17
+const CHALLENGE_TUTORIAL_TIER := 1   # Intermediate
 const CHALLENGE_FIRST_AFTER := 40
 const CHALLENGE_EVERY := 20
 const CHALLENGE_SECONDS := 180
@@ -414,20 +418,32 @@ const CHALLENGE_BUYOUT_COINS := 1000
 
 
 static func is_challenge_slot(after: int) -> bool:
-	return after >= CHALLENGE_FIRST_AFTER and (after - CHALLENGE_FIRST_AFTER) % CHALLENGE_EVERY == 0
+	return after == CHALLENGE_TUTORIAL_AFTER or (after >= CHALLENGE_FIRST_AFTER and (after - CHALLENGE_FIRST_AFTER) % CHALLENGE_EVERY == 0)
 
 
 ## The newest challenge at or before level `after`, or -1 (none yet).
 static func challenge_slot_at(after: int) -> int:
-	if after < CHALLENGE_FIRST_AFTER:
+	if after < CHALLENGE_TUTORIAL_AFTER:
 		return -1
+	if after < CHALLENGE_FIRST_AFTER:
+		return CHALLENGE_TUTORIAL_AFTER
 	return after - (after - CHALLENGE_FIRST_AFTER) % CHALLENGE_EVERY
+
+
+## A challenge's tier: Extreme, but Intermediate for the tutorial one.
+static func challenge_tier(after: int) -> int:
+	return CHALLENGE_TUTORIAL_TIER if after == CHALLENGE_TUTORIAL_AFTER else DIFF_EXTREME
 
 
 ## The challenge after level `after`: Extreme's rules, its pieces taking turns
 ## through the four-piece mixes challenge by challenge, and the slow ramp of
-## the levels around it. No blockers: the clock is the challenge.
+## the levels around it. No blockers: the clock is the challenge. The tutorial
+## one is Intermediate's egg as it stands.
 static func challenge_rules(after: int) -> Dictionary:
+	if after == CHALLENGE_TUTORIAL_AFTER:
+		var easy := rules_for_tier(CHALLENGE_TUTORIAL_TIER)
+		easy["common_bias"] = float(DIFFICULTIES[CHALLENGE_TUTORIAL_TIER]["common_bias"])
+		return easy
 	var rules := rules_for_tier(DIFF_EXTREME)
 	var combos := _combos(int(TIER_MIX[DIFF_EXTREME]))
 	@warning_ignore("integer_division")

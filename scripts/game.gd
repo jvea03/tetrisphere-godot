@@ -575,7 +575,7 @@ func _start_challenge(after: int) -> void:
 	is_daily = false
 	is_challenge = true
 	current_level = after
-	difficulty = TSLevels.DIFF_EXTREME
+	difficulty = TSLevels.challenge_tier(after)
 	TSProfile.mark_challenge_played(after)
 	_start(TSLevels.challenge_seed(after))
 	if not TSProfile.challenge_intro_seen:
@@ -2429,7 +2429,7 @@ func _fill_challenge_lose(box: VBoxContainer) -> void:
 		wallet.add_child(TSUI.label("You have %s" % TSProfile.fmt_coins(TSProfile.coin_count), 20, TSUI.MUTED))
 		box.add_child(wallet)
 	else:
-		box.add_child(TSUI.wrap(TSUI.label("So close! A challenge is played once -- the next one comes along in %d levels." % TSLevels.CHALLENGE_EVERY, 24, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER)))
+		box.add_child(TSUI.wrap(TSUI.label("So close! A challenge is played once -- on to the next level.", 24, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER)))
 	var next := TSUI.button("On to Level %d" % (current_level + 1), TSUI.GREY if timed_out else TSUI.GREEN, 24 if timed_out else 30, Vector2(0, 64 if timed_out else 84))
 	next.pressed.connect(func():
 		TSUI.conceal(_lose_card["root"])
@@ -2443,7 +2443,8 @@ func _fill_challenge_lose(box: VBoxContainer) -> void:
 	TSUI.juice(box)
 
 
-## The first challenge: what it is, pointing at its clock (which waits).
+## The first challenge (the tutorial one, after level 17): the clock, then the
+## rules -- the bonus, the buy-out, played once. The clock waits for it.
 func _start_challenge_intro() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -2452,8 +2453,12 @@ func _start_challenge_intro() -> void:
 	_tutorial.finished.connect(func():
 		TSProfile.challenge_intro_seen = true
 		TSProfile.save(), CONNECT_ONE_SHOT)
-	_tutorial.start([{"rect": _timer_pill.get_global_rect().grow(8.0),
-		"text": "A challenge level! An Extreme egg with %d minutes on the clock. Win for a big bonus -- and if not, you just move on to the next level." % (TSLevels.CHALLENGE_SECONDS / 60)}])
+	_tutorial.start([
+		{"rect": _timer_pill.get_global_rect().grow(8.0),
+			"text": "A challenge level! Free the Milky before the clock runs out -- you have %d minutes." % (TSLevels.CHALLENGE_SECONDS / 60)},
+		{"rect": _ball_rect(),
+			"text": "Win for a big coin bonus. Out of time? You can buy a minute more. A challenge is played once -- win or lose, the next level follows."},
+	])
 
 
 ## What the next refill of hearts costs: the first on a ball is on sale.
