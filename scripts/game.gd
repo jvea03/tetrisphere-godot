@@ -2231,12 +2231,13 @@ func _refresh_lose_card() -> void:
 			_restart())
 		box.add_child(again)
 	else:
-		# What's at stake: the critter, and how close its way out really is.
+		# What's at stake: the egg's Milky (the one the win card says was
+		# saved), and how close its way out really is.
 		var k := _escape_size()
 		var open := int(board.best_escape_patch(k)["open"])
 		var pct := clampi(roundi(100.0 * float(open) / float(k * k)), 0, 99)
-		box.add_child(TSUI.halo(TSIcon.make("critter", 120, TSProfile.avatar()), 190.0, TSUI.LILAC, false))
-		box.add_child(TSUI.wrap(TSUI.label("%s is %d%% of the way out!" % [TSProfile.critter_name(TSProfile.avatar()), pct], 28, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER)))
+		box.add_child(TSUI.halo(TSIcon.make("milky", 120), 190.0, TSUI.LILAC, false))
+		box.add_child(TSUI.wrap(TSUI.label("The Milky is %d%% of the way out!" % pct, 28, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER)))
 		var progress := TSUI.bar(TSUI.MINT, 24)
 		progress.value = pct
 		box.add_child(progress)
@@ -2646,12 +2647,14 @@ func _start_tutorial() -> void:
 	_tutorial.finished.connect(func():
 		TSProfile.tutorial_seen = true
 		TSProfile.save(), CONNECT_ONE_SHOT)
+	# Only what the first drops need: aim, the piece, the drop, hearts. Sliding
+	# waits for level 2's own lesson.
 	_tutorial.start([
-		{"rect": ball, "text": "A little critter is sealed in this egg! Dig a hole big enough and it escapes."},
-		{"rect": ball, "text": "Tap the egg to aim your piece. Swipe to turn it around. Hold a piece like yours, then drag, to slide it."},
-		{"rect": _piece_column_rect(), "text": "This is the piece you're holding, and the next one above it. Pieces never rotate -- a flat line and an upright line are different pieces."},
-		{"rect": ball, "text": "Your aim glows bright where a drop will match. Double-tap to drop! Land it on two or more of its own kind and the whole group pops."},
-		{"rect": _hearts_rect(), "text": "A drop that matches nothing costs a heart. Lose all three and the egg wins."},
+		{"rect": ball, "text": "A little Milky is sealed in this egg! Dig a hole big enough and it escapes."},
+		{"rect": ball, "text": "Tap the egg to aim. Swipe to turn it around."},
+		{"rect": _piece_column_rect(), "text": "Your piece, with the next one above it. Pieces never rotate."},
+		{"rect": ball, "text": "Your aim glows where a drop will match. Double-tap to drop -- two or more of a kind pop!"},
+		{"rect": _hearts_rect(), "text": "A drop that matches nothing costs a heart."},
 	])
 
 

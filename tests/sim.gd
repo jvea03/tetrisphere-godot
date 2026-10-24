@@ -18,7 +18,8 @@ const LIVES := 3
 
 
 func _initialize() -> void:
-	# `-- probe 16,23 8 24`: for each level, the casual bot's win rate on its
+	# `-- probe 16,23 8 24`: for each level, the casual bot's win rate, drops a
+	# win takes and hearts lost a play on its
 	# egg from each of the next 8 seeds (shift 0 is its own), over 24 plays --
 	# to pick TSLevels.SEED_SHIFT for a level that plays as a wall.
 	var args := OS.get_cmdline_user_args()
@@ -122,12 +123,18 @@ func _probe(levels: Array, shifts: int, trials: int) -> void:
 			var egg := TSBoard.new()
 			egg.generate(TSLevels.shifted_seed(lvl, shift), rules)
 			var wins := 0
+			var drops := 0
+			var lost := 0
 			for i in trials:
 				var rng := RandomNumberGenerator.new()
 				rng.seed = lvl * 7919 + i
-				if bool(_play(egg.clone(), TSLevels.difficulty_for_level(lvl), rules, rng, CASUAL)["win"]):
+				var r := _play(egg.clone(), TSLevels.difficulty_for_level(lvl), rules, rng, CASUAL)
+				lost += int(r["lost"])
+				if bool(r["win"]):
 					wins += 1
-			line += "  +%d:%3d%%" % [shift, roundi(100.0 * wins / trials)]
+					drops += int(r["drops"])
+			# win rate / drops a win takes / hearts lost a play
+			line += "  +%d:%3d%%/%.1f/%.2f" % [shift, roundi(100.0 * wins / trials), float(drops) / maxi(wins, 1), float(lost) / trials]
 		print(line)
 
 

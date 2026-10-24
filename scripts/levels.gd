@@ -153,6 +153,13 @@ static func difficulty_for_level(level: int) -> int:
 ## turns by the plan (tier_mix counts _planned_tier), so no other level changes.
 const SOFTENED := {22: 2, 23: 1, 25: 2, 46: 3, 101: 2}
 
+## The first step up a tier, eased: levels 7 and 8 are the first Intermediate
+## eggs (a 3x3 hole) and land as Home opens up (chests, the Pass, the win
+## streak). The casual bot won 65-68% there, after 90%+ on 1-6. Level 7 now
+## deals two pieces (LEVEL_PIECES); level 8, all three, gets a deal that favours
+## the piece the board needs this much more.
+const FIRST_STEP_BIAS := {8: 0.1}
+
 
 static func _planned_tier(level: int) -> int:
 	if level >= 1 and level <= LEVEL_PLAN.size():
@@ -183,6 +190,8 @@ static func shifted_seed(level: int, shift: int) -> int:
 
 
 const SEED_SHIFT := {
+	1: 6, 2: 5, 9: 2,                                  # Beginner: the first session -- level 1 a few drops of practice (not one), level 2 (the sliding lesson) rarely lost, level 9 more than a drop or two
+	8: 7,                                              # Intermediate: the first full Intermediate egg, eased (with FIRST_STEP_BIAS)
 	14: 2, 16: 1, 18: 11, 24: 7, 52: 7, 57: 4, 102: 4,  # Intermediate (23, softened from Hard, keeps its own egg)
 	17: 12, 20: 2, 22: 6, 25: 2, 27: 4, 39: 2, 101: 2, # Hard: the first stretch (15-27) smoothed -- 22 and 25 softened from Expert and Extreme; 39; 101 (from Extreme)
 	34: 3, 42: 1, 58: 6, 63: 6, 64: 2,                 # Hard
@@ -243,12 +252,14 @@ static func _with_pieces(rules: Dictionary, pieces: Array) -> Dictionary:
 ## Early levels that break from their tier's pieces, each a little lesson in
 ## shapes: level 3 is only the square and the upright line, level 4 only the
 ## flat line and the plus, and level 6 the upright line and the plus -- so it
-## never looks like level 5, which is the two lines. Dealt and tiled into the
-## shell alike.
+## never looks like level 5, which is the two lines. Level 7, the first
+## Intermediate egg, brings its bigger hole with two pieces (the flat line and
+## the square) before 8 deals all three. Dealt and tiled into the shell alike.
 const LEVEL_PIECES := {
 	3: [TSBoard.O, TSBoard.I_UPRIGHT],
 	4: [TSBoard.I_FLAT, TSBoard.PLUS],
 	6: [TSBoard.I_UPRIGHT, TSBoard.PLUS],
+	7: [TSBoard.I_FLAT, TSBoard.O],
 }
 
 ## After level BEGINNER_MIX_FROM, a Beginner level is any two of the four
@@ -350,8 +361,12 @@ static func rules_for_level(level: int) -> Dictionary:
 		rules.erase("tie_layers")
 	if has_fog(level):
 		rules["fog"] = FOG_COUNT[difficulty_for_level(level)]
+	# Level 1, the walkthrough's egg: a thin shell (two layers, not three) with
+	# a 3x3 hole to open -- a few drops of practice before the critter is out,
+	# where a 2x2 hole in it went in a drop.
 	if level == 1:
 		rules["shell_depth"] = 2
+		rules["escape_size"] = 3
 	if LEVEL_PIECES.has(level):
 		rules = _with_pieces(rules, LEVEL_PIECES[level])
 	elif TIER_MIX.has(difficulty_for_level(level)):
@@ -368,6 +383,8 @@ static func rules_for_level(level: int) -> Dictionary:
 	# Past the baked fifty, the slow ramp (ramp_step).
 	var step := ramp_step(level)
 	rules["common_bias"] = float(DIFFICULTIES[difficulty_for_level(level)]["common_bias"]) - RAMP_BIAS * step
+	if FIRST_STEP_BIAS.has(level):
+		rules["common_bias"] = float(rules["common_bias"]) + float(FIRST_STEP_BIAS[level])
 	if is_debut(level):
 		rules["common_bias"] = minf(float(rules["common_bias"]) + INTRO_BIAS, 0.95)
 		for k in ["vines", "locks", "prisms"]:
