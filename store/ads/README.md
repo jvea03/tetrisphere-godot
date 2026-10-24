@@ -1,4 +1,4 @@
-# Google Ads: App campaign for Egg Escape: Puzzle Break
+# Google Ads: App campaign for Egg Escape: Block Puzzle Match
 
 Assets for a Google Ads **App campaign** (Campaign type: App promotion →
 App installs, platform Android). Google mixes these into ads on Search,
@@ -12,16 +12,16 @@ set it up once production access is granted and the app is published.
 1. Crack the egg, free a critter
 2. Spin, match & break free!
 3. Collect 84 cute critters
-4. A cozy space puzzle game
+4. Cozy block puzzle game
 5. Free puzzle fun, any time
 
 ## Descriptions (up to 5, 90 characters max)
 
 1. Spin the egg, drop matching blocks and dig a path out for the critter trapped inside.
-2. Hundreds of levels, clever blockers and handy boosters. A fresh puzzle every spin!
+2. Hundreds of levels, clever blockers, win streaks and timed challenge eggs to beat!
 3. Collect and level up 84 cute critters, open chests and rebuild your crashed ship.
 4. Relaxing pastel art, cozy music and a new Daily Egg puzzle to crack every day.
-5. Can you save them all? Play Egg Escape: Puzzle Break free today!
+5. Can you save them all? Play Egg Escape: Block Puzzle Match free today!
 
 ## Images (15 of the 20 allowed)
 
