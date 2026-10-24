@@ -134,9 +134,9 @@ func _build_nav() -> void:
 			"collection":
 				TSNav.gate(b, TSNav.collection_unlocked(), TSNav.COLLECTION_UNLOCK_LEVEL, self, go)
 			"leaderboard":
-				TSNav.gate_social(b, true, 0, self, go)
+				TSNav.gate_soon(b, TSNav.leaderboards_open(), true, 0, TSNav.LEADERBOARDS_SOON, "NOV 11", self, go)
 			"clubs":
-				TSNav.gate_social(b, TSNav.clubs_unlocked(), TSNav.CLUBS_UNLOCK_LEVEL, self, go)
+				TSNav.gate_soon(b, TSNav.clubs_open(), TSNav.clubs_unlocked(), TSNav.CLUBS_UNLOCK_LEVEL, TSNav.CLUBS_SOON, "SOON", self, go)
 			_:
 				b.pressed.connect(go)
 

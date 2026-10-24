@@ -1837,7 +1837,7 @@ static func _roll_leaderboard_day() -> void:
 
 
 static func _resolve_leaderboard_day(date_str: String, player_total: int) -> void:
-	if not TSNav.social_enabled():
+	if not TSNav.leaderboards_open():
 		return
 	var better := 0
 	for rival in simulated_rivals_for(date_str):
@@ -1932,10 +1932,11 @@ static func note_coins(label: String, coins: int) -> void:
 
 ## Settles every board whose day, week or season has rolled over.
 static func settle_boards() -> void:
-	if not TSNav.social_enabled():
+	if not TSNav.leaderboards_open():
 		return
 	_roll_leaderboard_day()
-	_roll_club_leaderboard()
+	if TSNav.clubs_open():
+		_roll_club_leaderboard()
 	_roll_period("weekly")
 	_roll_period("season")
 
@@ -1950,7 +1951,7 @@ static func add_stars(lives_remaining: int, bonus: int = 0, difficulty: int = 0)
 		save()
 		return 0
 	add_battle_pass_xp(earned)
-	if TSNav.social_enabled():
+	if TSNav.leaderboards_open():
 		settle_boards()
 		daily_star_total += earned
 		period_star_total["weekly"] += earned
@@ -2009,7 +2010,7 @@ static func _roll_period(period: String) -> void:
 
 
 static func _resolve_period(period: String, key: String, player_total: int) -> void:
-	if not TSNav.social_enabled():
+	if not TSNav.leaderboards_open():
 		return
 	var better := 0
 	for rival in simulated_rivals_for(period + "_" + key, period_length_days(period)):

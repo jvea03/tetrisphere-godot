@@ -26,6 +26,7 @@ func _initialize() -> void:
 	_test_skies()
 	_test_parked_ball()
 	_test_clock()
+	_test_soon()
 	_test_ad_rewards()
 	print("")
 	print("ALL PASSED" if _failures == 0 else "%d FAILED" % _failures)
@@ -641,3 +642,10 @@ func _test_clock() -> void:
 	var corrected := absf(TSClock.now() - (device + 3 * 3600)) < 5.0
 	TSClock.apply_network_time(Time.get_unix_time_from_system() + 30)
 	_check("a clock hours off is corrected by the network's; one a few seconds off is left alone", corrected and TSClock.offset == 0.0)
+
+
+# Leaderboards open on their date (the editor has them on regardless); teams
+# stay "coming soon".
+func _test_soon() -> void:
+	_check("leaderboards stay shut the day before November 11 and open on it",
+		not TSNav.leaderboards_open_on("2026-11-10") and TSNav.leaderboards_open_on("2026-11-11") and TSNav.leaderboards_open_on("2027-01-02"))
