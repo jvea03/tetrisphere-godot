@@ -156,9 +156,10 @@ const SOFTENED := {22: 2, 23: 1, 25: 2, 46: 3, 101: 2}
 ## The first step up a tier, eased: levels 7 and 8 are the first Intermediate
 ## eggs (a 3x3 hole) and land as Home opens up (chests, the Pass, the win
 ## streak). The casual bot won 65-68% there, after 90%+ on 1-6. Level 7 now
-## deals two pieces (LEVEL_PIECES); level 8, all three, gets a deal that favours
-## the piece the board needs this much more.
-const FIRST_STEP_BIAS := {8: 0.1}
+## deals two pieces (LEVEL_PIECES); levels 8 and 11 (58% after 80-100% on
+## 9, 10 and 12), all three, get a deal that favours the piece the board
+## needs this much more.
+const FIRST_STEP_BIAS := {8: 0.1, 11: 0.1}
 
 
 static func _planned_tier(level: int) -> int:
@@ -191,7 +192,7 @@ static func shifted_seed(level: int, shift: int) -> int:
 
 const SEED_SHIFT := {
 	1: 6, 2: 5, 9: 2,                                  # Beginner: the first session -- level 1 a few drops of practice (not one), level 2 (the sliding lesson) rarely lost, level 9 more than a drop or two
-	8: 7,                                              # Intermediate: the first full Intermediate egg, eased (with FIRST_STEP_BIAS)
+	8: 7, 11: 27,                                      # Intermediate: the first two full Intermediate eggs, eased (with FIRST_STEP_BIAS)
 	14: 2, 16: 1, 18: 11, 24: 7, 52: 7, 57: 4, 102: 4,  # Intermediate (23, softened from Hard, keeps its own egg)
 	17: 12, 20: 2, 22: 6, 25: 2, 27: 4, 39: 2, 101: 2, # Hard: the first stretch (15-27) smoothed -- 22 and 25 softened from Expert and Extreme; 39; 101 (from Extreme)
 	34: 3, 42: 1, 58: 6, 63: 6, 64: 2,                 # Hard
