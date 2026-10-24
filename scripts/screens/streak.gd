@@ -13,31 +13,15 @@ var _banner: PanelContainer
 
 func build() -> void:
 	add_header("Daily Streaks", true)
-	content.add_child(TSUI.wrap(TSUI.label("Collect coins every day. Keep it up 7 days in a row for %d free bombs and %d time skips." % [TSProfile.STREAK_REWARD_BOMBS, TSProfile.STREAK_REWARD_SKIPS], 24, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER)))
+	content.add_child(_prize_card())
+	var gap := TSUI.spacer(0, true)   # a third of the spare room here, the rest under the cards
+	gap.size_flags_stretch_ratio = 0.5
+	content.add_child(gap)
 	_banner = TSUI.card(TSUI.BUTTER, 22, 14, 2)
 	_banner.add_child(TSUI.wrap(TSUI.label("", 24, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER)))
 	content.add_child(_banner)
-	content.add_child(TSUI.spacer(0, true))
-	# The 7th day's prize -- bombs and time skips -- piled on a sunburst,
-	# filling the space above the cards.
-	var prize := Control.new()
-	prize.custom_minimum_size = Vector2(230, 190)
-	prize.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var skip := TSIcon.make("skip", 104)
-	skip.position = Vector2(118, 74)
-	skip.rotation = 0.18
-	var bomb := TSIcon.make("bomb", 156)
-	bomb.position = Vector2(6, 6)
-	prize.add_child(bomb)
-	prize.add_child(skip)
-	content.add_child(TSUI.halo(prize, 330.0, TSUI.PEACH))
-	var day7 := TSUI.pill("DAY 7 PRIZE  ·  %d bombs + %d skips" % [TSProfile.STREAK_REWARD_BOMBS, TSProfile.STREAK_REWARD_SKIPS], TSUI.BUTTER, 22)
-	day7.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	content.add_child(day7)
-	content.add_child(TSUI.spacer(0, true))
 	_login_card = _make_card("LOGIN STREAK", TSUI.BUTTER, "flame", _login, _on_login_tap)
 	content.add_child(_login_card)
-	content.add_child(TSUI.spacer(10))
 	# The Daily Egg's own streak waits until the Daily Egg unlocks.
 	if TSNav.daily_unlocked():
 		_daily_card = _make_card("DAILY EGG STREAK", TSUI.SKY, "calendar", _daily, _on_daily_tap)
@@ -46,6 +30,34 @@ func build() -> void:
 		content.add_child(_locked_card())
 	content.add_child(TSUI.spacer(0, true))
 	_refresh()
+
+
+## What a streak's 7th day pays -- bombs and time skips, piled on a small
+## sunburst -- in one card above the streaks, so both fit on the screen.
+func _prize_card() -> PanelContainer:
+	var card := TSUI.card(TSUI.CARD, 26, 14, 3)
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var row := TSUI.hbox(14)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	card.add_child(row)
+	var prize := Control.new()
+	prize.custom_minimum_size = Vector2(150, 126)
+	prize.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var bomb := TSIcon.make("bomb", 108)
+	bomb.position = Vector2(4, 2)
+	var skip := TSIcon.make("skip", 72)
+	skip.position = Vector2(76, 52)
+	skip.rotation = 0.18
+	prize.add_child(bomb)
+	prize.add_child(skip)
+	row.add_child(TSUI.halo(prize, 184.0, TSUI.PEACH))
+	var text := TSUI.vbox(2)
+	text.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	text.add_child(TSUI.label("EVERY 7TH DAY IN A ROW", 20, TSUI.MUTED))
+	text.add_child(TSUI.label("%d bombs + %d time skips" % [TSProfile.STREAK_REWARD_BOMBS, TSProfile.STREAK_REWARD_SKIPS], 30, TSUI.INK))
+	text.add_child(TSUI.label("Plus coins every day you collect", 20, TSUI.MUTED))
+	row.add_child(text)
+	return card
 
 
 ## Before the Daily Egg unlocks: its streak's place, greyed, saying when.
@@ -69,7 +81,7 @@ func _make_card(title_text: String, pill_color: Color, icon: String, parts: Dict
 	card.gui_input.connect(func(e: InputEvent):
 		if (e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT) or (e is InputEventScreenTouch and e.pressed):
 			on_tap.call())
-	var v := TSUI.vbox(12)
+	var v := TSUI.vbox(14)
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	card.add_child(v)
 	var pill := TSUI.pill(title_text, pill_color, 24)
@@ -85,7 +97,7 @@ func _make_card(title_text: String, pill_color: Color, icon: String, parts: Dict
 	text.add_child(parts["count"])
 	parts["progress"] = TSUI.label("", 22, TSUI.MUTED)
 	text.add_child(parts["progress"])
-	var ic := TSIcon.make(icon, 100)
+	var ic := TSIcon.make(icon, 92)
 	row.add_child(ic)
 	parts["icon"] = ic
 	var track := TSUI.hbox(10)
@@ -133,7 +145,7 @@ func _fill(parts: Dictionary, card: PanelContainer, count: int, claimable: bool,
 	(parts["count"] as Label).text = "%d day%s" % [count, "" if count == 1 else "s"]
 	var interval := TSProfile.STREAK_REWARD_INTERVAL
 	var remaining := interval - (count % interval)
-	(parts["progress"] as Label).text = "Reward day!" if count > 0 and count % interval == 0 else "%d day%s until the bombs" % [remaining, "" if remaining == 1 else "s"]
+	(parts["progress"] as Label).text = "Reward day!" if count > 0 and count % interval == 0 else "%d day%s to the prize" % [remaining, "" if remaining == 1 else "s"]
 	(parts["claim_label"] as Label).text = "Tap to collect +%s coins!" % TSProfile.fmt_coins(amount)
 	(parts["claim"] as Control).visible = claimable
 	var collected: Label = parts["collected"]
@@ -155,7 +167,7 @@ func _fill(parts: Dictionary, card: PanelContainer, count: int, claimable: bool,
 		var last := day == interval
 		var chip := PanelContainer.new()
 		chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var s := 72.0 if last else 56.0
+		var s := 84.0 if last else 64.0
 		chip.custom_minimum_size = Vector2(s, s)
 		chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		var face := TSUI.sb(TSUI.GOLD if done else Color(0.95, 0.92, 0.9), 99, 4 if day == reached else 2, 0, 0)
