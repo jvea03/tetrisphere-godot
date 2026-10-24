@@ -44,6 +44,7 @@ const VOYAGE := "res://scenes/voyage.tscn"   # the flight to a new planet, each 
 var _chest_slots: Array = [] # per slot: {btn, plate, art, pill, pill_label, band}
 var _settings: Dictionary
 const PRIVACY_URL := "https://jvea03.github.io/duckdoku-privacy/egg-escape.html"
+const EXTREME_RED := Color(0.86, 0.22, 0.3)   # PLAY on an Extreme level
 const STORE_URL := "https://play.google.com/store/apps/details?id=com.jvea.eggescape"
 var _review: Dictionary   # the rating ask, and the one-time reminders ask
 var _profile: Dictionary
@@ -877,12 +878,23 @@ func _build_play() -> void:
 	play_btn.pressed.connect(_on_play_pressed)
 	group.add_child(play_btn)
 	var level := TSProfile.last_level
-	var diff := TSLevels.difficulty_for_level(level)
-	level_label.text = "Level %d" % level if diff < TSLevels.DIFF_EXTREME else "Level %d  ·  EXTREME" % level
-	if diff >= TSLevels.DIFF_EXTREME:
-		level_label.add_theme_color_override("font_color", Color(0.86, 0.22, 0.3))
-	if TSSession.has_saved_game and not bool(TSSession.state.get("daily", false)):
+	var resuming := TSSession.has_saved_game and not bool(TSSession.state.get("daily", false))
+	if resuming:
 		play_btn.text = "CONTINUE"
+		level = int(TSSession.state.get("level", level))   # the parked ball's level
+	level_label.text = "Level %d" % level
+	# An Extreme level says so on PLAY itself: the button deep red, with a
+	# tilted EXTREME tag on its corner.
+	if TSLevels.difficulty_for_level(level) >= TSLevels.DIFF_EXTREME:
+		TSUI.restyle(play_btn, EXTREME_RED, 10)
+		var tag := TSUI.pill("EXTREME", TSUI.INK, 22, Color.WHITE)
+		tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tag.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+		tag.offset_left = -150.0
+		tag.offset_right = -10.0
+		tag.offset_top = -20.0
+		tag.rotation = 0.1
+		play_btn.add_child(tag)
 	TSUI.breathe(play_btn)
 	content.add_child(TSUI.spacer(8))
 
