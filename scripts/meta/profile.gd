@@ -1968,21 +1968,48 @@ static func todays_standings() -> Array:
 	return entries
 
 
+## A board's current key. The season board runs with the Battle Pass season
+## (BATTLE_PASS_CALENDAR), so the two start and end together.
 static func _period_key(period: String) -> String:
 	if period == "season":
-		var dt := TSClock.datetime_dict()
-		return "%04d-%02d" % [dt["year"], dt["month"]]
+		return "S%d" % battle_pass_season_number()
 	return "W%d" % _local_week_index()
 
 
 static func period_length_days(period: String) -> int:
-	return 7 if period == "weekly" else 30
+	if period == "weekly":
+		return 7
+	var n := battle_pass_season_number()
+	@warning_ignore("integer_division")
+	return maxi(1, (_season_end(n) - _board_season_start(n)) / 86400)
+
+
+## The length of the board `key` (a finished one, scored as the next begins).
+static func _board_length_days(period: String, key: String) -> int:
+	if period == "season" and key.begins_with("S"):
+		var n := int(key.substr(1))
+		@warning_ignore("integer_division")
+		return maxi(1, (_season_end(n) - _board_season_start(n)) / 86400)
+	return 7 if period == "weekly" else 30   # a monthly season board from before the seasons lined up
 
 
 static func period_days_elapsed(period: String) -> int:
 	if period == "weekly":
 		return (_local_day_index() + 3) % 7 + 1
-	return int(TSClock.datetime_dict()["day"])
+	@warning_ignore("integer_division")
+	return clampi((int(TSClock.now()) - _board_season_start(battle_pass_season_number())) / 86400 + 1, 1, period_length_days(period))
+
+
+## Where season `n`'s board starts counting: the season's start, or the day
+## the leaderboards opened if that came later (so the first board's rivals
+## don't bring weeks of stars the player could never have earned).
+static func _board_season_start(n: int) -> int:
+	return maxi(_season_start(n), int(Time.get_unix_time_from_datetime_string(TSNav.LEADERBOARDS_OPEN_DATE + "T00:00:00")))
+
+
+## Seconds until the season board (and the Battle Pass season) ends.
+static func seconds_until_season_reset() -> int:
+	return maxi(_season_end(battle_pass_season_number()) - int(TSClock.now()), 0)
 
 
 ## Days since the epoch in local time (1970-01-01 was a Thursday, so +3 makes
@@ -2013,7 +2040,7 @@ static func _resolve_period(period: String, key: String, player_total: int) -> v
 	if not TSNav.leaderboards_open():
 		return
 	var better := 0
-	for rival in simulated_rivals_for(period + "_" + key, period_length_days(period)):
+	for rival in simulated_rivals_for(period + "_" + key, _board_length_days(period, key)):
 		if int(rival["stars"]) > player_total:
 			better += 1
 	var table: Array = LEADERBOARD_WEEKLY_COIN_REWARDS if period == "weekly" else LEADERBOARD_SEASON_COIN_REWARDS
@@ -2088,6 +2115,11 @@ static func _season_starts() -> Array:
 	for d in BATTLE_PASS_CALENDAR:
 		out.append(Time.get_unix_time_from_datetime_string("%sT00:00:00" % d))
 	return out
+
+
+## When season `n` (1-based) began.
+static func _season_start(n: int) -> int:
+	return int(_season_starts()[0]) if n <= 1 else _season_end(n - 1)
 
 
 ## When season `n` (1-based) ends: the next date in the calendar, or past the

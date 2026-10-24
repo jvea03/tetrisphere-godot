@@ -37,10 +37,12 @@ static func social_enabled() -> bool:
 	return (OS.has_feature("editor") and not as_released) or TSTunables.get_bool("social_enabled")
 
 
-## The leaderboards (Ranks) open on this local date; until then the tab says so.
+## The leaderboards (Ranks) and Clubs (teams) open on these local dates; until
+## then their tabs say so.
 const LEADERBOARDS_OPEN_DATE := "2026-11-11"
 const LEADERBOARDS_SOON := "Leaderboards open November 11!"
-const CLUBS_SOON := "Teams are coming soon!"
+const CLUBS_OPEN_DATE := "2026-12-09"
+const CLUBS_SOON := "Teams open December 9!"
 
 
 static func leaderboards_open() -> bool:
@@ -51,9 +53,13 @@ static func leaderboards_open_on(date: String) -> bool:   # a "YYYY-MM-DD" local
 	return date >= LEADERBOARDS_OPEN_DATE
 
 
-## Clubs (teams): "coming soon", with no date yet.
+## Clubs (teams) open on their own date.
 static func clubs_open() -> bool:
-	return social_enabled()
+	return social_enabled() or clubs_open_on(TSClock.date_string())
+
+
+static func clubs_open_on(date: String) -> bool:
+	return date >= CLUBS_OPEN_DATE
 
 
 ## Wires one nav tab: `go` runs once unlocked; otherwise a note says when.

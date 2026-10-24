@@ -136,7 +136,7 @@ func _build_nav() -> void:
 			"leaderboard":
 				TSNav.gate_soon(b, TSNav.leaderboards_open(), true, 0, TSNav.LEADERBOARDS_SOON, "NOV 11", self, go)
 			"clubs":
-				TSNav.gate_soon(b, TSNav.clubs_open(), TSNav.clubs_unlocked(), TSNav.CLUBS_UNLOCK_LEVEL, TSNav.CLUBS_SOON, "SOON", self, go)
+				TSNav.gate_soon(b, TSNav.clubs_open(), TSNav.clubs_unlocked(), TSNav.CLUBS_UNLOCK_LEVEL, TSNav.CLUBS_SOON, "DEC 9", self, go)
 			_:
 				b.pressed.connect(go)
 

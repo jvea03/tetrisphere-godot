@@ -649,3 +649,20 @@ func _test_clock() -> void:
 func _test_soon() -> void:
 	_check("leaderboards stay shut the day before November 11 and open on it",
 		not TSNav.leaderboards_open_on("2026-11-10") and TSNav.leaderboards_open_on("2026-11-11") and TSNav.leaderboards_open_on("2027-01-02"))
+	_check("teams stay shut the day before December 9 and open on it",
+		not TSNav.clubs_open_on("2026-12-08") and TSNav.clubs_open_on("2026-12-09"))
+	# The season board runs with the Battle Pass season: same key change, same end.
+	var keep := TSClock.offset
+	var at := func(when: String) -> void:
+		TSClock.offset = Time.get_unix_time_from_datetime_string(when) - Time.get_unix_time_from_system()
+	at.call("2026-11-30T12:00:00")
+	var late_s1 := TSProfile._period_key("season")
+	var left := TSProfile.seconds_until_season_reset()
+	var pass_left := TSProfile.battle_pass_seconds_remaining()
+	var length := TSProfile.period_length_days("season")
+	at.call("2026-12-01T12:00:00")
+	var early_s2 := TSProfile._period_key("season")
+	TSClock.offset = keep
+	_check("the season board ends when the Battle Pass season does (Dec 1), not on the 1st of a month",
+		late_s1 == "S1" and early_s2 == "S2" and absi(left - 12 * 3600) < 120 and left == pass_left)
+	_check("its first season counts from the leaderboards' opening (Nov 11 to Dec 1: 20 days)", length == 20)

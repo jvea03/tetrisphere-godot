@@ -9,7 +9,7 @@ extends TSScreen
 const TAB_INFO := {
 	"daily": {"title": "Daily Leaderboard", "sub": "Win levels to earn stars -- one for every heart you had left. Top 3 each day win coins."},
 	"weekly": {"title": "Weekly Leaderboard", "sub": "Stars add up across the week. Top 3 each week win coins."},
-	"season": {"title": "Season Leaderboard", "sub": "Stars add up across the month. Top 3 each season win coins."},
+	"season": {"title": "Season Leaderboard", "sub": "Stars add up all season -- it ends with the Battle Pass season. Top 3 win coins."},
 }
 const PERIODS := ["daily", "weekly", "season"]
 
@@ -169,12 +169,8 @@ func _refresh_countdown() -> void:
 			secs = 86400 - day_secs
 		"weekly":
 			secs = TSProfile.seconds_until_weekly_reset()
-		_:
-			var next := {"year": dt["year"], "month": int(dt["month"]) + 1, "day": 1, "hour": 0, "minute": 0, "second": 0}
-			if next["month"] > 12:
-				next["month"] = 1
-				next["year"] = int(dt["year"]) + 1
-			secs = int(Time.get_unix_time_from_datetime_dict(next)) - int(TSClock.now()) - int(Time.get_time_zone_from_system().get("bias", 0)) * 60
+		_:   # the season: as the Battle Pass season
+			secs = TSProfile.seconds_until_season_reset()
 	_countdown.text = "%s in %s" % ["Resets" if _tab == "daily" else "Ends", TSUI.fmt_duration(maxi(secs, 0))]
 
 
