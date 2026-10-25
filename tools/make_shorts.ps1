@@ -11,7 +11,8 @@ param(
 $root = Split-Path -Parent $PSScriptRoot
 $out = Join-Path $root "store\youtube\shorts"
 New-Item -ItemType Directory -Force $out | Out-Null
-# name, level ("parade": the critter parade, no level), first caption, second
+# name, level ("parade": the critter parade; "episode": a Crash Course
+# episode, tools/make_episode.tscn), first caption, second
 # caption, end headline ("|" breaks a line)
 $shorts = @(
 	@("01_rescue",  8,   "Can you free|the critter?",   "Spin. Match.|Escape!",          "Can you save|them all?"),
@@ -20,7 +21,8 @@ $shorts = @(
 	@("04_locks",   100, "Locked in?",                  "Find the key|to break free!",   "Can you crack|every lock?"),
 	@("05_prisms",  150, "Prism stones only|break one way...", "Match their color!",     "Can you solve|it faster?"),
 	@("06_fog",     200, "What's hiding|in the fog?",   "Clear it to|find out!",         "Brave the fog!"),
-	@("07_parade",  "parade", "",                 "",                              "How many can|you collect?")
+	@("07_parade",  "parade", "",                 "",                              "How many can|you collect?"),
+	@("ep01_crash", "episode", "",                 "",                              "")
 )
 $override = Join-Path $root "override.cfg"
 try {
@@ -37,9 +39,13 @@ movie_writer/mjpeg_quality=0.92
 		$name, $level, $cap1, $cap2, $end = $s
 		if ($Only -ne "" -and -not $name.StartsWith($Only)) { continue }
 		$file = Join-Path $out "egg_escape_short_$name.avi"
-		$a = @("--path", $root, "--write-movie", $file, "--fixed-fps", "30", "res://tools/make_video.tscn", "--",
-			"--shape=portrait", "--end=$end")
-		if ($level -eq "parade") { $a += "--parade" } else { $a += @("--level=$level", "--cap1=$cap1", "--cap2=$cap2") }
+		if ($level -eq "episode") {   # a Crash Course episode: its own scene
+			$a = @("--path", $root, "--write-movie", $file, "--fixed-fps", "30", "res://tools/make_episode.tscn", "--")
+		} else {
+			$a = @("--path", $root, "--write-movie", $file, "--fixed-fps", "30", "res://tools/make_video.tscn", "--",
+				"--shape=portrait", "--end=$end")
+			if ($level -eq "parade") { $a += "--parade" } else { $a += @("--level=$level", "--cap1=$cap1", "--cap2=$cap2") }
+		}
 		if ($Snaps -ne "") { $a += "--snaps=$Snaps/$name" ; New-Item -ItemType Directory -Force "$Snaps/$name" | Out-Null }
 		& $Godot @a 2>&1 | Out-Null
 		Write-Output "SHORT $file $((Get-Item $file).Length) bytes"

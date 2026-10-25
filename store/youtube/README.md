@@ -42,7 +42,9 @@ Each one: the hook caption over the egg, the level played to the rescue
 (cut as the critter flies out), the fully built camp, the critter
 collection, then the end card. Short 07 is the critter parade instead: no
 level -- every critter hops across the finished camp in three lanes, then
-they all pop in to fill the screen, then the end card.
+they all pop in to fill the screen, then the end card. The `ep` rows are
+"Crash Course", the mini series (tools/make_episode.gd): a title card, the
+crew's story, and a "Next time" end card.
 
 Written for YouTube search: each title is its hook plus a search phrase
 (block puzzle, puzzle game, brain teaser, match 3); each description opens
@@ -64,6 +66,7 @@ critters. ▶ Play free on Google Play: <link>" then the hashtags.
 | `egg_escape_short_05_prisms.avi` | ~18 s | Prism stones only break one way... 💎 Match 3 Puzzle #shorts | Match a prism's color to crack it | #match3 #puzzlegame #brainteaser #blockpuzzle #eggescape |
 | `egg_escape_short_06_fog.avi` | ~26 s | What's hiding in the fog? 🌫️ Cozy Puzzle Game #shorts | Clear the fog to see what's hiding | #puzzlegame #blockpuzzle #cozygames #mobilegame #eggescape |
 | `egg_escape_short_07_parade.avi` | ~20 s | Critter parade! 🥚 How many can you collect? Cozy Puzzle Game #shorts | Every critter hops across the camp | #cozygames #cute #puzzlegame #mobilegame #eggescape |
+| `egg_escape_short_ep01_crash.avi` | ~32 s | Crash Course Ep. 1: Totally Fine Landing 🚀 Cute Animation #shorts | The crew's smoothest flight in history meets one tiny pebble. Next time: the Giant Eggs! | #animation #cute #cozygames #eggescape #shorts |
 
 Add to every Short: the Play Store link as a **pinned comment** ("▶ Play free:
 https://play.google.com/store/apps/details?id=com.jvea.eggescape"), and the game linked under **Related video / Links** where YouTube
