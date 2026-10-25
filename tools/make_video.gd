@@ -8,6 +8,7 @@
 #   Godot --path . --write-movie <out>.avi --fixed-fps 30 res://tools/make_video.tscn -- --shape=landscape
 # --snaps=<dir> also saves a PNG at each beat, to check the cut without a player.
 # For other cuts (tools/make_shorts.ps1): --level=<n> plays that level;
+# --parade records the critter parade instead (portrait; no level);
 # --cap1= and --cap2= replace the two captions and --end= the end card's
 # headline, with "|" for a line break.
 extends Control
@@ -31,6 +32,7 @@ var _stage: Control      # the design-size layer, scaled to the window
 var _caption: Label
 var _snap_n := 0
 var _sub: SubViewport   # what the phone / full screen shows: the game, then Home's camp and the Collection
+var _parade := false    # --parade: no game -- the critters hop across the camp (portrait only)
 
 
 func _ready() -> void:
@@ -47,6 +49,8 @@ func _ready() -> void:
 			CAPTIONS[1] = a.substr(7).replace("|", "\n")
 		elif a.begins_with("--end="):
 			END_HEADLINE = a.substr(6).replace("|", "\n")
+		elif a == "--parade":
+			_parade = true
 	_art = ADS.new()
 	_art.setup()
 	var win := Vector2(get_viewport().get_visible_rect().size)
@@ -64,6 +68,14 @@ func _ready() -> void:
 	sub.own_world_3d = true
 	sub.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	add_child(sub)
+	if _parade:
+		_showcase_profile()
+		sub.add_child((load("res://scenes/home.tscn") as PackedScene).instantiate())
+		_full_screen(sub.get_texture(), design)
+		_caption.position = Vector2(20, 120)   # over the sky: the critters hop along the bottom
+		TSSfx.music("menu")
+		_run_parade()
+		return
 	_game = Node3D.new()
 	_game.set_script(GAME)
 	_game.video_level = _level
@@ -232,13 +244,7 @@ func _showcase() -> void:
 	_say("Rebuild your camp!")
 	await _wait(0.6)
 	var world = home._world
-	# Just the camp: Home's buttons, tray and bars put away for the shot.
-	await get_tree().process_frame
-	for c in home.find_children("*", "Control", true, false):
-		var ctl := c as Control
-		if ctl != world and not ctl.is_ancestor_of(world) and not world.is_ancestor_of(ctl) and ctl.get_parent() != null \
-				and (ctl.get_parent() == home or ctl.get_parent().is_ancestor_of(world) or ctl.get_parent() == world.get_parent()):
-			ctl.visible = false
+	await _bare_home(home)
 	for part in [TSProfile.PART_ENGINE, TSProfile.CAMP_WELL, TSProfile.CAMP_FIRE]:   # the ship, then on round the finished camp
 		world.glide_to_part(part)
 		await _wait(1.1)
@@ -256,6 +262,143 @@ func _showcase() -> void:
 	await _wait(1.3)
 	_say("")
 	coll.queue_free()
+
+
+## Just the camp: Home's buttons, tray and bars put away for the shot.
+func _bare_home(home: Control) -> void:
+	var world = home._world
+	await get_tree().process_frame
+	for c in home.find_children("*", "Control", true, false):
+		var ctl := c as Control
+		if ctl != world and not ctl.is_ancestor_of(world) and not world.is_ancestor_of(ctl) and ctl.get_parent() != null \
+				and (ctl.get_parent() == home or ctl.get_parent().is_ancestor_of(world) or ctl.get_parent() == world.get_parent()):
+			ctl.visible = false
+
+
+## The critter parade (--parade): over the finished camp, every critter in
+## the Collection hops across the screen in three lanes -- the back lane
+## smaller and slower, for depth -- each one squashing as it lands and
+## wobbling as it goes. Then they all pop in to fill the screen, and the
+## end card.
+const PARADE_LANES := [   # y of the feet, critter size, speed (px/s)
+	[930.0, 92.0, 300.0],
+	[1060.0, 112.0, 360.0],
+	[1210.0, 136.0, 430.0],
+]
+
+
+func _run_parade() -> void:
+	var home: Control = _sub.get_child(0)
+	await _bare_home(home)
+	var ids: Array = []
+	for i in TSProfile.CRITTER_COUNT:
+		if not TSProfile.is_critter_hidden(i):
+			ids.append(i)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 84
+	for i in range(ids.size() - 1, 0, -1):   # a fixed shuffle: the same parade every run
+		var j := rng.randi_range(0, i)
+		var tmp = ids[i]
+		ids[i] = ids[j]
+		ids[j] = tmp
+	var layer := Control.new()
+	layer.size = DESIGN["portrait"]
+	_stage.add_child(layer)
+	# Lanes back to front, so the front lane draws over the others.
+	var walkers: Array = []   # {node, lane, x0, phase}
+	for li in PARADE_LANES.size():
+		var lane: Array = PARADE_LANES[li]
+		var s: float = lane[1]
+		var k := 0
+		for n in range(li, ids.size(), PARADE_LANES.size()):
+			var c := TSIcon.make("critter", s, int(ids[n]))
+			c.size = Vector2(s, s)
+			c.pivot_offset = Vector2(s * 0.5, s)   # squash from the feet
+			layer.add_child(c)
+			walkers.append({"node": c, "lane": li, "x0": 760.0 + k * s * 1.08 + rng.randf_range(-8.0, 8.0), "phase": rng.randf() * TAU})
+			k += 1
+	_say("Critter parade!")
+	var t := 0.0
+	var said := false
+	var hop_sound := 0.0
+	while true:
+		await get_tree().process_frame
+		var dt := get_process_delta_time()
+		t += dt
+		var left := 0
+		for w in walkers:
+			var lane: Array = PARADE_LANES[int(w["lane"])]
+			var s: float = lane[1]
+			var c: Control = w["node"]
+			var x: float = float(w["x0"]) - float(lane[2]) * t
+			var ph: float = float(w["phase"]) + t * 7.0
+			var up := absf(sin(ph))
+			c.position = Vector2(x, float(lane[0]) - s - up * s * 0.38)
+			c.scale = Vector2(1.0 + (1.0 - up) * 0.12, 1.0 - (1.0 - up) * 0.14)   # squashed as it lands
+			c.rotation = sin(ph * 0.5) * 0.12
+			if x > -s:
+				left += 1
+		hop_sound -= dt
+		if hop_sound <= 0.0 and left > 0:   # a soft patter of hops
+			hop_sound = 0.22
+			TSSfx.play("pop%d" % (int(t * 10.0) % 3), randf_range(1.1, 1.5))
+		if not said and t >= 4.2:
+			said = true
+			_say("How many can\nyou collect?")
+		if t >= 2.5 and t - dt < 2.5:
+			_snap("parade")
+		if left == 0:
+			break
+	layer.queue_free()
+	await _parade_finale(ids)
+	await _end_card()
+	get_tree().quit()
+
+
+## Every critter pops into a grid filling the screen, from the middle out.
+func _parade_finale(ids: Array) -> void:
+	_say("")
+	var design: Vector2 = DESIGN["portrait"]
+	var dim := ColorRect.new()
+	dim.color = Color(1.0, 0.97, 0.9, 0.0)
+	dim.size = design
+	_stage.add_child(dim)
+	dim.create_tween().tween_property(dim, "color:a", 0.55, 0.4)
+	var cols := 7
+	var cell := (design.x - 20.0) / cols
+	var rows := ceili(float(ids.size()) / cols)
+	var top := (design.y - rows * cell) / 2.0
+	var cells: Array = []
+	for n in ids.size():
+		var at := Vector2(10.0 + (n % cols) * cell, top + (n / cols) * cell)
+		cells.append(at)
+	var mid := design / 2.0
+	var order := range(ids.size())
+	order.sort_custom(func(a, b): return (cells[a] as Vector2).distance_to(mid) < (cells[b] as Vector2).distance_to(mid))
+	var grid := Control.new()
+	grid.size = design
+	_stage.add_child(grid)
+	for k in order.size():
+		var n: int = order[k]
+		var s := cell * 0.92
+		var c := TSIcon.make("critter", s, int(ids[n]))
+		c.size = Vector2(s, s)
+		c.position = (cells[n] as Vector2) + Vector2(cell - s, cell - s) / 2.0
+		c.pivot_offset = c.size / 2.0
+		c.scale = Vector2.ZERO
+		c.rotation = deg_to_rad([-8.0, 6.0, -4.0, 9.0, -6.0][n % 5])
+		grid.add_child(c)
+		c.create_tween().tween_property(c, "scale", Vector2.ONE, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		if k % 3 == 0:
+			TSSfx.play("tick", pow(2.0, float(k % 24) / 24.0))
+		await _wait(0.022)
+	_stage.move_child(_caption, -1)
+	_caption.position = Vector2(20, design.y / 2.0 - 110.0)
+	_say("Collect them\nall!")
+	TSSfx.play("popper")
+	await _wait(1.6)
+	await _snap("finale")
+	await _wait(0.6)
 
 
 ## A player well into the game: the camp and ship fully upgraded,

@@ -40,7 +40,9 @@ than all at once.
 
 Each one: the hook caption over the egg, the level played to the rescue
 (cut as the critter flies out), the fully built camp, the critter
-collection, then the end card.
+collection, then the end card. Short 07 is the critter parade instead: no
+level -- every critter hops across the finished camp in three lanes, then
+they all pop in to fill the screen, then the end card.
 
 Written for YouTube search: each title is its hook plus a search phrase
 (block puzzle, puzzle game, brain teaser, match 3); each description opens
@@ -61,6 +63,7 @@ critters. ▶ Play free on Google Play: <link>" then the hashtags.
 | `egg_escape_short_04_locks.avi` | ~23 s | Locked in? Find the key! 🔑 Puzzle Game Brain Teaser #shorts | Dig down to the key to break the padlocks | #puzzlegame #brainteaser #blockpuzzle #mobilegame #eggescape |
 | `egg_escape_short_05_prisms.avi` | ~18 s | Prism stones only break one way... 💎 Match 3 Puzzle #shorts | Match a prism's color to crack it | #match3 #puzzlegame #brainteaser #blockpuzzle #eggescape |
 | `egg_escape_short_06_fog.avi` | ~26 s | What's hiding in the fog? 🌫️ Cozy Puzzle Game #shorts | Clear the fog to see what's hiding | #puzzlegame #blockpuzzle #cozygames #mobilegame #eggescape |
+| `egg_escape_short_07_parade.avi` | ~20 s | Critter parade! 🥚 How many can you collect? Cozy Puzzle Game #shorts | Every critter hops across the camp | #cozygames #cute #puzzlegame #mobilegame #eggescape |
 
 Add to every Short: the Play Store link as a **pinned comment** ("▶ Play free:
 https://play.google.com/store/apps/details?id=com.jvea.eggescape"), and the game linked under **Related video / Links** where YouTube
