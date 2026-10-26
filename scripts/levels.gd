@@ -29,8 +29,9 @@ extends RefCounted
 #
 # The plus is hard to place, and four pieces share out the match spots, so
 # Expert and Extreme give some of it back: a smaller critter than their
-# pieces alone would suggest (2x2 and 4x4) and a deal that leans hard on
-# the common piece. Armour (ARMOR_SHARE) then sets the pace: the win rates
+# pieces alone would suggest (3x3 and 4x4) and a deal that leans on the
+# common piece (65% and 70%; at 95% Extreme looked like it dealt one
+# piece). Armour (ARMOR_SHARE) then sets the pace: the win rates
 # are tuned with tests/sim.gd to about 95 / 50 / 30 / 20 / 10% for the
 # casual sim bot, Beginner to Extreme.
 const LINES := [TSBoard.I_FLAT, TSBoard.I_UPRIGHT]
@@ -40,8 +41,8 @@ const DIFFICULTIES := [
 	{"name": "BEGINNER", "pieces": LINES, "escape_size": 2, "scale": 0.55, "common_bias": 0.8},
 	{"name": "INTERMEDIATE", "pieces": WITH_O, "escape_size": 3, "scale": 0.7, "common_bias": 0.65},
 	{"name": "HARD", "pieces": WITH_O, "escape_size": 4, "scale": 0.85, "common_bias": 0.5},
-	{"name": "EXPERT", "pieces": WITH_PLUS, "escape_size": 3, "scale": 0.55, "common_bias": 0.7},
-	{"name": "EXTREME", "pieces": WITH_PLUS, "escape_size": 4, "scale": 0.85, "common_bias": 0.95},
+	{"name": "EXPERT", "pieces": WITH_PLUS, "escape_size": 3, "scale": 0.55, "common_bias": 0.65},
+	{"name": "EXTREME", "pieces": WITH_PLUS, "escape_size": 4, "scale": 0.85, "common_bias": 0.7},
 ]
 const DEFAULT_DIFFICULTY := 1   # INTERMEDIATE
 const DIFF_EXTREME := 4
@@ -55,6 +56,8 @@ const DIFF_EXTREME := 4
 # board size (6x6 / 8x8 / 10x10) and starting hints -- have no Tetrisphere
 # equivalent (the egg is one size, and there are no hints), so only the tier
 # carries over.
+# The loop is 7 Intermediate, 7 Hard, 5 Expert and one Extreme to finish
+# (Duckdoku's had Extreme at 56 and 61 too; they play as Expert).
 # 0 Beginner, 1 Intermediate, 2 Hard, 3 Expert, 4 Extreme.
 const LEVEL_PLAN := [
 	0, 0, 0, 0, 0, 0, 1, 1, 0, 0, # 1-10
@@ -64,8 +67,8 @@ const LEVEL_PLAN := [
 	1, 2, 1, 2, 1, 4, 1, 1, 2, 0, # 41-50
 ]
 const LEVEL_LOOP_TEMPLATE := [
-	1, 1, 2, 3, 2, 4, 1, 2, 1, 3, # 51-60
-	4, 1, 2, 2, 1, 2, 3, 1, 2, 4, # 61-70
+	1, 1, 2, 3, 2, 3, 1, 2, 1, 3, # 51-60
+	3, 1, 2, 2, 1, 2, 3, 1, 2, 4, # 61-70
 ]
 const LEVEL_LOOP_START := 51
 const LEVEL_BANK := "res://levels/levels.json"
@@ -147,9 +150,9 @@ static func difficulty_for_level(level: int) -> int:
 ## it fell too fast (picked with `tests/sim.gd`): Expert 22 and Extreme 25
 ## were walls before level 30 (20% and 10% for the casual bot), so both play
 ## as Hard; level 23 was a second hard
-## level straight after the Expert 22; Extreme levels 46 and 101 (straight
-## after the padlocks' breather) were lost on every egg, so 46 plays as Expert
-## and 101 as Hard. The pieces each level gets still take
+## level straight after the Expert 22; Extreme level 46 and level 101 (straight
+## after the padlocks' breather; Extreme then, Expert now) were lost on every
+## egg, so 46 plays as Expert and 101 as Hard. The pieces each level gets still take
 ## turns by the plan (tier_mix counts _planned_tier), so no other level changes.
 const SOFTENED := {22: 2, 23: 1, 25: 2, 46: 3, 101: 2}
 
@@ -215,13 +218,14 @@ static func baked_board(level: int) -> Dictionary:
 	return _bank.get(str(level), {})
 
 
-## The Daily Egg: a level picked from today's date, never a Beginner one --
-## the same for everyone all day and different tomorrow.
+## The Daily Egg: a level picked from today's date, never a Beginner or an
+## Extreme one (the next level up instead) -- the same for everyone all day
+## and different tomorrow.
 static func daily_level() -> int:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash("daily_" + TSClock.date_string())
 	var level := rng.randi_range(11, 70)
-	while difficulty_for_level(level) == 0:
+	while difficulty_for_level(level) == 0 or difficulty_for_level(level) == DIFF_EXTREME:
 		level += 1
 	return level
 

@@ -438,8 +438,9 @@ func _test_purchases() -> void:
 
 
 func _test_levels() -> void:
-	# Duckdoku's curve, spot-checked against its level design sheet.
-	var sheet := {1: 0, 6: 0, 7: 1, 9: 0, 15: 2, 22: 3, 25: 4, 30: 3, 37: 4, 46: 4, 50: 0, 51: 1, 54: 3, 56: 4, 61: 4, 70: 4}
+	# Duckdoku's curve, spot-checked against its level design sheet -- but for
+	# the loop's Extremes at 56 and 61, which play as Expert (one Extreme a loop).
+	var sheet := {1: 0, 6: 0, 7: 1, 9: 0, 15: 2, 22: 3, 25: 4, 30: 3, 37: 4, 46: 4, 50: 0, 51: 1, 54: 3, 56: 3, 61: 3, 70: 4}
 	var wrong: Array = []
 	for lvl in sheet:
 		if TSLevels._planned_tier(lvl) != sheet[lvl]:
@@ -541,7 +542,7 @@ func _test_levels() -> void:
 		seeds[TSLevels.seed_for_level(lvl)] = true
 	_check("a generated level is always the same ball, and no two levels share one", TSLevels.seed_for_level(57) == TSLevels.seed_for_level(57) and seeds.size() == 200)
 	var d := TSLevels.daily_level()
-	_check("the Daily Egg is never Beginner (level %d)" % d, TSLevels.difficulty_for_level(d) > 0)
+	_check("the Daily Egg is never Beginner or Extreme (level %d)" % d, TSLevels.difficulty_for_level(d) > 0 and TSLevels.difficulty_for_level(d) != TSLevels.DIFF_EXTREME)
 
 
 # The three boosters: each arrives at its level with a starting stock, and the
