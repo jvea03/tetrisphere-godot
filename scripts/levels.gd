@@ -76,7 +76,7 @@ const SEARCH_MIX := -1.0   # see rules_for_tier; below -1 changes nothing
 ## The share of each tier's blockers that wear armour (TSBoard.armored): a hit
 ## knocks it off, and only then can the blocker be broken -- sliding into it
 ## does nothing. None in Beginner, more as the tiers climb.
-const ARMOR_SHARE := [0.0, 0.5, 0.3, 0.45, 0.12]   # tuned with the 5-cell L and T in the mix
+const ARMOR_SHARE := [0.0, 0.5, 0.3, 0.45, 0.2]   # tuned with the 5-cell L and T in the mix
 ## Tie-downs (TSBoard.TIE): 1x1 stakes of one to three layers, every one of
 ## which must be broken before the critter can escape. They arrive at
 ## TIE_FROM_LEVEL and are on every other level from there (the even ones);
