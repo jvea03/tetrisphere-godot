@@ -333,6 +333,22 @@ func _test_deal() -> void:
 			flats += 1
 	_check("a tie deals evenly whatever the bias (%.1f%% flat)" % (flats / 20.0), absf(flats / 2000.0 - 0.5) < 0.04)
 
+	# Never one piece more than MAX_DEAL_RUN times running, even at bias 1.0.
+	_check("no run yet, nothing avoided", TSBoard.deal_avoid([UP, UP]) == TSBoard.HOLE)
+	_check("a mixed run avoids nothing", TSBoard.deal_avoid([UP, FLAT, UP]) == TSBoard.HOLE)
+	_check("a full run avoids that piece", TSBoard.deal_avoid([UP, UP, UP]) == UP)
+	_check("an avoided piece is never dealt", b.deal_piece([FLAT, UP], 1.0, rng, UP) == FLAT)
+	_check("a lone kind is dealt even if avoided", b.deal_piece([UP], 1.0, rng, UP) == UP)
+	var dealt: Array = []
+	var longest := 0
+	var run := 0
+	for _i in 500:
+		var kind := b.deal_piece([FLAT, UP], 1.0, rng, TSBoard.deal_avoid(dealt))
+		run = run + 1 if not dealt.is_empty() and int(dealt[dealt.size() - 1]) == kind else 1
+		longest = maxi(longest, run)
+		dealt.append(kind)
+	_check("at bias 1.0 the longest run is %d (max %d)" % [longest, TSBoard.MAX_DEAL_RUN], longest == TSBoard.MAX_DEAL_RUN)
+
 
 # A bomb destroys whole pieces: any piece showing in the blast goes entirely,
 # even the blocks outside the circle, and grey touching them shatters.

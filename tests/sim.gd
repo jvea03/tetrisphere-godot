@@ -210,11 +210,12 @@ func _play(board: TSBoard, tier: int, rules: Dictionary, rng: RandomNumberGenera
 	var escape := int(rules.get("escape_size", d["escape_size"]))
 	var bias := float(rules.get("common_bias", d["common_bias"]))
 	var pieces: Array = rules["pieces"]
-	var next := board.deal_piece(pieces, bias, rng)
+	var dealt: Array = []
+	var next := _sim_deal(board, pieces, bias, rng, dealt)
 	var misses := 0
 	for turn in range(1, TURN_CAP + 1):
 		var type_id := next
-		next = board.deal_piece(pieces, bias, rng)
+		next = _sim_deal(board, pieces, bias, rng, dealt)
 		if rules.get("fair_deal", false) and not board.has_combo_spot(type_id):
 			for other in pieces:
 				if int(other) != type_id and board.has_combo_spot(int(other)):
@@ -230,6 +231,16 @@ func _play(board: TSBoard, tier: int, rules: Dictionary, rng: RandomNumberGenera
 		if misses >= LIVES or bool(res["overload"]):
 			return {"win": false, "drops": turn, "lost": misses}
 	return {"win": false, "drops": TURN_CAP, "lost": misses}
+
+
+## The game's deal (game.gd _deal): never one piece more than
+## TSBoard.MAX_DEAL_RUN times running.
+func _sim_deal(board: TSBoard, pieces: Array, bias: float, rng: RandomNumberGenerator, dealt: Array) -> int:
+	var kind := board.deal_piece(pieces, bias, rng, TSBoard.deal_avoid(dealt))
+	dealt.append(kind)
+	if dealt.size() > TSBoard.MAX_DEAL_RUN:
+		dealt.pop_front()
+	return kind
 
 
 func _best_move(board: TSBoard, type_id: int, rng: RandomNumberGenerator, candidates: int, escape: int) -> Vector2i:

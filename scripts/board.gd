@@ -25,6 +25,7 @@ const ROWS := 8           # latitude cells; hard edges (the band rim)
 const SHELL_DEPTH := 3    # every cell starts this many blocks deep, unless the level says otherwise
 const MAX_STACK := 9      # pile any cell this high and the shell overloads
 const MIN_MATCH := 3      # connected same-type pieces that explode
+const MAX_DEAL_RUN := 3   # the same piece dealt at most this many times in a row
 const TILE_BUDGET := 1200   # search steps per attempt at tiling one layer
 const HOLE := -1          # stack entry where a piece was destroyed or fell away
 
@@ -1169,8 +1170,13 @@ func most_common(kinds: Array) -> int:
 # common piece; otherwise one of the rest, evenly. With two kinds, 0.5 is a
 # fair coin, above it favours the common piece, below it the rare one. A tie
 # for most common, or a single kind, deals evenly. `rng` may be null, for the
-# global generator.
-func deal_piece(kinds: Array, common_bias: float, rng: RandomNumberGenerator = null) -> int:
+# global generator. `avoid`, when there are other kinds, is never dealt: a
+# piece that has just come MAX_DEAL_RUN times in a row (see deal_avoid): a
+# deal leaning hard on the common piece otherwise looks like only one piece
+# ever drops.
+func deal_piece(kinds: Array, common_bias: float, rng: RandomNumberGenerator = null, avoid: int = HOLE) -> int:
+	if avoid != HOLE and kinds.size() > 1 and kinds.has(avoid):
+		kinds = kinds.filter(func(k: Variant) -> bool: return int(k) != avoid)
 	var roll := rng.randf() if rng != null else randf()
 	var common := most_common(kinds)
 	if kinds.size() < 2 or common == HOLE:
@@ -1184,6 +1190,18 @@ func deal_piece(kinds: Array, common_bias: float, rng: RandomNumberGenerator = n
 	# Reuse the part of the roll above the bias to pick among the rest.
 	var t := (roll - common_bias) / maxf(1.0 - common_bias, 0.00001)
 	return int(rest[mini(int(t * rest.size()), rest.size() - 1)])
+
+
+# The piece to pass deal_piece as `avoid` after the deals in `run` (the
+# latest last): the one dealt MAX_DEAL_RUN times running, else HOLE.
+static func deal_avoid(run: Array) -> int:
+	if run.size() < MAX_DEAL_RUN:
+		return HOLE
+	var last := int(run[run.size() - 1])
+	for i in range(run.size() - MAX_DEAL_RUN, run.size()):
+		if int(run[i]) != last:
+			return HOLE
+	return last
 
 
 # --- sliding pieces on the ball ----------------------------------------------

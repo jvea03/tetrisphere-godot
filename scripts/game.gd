@@ -136,6 +136,7 @@ var _tray_top := 0.0
 var _drawn_hold := -1       # the piece kinds last drawn in the tray and the next slot
 var _drawn_next := -1
 var _deal_tweens: Array = [] # the deal animation (see _animate_deal)
+var _dealt: Array = []       # the latest deals, for TSBoard.deal_avoid
 var _hearts: Array[Polygon2D] = []
 var _tie_pill: PanelContainer   # tie-downs left, beside the hearts, on levels with them
 var _tie_label: Label
@@ -620,6 +621,7 @@ func _start(seed_value: int, baked: Dictionary = {}) -> void:
 	lose_ad_used = false
 	continues_bought = 0
 	selected = TSBoard.HOLE
+	_dealt.clear()
 	cur_type = _fair(_deal())
 	next_type = _deal()
 	_clamp_cursor()
@@ -1853,9 +1855,14 @@ func _piece_centre() -> Vector2:
 
 
 # Only the level's own pieces are ever dealt; blockers are shell-only. How
-# often you get the piece most common on the board is set by the difficulty.
+# often you get the piece most common on the board is set by the difficulty,
+# but never the same one more than TSBoard.MAX_DEAL_RUN times running.
 func _deal() -> int:
-	return board.deal_piece(level["pieces"], float(level.get("common_bias", TSLevels.DIFFICULTIES[difficulty]["common_bias"])))
+	var kind := board.deal_piece(level["pieces"], float(level.get("common_bias", TSLevels.DIFFICULTIES[difficulty]["common_bias"])), null, TSBoard.deal_avoid(_dealt))
+	_dealt.append(kind)
+	if _dealt.size() > TSBoard.MAX_DEAL_RUN:
+		_dealt.pop_front()
+	return kind
 
 
 # The fair deal: if the piece coming up has nowhere on the ball to make a
