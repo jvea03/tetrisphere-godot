@@ -645,13 +645,25 @@ func _test_clock() -> void:
 	_check("a clock hours off is corrected by the network's; one a few seconds off is left alone", corrected and TSClock.offset == 0.0)
 
 
-# Leaderboards open on their date (the editor has them on regardless); teams
+# Leaderboards and the win streak open on their dates (the editor has them on
+# regardless); teams
 # stay "coming soon".
 func _test_soon() -> void:
 	_check("leaderboards stay shut the day before November 11 and open on it",
 		not TSNav.leaderboards_open_on("2026-11-10") and TSNav.leaderboards_open_on("2026-11-11") and TSNav.leaderboards_open_on("2027-01-02"))
 	_check("teams stay shut the day before December 9 and open on it",
 		not TSNav.clubs_open_on("2026-12-08") and TSNav.clubs_open_on("2026-12-09"))
+	_check("the win streak stays off the day before November 4 and starts on it",
+		not TSNav.win_streak_open_on("2026-11-03") and TSNav.win_streak_open_on("2026-11-04") and TSNav.win_streak_open_on("2027-01-02"))
+	var released := TSNav.as_released
+	var was := TSClock.offset
+	TSNav.as_released = true
+	TSClock.offset = Time.get_unix_time_from_datetime_string("2026-11-03T12:00:00") - Time.get_unix_time_from_system()
+	var before := TSProfile.win_streak_counts(20)
+	TSClock.offset = Time.get_unix_time_from_datetime_string("2026-11-04T12:00:00") - Time.get_unix_time_from_system()
+	_check("as players see it, no level counts toward a streak until November 4", not before and TSProfile.win_streak_counts(20) and not TSProfile.win_streak_counts(6))
+	TSClock.offset = was
+	TSNav.as_released = released
 	# The season board runs with the Battle Pass season: same key change, same end.
 	var keep := TSClock.offset
 	var at := func(when: String) -> void:

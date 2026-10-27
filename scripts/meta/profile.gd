@@ -1623,7 +1623,8 @@ const DAILY_LOGIN_REWARD_COINS := 100
 const STREAK_MILESTONE_REWARD_COINS := 500
 
 # -- win streak ----------------------------------------------------------------
-# Levels won in a row, from level 7 (TSNav.FEATURES_UNLOCK_LEVEL) on. Three
+# Levels won in a row, from level 7 (TSNav.FEATURES_UNLOCK_LEVEL) on, once
+# the feature opens (TSNav.WIN_STREAK_OPEN_DATE, November 4). Three
 # tiers: 1, 2 and 3+ wins in a row, and each level then starts with that many
 # rocks thrown at it (game.gd). Losing a level ends the run unless a continue
 # saves it; restarting one ends it too. The Daily Egg neither counts nor
@@ -1651,7 +1652,7 @@ static func mark_challenge_played(after: int) -> void:
 
 
 static func win_streak_counts(level_number: int) -> bool:
-	return level_number >= TSNav.FEATURES_UNLOCK_LEVEL
+	return level_number >= TSNav.FEATURES_UNLOCK_LEVEL and TSNav.win_streak_open()
 
 
 static func add_win_streak() -> void:

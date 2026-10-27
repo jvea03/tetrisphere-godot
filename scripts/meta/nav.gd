@@ -62,6 +62,19 @@ static func clubs_open_on(date: String) -> bool:
 	return date >= CLUBS_OPEN_DATE
 
 
+## The win streak starts on its own local date (from level 7 on): before it,
+## no streak is counted, shown or rewarded. The editor sees it at once, unless
+## as_released.
+const WIN_STREAK_OPEN_DATE := "2026-11-04"
+
+static func win_streak_open() -> bool:
+	return (OS.has_feature("editor") and not as_released) or win_streak_open_on(TSClock.date_string())
+
+
+static func win_streak_open_on(date: String) -> bool:   # a "YYYY-MM-DD" local date
+	return date >= WIN_STREAK_OPEN_DATE
+
+
 ## Wires one nav tab: `go` runs once unlocked; otherwise a note says when.
 static func gate(btn: BaseButton, unlocked: bool, unlock_level: int, screen: Control, go: Callable) -> void:
 	btn.modulate = Color(1, 1, 1, 1.0 if unlocked else LOCKED_ALPHA)

@@ -104,7 +104,7 @@ Covers 1.1 too, since 1.2 may be the first of them players get.
     <en-US>
     New in Egg Escape!
 
-    • Win streaks: win levels in a row and each new level starts with free rocks
+    • Win streaks start November 4: win in a row and each new level starts with free rocks
     • Challenge levels: beat a tough egg against a 3-minute clock for a big coin bonus
     • Fairer deals: no more long runs of the same piece
     • Smoother difficulty, and the Daily Egg is never Extreme
