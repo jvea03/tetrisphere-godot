@@ -149,6 +149,36 @@ func _initialize() -> void:
 		print("CHECK all  without %d wins  with %d wins" % [sum_free, sum_kept])
 		quit()
 		return
+	# `-- stars 7 70 20`: Battle Pass stars a level's win pays (hearts left, +2
+	# for a first try) when it is played until won, as a player would -- for
+	# both bots, with the attempts it takes. The pass's pace (TSProfile
+	# BATTLE_PASS_*) follows from stars per win and wins per day.
+	if args.size() >= 3 and args[0] == "stars":
+		var n := int(args[3]) if args.size() > 3 else 20
+		for bot in [CAREFUL, CASUAL]:
+			var stars := 0
+			var attempts := 0
+			var levels := 0
+			for lvl in range(int(args[1]), int(args[2]) + 1):
+				for i in n:
+					for attempt in range(1, 11):
+						var board := TSBoard.new()
+						var baked := TSLevels.baked_board(lvl)
+						if baked.is_empty():
+							board.generate(TSLevels.seed_for_level(lvl), TSLevels.rules_for_level(lvl))
+						else:
+							board.load_dict(baked)
+						var rng := RandomNumberGenerator.new()
+						rng.seed = lvl * 7919 + i * 31 + attempt
+						var r := _play(board, TSLevels.difficulty_for_level(lvl), TSLevels.rules_for_level(lvl), rng, bot, TSLevels.piece_budget(lvl))
+						attempts += 1
+						if bool(r["win"]):
+							stars += maxi(LIVES - int(r["lost"]), 0) + (2 if attempt == 1 else 0)
+							break
+					levels += 1
+			print("STARS %s bot, levels %s-%s: %.2f stars a level won, %.2f attempts a level" % ["careful" if bot == CAREFUL else "casual", args[1], args[2], float(stars) / levels, float(attempts) / levels])
+		quit()
+		return
 	# `-- challenge 6 40`: the first 6 challenge levels (TSLevels.challenge_rules),
 	# each played 40 times by both bots -- win rate and the drops a win takes
 	# (against the clock: a player drops every few seconds).
