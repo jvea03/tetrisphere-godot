@@ -2,7 +2,8 @@
 # each drop spends one (a bomb doesn't); run out and a heart buys one more,
 # dealt at random; with no heart to spend the egg is lost, and a continue or
 # the heart ad brings CONTINUE_PIECES more. Challenges have their clock
-# instead, and levels 1-5 have none. Run with:
+# instead, and levels 1-5 have none. Past level 50 a 5-win streak takes a
+# piece off, a 7-win streak two. Run with:
 #   Godot.exe --headless --path . res://tests/piece_counter_test.tscn
 extends "res://scripts/game.gd"
 
@@ -121,6 +122,18 @@ func _run() -> void:
 	_drop()
 	_check("and a drop there buys nothing", lives >= 1 and pieces_left <= 0 and lose_reason != "OUT OF PIECES")
 	TSProfile.challenge_done_through = 1 << 30
+
+	var full := TSLevels.piece_budget(60)
+	for run in [[4, 0], [5, 1], [6, 1], [7, 2], [12, 2]]:
+		TSProfile.win_streak = int(run[0])
+		_start_level(60)
+		_check("past level 50, a %d-win streak takes %d off (%d of %d)" % [run[0], run[1], pieces_left, full], pieces_left == full - int(run[1]))
+	TSProfile.win_streak = 7
+	_start_level(50)
+	_check("level 50 and below: no cut", pieces_left == TSLevels.piece_budget(50))
+	_start_daily()
+	_check("the Daily Egg: no cut", pieces_left == TSLevels.piece_budget(current_level))
+	TSProfile.win_streak = 0
 
 	TSProfile.pieces_intro_seen = false
 	_start_level(21)

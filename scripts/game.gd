@@ -641,6 +641,8 @@ func _start(seed_value: int, baked: Dictionary = {}) -> void:
 	lose_ad_used = false
 	continues_bought = 0
 	pieces_left = TSLevels.piece_budget(current_level) if _has_piece_limit() else 0
+	if _has_piece_limit() and _streak_level():
+		pieces_left -= TSLevels.streak_piece_cut(current_level, TSProfile.win_streak)   # a long run past level 50: a piece or two fewer
 	selected = TSBoard.HOLE
 	_dealt.clear()
 	cur_type = _fair(_deal())

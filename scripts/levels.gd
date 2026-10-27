@@ -422,6 +422,12 @@ const MIN_PIECE_BUDGET := 10
 const UNLIMITED_PIECES_THROUGH := 5   # levels 1-5 have no counter (a budget of 0), while the basics sink in
 const EARLY_PIECES_THROUGH := 30   # levels 6-30 get EARLY_PIECES on top of their budget, as the counter is new
 const EARLY_PIECES := 2
+## Past STREAK_CUT_AFTER, a player on a long win streak gets fewer pieces: one
+## less from a 5-win streak, two less from 7 (STREAK_CUTS: streak -> pieces
+## off, the longest that applies). Only levels that count toward the streak;
+## see game.gd _start.
+const STREAK_CUT_AFTER := 50
+const STREAK_CUTS := [[7, 2], [5, 1]]
 static var _budgets: Dictionary = {}
 
 
@@ -439,6 +445,16 @@ static func piece_budget(level: int) -> int:
 		at = PIECE_BUDGET_LAST - 59 + posmod(level - (PIECE_BUDGET_LAST - 59), 60)
 	var early := EARLY_PIECES if level <= EARLY_PIECES_THROUGH else 0
 	return maxi(MIN_PIECE_BUDGET, int(_budgets.get(str(at), 25))) + early + TSTunables.get_int("piece_budget_extra")
+
+
+## The pieces taken off a level's budget for a win streak of `streak` (STREAK_CUTS).
+static func streak_piece_cut(level: int, streak: int) -> int:
+	if level <= STREAK_CUT_AFTER:
+		return 0
+	for cut in STREAK_CUTS:
+		if streak >= int(cut[0]):
+			return int(cut[1])
+	return 0
 
 
 ## Challenge levels: an Extreme egg against a CHALLENGE_SECONDS clock, set
