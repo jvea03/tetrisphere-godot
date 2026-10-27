@@ -15,6 +15,9 @@ const TURN_CAP := 250
 const CAREFUL := 40
 const CASUAL := 8
 const LIVES := 3
+## The share of a level's wins its piece budget may cost (`-- budget`): the
+## counter adds a little pressure without moving a level's difficulty.
+const BUDGET_GIVE := 0.03
 
 
 func _initialize() -> void:
@@ -71,6 +74,79 @@ func _initialize() -> void:
 					lost += int(r["lost"])
 				row += "  %4d%%  %5.1f  %4.2f      |" % [roundi(100.0 * wins / n), float(drops) / maxi(wins, 1), float(lost) / n]
 			print(row)
+		quit()
+		return
+	# `-- budget 1 70 100`: the piece budget for each of levels 1-70 that keeps
+	# its difficulty -- the casual bot plays it 100 times without one, and the
+	# budget is the fewest pieces that still win all but BUDGET_GIVE of those
+	# wins (see _budget_outcome) -- with the drops its wins take (median, 90th
+	# percentile, most). For TSLevels.PIECE_BUDGET.
+	if args.size() >= 3 and args[0] == "budget":
+		for lvl in range(int(args[1]), int(args[2]) + 1):
+			var n := int(args[3]) if args.size() > 3 else 100
+			var plays: Array = []
+			var win_drops: Array = []
+			for i in n:
+				var board := TSBoard.new()
+				var baked := TSLevels.baked_board(lvl)
+				if baked.is_empty():
+					board.generate(TSLevels.seed_for_level(lvl), TSLevels.rules_for_level(lvl))
+				else:
+					board.load_dict(baked)
+				var rng := RandomNumberGenerator.new()
+				rng.seed = lvl * 7919 + i
+				var r := _play(board, TSLevels.difficulty_for_level(lvl), TSLevels.rules_for_level(lvl), rng, CASUAL)
+				plays.append(r)
+				if bool(r["win"]):
+					win_drops.append(int(r["drops"]))
+			win_drops.sort()
+			var base := win_drops.size()
+			var give := floori(BUDGET_GIVE * base)   # a level with few wins keeps them all
+			var budget := TURN_CAP
+			var kept := base
+			for b in range(1, TURN_CAP + 1):
+				var w := 0
+				for r in plays:
+					if _budget_outcome(r, b):
+						w += 1
+				if w >= base - give:
+					budget = b
+					kept = w
+					break
+			var at := func(q: float) -> int:
+				return int(win_drops[mini(int(q * win_drops.size()), win_drops.size() - 1)]) if not win_drops.is_empty() else 0
+			print("BUDGET %3d %s  base %3d%%  budget %3d  kept %3d%%  drops med %3d p90 %3d max %3d" % [lvl, "BIHXE"[TSLevels.difficulty_for_level(lvl)],
+				roundi(100.0 * base / n), budget, roundi(100.0 * kept / n), at.call(0.5), at.call(0.9), at.call(0.999)])
+		quit()
+		return
+	# `-- budgetcheck 1 70 100`: each level played 100 times by the casual bot
+	# without a piece budget and with its own (TSLevels.piece_budget), on the
+	# same eggs and deals -- the win rate the counter costs, played for real.
+	if args.size() >= 3 and args[0] == "budgetcheck":
+		var n := int(args[3]) if args.size() > 3 else 100
+		var sum_free := 0
+		var sum_kept := 0
+		for lvl in range(int(args[1]), int(args[2]) + 1):
+			var wins := [0, 0]
+			for with_budget in [false, true]:
+				for i in n:
+					var board := TSBoard.new()
+					var baked := TSLevels.baked_board(lvl)
+					if baked.is_empty():
+						board.generate(TSLevels.seed_for_level(lvl), TSLevels.rules_for_level(lvl))
+					else:
+						board.load_dict(baked)
+					var rng := RandomNumberGenerator.new()
+					rng.seed = lvl * 7919 + i
+					var r := _play(board, TSLevels.difficulty_for_level(lvl), TSLevels.rules_for_level(lvl), rng, CASUAL,
+						TSLevels.piece_budget(lvl) if with_budget else 0)
+					if bool(r["win"]):
+						wins[1 if with_budget else 0] += 1
+			sum_free += wins[0]
+			sum_kept += wins[1]
+			print("CHECK %3d %s  budget %3d  without %3d%%  with %3d%%" % [lvl, "BIHXE"[TSLevels.difficulty_for_level(lvl)], TSLevels.piece_budget(lvl),
+				roundi(100.0 * wins[0] / n), roundi(100.0 * wins[1] / n)])
+		print("CHECK all  without %d wins  with %d wins" % [sum_free, sum_kept])
 		quit()
 		return
 	# `-- challenge 6 40`: the first 6 challenge levels (TSLevels.challenge_rules),
@@ -204,8 +280,11 @@ func _batch(tier: int, candidates: int, trials: int, seed_base: int) -> Dictiona
 
 
 ## One ball, played to a win or three misses, with the game's deal, fair deal
-## and rules.
-func _play(board: TSBoard, tier: int, rules: Dictionary, rng: RandomNumberGenerator, candidates: int) -> Dictionary:
+## and rules. With a `budget` of pieces (game.gd's piece counter), running out
+## costs a heart, which buys one more piece dealt at random. "miss_turns" are
+## the drops that missed, so _budget_outcome can replay the ball under any
+## budget without playing it again.
+func _play(board: TSBoard, tier: int, rules: Dictionary, rng: RandomNumberGenerator, candidates: int, budget := 0) -> Dictionary:
 	var d: Dictionary = TSLevels.DIFFICULTIES[tier]
 	var escape := int(rules.get("escape_size", d["escape_size"]))
 	var bias := float(rules.get("common_bias", d["common_bias"]))
@@ -213,24 +292,55 @@ func _play(board: TSBoard, tier: int, rules: Dictionary, rng: RandomNumberGenera
 	var dealt: Array = []
 	var next := _sim_deal(board, pieces, bias, rng, dealt)
 	var misses := 0
+	var miss_turns: Array = []
+	var left := budget
+	var bought := false   # the piece in hand was bought with a heart: no fair deal
 	for turn in range(1, TURN_CAP + 1):
 		var type_id := next
 		next = _sim_deal(board, pieces, bias, rng, dealt)
-		if rules.get("fair_deal", false) and not board.has_combo_spot(type_id):
+		if not bought and rules.get("fair_deal", false) and not board.has_combo_spot(type_id):
 			for other in pieces:
 				if int(other) != type_id and board.has_combo_spot(int(other)):
 					type_id = int(other)
 					break
+		bought = false
 		var at := _best_move(board, type_id, rng, candidates, escape)
 		var res := board.place_and_resolve(TSBoard.SHAPES[type_id]["offsets"], at, type_id)
 		board.resolve_geode_shots(res)   # a geode's rock lands at once here: no flight to show
 		if int(res["pieces"]) == 0:
 			misses += 1
+			miss_turns.append(turn)
 		if board.has_escape(escape):
-			return {"win": true, "drops": turn, "lost": misses}
+			return {"win": true, "drops": turn, "lost": misses, "miss_turns": miss_turns}
 		if misses >= LIVES or bool(res["overload"]):
-			return {"win": false, "drops": turn, "lost": misses}
-	return {"win": false, "drops": TURN_CAP, "lost": misses}
+			return {"win": false, "drops": turn, "lost": misses, "miss_turns": miss_turns}
+		if budget > 0:
+			left -= 1
+			if left <= 0:
+				misses += 1
+				if misses >= LIVES:
+					return {"win": false, "drops": turn, "lost": misses, "miss_turns": miss_turns}
+				left = 1
+				next = int(pieces[rng.randi() % pieces.size()])
+				bought = true
+	return {"win": false, "drops": TURN_CAP, "lost": misses, "miss_turns": miss_turns}
+
+
+## Whether a ball played without a budget (its _play result) is still won
+## with `budget` pieces: after each drop that does not win, the hearts lost
+## are its misses so far plus one for every drop from the budget's last on.
+func _budget_outcome(r: Dictionary, budget: int) -> bool:
+	var end := int(r["drops"])
+	var turns: Array = r["miss_turns"]
+	var k := 0
+	for t in range(1, end + 1):
+		while k < turns.size() and int(turns[k]) <= t:
+			k += 1
+		if t == end:
+			return bool(r["win"])
+		if k + maxi(0, t - budget + 1) >= LIVES:
+			return false
+	return bool(r["win"])
 
 
 ## The game's deal (game.gd _deal): never one piece more than

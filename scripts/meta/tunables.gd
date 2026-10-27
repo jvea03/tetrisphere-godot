@@ -22,6 +22,7 @@ const DEFAULTS := {
 	"ad_chest_per_day": 3, # 30 minutes off an unlocking chest
 	"ad_build_per_day": 3, # 30 minutes off a camp or ship build
 	"social_enabled": false, # Leaderboards + Clubs are simulated on the device: "Coming soon" until they are real (the editor still shows them)
+	"piece_budget_extra": 0, # pieces added to every level's counter (TSLevels.piece_budget)
 }
 
 static var _values: Dictionary = {}

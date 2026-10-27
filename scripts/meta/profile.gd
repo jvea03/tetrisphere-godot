@@ -35,6 +35,7 @@ static func use_test_profile(level := 1) -> void:
 	notify_asked = true
 	challenge_done_through = 1 << 30   # no challenge levels unless a test asks for one
 	challenge_intro_seen = true
+	pieces_intro_seen = true
 	tie_tutorial_seen = true
 	geode_tutorial_seen = true
 	vine_tutorial_seen = true
@@ -1636,6 +1637,7 @@ static var win_streak_best: int = 0
 # Challenge levels (TSLevels.CHALLENGE_*): the newest one played, won or lost.
 static var challenge_done_through: int = 0
 static var challenge_intro_seen: bool = false
+static var pieces_intro_seen: bool = false   # the piece counter's card, once
 
 
 ## The challenge waiting before the next level -- the newest one behind the
@@ -2672,6 +2674,7 @@ static func ensure_loaded() -> void:
 	win_streak_best = maxi(win_streak, int(g.call("win_streak_best", 0)))
 	challenge_done_through = int(g.call("challenge_done_through", 0))
 	challenge_intro_seen = bool(g.call("challenge_intro_seen", false))
+	pieces_intro_seen = bool(g.call("pieces_intro_seen", false))
 	login_streak_count = int(g.call("login_streak_count", 0))
 	login_streak_last_date = str(g.call("login_streak_last_date", ""))
 	daily_streak_count = int(g.call("daily_streak_count", 0))
@@ -2783,6 +2786,7 @@ static func save() -> void:
 	s.call("win_streak_best", win_streak_best)
 	s.call("challenge_done_through", challenge_done_through)
 	s.call("challenge_intro_seen", challenge_intro_seen)
+	s.call("pieces_intro_seen", pieces_intro_seen)
 	s.call("login_streak_count", login_streak_count)
 	s.call("login_streak_last_date", login_streak_last_date)
 	s.call("daily_streak_count", daily_streak_count)

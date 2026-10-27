@@ -403,6 +403,36 @@ static func rules_for_level(level: int) -> Dictionary:
 	return rules
 
 
+## The piece counter (game.gd): how many pieces a level deals before each one
+## more costs a heart. Every level has its own, from `tests/sim.gd -- budget`
+## (written by tools/write_piece_budgets.gd): the fewest pieces that keep all
+## but 3% of the casual bot's wins (all of them, on a level it seldom wins,
+## which also gets at least its tier's usual budget), so the counter adds
+## pressure without moving the level's difficulty. PIECE_BUDGETS covers
+## levels 1 to PIECE_BUDGET_LAST; past it, levels take the budget of the
+## matching level in its last 60 (the loop of tiers and the blockers' turns
+## both repeat every 60, and the ramp is at its top). Never below
+## MIN_PIECE_BUDGET. Rerun the sim and rewrite the file after retuning a
+## level. Challenges have their clock instead.
+const PIECE_BUDGETS := "res://levels/piece_budgets.json"
+const PIECE_BUDGET_LAST := 660
+const MIN_PIECE_BUDGET := 10
+static var _budgets: Dictionary = {}
+
+
+static func piece_budget(level: int) -> int:
+	if _budgets.is_empty():
+		var f := FileAccess.open(PIECE_BUDGETS, FileAccess.READ)
+		if f != null:
+			var parsed: Variant = JSON.parse_string(f.get_as_text())
+			if parsed is Dictionary:
+				_budgets = parsed
+	var at := level
+	if at > PIECE_BUDGET_LAST:
+		at = PIECE_BUDGET_LAST - 59 + posmod(level - (PIECE_BUDGET_LAST - 59), 60)
+	return maxi(MIN_PIECE_BUDGET, int(_budgets.get(str(at), 25))) + TSTunables.get_int("piece_budget_extra")
+
+
 ## Challenge levels: an Extreme egg against a CHALLENGE_SECONDS clock, set
 ## between two levels -- after level CHALLENGE_FIRST_AFTER, then every
 ## CHALLENGE_EVERY -- and played once: won or lost, the journey goes on to the

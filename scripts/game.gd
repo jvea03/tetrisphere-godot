@@ -67,12 +67,15 @@ var _streak_pill: PanelContainer   # under the hearts: the win streak so far
 var _streak_label: Label
 var lives := LIVES
 var lose_reason := ""
+var pieces_left := 0   # the piece counter (TSLevels.piece_budget): drops left, the piece in hand included
 var current_level := 1
 var is_daily := false       # a Daily Egg: never touches level progress
 var is_challenge := false   # a challenge level (TSLevels.CHALLENGE_*): between two levels, against the clock, played once
 var challenge_left := 0.0   # seconds left on a challenge's clock
 var _timer_pill: PanelContainer   # under the hearts on a challenge: its clock
 var _timer_label: Label
+var _pieces_pill: PanelContainer   # the piece counter, under the tray (not on a challenge)
+var _pieces_label: Label
 var is_first_attempt := true # won without a lost ball or a paid rescue: +2 stars
 var lose_ad_used := false   # the lose card's ad life, once per ball
 var continues_bought := 0   # hearts refills bought for this ball: the first is at FIRST_CONTINUE_COST
@@ -86,6 +89,7 @@ var _win_bonus := ""
 const FIRST_ATTEMPT_STAR_BONUS := 2
 const LIVES_REFILL_COST := 2500
 const FIRST_CONTINUE_COST := 1000   # the first refill on a ball, at 60% off, to make the first buy an easy yes
+const CONTINUE_PIECES := 5   # out of pieces, a rescue (continue or heart ad) brings this many
 const SHOP := preload("res://scripts/screens/shop.gd")   # its coin packs, sold from the lose card too
 var aim_combo := 0          # pieces the current aim would clear; 0 = no combo
 # Per-block depths once the piece has been slid into the shell; empty while it
@@ -367,6 +371,20 @@ func _build_hud() -> void:
 	_hold_box = Control.new()
 	_hold_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_hold_tray.add_child(_hold_box)
+	# The piece counter under the tray: pieces left, the one in hand included.
+	_pieces_pill = PanelContainer.new()
+	_pieces_pill.add_theme_stylebox_override("panel", TSUI.sb(TSUI.CARD, 20, 3, 2, 6))
+	_pieces_pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_pieces_pill.position = Vector2(PIECE_COLUMN_X, _tray_top + TRAY_SIZE + 10.0)
+	_pieces_pill.custom_minimum_size = Vector2(TRAY_SIZE, 0.0)
+	_pieces_pill.visible = false
+	var pieces_col := TSUI.vbox(-8)
+	pieces_col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_pieces_pill.add_child(pieces_col)
+	_pieces_label = TSUI.label("", 34, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER)
+	pieces_col.add_child(_pieces_label)
+	pieces_col.add_child(TSUI.label("pieces", 18, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	root.add_child(_pieces_pill)
 
 	var boosters_at := _pin(root, Control.PRESET_CENTER_BOTTOM, Vector2(0.0, 0.0))
 	_build_bomb_button(boosters_at)
@@ -620,6 +638,7 @@ func _start(seed_value: int, baked: Dictionary = {}) -> void:
 	is_first_attempt = true
 	lose_ad_used = false
 	continues_bought = 0
+	pieces_left = 0 if is_challenge else TSLevels.piece_budget(current_level)
 	selected = TSBoard.HOLE
 	_dealt.clear()
 	cur_type = _fair(_deal())
@@ -654,6 +673,7 @@ func _resume() -> void:
 	is_first_attempt = bool(s["first_attempt"])
 	lose_ad_used = bool(s["lose_ad_used"])
 	continues_bought = int(s.get("continues_bought", 0))
+	pieces_left = int(s.get("pieces_left", 0 if is_challenge else TSLevels.piece_budget(current_level)))
 	_ball_seq += 1
 	state = State.PLAYING
 	_escaping = false
@@ -693,6 +713,7 @@ func _snapshot() -> Dictionary:
 		"board": board, "daily": is_daily, "level": current_level, "difficulty": difficulty,
 		"cur_type": cur_type, "next_type": next_type, "cursor": cursor, "lives": lives,
 		"first_attempt": is_first_attempt, "lose_ad_used": lose_ad_used, "continues_bought": continues_bought,
+		"pieces_left": pieces_left,
 		"streak_rocks_due": _streak_rocks_due,
 		"challenge": is_challenge, "challenge_left": challenge_left,
 	}
@@ -977,6 +998,8 @@ func _drop() -> void:
 	else:
 		var wild := cur_type == TSBoard.WILD
 		res = board.place_and_resolve(offsets, landing, cur_type, _current_depth())
+		if not is_challenge:
+			pieces_left -= 1   # a booster's bomb or rocks cost no piece
 		var grew := int(res.get("vine_grew", TSBoard.HOLE))
 		if grew != TSBoard.HOLE:
 			_vines_spread(grew)
@@ -1078,11 +1101,59 @@ func _finish_drop(res: Dictionary) -> void:
 	elif bool(res["overload"]):
 		lose_reason = "SHELL OVERLOADED"
 		_lose()
+	elif not is_challenge and pieces_left <= 0:
+		_buy_piece_with_heart()
 
 	view.rebuild()
 	_refresh_piece()
 	_refresh_hud()
 	_crack_geodes(res)
+
+
+## Out of pieces with the egg still shut: a heart buys one more piece, dealt
+## at random (no fair deal, no lean to the common piece). With no heart left
+## to spend, the egg is lost.
+func _buy_piece_with_heart() -> void:
+	lives -= 1
+	TSSfx.play("heartbreak" if lives <= 0 else "miss")
+	_creature.react(TSCreature.Mood.SCARED)
+	TSHaptics.medium()
+	if lives <= 0:
+		lose_reason = "OUT OF PIECES"
+		_lose()
+		return
+	pieces_left = 1
+	var kinds: Array = level["pieces"]
+	cur_type = int(kinds[randi() % kinds.size()])
+	_animate_deal()   # the bought piece drops into the tray
+	_pieces_note("-1 heart: +1 piece")
+	if not TSProfile.pieces_intro_seen:
+		_start_pieces_intro.call_deferred()
+
+
+## A word floating up off the piece counter.
+func _pieces_note(text: String) -> void:
+	var note := TSUI.label(text, 24, TSUI.CORAL)
+	note.add_theme_color_override("font_outline_color", TSToon.PAPER)
+	note.add_theme_constant_override("outline_size", 8)
+	note.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_hud.add_child(note)
+	note.position = _pieces_pill.position + Vector2(0.0, _pieces_pill.size.y + 4.0)
+	var tw := note.create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(note, "position:y", note.position.y + 36.0, 1.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.tween_property(note, "modulate:a", 0.0, 1.4).set_delay(0.6)
+	tw.set_parallel(false)
+	tw.tween_callback(note.queue_free)
+
+
+## The piece counter: pieces left, the one in hand included -- coral near the end.
+func _refresh_pieces() -> void:
+	if _pieces_pill == null:
+		return
+	_pieces_pill.visible = not is_challenge and state == State.PLAYING
+	_pieces_label.text = str(maxi(pieces_left, 0))
+	_pieces_label.add_theme_color_override("font_color", TSUI.CORAL if pieces_left <= 3 else TSUI.INK)
 
 
 func _refresh_piece() -> void:
@@ -1102,6 +1173,8 @@ func _refresh_piece() -> void:
 # the tray. A piece is redrawn only when it changes, and left where it is
 # while a deal animation is moving it.
 func _draw_piece_boxes() -> void:
+	# On the last piece there is no next one: another costs a heart, and comes at random.
+	_next_box.visible = is_challenge or pieces_left > 1
 	if _drawn_hold != cur_type:
 		_drawn_hold = cur_type
 		_hold_box.size = _draw_piece(_hold_box, cur_type, current_offsets(), HOLD_PX)
@@ -1369,6 +1442,7 @@ func _refresh_bomb_button() -> void:
 		btn.visible = state == State.PLAYING and TSProfile.booster_unlocked(id)
 	_refresh_streak_pill()
 	_refresh_timer()
+	_refresh_pieces()
 
 
 ## A challenge's clock runs while the egg is in play -- not while paused, a
@@ -2324,7 +2398,7 @@ func _refresh_lose_card() -> void:
 		_fill_challenge_lose(box)
 		return
 	var overload := lose_reason == "SHELL OVERLOADED"
-	box.add_child(TSUI.ribbon("Egg overloaded!" if overload else "Out of hearts!", TSUI.LILAC, 40, 500.0))
+	box.add_child(TSUI.ribbon("Egg overloaded!" if overload else ("Out of pieces!" if lose_reason == "OUT OF PIECES" else "Out of hearts!"), TSUI.LILAC, 40, 500.0))
 	if overload:
 		box.add_child(TSUI.halo(TSIcon.make("heart_empty", 140), 220.0, TSUI.LILAC, false))
 		box.add_child(TSUI.wrap(TSUI.label("A stack grew too tall. Try the level again!", 24, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER)))
@@ -2367,7 +2441,8 @@ func _refresh_lose_card() -> void:
 			price_line += "  (was %s)" % TSProfile.fmt_coins(LIVES_REFILL_COST)
 		if not pack.is_empty():
 			price_line = "Get %s coins  ·  %s" % [TSProfile.fmt_coins(int(pack["coins"])), pack["price"]]
-		var cont := TSUI.button("Continue  +%d hearts\n%s" % [LIVES, price_line], TSUI.GREEN, 28, Vector2(0, 112))
+		var more := ", +%d pieces" % CONTINUE_PIECES if pieces_left <= 0 else ""   # out of pieces: a few come too (_revive)
+		var cont := TSUI.button("Continue  +%d hearts%s\n%s" % [LIVES, more, price_line], TSUI.GREEN, 28, Vector2(0, 112))
 		cont.disabled = short > 0 and pack.is_empty()
 		if deal:
 			# A tilted sale tag on the button's corner, as on the Shop's deals.
@@ -2392,7 +2467,7 @@ func _refresh_lose_card() -> void:
 		wallet.add_child(TSUI.label("You have %s" % TSProfile.fmt_coins(TSProfile.coin_count), 20, TSUI.MUTED))
 		box.add_child(wallet)
 		if not lose_ad_used and not TSProfile.is_payer and not TSProfile.no_ads:
-			var ad := TSUI.button("Watch an ad: +1 heart", TSUI.SKY, 26, Vector2(0, 72))
+			var ad := TSUI.button("Watch an ad: +1 heart%s" % more, TSUI.SKY, 26, Vector2(0, 72))
 			ad.pressed.connect(func(): _open_ad("life"))
 			box.add_child(ad)
 		box.add_child(TSUI.label("Giving up loses this egg's progress", 18, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
@@ -2468,6 +2543,22 @@ func _start_challenge_intro() -> void:
 	])
 
 
+## The piece counter, once: on the first level from 2 on, or the first time
+## the pieces run out if that comes sooner.
+func _start_pieces_intro() -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if not is_inside_tree() or is_challenge or TSProfile.pieces_intro_seen or _tutorial.visible or state != State.PLAYING:
+		return
+	_tutorial.finished.connect(func():
+		TSProfile.pieces_intro_seen = true
+		TSProfile.save(), CONNECT_ONE_SHOT)
+	_tutorial.start([
+		{"rect": _pieces_pill.get_global_rect().grow(8.0),
+			"text": "Your pieces for this egg! Run out and each extra piece costs a heart -- and comes at random. Free the Milky before then!"},
+	])
+
+
 ## What the next refill of hearts costs: the first on a ball is on sale.
 func _continue_cost() -> int:
 	return FIRST_CONTINUE_COST if continues_bought == 0 else LIVES_REFILL_COST
@@ -2533,6 +2624,8 @@ func _revive(count: int) -> void:
 		_streak_lost = 0
 		TSProfile.save()
 	lives = count
+	if not is_challenge and pieces_left <= 0:
+		pieces_left = CONTINUE_PIECES   # out of pieces too: a few more come with the hearts
 	lose_reason = ""
 	state = State.PLAYING
 	_creature.react(TSCreature.Mood.HAPPY)   # saved!
@@ -2695,6 +2788,8 @@ func _maybe_start_tutorials() -> void:
 		_start_tutorial()
 	elif current_level == 2 and not TSProfile.slide_tutorial_seen:
 		_start_slide_tutorial()
+	elif not TSProfile.pieces_intro_seen and not is_challenge and current_level >= 2:
+		_start_pieces_intro()
 	elif TSProfile.bombs_unlocked and not TSProfile.bomb_tutorial_seen and current_level >= TSProfile.BOMB_UNLOCK_LEVEL:
 		_start_bomb_tutorial()
 	elif board.ties_left() > 0 and not TSProfile.tie_tutorial_seen:
