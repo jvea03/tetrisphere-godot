@@ -748,8 +748,8 @@ static func part_stage(i: int, level: int) -> String:
 ## scaled for camp spots and ship parts. Materials (PART_MATERIALS) pace the
 ## camp; coins are kept lighter so a few levels a day still reach the ship
 ## within a season (tools/econ_sim.gd), and spare coins go to critters.
-const CAMP_COIN_SCALE := 0.35
-const SHIP_COIN_SCALE := 0.7
+const CAMP_COIN_SCALE := 0.385   # +10% (was 0.35)
+const SHIP_COIN_SCALE := 0.77   # +10% (was 0.7)
 
 static func part_next_cost(i: int) -> int:
 	var scale := CAMP_COIN_SCALE if is_camp(i) else SHIP_COIN_SCALE
@@ -852,8 +852,8 @@ static func _fill_parts() -> void:
 
 ## Materials for a step: this much times the level it builds up to, by wave
 ## (CAMP_WAVES), with the ship last.
-const PART_MATERIALS := [40, 80, 120, 160]
-const SHIP_MATERIALS := 200
+const PART_MATERIALS := [44, 88, 132, 176]   # +10% (was 40, 80, 120, 160)
+const SHIP_MATERIALS := 220   # +10% (was 200)
 ## Build time for a step, in seconds: this times the level it builds up to.
 const PART_BUILD_SECONDS := [30, 120, 300, 600]
 const SHIP_BUILD_SECONDS := 1200

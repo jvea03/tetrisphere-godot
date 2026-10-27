@@ -316,7 +316,7 @@ func _test_collection() -> void:
 	var build_cost := TSProfile.part_next_cost(TSProfile.CAMP_FIRE)
 	_check("building the campfire costs %s" % TSProfile.fmt_coins(build_cost), TSProfile.improve_part(TSProfile.CAMP_FIRE) and TSProfile.part_stage(TSProfile.CAMP_FIRE, 1) == "Little Fire" and TSProfile.coin_count == coins - build_cost)
 	_check("and doesn't count toward the collection level", TSProfile.collection_points() == points_before_camp)
-	_check("each upgrade costs one more multiple of the first step", TSProfile.part_next_cost(TSProfile.CAMP_FIRE) == build_cost * 2)
+	_check("each upgrade costs one more multiple of the first step (to the nearest 10)", absi(TSProfile.part_next_cost(TSProfile.CAMP_FIRE) - build_cost * 2) <= 10)
 	for p in TSProfile.CAMP_WAVES[0]:
 		while TSProfile.improve_part(p):
 			pass

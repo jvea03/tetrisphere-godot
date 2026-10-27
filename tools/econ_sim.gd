@@ -9,7 +9,7 @@
 #   Godot.exe --headless --path . --script res://tools/econ_sim.gd -- [days] [attempts] [ads]
 extends SceneTree
 
-const WIN_RATE := [0.95, 0.66, 0.51, 0.41, 0.3]   # by tier: tests/sim.gd's casual bot + boosters
+const WIN_RATE := [0.95, 0.55, 0.5, 0.36, 0.29]   # by tier: tests/sim.gd's casual bot (with the piece counter) + boosters
 const BUILDS_PER_BUILDER := 4                     # builds a critter gets through in a day of check-ins
 
 var days := 60
