@@ -124,13 +124,14 @@ func _run() -> void:
 	TSProfile.challenge_done_through = 1 << 30
 
 	var full := TSLevels.piece_budget(60)
-	for run in [[4, 0], [5, 1], [6, 1], [7, 2], [12, 2]]:
+	# [streak, pieces off for it past level 50, the streak's own +2 from 4 wins]
+	for run in [[3, 0, 0], [4, 0, 2], [5, 1, 2], [6, 1, 2], [7, 2, 2], [12, 2, 2]]:
 		TSProfile.win_streak = int(run[0])
 		_start_level(60)
-		_check("past level 50, a %d-win streak takes %d off (%d of %d)" % [run[0], run[1], pieces_left, full], pieces_left == full - int(run[1]))
+		_check("past level 50, a %d-win streak: +%d, -%d (%d of %d)" % [run[0], run[2], run[1], pieces_left, full], pieces_left == full + int(run[2]) - int(run[1]))
 	TSProfile.win_streak = 7
 	_start_level(50)
-	_check("level 50 and below: no cut", pieces_left == TSLevels.piece_budget(50))
+	_check("level 50 and below: no cut, just the streak's +%d" % TSProfile.WIN_STREAK_PIECES, pieces_left == TSLevels.piece_budget(50) + TSProfile.WIN_STREAK_PIECES)
 	_start_daily()
 	_check("the Daily Egg: no cut", pieces_left == TSLevels.piece_budget(current_level))
 	TSProfile.win_streak = 0

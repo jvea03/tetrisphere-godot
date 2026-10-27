@@ -1625,12 +1625,15 @@ const STREAK_MILESTONE_REWARD_COINS := 500
 
 # -- win streak ----------------------------------------------------------------
 # Levels won in a row, from level 7 (TSNav.FEATURES_UNLOCK_LEVEL) on, once
-# the feature opens (TSNav.WIN_STREAK_OPEN_DATE, November 4). Three
-# tiers: 1, 2 and 3+ wins in a row, and each level then starts with that many
-# rocks thrown at it (game.gd). Losing a level ends the run unless a continue
+# the feature opens (TSNav.WIN_STREAK_OPEN_DATE, November 4). Three tiers,
+# at WIN_STREAK_TIERS wins in a row: from 2, each level starts with a rock
+# thrown at it (game.gd); from 4, also WIN_STREAK_PIECES more on the piece
+# counter; from 6, a second rock. Losing a level ends the run unless a continue
 # saves it; restarting one ends it too. The Daily Egg neither counts nor
 # breaks it.
-const WIN_STREAK_TIERS := 3
+const WIN_STREAK_TIERS := [2, 4, 6]   # the wins in a row each tier starts at
+const WIN_STREAK_ROCKS := [0, 1, 1, 2]   # rocks thrown at a level's start, by tier
+const WIN_STREAK_PIECES := 2   # added to the piece counter from tier 2
 static var win_streak: int = 0
 static var win_streak_best: int = 0
 
@@ -1664,7 +1667,19 @@ static func add_win_streak() -> void:
 
 ## 0 with no streak, else 1-3: the rocks a level starts with.
 static func win_streak_tier() -> int:
-	return mini(win_streak, WIN_STREAK_TIERS)
+	var tier := 0
+	for wins in WIN_STREAK_TIERS:
+		if win_streak >= int(wins):
+			tier += 1
+	return tier
+
+
+static func win_streak_rocks() -> int:
+	return int(WIN_STREAK_ROCKS[win_streak_tier()])
+
+
+static func win_streak_pieces() -> int:
+	return WIN_STREAK_PIECES if win_streak_tier() >= 2 else 0
 
 
 static var login_streak_count: int = 0

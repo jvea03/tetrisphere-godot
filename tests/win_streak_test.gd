@@ -1,6 +1,6 @@
 # The win streak: level wins from level 7 count, the Daily Egg doesn't; three
-# tiers -- 1, 2 and 3+ wins in a row -- and each level then starts with that
-# many rocks thrown at it; a loss ends the run unless a continue saves it;
+# tiers -- from 2 wins in a row a level starts with a rock thrown at it, from 4
+# also +2 pieces on the counter, from 6 a second rock; a loss ends the run unless a continue saves it;
 # restarting ends it. Run with:
 #   Godot.exe --headless --path . res://tests/win_streak_test.tscn
 extends "res://scripts/game.gd"
@@ -53,16 +53,22 @@ func _run() -> void:
 	_debug_win()
 	await get_tree().create_timer(3.0).timeout
 	_check("a win starts the streak", TSProfile.win_streak == 1)
-	_check("the win card shows it, and the next level's rocks", _says(_win_card, "Win streak: 1") and _says(_win_card, "starts with 1 free rock -- win again for 2"))
+	_check("the win card shows it, and what the next tier brings", _says(_win_card, "Win streak: 1") and _says(_win_card, "Win 1 more for a free rock!"))
 
-	_check("tiers: 0, 1, 2, 3, then 3", [0, 1, 2, 3, 7].map(func(n): TSProfile.win_streak = n; return TSProfile.win_streak_tier()) == [0, 1, 2, 3, 3])
+	var runs := [0, 1, 2, 3, 4, 5, 6, 9]
+	_check("tiers start at 2, 4 and 6 wins", runs.map(func(n): TSProfile.win_streak = n; return TSProfile.win_streak_tier()) == [0, 0, 1, 1, 2, 2, 3, 3])
+	_check("rocks: one from 2 wins, a second from 6", runs.map(func(n): TSProfile.win_streak = n; return TSProfile.win_streak_rocks()) == [0, 0, 1, 1, 1, 1, 2, 2])
+	_check("+2 pieces from 4 wins", runs.map(func(n): TSProfile.win_streak = n; return TSProfile.win_streak_pieces()) == [0, 0, 0, 0, 2, 2, 2, 2])
 	_check("no streak: no rocks", await _start_on(0) == 0)
-	var one := await _start_on(1)
-	_check("tier 1 throws one rock (%d)" % one, one == 1)
-	var three := await _start_on(3)
-	_check("tier 3 throws up to three (%d)" % three, three >= 1 and three <= 3)
+	_check("one win: no rocks yet", await _start_on(1) == 0)
+	var two := await _start_on(2)
+	_check("a 2-win streak throws one rock (%d)" % two, two == 1)
+	var four := await _start_on(4)
+	_check("a 4-win streak still one (%d), and +%d pieces (%d of %d)" % [four, TSProfile.WIN_STREAK_PIECES, pieces_left, TSLevels.piece_budget(41)], four == 1 and pieces_left == TSLevels.piece_budget(41) + TSProfile.WIN_STREAK_PIECES)
+	var six := await _start_on(6)
+	_check("a 6-win streak throws two (%d)" % six, six >= 1 and six <= 2)
 	var many := await _start_on(9)
-	_check("a longer run still throws three at most (%d)" % many, many >= 1 and many <= 3)
+	_check("a longer run still throws two at most (%d)" % many, many >= 1 and many <= 2)
 	_check("the pill under the hearts shows the run", _streak_pill.visible and _streak_label.text == "9")
 
 	TSProfile.win_streak = 2
@@ -73,7 +79,7 @@ func _run() -> void:
 	await get_tree().create_timer(STREAK_ROCK_DELAY + 1.5).timeout
 	_check("a restart straight away throws no stale rocks", _thrown == 0)
 
-	TSProfile.win_streak = 1
+	TSProfile.win_streak = 2
 	_thrown = 0
 	_start_level(41)
 	_tutorial.start([{"rect": Rect2(0, 0, 10, 10), "text": "a lesson"}])
@@ -102,7 +108,7 @@ func _run() -> void:
 	_lose()
 	_check("a loss hides the streak pill", not _streak_pill.visible)
 	_revive(LIVES)
-	_check("a continue brings it back", _streak_pill.visible and _streak_label.text == "1")
+	_check("a continue brings it back", _streak_pill.visible and _streak_label.text == "2")
 
 	TSProfile.win_streak = 10
 	_lose()

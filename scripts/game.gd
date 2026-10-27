@@ -571,7 +571,7 @@ func _start_level(level_number: int) -> void:
 		is_first_attempt = false
 		TSSession.retried_level = -1
 	_refresh_hud()
-	if TSProfile.win_streak_counts(level_number) and TSProfile.win_streak_tier() > 0:
+	if TSProfile.win_streak_counts(level_number) and TSProfile.win_streak_rocks() > 0:
 		_streak_rocks_due = true
 		_streak_rocks.call_deferred()
 	_maybe_start_tutorials()
@@ -642,6 +642,7 @@ func _start(seed_value: int, baked: Dictionary = {}) -> void:
 	continues_bought = 0
 	pieces_left = TSLevels.piece_budget(current_level) if _has_piece_limit() else 0
 	if _has_piece_limit() and _streak_level():
+		pieces_left += TSProfile.win_streak_pieces()   # the streak's tier 2 on
 		pieces_left -= TSLevels.streak_piece_cut(current_level, TSProfile.win_streak)   # a long run past level 50: a piece or two fewer
 	selected = TSBoard.HOLE
 	_dealt.clear()
@@ -1497,9 +1498,10 @@ func _refresh_streak_pill() -> void:
 	_streak_label.text = str(TSProfile.win_streak)
 
 
-## At a level's start on a win streak: a banner, then one rock per tier
-## thrown from the streak pill at the best near-matches (as the Rocks booster
-## throws them), each finishing its match where it lands.
+## At a level's start on a win streak: a banner, then the tier's rocks
+## (TSProfile.win_streak_rocks) thrown from the streak pill at the best
+## near-matches (as the Rocks booster throws them), each finishing its match
+## where it lands.
 ## They wait for any lesson the level opens with (rocks could break the very
 ## piece it points at), and are dropped if the ball is restarted meanwhile.
 func _streak_rocks() -> void:
@@ -1507,15 +1509,15 @@ func _streak_rocks() -> void:
 	await get_tree().create_timer(0.5).timeout
 	if not await _streak_clear(ball):
 		return
-	var tier := TSProfile.win_streak_tier()
-	if tier <= 0 or state != State.PLAYING:
+	var rocks := TSProfile.win_streak_rocks()
+	if rocks <= 0 or state != State.PLAYING:
 		return
-	_streak_banner(tier)
+	_streak_banner(rocks)
 	await get_tree().create_timer(STREAK_ROCK_DELAY).timeout
 	if not await _streak_clear(ball) or state != State.PLAYING or _rocks_flying:
 		return
 	_streak_rocks_due = false
-	var targets := board.rock_targets(tier, cursor)
+	var targets := board.rock_targets(rocks, cursor)
 	if targets.is_empty():
 		return
 	_throw_rocks(_streak_pill.get_global_rect().get_center(), targets)
@@ -1533,7 +1535,7 @@ func _streak_clear(ball: int) -> bool:
 	return is_inside_tree() and ball == _ball_seq
 
 
-func _streak_banner(tier: int) -> void:
+func _streak_banner(rocks: int) -> void:
 	var holder := CenterContainer.new()
 	holder.set_anchors_preset(Control.PRESET_TOP_WIDE)
 	holder.offset_top = _top + 104.0
@@ -1545,7 +1547,9 @@ func _streak_banner(tier: int) -> void:
 	row.add_child(TSIcon.make("flame", 52))
 	var text := TSUI.vbox(0)
 	text.add_child(TSUI.label("Win streak %d!" % TSProfile.win_streak, 28, TSUI.CORAL))
-	text.add_child(TSUI.label("Here come %d rock%s!" % [tier, "" if tier == 1 else "s"], 22, TSUI.INK))
+	text.add_child(TSUI.label("Here comes a rock!" if rocks == 1 else "Here come %d rocks!" % rocks, 22, TSUI.INK))
+	if TSProfile.win_streak_pieces() > 0 and _has_piece_limit():
+		text.add_child(TSUI.label("+%d pieces on the counter!" % TSProfile.win_streak_pieces(), 22, TSUI.INK))
 	row.add_child(text)
 	card.add_child(row)
 	holder.add_child(card)
@@ -1559,8 +1563,9 @@ func _streak_banner(tier: int) -> void:
 	TSSfx.play("shimmer")
 
 
-## The win card's streak line: the run so far, and the rocks the next level
-## starts with.
+## The win card's streak line: the run so far, what the next level starts
+## with, and the next tier's perk -- "Next level starts with a free rock --
+## win 2 more for +2 pieces!"
 func _streak_line() -> Control:
 	var col := TSUI.vbox(0)
 	var row := TSUI.hbox(6)
@@ -1569,10 +1574,17 @@ func _streak_line() -> Control:
 	row.add_child(TSUI.label("Win streak: %d" % TSProfile.win_streak, 26, TSUI.CORAL))
 	col.add_child(row)
 	var tier := TSProfile.win_streak_tier()
-	var line := "Next level starts with %d free rock%s" % [tier, "" if tier == 1 else "s"]
-	if tier < TSProfile.WIN_STREAK_TIERS:
-		line += " -- win again for %d!" % (tier + 1)
-	col.add_child(TSUI.label(line, 20, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	const REWARD := ["", "a free rock", "a free rock and +{n} pieces", "2 free rocks and +{n} pieces"]
+	const PERK := ["", "a free rock", "+{n} pieces", "a 2nd rock"]
+	var n := str(TSProfile.WIN_STREAK_PIECES)
+	var parts := PackedStringArray()
+	if tier > 0:
+		parts.append("Next level starts with " + str(REWARD[tier]).replace("{n}", n))
+	if tier < TSProfile.WIN_STREAK_TIERS.size():
+		var more := int(TSProfile.WIN_STREAK_TIERS[tier]) - TSProfile.win_streak
+		parts.append("win %d more for %s!" % [more, str(PERK[tier + 1]).replace("{n}", n)])
+	var line := " -- ".join(parts)
+	col.add_child(TSUI.wrap(TSUI.label(line[0].to_upper() + line.substr(1), 20, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER)))
 	return col
 
 
