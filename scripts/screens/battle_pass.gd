@@ -294,8 +294,6 @@ func _quest_row(q: Dictionary) -> Control:
 	var pts := TSUI.hbox(4)
 	pts.add_child(TSIcon.make("star", 30))
 	pts.add_child(TSUI.label("+%d" % int(q["points"]), 22))
-	pts.add_child(TSIcon.make("materials", 30))
-	pts.add_child(TSUI.label("+%d" % TSProfile.quest_materials(int(q["points"])), 22))
 	row.add_child(pts)
 	if done and not claimed:
 		var b := TSUI.button("Collect", TSUI.GREEN, 22, Vector2(130, 56), 4)

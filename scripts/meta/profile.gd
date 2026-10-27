@@ -848,7 +848,7 @@ static func _fill_parts() -> void:
 # on the ship. A critter builds it: each owned critter works on one thing at a
 # time, so more critters means more at once. When the time is up the step is
 # finished from its node on Home (or finished early for coins). Materials come
-# from level wins, chests, quests, the Battle Pass and the mine under the ship.
+# from level wins, chests, the Battle Pass and the mine under the ship.
 
 ## Materials for a step: this much times the level it builds up to, by wave
 ## (CAMP_WAVES), with the ship last.
@@ -2515,15 +2515,9 @@ static func claim_quest(week_key: String, index: int) -> int:
 	if index < 0 or index >= done.size() or not done[index] or claimed[index]:
 		return -1
 	claimed[index] = true
-	var credited := add_battle_pass_xp(int(defs[index]["points"]))
-	add_materials(quest_materials(int(defs[index]["points"])))
+	var credited := add_battle_pass_xp(int(defs[index]["points"]))   # stars only: no materials
 	save()
 	return credited
-
-
-## Building materials a quest pays along with its stars: ten for every star.
-static func quest_materials(points: int) -> int:
-	return points * 10
 
 
 static func has_unclaimed_quests() -> bool:

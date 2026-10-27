@@ -286,7 +286,6 @@ func _test_building() -> void:
 	var before := TSProfile.materials
 	TSProfile.claim_battle_pass_free(1)
 	_check("the Battle Pass takes turns: coins on odd tiers, materials on even", TSProfile.battle_pass_free_reward(1).has("coins") and not TSProfile.battle_pass_free_reward(1).has("materials") and TSProfile.battle_pass_free_reward(2).has("materials") and not TSProfile.battle_pass_free_reward(2).has("coins") and TSProfile.battle_pass_paid_reward(2).has("materials") and (TSProfile.materials > before or not TSProfile.can_claim_battle_pass_free(1)))
-	_check("quests pay materials", TSProfile.quest_materials(10) > 0)
 	_check("chests pay materials", int(TSChests.MATERIAL_PAYOUT[TSChests.COMMON][0]) > 0)
 	_check("wins pay materials", TSProfile.MATERIALS_PER_WIN > 0)
 	TSProfile.part_level[p] = 0

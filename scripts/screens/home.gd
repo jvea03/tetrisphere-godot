@@ -195,7 +195,7 @@ func _build_materials_pill(parent: Control) -> void:
 	var face := TSUI.sb(TSUI.CARD, 29, 3, 3, 6)
 	for st in ["normal", "hover", "pressed", "focus"]:
 		materials_pill.add_theme_stylebox_override(st, face)
-	materials_pill.pressed.connect(func(): TSUI.note(self, materials_pill, "Building materials: win levels, open chests, finish quests, climb the Battle Pass and empty the mine for more"))
+	materials_pill.pressed.connect(func(): TSUI.note(self, materials_pill, "Building materials: win levels, open chests, climb the Battle Pass and empty the mine for more"))
 	parent.add_child(materials_pill)
 	var crate := TSIcon.make("materials", 42)
 	crate.position = Vector2(8, 7)
@@ -640,7 +640,7 @@ func _fill_part_card() -> void:
 			go.text = "Need %d more materials" % (mats - TSProfile.materials)
 			go.disabled = true
 			TSUI.restyle(go, TSUI.GREY)
-			note.text = "Earn building materials by winning levels, opening chests, finishing quests and climbing the Battle Pass."
+			note.text = "Earn building materials by winning levels, opening chests and climbing the Battle Pass."
 		"builder":
 			go.text = "Every critter is busy"
 			go.disabled = true
