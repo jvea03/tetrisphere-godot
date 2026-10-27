@@ -97,7 +97,7 @@ Release name: `1.1 (5) – Win Streaks & Challenges`
 
 ## Release notes for version code 6 (1.2)
 
-Release name: `1.2 (6) – Win Streaks, Challenges & Fairer Deals`
+Release name: `1.2 (6) – Piece Counter, Win Streaks & Challenges`
 
 Covers 1.1 too, since 1.2 may be the first of them players get.
 
@@ -106,9 +106,9 @@ Covers 1.1 too, since 1.2 may be the first of them players get.
 
     • Win streaks start November 4: win in a row and each new level starts with free rocks
     • Challenge levels: beat a tough egg against a 3-minute clock for a big coin bonus
-    • Fairer deals: no more long runs of the same piece
-    • Smoother difficulty, and the Daily Egg is never Extreme
-    • Reminders when your chest, build or Daily Egg is ready (you choose)
+    • Piece counter: each egg has a set number of pieces, so make every drop count!
+    • Fairer deals, smoother difficulty, and the Daily Egg is never Extreme
+    • Optional reminders for chests, builds and the Daily Egg
     • Leaderboards open November 11, and teams are coming December 9!
 
     Thanks for playing!

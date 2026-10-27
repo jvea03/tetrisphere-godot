@@ -2543,8 +2543,8 @@ func _start_challenge_intro() -> void:
 	])
 
 
-## The piece counter, once: on the first level from 2 on, or the first time
-## the pieces run out if that comes sooner.
+## The piece counter, once: on the first level from 2 on with no other
+## lesson, or the first time the pieces run out if that comes sooner.
 func _start_pieces_intro() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -2788,8 +2788,6 @@ func _maybe_start_tutorials() -> void:
 		_start_tutorial()
 	elif current_level == 2 and not TSProfile.slide_tutorial_seen:
 		_start_slide_tutorial()
-	elif not TSProfile.pieces_intro_seen and not is_challenge and current_level >= 2:
-		_start_pieces_intro()
 	elif TSProfile.bombs_unlocked and not TSProfile.bomb_tutorial_seen and current_level >= TSProfile.BOMB_UNLOCK_LEVEL:
 		_start_bomb_tutorial()
 	elif board.ties_left() > 0 and not TSProfile.tie_tutorial_seen:
@@ -2809,6 +2807,9 @@ func _maybe_start_tutorials() -> void:
 		_start_booster_tutorial(_btn_swap, "swap", "The Any Piece! Tap it to turn your piece into a wild block that becomes whatever it touches -- drop it by any pair to make a match. Here are %d to start." % TSProfile.SWAP_UNLOCK_GRANT)
 	elif TSProfile.rocks_unlocked and not TSProfile.rocks_tutorial_seen:
 		_start_booster_tutorial(_btn_rocks, "rocks", "Rocks! Tap to fire two rocks: each one lands on a pair and finishes the match. Here are %d shots to start." % TSProfile.ROCKS_UNLOCK_GRANT)
+	elif not TSProfile.pieces_intro_seen and not is_challenge and current_level >= 2:
+		# Last in line: the first level from 2 on with no other lesson.
+		_start_pieces_intro()
 
 
 ## The first egg with tie-downs: the camera turns to one, the spotlight shows
