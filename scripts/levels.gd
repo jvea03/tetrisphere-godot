@@ -413,12 +413,15 @@ static func rules_for_level(level: int) -> Dictionary:
 ## matching level in its last 60 (the loop of tiers and the blockers' turns
 ## both repeat every 60, and the ramp is at its top). Never below
 ## MIN_PIECE_BUDGET. Rerun the sim and rewrite the file after retuning a
-## level. Levels 1 to UNLIMITED_PIECES_THROUGH have no counter, and
+## level. Levels 1 to UNLIMITED_PIECES_THROUGH have no counter, the next
+## ones to EARLY_PIECES_THROUGH get EARLY_PIECES more while it is new, and
 ## challenges have their clock instead.
 const PIECE_BUDGETS := "res://levels/piece_budgets.json"
 const PIECE_BUDGET_LAST := 660
 const MIN_PIECE_BUDGET := 10
 const UNLIMITED_PIECES_THROUGH := 5   # levels 1-5 have no counter (a budget of 0), while the basics sink in
+const EARLY_PIECES_THROUGH := 30   # levels 6-30 get EARLY_PIECES on top of their budget, as the counter is new
+const EARLY_PIECES := 2
 static var _budgets: Dictionary = {}
 
 
@@ -434,7 +437,8 @@ static func piece_budget(level: int) -> int:
 	var at := level
 	if at > PIECE_BUDGET_LAST:
 		at = PIECE_BUDGET_LAST - 59 + posmod(level - (PIECE_BUDGET_LAST - 59), 60)
-	return maxi(MIN_PIECE_BUDGET, int(_budgets.get(str(at), 25))) + TSTunables.get_int("piece_budget_extra")
+	var early := EARLY_PIECES if level <= EARLY_PIECES_THROUGH else 0
+	return maxi(MIN_PIECE_BUDGET, int(_budgets.get(str(at), 25))) + early + TSTunables.get_int("piece_budget_extra")
 
 
 ## Challenge levels: an Extreme egg against a CHALLENGE_SECONDS clock, set

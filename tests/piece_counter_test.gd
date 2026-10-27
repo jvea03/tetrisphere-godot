@@ -37,6 +37,11 @@ func _says(dialog: Dictionary, text: String) -> bool:
 func _run() -> void:
 	_check("levels 1-%d are unlimited" % TSLevels.UNLIMITED_PIECES_THROUGH, range(1, TSLevels.UNLIMITED_PIECES_THROUGH + 1).all(func(l): return TSLevels.piece_budget(l) == 0))
 	_check("every later level has a budget of at least %d" % TSLevels.MIN_PIECE_BUDGET, range(TSLevels.UNLIMITED_PIECES_THROUGH + 1, 800).all(func(l): return TSLevels.piece_budget(l) >= TSLevels.MIN_PIECE_BUDGET))
+	var table: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(TSLevels.PIECE_BUDGETS))
+	var raw := func(l: int) -> int: return maxi(TSLevels.MIN_PIECE_BUDGET, int(table[str(l)]))
+	_check("levels 6-%d get %d pieces more, later ones none" % [TSLevels.EARLY_PIECES_THROUGH, TSLevels.EARLY_PIECES],
+		range(TSLevels.UNLIMITED_PIECES_THROUGH + 1, TSLevels.EARLY_PIECES_THROUGH + 1).all(func(l): return TSLevels.piece_budget(l) == raw.call(l) + TSLevels.EARLY_PIECES)
+		and range(TSLevels.EARLY_PIECES_THROUGH + 1, 200).all(func(l): return TSLevels.piece_budget(l) == raw.call(l)))
 
 	_start_level(3)
 	_refresh_hud()
