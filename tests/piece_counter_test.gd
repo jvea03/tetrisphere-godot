@@ -3,7 +3,7 @@
 # dealt at random; with no heart to spend the egg is lost, and a continue or
 # the heart ad brings CONTINUE_PIECES more. Challenges have their clock
 # instead, and levels 1-5 have none. Past level 50 a 5-win streak takes a
-# piece off, a 7-win streak two. Run with:
+# piece off, 7 two, 9 three, 11 four. Run with:
 #   Godot.exe --headless --path . res://tests/piece_counter_test.tscn
 extends "res://scripts/game.gd"
 
@@ -125,7 +125,7 @@ func _run() -> void:
 
 	var full := TSLevels.piece_budget(60)
 	# [streak, pieces off for it past level 50, the streak's own +2 from 4 wins]
-	for run in [[3, 0, 0], [4, 0, 2], [5, 1, 2], [6, 1, 2], [7, 2, 2], [12, 2, 2]]:
+	for run in [[3, 0, 0], [4, 0, 2], [5, 1, 2], [6, 1, 2], [7, 2, 2], [8, 2, 2], [9, 3, 2], [10, 3, 2], [11, 4, 2], [15, 4, 2]]:
 		TSProfile.win_streak = int(run[0])
 		_start_level(60)
 		_check("past level 50, a %d-win streak: +%d, -%d (%d of %d)" % [run[0], run[2], run[1], pieces_left, full], pieces_left == full + int(run[2]) - int(run[1]))

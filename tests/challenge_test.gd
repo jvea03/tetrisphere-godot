@@ -1,5 +1,5 @@
 # Challenge levels: a tutorial one (Intermediate) after level 17, then from
-# between 40 and 41 every 20, each played once (marked as it starts); an Extreme egg with a 3-minute clock that waits
+# between 40 and 41 every 20, each played once (marked as it starts); an Extreme egg with a 2-minute clock that waits
 # for its intro, pauses and cards; out of time (or hearts) there is no
 # continue -- the next level follows; a win pays the bonus but moves neither
 # the level nor the win streak; leaving parks it with its clock. Run with:
@@ -44,17 +44,17 @@ func _run() -> void:
 	_check("having won 40, the game opens on the challenge", is_challenge and current_level == 40 and _lbl_level.text == "CHALLENGE")
 	_check("an Extreme egg", difficulty == TSLevels.DIFF_EXTREME and _escape_size() >= 3)
 	_check("marked played as it starts: no retry by quitting", TSProfile.challenge_due() == -1 and TSProfile.challenge_done_through == 40)
-	_check("its clock shows 3:00", _timer_pill.visible and _timer_label.text == "3:00")
+	_check("its clock shows %d:00" % (TSLevels.CHALLENGE_SECONDS / 60), _timer_pill.visible and _timer_label.text == "%d:00" % (TSLevels.CHALLENGE_SECONDS / 60))
 	_check("the level stays 41", TSProfile.last_level == 41)
 
 	await get_tree().create_timer(1.0).timeout
-	_check("the first one opens with its intro, and the clock waits", _tutorial.visible and challenge_left > 179.8)
+	_check("the first one opens with its intro, and the clock waits", _tutorial.visible and challenge_left > TSLevels.CHALLENGE_SECONDS - 0.2)
 	_tutorial._next.pressed.emit()
 	await get_tree().create_timer(0.3).timeout
 	_check("its intro has a second step: the rules", _tutorial.visible)
 	_tutorial._next.pressed.emit()
 	await get_tree().create_timer(1.2).timeout
-	_check("then it runs", challenge_left < 179.5 and challenge_left > 177.0 and TSProfile.challenge_intro_seen)
+	_check("then it runs", challenge_left < TSLevels.CHALLENGE_SECONDS - 0.5 and challenge_left > TSLevels.CHALLENGE_SECONDS - 3.0 and TSProfile.challenge_intro_seen)
 	_open_pause()
 	_check("Pause has no Restart on a challenge", not (_pause["restart"] as Button).visible)
 	var held := challenge_left
@@ -122,7 +122,7 @@ func _run() -> void:
 	TSProfile.last_level = 18
 	_check("having won 17, the tutorial challenge is due", TSProfile.challenge_due() == 17)
 	_start_challenge(17)
-	_check("an Intermediate egg, 3 minutes", is_challenge and difficulty == 1 and _escape_size() == 3 and is_equal_approx(challenge_left, 180.0))
+	_check("an Intermediate egg, on the same clock", is_challenge and difficulty == 1 and _escape_size() == 3 and is_equal_approx(challenge_left, float(TSLevels.CHALLENGE_SECONDS)))
 	TSProfile.last_level = 41
 	_check("and once it's played, the one after 40 is next", TSProfile.challenge_due() == 40)
 	# The whole way through the tutorial one: win 17, Next, the challenge, win it, Next, 18.

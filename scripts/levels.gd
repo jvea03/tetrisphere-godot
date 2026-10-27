@@ -423,11 +423,11 @@ const UNLIMITED_PIECES_THROUGH := 5   # levels 1-5 have no counter (a budget of 
 const EARLY_PIECES_THROUGH := 30   # levels 6-30 get EARLY_PIECES on top of their budget, as the counter is new
 const EARLY_PIECES := 2
 ## Past STREAK_CUT_AFTER, a player on a long win streak gets fewer pieces: one
-## less from a 5-win streak, two less from 7 (STREAK_CUTS: streak -> pieces
-## off, the longest that applies). Only levels that count toward the streak;
+## less from a 5-win streak, two from 7, three from 9, four from 11
+## (STREAK_CUTS: streak -> pieces off, the longest that applies). Only levels that count toward the streak;
 ## see game.gd _start.
 const STREAK_CUT_AFTER := 50
-const STREAK_CUTS := [[7, 2], [5, 1]]
+const STREAK_CUTS := [[11, 4], [9, 3], [7, 2], [5, 1]]
 static var _budgets: Dictionary = {}
 
 
@@ -467,7 +467,7 @@ const CHALLENGE_TUTORIAL_AFTER := 17
 const CHALLENGE_TUTORIAL_TIER := 1   # Intermediate
 const CHALLENGE_FIRST_AFTER := 40
 const CHALLENGE_EVERY := 20
-const CHALLENGE_SECONDS := 180
+const CHALLENGE_SECONDS := 120
 const CHALLENGE_BONUS_COINS := 3000
 ## Out of time, a buy-out: CHALLENGE_BUYOUT_SECONDS more on the clock (and a
 ## heart back, if one was lost) for CHALLENGE_BUYOUT_COINS. Out of hearts, none.
