@@ -76,6 +76,7 @@ var _timer_pill: PanelContainer   # under the hearts on a challenge: its clock
 var _timer_label: Label
 var _pieces_pill: PanelContainer   # the piece counter, under the tray (not on a challenge)
 var _pieces_label: Label
+var _pieces_word: Label   # "pieces left", or "piece left" on the last one
 var is_first_attempt := true # won without a lost ball or a paid rescue: +2 stars
 var lose_ad_used := false   # the lose card's ad life, once per ball
 var continues_bought := 0   # hearts refills bought for this ball: the first is at FIRST_CONTINUE_COST
@@ -383,7 +384,8 @@ func _build_hud() -> void:
 	_pieces_pill.add_child(pieces_col)
 	_pieces_label = TSUI.label("", 34, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER)
 	pieces_col.add_child(_pieces_label)
-	pieces_col.add_child(TSUI.label("pieces", 18, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	_pieces_word = TSUI.label("pieces left", 18, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+	pieces_col.add_child(_pieces_word)
 	root.add_child(_pieces_pill)
 
 	var boosters_at := _pin(root, Control.PRESET_CENTER_BOTTOM, Vector2(0.0, 0.0))
@@ -638,7 +640,7 @@ func _start(seed_value: int, baked: Dictionary = {}) -> void:
 	is_first_attempt = true
 	lose_ad_used = false
 	continues_bought = 0
-	pieces_left = 0 if is_challenge else TSLevels.piece_budget(current_level)
+	pieces_left = TSLevels.piece_budget(current_level) if _has_piece_limit() else 0
 	selected = TSBoard.HOLE
 	_dealt.clear()
 	cur_type = _fair(_deal())
@@ -673,7 +675,7 @@ func _resume() -> void:
 	is_first_attempt = bool(s["first_attempt"])
 	lose_ad_used = bool(s["lose_ad_used"])
 	continues_bought = int(s.get("continues_bought", 0))
-	pieces_left = int(s.get("pieces_left", 0 if is_challenge else TSLevels.piece_budget(current_level)))
+	pieces_left = int(s.get("pieces_left", TSLevels.piece_budget(current_level) if _has_piece_limit() else 0))
 	_ball_seq += 1
 	state = State.PLAYING
 	_escaping = false
@@ -998,7 +1000,7 @@ func _drop() -> void:
 	else:
 		var wild := cur_type == TSBoard.WILD
 		res = board.place_and_resolve(offsets, landing, cur_type, _current_depth())
-		if not is_challenge:
+		if _has_piece_limit():
 			pieces_left -= 1   # a booster's bomb or rocks cost no piece
 		var grew := int(res.get("vine_grew", TSBoard.HOLE))
 		if grew != TSBoard.HOLE:
@@ -1101,13 +1103,19 @@ func _finish_drop(res: Dictionary) -> void:
 	elif bool(res["overload"]):
 		lose_reason = "SHELL OVERLOADED"
 		_lose()
-	elif not is_challenge and pieces_left <= 0:
+	elif _has_piece_limit() and pieces_left <= 0:
 		_buy_piece_with_heart()
 
 	view.rebuild()
 	_refresh_piece()
 	_refresh_hud()
 	_crack_geodes(res)
+
+
+## Whether this egg counts its pieces: not a challenge (it has its clock), and
+## not the first few levels (TSLevels.piece_budget is 0 there: unlimited).
+func _has_piece_limit() -> bool:
+	return not is_challenge and TSLevels.piece_budget(current_level) > 0
 
 
 ## Out of pieces with the egg still shut: a heart buys one more piece, dealt
@@ -1147,12 +1155,13 @@ func _pieces_note(text: String) -> void:
 	tw.tween_callback(note.queue_free)
 
 
-## The piece counter: pieces left, the one in hand included -- coral near the end.
+## The piece counter, "12 pieces left": the one in hand included, coral near the end.
 func _refresh_pieces() -> void:
 	if _pieces_pill == null:
 		return
-	_pieces_pill.visible = not is_challenge and state == State.PLAYING
+	_pieces_pill.visible = _has_piece_limit() and state == State.PLAYING
 	_pieces_label.text = str(maxi(pieces_left, 0))
+	_pieces_word.text = "piece left" if pieces_left == 1 else "pieces left"
 	_pieces_label.add_theme_color_override("font_color", TSUI.CORAL if pieces_left <= 3 else TSUI.INK)
 
 
@@ -1174,7 +1183,7 @@ func _refresh_piece() -> void:
 # while a deal animation is moving it.
 func _draw_piece_boxes() -> void:
 	# On the last piece there is no next one: another costs a heart, and comes at random.
-	_next_box.visible = is_challenge or pieces_left > 1
+	_next_box.visible = not _has_piece_limit() or pieces_left > 1
 	if _drawn_hold != cur_type:
 		_drawn_hold = cur_type
 		_hold_box.size = _draw_piece(_hold_box, cur_type, current_offsets(), HOLD_PX)
@@ -2441,7 +2450,7 @@ func _refresh_lose_card() -> void:
 			price_line += "  (was %s)" % TSProfile.fmt_coins(LIVES_REFILL_COST)
 		if not pack.is_empty():
 			price_line = "Get %s coins  ·  %s" % [TSProfile.fmt_coins(int(pack["coins"])), pack["price"]]
-		var more := ", +%d pieces" % CONTINUE_PIECES if pieces_left <= 0 else ""   # out of pieces: a few come too (_revive)
+		var more := ", +%d pieces" % CONTINUE_PIECES if _has_piece_limit() and pieces_left <= 0 else ""   # out of pieces: a few come too (_revive)
 		var cont := TSUI.button("Continue  +%d hearts%s\n%s" % [LIVES, more, price_line], TSUI.GREEN, 28, Vector2(0, 112))
 		cont.disabled = short > 0 and pack.is_empty()
 		if deal:
@@ -2543,12 +2552,12 @@ func _start_challenge_intro() -> void:
 	])
 
 
-## The piece counter, once: on the first level from 2 on with no other
-## lesson, or the first time the pieces run out if that comes sooner.
+## The piece counter, once: on the first counted level with no other lesson,
+## or the first time the pieces run out if that comes sooner.
 func _start_pieces_intro() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
-	if not is_inside_tree() or is_challenge or TSProfile.pieces_intro_seen or _tutorial.visible or state != State.PLAYING:
+	if not is_inside_tree() or not _has_piece_limit() or TSProfile.pieces_intro_seen or _tutorial.visible or state != State.PLAYING:
 		return
 	_tutorial.finished.connect(func():
 		TSProfile.pieces_intro_seen = true
@@ -2624,7 +2633,7 @@ func _revive(count: int) -> void:
 		_streak_lost = 0
 		TSProfile.save()
 	lives = count
-	if not is_challenge and pieces_left <= 0:
+	if _has_piece_limit() and pieces_left <= 0:
 		pieces_left = CONTINUE_PIECES   # out of pieces too: a few more come with the hearts
 	lose_reason = ""
 	state = State.PLAYING
@@ -2807,8 +2816,8 @@ func _maybe_start_tutorials() -> void:
 		_start_booster_tutorial(_btn_swap, "swap", "The Any Piece! Tap it to turn your piece into a wild block that becomes whatever it touches -- drop it by any pair to make a match. Here are %d to start." % TSProfile.SWAP_UNLOCK_GRANT)
 	elif TSProfile.rocks_unlocked and not TSProfile.rocks_tutorial_seen:
 		_start_booster_tutorial(_btn_rocks, "rocks", "Rocks! Tap to fire two rocks: each one lands on a pair and finishes the match. Here are %d shots to start." % TSProfile.ROCKS_UNLOCK_GRANT)
-	elif not TSProfile.pieces_intro_seen and not is_challenge and current_level >= 2:
-		# Last in line: the first level from 2 on with no other lesson.
+	elif not TSProfile.pieces_intro_seen and _has_piece_limit():
+		# Last in line: the first counted level with no other lesson.
 		_start_pieces_intro()
 
 

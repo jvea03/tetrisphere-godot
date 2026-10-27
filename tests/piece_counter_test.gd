@@ -2,7 +2,7 @@
 # each drop spends one (a bomb doesn't); run out and a heart buys one more,
 # dealt at random; with no heart to spend the egg is lost, and a continue or
 # the heart ad brings CONTINUE_PIECES more. Challenges have their clock
-# instead. Run with:
+# instead, and levels 1-5 have none. Run with:
 #   Godot.exe --headless --path . res://tests/piece_counter_test.tscn
 extends "res://scripts/game.gd"
 
@@ -35,7 +35,18 @@ func _says(dialog: Dictionary, text: String) -> bool:
 
 
 func _run() -> void:
-	_check("every level has a budget of at least %d" % TSLevels.MIN_PIECE_BUDGET, range(1, 800).all(func(l): return TSLevels.piece_budget(l) >= TSLevels.MIN_PIECE_BUDGET))
+	_check("levels 1-%d are unlimited" % TSLevels.UNLIMITED_PIECES_THROUGH, range(1, TSLevels.UNLIMITED_PIECES_THROUGH + 1).all(func(l): return TSLevels.piece_budget(l) == 0))
+	_check("every later level has a budget of at least %d" % TSLevels.MIN_PIECE_BUDGET, range(TSLevels.UNLIMITED_PIECES_THROUGH + 1, 800).all(func(l): return TSLevels.piece_budget(l) >= TSLevels.MIN_PIECE_BUDGET))
+
+	_start_level(3)
+	_refresh_hud()
+	_check("an unlimited level shows no counter", not _pieces_pill.visible)
+	_drop()
+	_check("and its drops spend nothing", pieces_left == 0 and lose_reason != "OUT OF PIECES" and _next_box.visible)
+	lives = 0
+	lose_reason = "OUT OF LIVES"
+	_lose()
+	_check("its lose card offers no pieces", not _says(_lose_card, "+%d pieces" % CONTINUE_PIECES))
 	_check("past the table, a level takes the budget of its match in the last 60",
 		TSLevels.piece_budget(TSLevels.PIECE_BUDGET_LAST + 1) == TSLevels.piece_budget(TSLevels.PIECE_BUDGET_LAST - 59)
 		and TSLevels.piece_budget(TSLevels.PIECE_BUDGET_LAST + 125) == TSLevels.piece_budget(TSLevels.PIECE_BUDGET_LAST - 55))   # 785 plays as 605
@@ -43,7 +54,7 @@ func _run() -> void:
 	_start_level(20)
 	_check("a level starts with its budget (%d)" % pieces_left, pieces_left == TSLevels.piece_budget(20))
 	_refresh_hud()
-	_check("the counter under the tray shows it", _pieces_pill.visible and _pieces_label.text == str(pieces_left))
+	_check("the counter under the tray shows it", _pieces_pill.visible and _pieces_label.text == str(pieces_left) and _pieces_word.text == "pieces left")
 
 	var before := pieces_left
 	_drop()
@@ -64,6 +75,8 @@ func _run() -> void:
 	pieces_left = 1
 	_refresh_piece()
 	_check("on the last piece there is no next one", not _next_box.visible)
+	_refresh_hud()
+	_check("and the counter says \"1 piece left\"", _pieces_label.text == "1" and _pieces_word.text == "piece left")
 
 	_start_level(20)
 	pieces_left = 0
@@ -107,7 +120,7 @@ func _run() -> void:
 	TSProfile.pieces_intro_seen = false
 	_start_level(21)
 	await get_tree().create_timer(0.5).timeout
-	_check("the counter's card shows once, on a level from 2 on", _tutorial.visible)
+	_check("the counter's card shows once, on a counted level", _tutorial.visible)
 
 	print("piece_counter_test: %d failure(s)" % _failures)
 	get_tree().quit(1 if _failures > 0 else 0)
