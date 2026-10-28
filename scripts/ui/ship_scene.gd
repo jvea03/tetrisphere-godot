@@ -613,7 +613,7 @@ func _node_world(i: int) -> Vector2:
 	if GROUND_NODES.has(i):
 		var spot: Vector2 = GROUND_NODES[i][0]
 		var full: float = GROUND_NODES[i][1]
-		var rise: float = NODE_RISE[clampi(int(_levels[i]), 0, NODE_RISE.size() - 1)]
+		var rise: float = NODE_RISE[clampi(_lv(i), 0, NODE_RISE.size() - 1)]
 		return spot - Vector2(0.0, NODE_LIFT_MIN + (full - NODE_HEADROOM - NODE_LIFT_MIN) * rise)
 	var a := deg_to_rad(float(SHIP_SLOTS[i]))
 	return _xf * (SHIP_MIDDLE + Vector2(cos(a) * SHIP_RING.x, sin(a) * SHIP_RING.y))

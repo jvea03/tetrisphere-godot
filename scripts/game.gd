@@ -1628,7 +1628,9 @@ func _streak_line() -> Control:
 	var n := str(TSProfile.WIN_STREAK_PIECES)
 	var parts := PackedStringArray()
 	if tier > 0:
-		parts.append("Next level starts with " + str(REWARD[tier]).replace("{n}", n))
+		# A challenge waiting next has no streak perks: they come on the level after it.
+		var next := "the level after the challenge" if TSProfile.challenge_due() == current_level else "next level"
+		parts.append("%s starts with %s" % [next, str(REWARD[tier]).replace("{n}", n)])
 	if tier < TSProfile.WIN_STREAK_TIERS.size():
 		var more := int(TSProfile.WIN_STREAK_TIERS[tier]) - TSProfile.win_streak
 		parts.append("win %d more for %s!" % [more, str(PERK[tier + 1]).replace("{n}", n)])

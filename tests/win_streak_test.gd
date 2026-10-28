@@ -54,6 +54,14 @@ func _run() -> void:
 	await get_tree().create_timer(3.0).timeout
 	_check("a win starts the streak", TSProfile.win_streak == 1)
 	_check("the win card shows it, and what the next tier brings", _says(_win_card, "Win streak: 1") and _says(_win_card, "Win 1 more for a free rock!"))
+	TSProfile.win_streak = 2
+	TSProfile.challenge_done_through = 0
+	_start_level(40)
+	_debug_win()
+	await get_tree().create_timer(3.0).timeout
+	_check("before a challenge, the perks are for the level after it", _says(_win_card, "The level after the challenge starts with a free rock"))
+	TSProfile.challenge_done_through = 1 << 30
+	TSProfile.win_streak = 1
 
 	var runs := [0, 1, 2, 3, 4, 5, 6, 9]
 	_check("tiers start at 2, 4 and 6 wins", runs.map(func(n): TSProfile.win_streak = n; return TSProfile.win_streak_tier()) == [0, 0, 1, 1, 2, 2, 3, 3])
