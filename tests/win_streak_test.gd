@@ -63,8 +63,13 @@ func _run() -> void:
 	_check("one win: no rocks yet", await _start_on(1) == 0)
 	var two := await _start_on(2)
 	_check("a 2-win streak throws one rock (%d)" % two, two == 1)
+	TSProfile.win_streak = 4
+	_start_level(41)
+	_refresh_hud()
+	_check("the bonus pieces wait to fly in: the counter shows the budget first", _pieces_label.text == str(TSLevels.piece_budget(41)) and _pieces_pending == TSProfile.WIN_STREAK_PIECES)
 	var four := await _start_on(4)
 	_check("a 4-win streak still one (%d), and +%d pieces (%d of %d)" % [four, TSProfile.WIN_STREAK_PIECES, pieces_left, TSLevels.piece_budget(41)], four == 1 and pieces_left == TSLevels.piece_budget(41) + TSProfile.WIN_STREAK_PIECES)
+	_check("then the +%d has flown in and the counter shows it" % TSProfile.WIN_STREAK_PIECES, _pieces_pending == 0 and _pieces_label.text == str(pieces_left))
 	var six := await _start_on(6)
 	_check("a 6-win streak throws two (%d)" % six, six >= 1 and six <= 2)
 	var many := await _start_on(9)

@@ -218,10 +218,18 @@ var _falling: Array = []        # drifting leaves: [x, y, fall speed, sway phase
 
 ## Where the build nodes on the ground float, in world coordinates (above each
 ## camp spot, and the solar panels' stand), by TSProfile.PARTS index.
-const GROUND_NODES := {0: FIRE + Vector2(0.0, -150.0), 1: TENT + Vector2(0.0, -230.0), 2: BENCH + Vector2(0.0, -190.0), 3: GARDEN + Vector2(0.0, -150.0), 4: WELL + Vector2(0.0, -210.0), 5: LOOKOUT + Vector2(0.0, -330.0), 14: SOLAR + Vector2(0.0, -190.0),
-	15: HAMMOCK + Vector2(0.0, -190.0), 16: PICNIC + Vector2(0.0, -160.0), 17: CLOTHESLINE + Vector2(0.0, -220.0), 18: MAILBOX + Vector2(0.0, -180.0),
-	19: WINDMILL + Vector2(0.0, -350.0), 20: DOCK + Vector2(0.0, -130.0), 21: PLAYGROUND + Vector2(0.0, -230.0), 22: TREEHOUSE + Vector2(0.0, -350.0), 23: STALL + Vector2(0.0, -240.0),
-	24: GREENHOUSE + Vector2(0.0, -230.0), 25: SPRING + Vector2(0.0, -150.0), 26: OBSERVATORY + Vector2(0.0, -280.0), 27: OVEN + Vector2(0.0, -210.0), 28: STATUE + Vector2(0.0, -250.0)}
+## Each camp spot's build node (and the solar panels'), [where the spot stands,
+## how far over it the node floats once the spot is all but finished]. A
+## broken spot is low -- ashes, a pile of logs -- so its node starts close
+## over it and rises as the spot is built up (NODE_RISE), always just above
+## what is there, and never off at the top of the world.
+const GROUND_NODES := {0: [FIRE, 150.0], 1: [TENT, 230.0], 2: [BENCH, 190.0], 3: [GARDEN, 150.0], 4: [WELL, 210.0], 5: [LOOKOUT, 330.0], 14: [SOLAR, 190.0],
+	15: [HAMMOCK, 190.0], 16: [PICNIC, 160.0], 17: [CLOTHESLINE, 220.0], 18: [MAILBOX, 180.0],
+	19: [WINDMILL, 350.0], 20: [DOCK, 130.0], 21: [PLAYGROUND, 230.0], 22: [TREEHOUSE, 350.0], 23: [STALL, 240.0],
+	24: [GREENHOUSE, 230.0], 25: [SPRING, 150.0], 26: [OBSERVATORY, 280.0], 27: [OVEN, 210.0], 28: [STATUE, 250.0]}
+const NODE_LIFT_MIN := 40.0      # over the spot's ground, at the lowest
+const NODE_HEADROOM := 100.0     # of each full lift, the room over the finished spot
+const NODE_RISE := [0.2, 0.5, 0.75, 0.95]   # how much of the rest it rises, by the spot's level now
 ## The ship parts' nodes ring the ship (too many to sit on the hull itself):
 ## each at its own angle round SHIP_MIDDLE, in ship coordinates (0 towards the
 ## nose, 90 the belly), on an oval SHIP_RING across, with a dotted line in to
@@ -603,7 +611,10 @@ func _node_parts() -> Array:
 ## Where a part's node floats, in world coordinates.
 func _node_world(i: int) -> Vector2:
 	if GROUND_NODES.has(i):
-		return GROUND_NODES[i]
+		var spot: Vector2 = GROUND_NODES[i][0]
+		var full: float = GROUND_NODES[i][1]
+		var rise: float = NODE_RISE[clampi(int(_levels[i]), 0, NODE_RISE.size() - 1)]
+		return spot - Vector2(0.0, NODE_LIFT_MIN + (full - NODE_HEADROOM - NODE_LIFT_MIN) * rise)
 	var a := deg_to_rad(float(SHIP_SLOTS[i]))
 	return _xf * (SHIP_MIDDLE + Vector2(cos(a) * SHIP_RING.x, sin(a) * SHIP_RING.y))
 

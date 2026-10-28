@@ -77,6 +77,7 @@ var _timer_label: Label
 var _pieces_pill: PanelContainer   # the piece counter, under the tray (not on a challenge)
 var _pieces_label: Label
 var _pieces_word: Label   # "pieces left", or "piece left" on the last one
+var _pieces_pending := 0   # the streak's bonus pieces, counted but not yet flown in (_fly_streak_pieces)
 var is_first_attempt := true # won without a lost ball or a paid rescue: +2 stars
 var lose_ad_used := false   # the lose card's ad life, once per ball
 var continues_bought := 0   # hearts refills bought for this ball: the first is at FIRST_CONTINUE_COST
@@ -641,8 +642,10 @@ func _start(seed_value: int, baked: Dictionary = {}) -> void:
 	lose_ad_used = false
 	continues_bought = 0
 	pieces_left = TSLevels.piece_budget(current_level) if _has_piece_limit() else 0
+	_pieces_pending = 0
 	if _has_piece_limit() and _streak_level():
-		pieces_left += TSProfile.win_streak_pieces()   # the streak's tier 2 on
+		_pieces_pending = TSProfile.win_streak_pieces()   # the streak's tier 2 on: shown flying in with its rocks
+		pieces_left += _pieces_pending
 		pieces_left -= TSLevels.streak_piece_cut(current_level, TSProfile.win_streak)   # a long run past level 50: a piece or two fewer
 	selected = TSBoard.HOLE
 	_dealt.clear()
@@ -679,6 +682,7 @@ func _resume() -> void:
 	lose_ad_used = bool(s["lose_ad_used"])
 	continues_bought = int(s.get("continues_bought", 0))
 	pieces_left = int(s.get("pieces_left", TSLevels.piece_budget(current_level) if _has_piece_limit() else 0))
+	_pieces_pending = 0
 	_ball_seq += 1
 	state = State.PLAYING
 	_escaping = false
@@ -1163,9 +1167,10 @@ func _refresh_pieces() -> void:
 	if _pieces_pill == null:
 		return
 	_pieces_pill.visible = _has_piece_limit() and state == State.PLAYING
-	_pieces_label.text = str(maxi(pieces_left, 0))
-	_pieces_word.text = "piece left" if pieces_left == 1 else "pieces left"
-	_pieces_label.add_theme_color_override("font_color", TSUI.CORAL if pieces_left <= 3 else TSUI.INK)
+	var shown := maxi(pieces_left - _pieces_pending, 0)
+	_pieces_label.text = str(shown)
+	_pieces_word.text = "piece left" if shown == 1 else "pieces left"
+	_pieces_label.add_theme_color_override("font_color", TSUI.CORAL if shown <= 3 else TSUI.INK)
 
 
 func _refresh_piece() -> void:
@@ -1513,6 +1518,7 @@ func _streak_rocks() -> void:
 	if rocks <= 0 or state != State.PLAYING:
 		return
 	_streak_banner(rocks)
+	_fly_streak_pieces()
 	await get_tree().create_timer(STREAK_ROCK_DELAY).timeout
 	if not await _streak_clear(ball) or state != State.PLAYING or _rocks_flying:
 		return
@@ -1522,6 +1528,49 @@ func _streak_rocks() -> void:
 		return
 	_throw_rocks(_streak_pill.get_global_rect().get_center(), targets)
 	TSSfx.play("rock_launch")
+
+
+## The win streak's bonus pieces fly in as its banner shows: a "+2" pops out
+## of the streak pill, arcs over to the piece counter, and the counter bounces
+## as it counts them in.
+func _fly_streak_pieces() -> void:
+	var bonus := _pieces_pending
+	if bonus <= 0 or not _pieces_pill.visible:
+		_pieces_pending = 0
+		_refresh_pieces()
+		return
+	var ball := _ball_seq
+	var tag := TSUI.label("+%d" % bonus, 44, TSFX.COL_GAIN)
+	tag.add_theme_color_override("font_outline_color", TSToon.PAPER)
+	tag.add_theme_constant_override("outline_size", 12)
+	tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_hud.add_child(tag)
+	tag.size = tag.get_combined_minimum_size()
+	tag.pivot_offset = tag.size * 0.5
+	var from := _streak_pill.get_global_rect().get_center() - tag.size * 0.5
+	var to := _pieces_pill.get_global_rect().get_center() - tag.size * 0.5
+	var lift := Vector2((from.x + to.x) * 0.5, minf(from.y, to.y) - 90.0)   # the arc's high point
+	tag.position = from
+	tag.scale = Vector2.ZERO
+	var tw := tag.create_tween()
+	tw.tween_interval(0.5)
+	tw.tween_property(tag, "scale", Vector2.ONE * 1.25, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(tag, "scale", Vector2.ONE, 0.1)
+	tw.tween_method(func(t: float) -> void:
+		tag.position = from.lerp(lift, t).lerp(lift.lerp(to, t), t), 0.0, 1.0, 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.parallel().tween_property(tag, "scale", Vector2.ONE * 0.6, 0.6).set_ease(Tween.EASE_IN)
+	tw.tween_callback(func() -> void:
+		tag.queue_free()
+		if ball != _ball_seq or not is_inside_tree():
+			return
+		_pieces_pending = 0
+		_refresh_pieces()
+		_pieces_pill.pivot_offset = _pieces_pill.size * 0.5
+		var pop := _pieces_pill.create_tween()
+		pop.tween_property(_pieces_pill, "scale", Vector2.ONE * 1.25, 0.08)
+		pop.tween_property(_pieces_pill, "scale", Vector2.ONE, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		_fx.burst(_pieces_pill.get_global_rect().get_center(), [TSFX.COL_GAIN, TSUI.MINT, Color.WHITE], 14, 260.0, 0.5, 6.0, 0.0, true)
+		TSSfx.play("ding"))
 
 
 ## Waits out a lesson or an open card (pause, an ad prompt); false if the

@@ -159,6 +159,24 @@ func _run() -> void:
 	_check("with coins again, the engine is fixed", TSProfile.part_level_of(TSProfile.PART_ENGINE) == level + 1)
 	_check("a node's screen spot is somewhere real", _world.node_screen_position(TSProfile.PART_ENGINE).is_finite())
 
+	# Every camp node, at every level, can be scrolled into the open part of
+	# Home (clear of the top bar and the side tiles) at the opening zoom.
+	var sw = _world
+	var open: Rect2 = sw._area().grow(-sw.NODE_R - 6.0)
+	var view: Vector2 = sw._view_size()
+	var levels_were: Array = sw._levels.duplicate()
+	var stuck: Array = []
+	for i in sw.GROUND_NODES:
+		for lvl in TSProfile.PART_MAX_LEVEL:
+			sw._levels[i] = lvl
+			var p: Vector2 = sw._node_world(i) * sw.ZOOM
+			var x_ok: bool = maxf(open.position.x - p.x, view.x - sw.W * sw.ZOOM) <= minf(open.end.x - p.x, 0.0)
+			var y_ok: bool = maxf(open.position.y - p.y, view.y - sw.H * sw.ZOOM) <= minf(open.end.y - p.y, 0.0)
+			if not (x_ok and y_ok):
+				stuck.append("%s at level %d" % [TSProfile.PARTS[i]["name"], lvl])
+	sw._levels = levels_were
+	_check("every camp node can be scrolled into the open area, at every level %s" % [stuck], stuck.is_empty())
+
 	# Pinch to zoom: two fingers spreading apart zoom in about their middle,
 	# which stays over the same spot of the camp.
 	var w = _world
