@@ -78,7 +78,7 @@ static func restore() -> void:
 		"lives": int(d.get("lives", 1)), "first_attempt": bool(d.get("first_attempt", false)),
 		"lose_ad_used": bool(d.get("lose_ad_used", false)), "continues_bought": int(d.get("continues_bought", 0)),
 		"streak_rocks_due": bool(d.get("streak_rocks_due", false)),
-		"challenge": bool(d.get("challenge", false)), "challenge_left": float(d.get("challenge_left", TSLevels.CHALLENGE_SECONDS)),
+		"challenge": bool(d.get("challenge", false)), "challenge_left": float(d.get("challenge_left", TSLevels.challenge_seconds(int(d.get("level", 1))))),
 	}
 	# A ball parked before the piece counter keeps the level's full budget (game.gd).
 	if d.has("pieces_left"):

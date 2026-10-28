@@ -461,18 +461,24 @@ static func streak_piece_cut(level: int, streak: int) -> int:
 ## between two levels -- after level CHALLENGE_FIRST_AFTER, then every
 ## CHALLENGE_EVERY -- and played once: won or lost, the journey goes on to the
 ## next level. They are not levels themselves (no level number, no progress).
-## Before them, a tutorial one after CHALLENGE_TUTORIAL_AFTER: the same clock
-## on an Intermediate egg, to learn the rules on.
+## Before them, a tutorial one after CHALLENGE_TUTORIAL_AFTER: an Intermediate
+## egg on a longer clock (CHALLENGE_TUTORIAL_SECONDS), to learn the rules on.
 const CHALLENGE_TUTORIAL_AFTER := 17
 const CHALLENGE_TUTORIAL_TIER := 1   # Intermediate
 const CHALLENGE_FIRST_AFTER := 40
 const CHALLENGE_EVERY := 20
 const CHALLENGE_SECONDS := 120
+const CHALLENGE_TUTORIAL_SECONDS := 180
 const CHALLENGE_BONUS_COINS := 3000
 ## Out of time, a buy-out: CHALLENGE_BUYOUT_SECONDS more on the clock (and a
 ## heart back, if one was lost) for CHALLENGE_BUYOUT_COINS. Out of hearts, none.
 const CHALLENGE_BUYOUT_SECONDS := 60
 const CHALLENGE_BUYOUT_COINS := 1000
+
+
+## The clock a challenge starts with: the tutorial one's is longer.
+static func challenge_seconds(after: int) -> int:
+	return CHALLENGE_TUTORIAL_SECONDS if after == CHALLENGE_TUTORIAL_AFTER else CHALLENGE_SECONDS
 
 
 static func is_challenge_slot(after: int) -> bool:

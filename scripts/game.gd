@@ -610,7 +610,7 @@ func _start(seed_value: int, baked: Dictionary = {}) -> void:
 	if not TSSession.has_saved_game:
 		TSSession.forget()   # a fresh ball: nothing to continue
 	level = TSLevels.challenge_rules(current_level) if is_challenge else TSLevels.rules_for_level(current_level)
-	challenge_left = float(TSLevels.CHALLENGE_SECONDS)
+	challenge_left = float(TSLevels.challenge_seconds(current_level))
 	if baked.is_empty():
 		board.generate(seed_value, level)
 	else:
@@ -673,7 +673,7 @@ func _resume() -> void:
 	current_level = int(s["level"])
 	difficulty = int(s["difficulty"])
 	level = TSLevels.challenge_rules(current_level) if is_challenge else TSLevels.rules_for_level(current_level)
-	challenge_left = float(s.get("challenge_left", TSLevels.CHALLENGE_SECONDS))
+	challenge_left = float(s.get("challenge_left", TSLevels.challenge_seconds(current_level)))
 	cur_type = int(s["cur_type"])
 	next_type = int(s["next_type"])
 	cursor = s["cursor"]
@@ -2611,7 +2611,7 @@ func _start_challenge_intro() -> void:
 		TSProfile.save(), CONNECT_ONE_SHOT)
 	_tutorial.start([
 		{"rect": _timer_pill.get_global_rect().grow(8.0),
-			"text": "A challenge level! Free the Milky before the clock runs out -- you have %d minutes." % (TSLevels.CHALLENGE_SECONDS / 60)},
+			"text": "A challenge level! Free the Milky before the clock runs out -- you have %d minutes." % (TSLevels.challenge_seconds(current_level) / 60)},
 		{"rect": _ball_rect(),
 			"text": "Win for a big coin bonus. Out of time? You can buy a minute more. A challenge is played once -- win or lose, the next level follows."},
 	])

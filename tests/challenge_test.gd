@@ -1,5 +1,5 @@
 # Challenge levels: a tutorial one (Intermediate) after level 17, then from
-# between 40 and 41 every 20, each played once (marked as it starts); an Extreme egg with a 2-minute clock that waits
+# between 40 and 41 every 20, each played once (marked as it starts); an Extreme egg with a 2-minute clock (3 on the tutorial one) that waits
 # for its intro, pauses and cards; out of time (or hearts) there is no
 # continue -- the next level follows; a win pays the bonus but moves neither
 # the level nor the win streak; leaving parks it with its clock. Run with:
@@ -117,12 +117,14 @@ func _run() -> void:
 	_check("a player far along gets the newest one behind them only", TSProfile.challenge_due() == 280)
 	TSProfile.last_level = 301
 	_check("(which sits behind level 301)", TSProfile.challenge_due() == 300)
-	# The tutorial one, after level 17: an Intermediate egg, the same clock.
+	# The tutorial one, after level 17: an Intermediate egg on a longer clock.
 	TSProfile.challenge_done_through = 0
 	TSProfile.last_level = 18
 	_check("having won 17, the tutorial challenge is due", TSProfile.challenge_due() == 17)
 	_start_challenge(17)
-	_check("an Intermediate egg, on the same clock", is_challenge and difficulty == 1 and _escape_size() == 3 and is_equal_approx(challenge_left, float(TSLevels.CHALLENGE_SECONDS)))
+	_check("an Intermediate egg, on a %d-minute clock (the rest %d)" % [TSLevels.CHALLENGE_TUTORIAL_SECONDS / 60, TSLevels.CHALLENGE_SECONDS / 60], is_challenge and difficulty == 1 and _escape_size() == 3 and is_equal_approx(challenge_left, float(TSLevels.CHALLENGE_TUTORIAL_SECONDS)) and TSLevels.CHALLENGE_TUTORIAL_SECONDS > TSLevels.CHALLENGE_SECONDS)
+	_refresh_timer()
+	_check("its clock shows 3:00", _timer_label.text == "%d:00" % (TSLevels.CHALLENGE_TUTORIAL_SECONDS / 60))
 	TSProfile.last_level = 41
 	_check("and once it's played, the one after 40 is next", TSProfile.challenge_due() == 40)
 	# The whole way through the tutorial one: win 17, Next, the challenge, win it, Next, 18.

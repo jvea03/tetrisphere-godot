@@ -87,13 +87,13 @@ const SPOT_BEAM := Color(0.95, 0.95, 0.84)   # the floodlights on the ship at ni
 const KITE_SKY := Vector2(340.0, 250.0)     # where the kite flies
 const POND := Vector2(560.0, 1000.0)
 const MOUND := SHIP_AT + Vector2(195.0, 62.0)
-const FIRE := Vector2(2060.0, 1060.0)
+const FIRE := Vector2(1530.0, 980.0)    # the first wave sits round the ship, in view as Home opens
 const CRATER := Vector2(1250.0, 1500.0)
 # The camp spots (TSProfile.PARTS) round the crash, and the solar panels' stand.
-const TENT := Vector2(2260.0, 960.0)
-const BENCH := Vector2(1860.0, 1120.0)
-const GARDEN := Vector2(2340.0, 1300.0)
-const WELL := Vector2(300.0, 1010.0)
+const TENT := Vector2(1060.0, 960.0)
+const BENCH := Vector2(1760.0, 1080.0)
+const GARDEN := Vector2(1500.0, 1200.0)
+const WELL := Vector2(840.0, 930.0)
 const LOOKOUT := Vector2(2480.0, 640.0)
 const SOLAR := Vector2(470.0, 700.0)
 # The camp's later waves: the second round the camp to the east, the third
