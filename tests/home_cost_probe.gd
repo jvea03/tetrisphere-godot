@@ -30,6 +30,7 @@ func _run() -> void:
 	for n in home.find_children("*", "", true, false):
 		if n.get_script() != null and str(n.get_script().resource_path).ends_with("ship_scene.gd"):
 			camp = n
+	camp.set("_awake_until", INF)   # uncapped: Home otherwise drops to its IDLE_FPS when left alone
 	print("COST as is: %d fps, %d draws" % [roundi(await _fps()), Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)])
 	camp.set_process(false)
 	print("COST no repaint: %d fps, %d draws" % [roundi(await _fps()), Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)])

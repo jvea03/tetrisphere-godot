@@ -212,6 +212,24 @@ func _run() -> void:
 	pinch.call(1, mid, false)
 	_check("lifting the fingers ends the pinch, and no part was tapped", w._touches.is_empty() and _part["root"].visible == card_before)
 
+	# Left alone, Home drops to IDLE_FPS; a touch anywhere brings back the full rate.
+	w._velocity = Vector2.ZERO
+	w._glide_to = null
+	w._awake_until = w._t + 0.2
+	await get_tree().create_timer(0.6).timeout
+	_check("idle, Home runs at %d fps" % w.IDLE_FPS, Engine.max_fps == w.IDLE_FPS)
+	var tap := InputEventMouseButton.new()
+	tap.button_index = MOUSE_BUTTON_LEFT
+	tap.pressed = true
+	tap.position = Vector2(10, 10)
+	Input.parse_input_event(tap)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_check("a touch brings back the full rate", Engine.max_fps == 0)
+	w.queue_free()
+	await get_tree().process_frame
+	_check("and leaving Home lifts the cap", Engine.max_fps == 0)
+
 	print("")
 	print("ALL PASSED" if _failures == 0 else "%d FAILED" % _failures)
 	get_tree().quit(0 if _failures == 0 else 1)

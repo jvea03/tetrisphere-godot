@@ -181,7 +181,16 @@ const PATHS := {
 }
 const CHASE := Vector2(840.0, 1420.0)       # the middle of the bug chase's loop
 
+# Left alone, Home runs at IDLE_FPS: the camp's crew and flames don't need
+# 60, and every frame repaints whatever moves on screen (the battery and the
+# phone's warmth thank it). Any touch -- a card, a button, a drag -- brings
+# back the full rate for AWAKE_SECONDS, as do a pan's glide and the launch.
+const IDLE_FPS := 30
+const AWAKE_SECONDS := 3.0
+
 var _t := 0.0
+var _awake_until := AWAKE_SECONDS   # in _t: full rate as Home opens, for its pop-ups
+var _painted := -1.0            # in _t: the moving layers' last repaint
 var _xf := Transform2D()        # ship coordinates -> world coordinates
 var _world: Control             # everything that pans
 var _sky_layer: Control         # the sky: its time of day (drawn once)
@@ -502,6 +511,25 @@ func _clamp_offset() -> void:
 	var view := _view_size()
 	_offset.x = clampf(_offset.x, view.x - W * _zoom, 0.0)
 	_offset.y = clampf(_offset.y, view.y - H * _zoom, 0.0)
+
+
+## Any input at all, menus' included (it isn't taken): the full frame rate.
+func _input(event: InputEvent) -> void:
+	if not (event is InputEventMouseMotion and (event as InputEventMouseMotion).button_mask == 0):
+		_awake_until = _t + AWAKE_SECONDS
+
+
+func _exit_tree() -> void:
+	Engine.max_fps = 0
+
+
+## The frame rate for now: full while anything is being touched or moving.
+func _pace() -> void:
+	var busy := _t < _awake_until or _dragging or not _touches.is_empty() or _velocity.length() > 5.0 \
+		or _glide_to != null or _launch_start >= 0.0 or not is_visible_in_tree()
+	var fps := 0 if busy else IDLE_FPS
+	if Engine.max_fps != fps:
+		Engine.max_fps = fps
 
 
 # Drags on any part of Home the menus leave uncovered (the buttons and cards
@@ -930,14 +958,19 @@ func _process(delta: float) -> void:
 	for c in _crew:
 		_place(c)
 	_sort()
-	# Repaint what moves; a camp spot well out of view keeps its last frame.
-	var seen := _visible_world().grow(SPOT_REACH)
-	for p in _painters:
-		if (p as Control).has_meta("at") and not seen.has_point((p as Control).get_meta("at")):
-			continue
-		(p as Control).queue_redraw()
+	# Repaint what moves, IDLE_FPS times a second at most (a pan just moves the
+	# layers, so it stays smooth at the full rate); a camp spot well out of view
+	# keeps its last frame.
+	if _t - _painted >= 0.9 / IDLE_FPS or delta == 0.0 or _launch_start >= 0.0:
+		_painted = _t
+		var seen := _visible_world().grow(SPOT_REACH)
+		for p in _painters:
+			if (p as Control).has_meta("at") and not seen.has_point((p as Control).get_meta("at")):
+				continue
+			(p as Control).queue_redraw()
 	_sync_builders()
 	_nodes.queue_redraw()
+	_pace()
 
 
 # Draw order: farther back first, so nearer things stand in front.
