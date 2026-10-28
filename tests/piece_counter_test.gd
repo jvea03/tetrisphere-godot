@@ -118,9 +118,13 @@ func _run() -> void:
 	TSProfile.challenge_done_through = 0
 	_start_challenge(40)
 	_refresh_hud()
-	_check("a challenge has no counter", not _pieces_pill.visible and pieces_left == 0)
+	_check("a challenge counts its pieces too", _pieces_pill.visible and pieces_left == TSLevels.CHALLENGE_PIECES and _pieces_label.text == str(TSLevels.CHALLENGE_PIECES))
 	_drop()
-	_check("and a drop there buys nothing", lives >= 1 and pieces_left <= 0 and lose_reason != "OUT OF PIECES")
+	_check("and a drop there spends one", pieces_left == TSLevels.CHALLENGE_PIECES - 1)
+	pieces_left = 1
+	var hearts := lives
+	_drop()
+	_check("and out of pieces there, a heart buys one", lives < hearts and (pieces_left == 1 or lose_reason != ""))
 	TSProfile.challenge_done_through = 1 << 30
 
 	var full := TSLevels.piece_budget(60)

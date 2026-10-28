@@ -415,7 +415,7 @@ static func rules_for_level(level: int) -> Dictionary:
 ## MIN_PIECE_BUDGET. Rerun the sim and rewrite the file after retuning a
 ## level. Levels 1 to UNLIMITED_PIECES_THROUGH have no counter, the next
 ## ones to EARLY_PIECES_THROUGH get EARLY_PIECES more while it is new, and
-## challenges have their clock instead.
+## challenges have CHALLENGE_PIECES (see below).
 const PIECE_BUDGETS := "res://levels/piece_budgets.json"
 const PIECE_BUDGET_LAST := 660
 const MIN_PIECE_BUDGET := 10
@@ -474,6 +474,10 @@ const CHALLENGE_BONUS_COINS := 3000
 ## heart back, if one was lost) for CHALLENGE_BUYOUT_COINS. Out of hearts, none.
 const CHALLENGE_BUYOUT_SECONDS := 60
 const CHALLENGE_BUYOUT_COINS := 1000
+## A challenge's piece counter, on top of its clock: past every budget
+## `tests/sim.gd -- challengebudget` finds (14 to 29 pieces), so the clock
+## stays the pressure and the counter only stops a race of careless drops.
+const CHALLENGE_PIECES := 30
 
 
 ## The clock a challenge starts with: the tutorial one's is longer.

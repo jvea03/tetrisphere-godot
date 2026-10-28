@@ -209,6 +209,44 @@ func _initialize() -> void:
 			print(row)
 		quit()
 		return
+	# `-- challengebudget 12 100`: the piece budget (as `-- budget`) for the
+	# tutorial challenge and the first 12 others, from the casual bot's plays
+	# without a clock. For TSLevels.CHALLENGE_PIECES.
+	if args.size() >= 2 and args[0] == "challengebudget":
+		var slots := [TSLevels.CHALLENGE_TUTORIAL_AFTER]
+		for k in int(args[1]):
+			slots.append(TSLevels.CHALLENGE_FIRST_AFTER + k * TSLevels.CHALLENGE_EVERY)
+		var n := int(args[2]) if args.size() > 2 else 100
+		for after in slots:
+			var rules := TSLevels.challenge_rules(after)
+			var egg := TSBoard.new()
+			egg.generate(TSLevels.challenge_seed(after), rules)
+			var plays: Array = []
+			var win_drops: Array = []
+			for i in n:
+				var rng := RandomNumberGenerator.new()
+				rng.seed = after * 7919 + i
+				var r := _play(egg.clone(), TSLevels.challenge_tier(after), rules, rng, CASUAL)
+				plays.append(r)
+				if bool(r["win"]):
+					win_drops.append(int(r["drops"]))
+			win_drops.sort()
+			var base := win_drops.size()
+			var give := floori(BUDGET_GIVE * base)
+			var budget := TURN_CAP
+			for b in range(1, TURN_CAP + 1):
+				var w := 0
+				for r in plays:
+					if _budget_outcome(r, b):
+						w += 1
+				if w >= base - give:
+					budget = b
+					break
+			var med := int(win_drops[win_drops.size() / 2]) if base > 0 else 0
+			var p90 := int(win_drops[mini(int(0.9 * base), base - 1)]) if base > 0 else 0
+			print("CBUDGET %4d  base %3d%%  budget %3d  drops med %3d p90 %3d  pieces %s" % [after, roundi(100.0 * base / n), budget, med, p90, rules["pieces"]])
+		quit()
+		return
 	# `-- ramp 8`: the slow ramp past level 50 (TSLevels.ramp_step) -- for every
 	# other step, one full loop of tiers at that step, each level played 8 times
 	# by both bots, as average win rates per tier.

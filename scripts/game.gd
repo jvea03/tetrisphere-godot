@@ -74,7 +74,7 @@ var is_challenge := false   # a challenge level (TSLevels.CHALLENGE_*): between 
 var challenge_left := 0.0   # seconds left on a challenge's clock
 var _timer_pill: PanelContainer   # under the hearts on a challenge: its clock
 var _timer_label: Label
-var _pieces_pill: PanelContainer   # the piece counter, under the tray (not on a challenge)
+var _pieces_pill: PanelContainer   # the piece counter, under the tray
 var _pieces_label: Label
 var _pieces_word: Label   # "pieces left", or "piece left" on the last one
 var _pieces_pending := 0   # the streak's bonus pieces, counted but not yet flown in (_fly_streak_pieces)
@@ -641,7 +641,7 @@ func _start(seed_value: int, baked: Dictionary = {}) -> void:
 	is_first_attempt = true
 	lose_ad_used = false
 	continues_bought = 0
-	pieces_left = TSLevels.piece_budget(current_level) if _has_piece_limit() else 0
+	pieces_left = _piece_budget()
 	_pieces_pending = 0
 	if _has_piece_limit() and _streak_level():
 		_pieces_pending = TSProfile.win_streak_pieces()   # the streak's tier 2 on: shown flying in with its rocks
@@ -681,7 +681,7 @@ func _resume() -> void:
 	is_first_attempt = bool(s["first_attempt"])
 	lose_ad_used = bool(s["lose_ad_used"])
 	continues_bought = int(s.get("continues_bought", 0))
-	pieces_left = int(s.get("pieces_left", TSLevels.piece_budget(current_level) if _has_piece_limit() else 0))
+	pieces_left = int(s.get("pieces_left", _piece_budget()))
 	_pieces_pending = 0
 	_ball_seq += 1
 	state = State.PLAYING
@@ -1119,10 +1119,16 @@ func _finish_drop(res: Dictionary) -> void:
 	_crack_geodes(res)
 
 
-## Whether this egg counts its pieces: not a challenge (it has its clock), and
-## not the first few levels (TSLevels.piece_budget is 0 there: unlimited).
+## Whether this egg counts its pieces: all but the first few levels
+## (TSLevels.piece_budget is 0 there: unlimited). Challenges count theirs too.
 func _has_piece_limit() -> bool:
-	return not is_challenge and TSLevels.piece_budget(current_level) > 0
+	return _piece_budget() > 0
+
+
+## The pieces this egg starts with: a challenge's TSLevels.CHALLENGE_PIECES, else
+## the level's own budget (0: no counter).
+func _piece_budget() -> int:
+	return TSLevels.CHALLENGE_PIECES if is_challenge else TSLevels.piece_budget(current_level)
 
 
 ## Out of pieces with the egg still shut: a heart buys one more piece, dealt
@@ -2611,7 +2617,7 @@ func _start_challenge_intro() -> void:
 		TSProfile.save(), CONNECT_ONE_SHOT)
 	_tutorial.start([
 		{"rect": _timer_pill.get_global_rect().grow(8.0),
-			"text": "A challenge level! Free the Milky before the clock runs out -- you have %d minutes." % (TSLevels.challenge_seconds(current_level) / 60)},
+			"text": "A challenge level! Free the Milky before the clock runs out -- you have %d minutes and %d pieces." % [TSLevels.challenge_seconds(current_level) / 60, pieces_left]},
 		{"rect": _ball_rect(),
 			"text": "Win for a big coin bonus. Out of time? You can buy a minute more. A challenge is played once -- win or lose, the next level follows."},
 	])
