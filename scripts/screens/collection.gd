@@ -458,7 +458,9 @@ func _maybe_start_tutorial() -> void:
 	var steps := [{"rect": _feature.get_global_rect(), "text": "This is your Collection: your critters. Every level they gain raises your Collection level."}]
 	if gift > 0:
 		steps.append({"rect": wallet.get_global_rect(), "text": "Here's %s coins -- enough for your first critter." % TSProfile.fmt_coins(gift)})
-	var buying := not TSProfile.is_critter_unlocked(TUTORIAL_CRITTER) and TSProfile.coin_count >= TSProfile.critter_unlock_cost(TUTORIAL_CRITTER)
+	# The adoption only with the gift that pays for it: a replay (Settings'
+	# Replay Tips) never walks anyone into spending their own coins.
+	var buying := gift > 0 and not TSProfile.is_critter_unlocked(TUTORIAL_CRITTER) and TSProfile.coin_count >= TSProfile.critter_unlock_cost(TUTORIAL_CRITTER)
 	if buying:
 		# The critter to tap sits far down the alphabetical list. The walkthrough
 		# blocks scrolling (everything outside its spotlight is dark and dead), so

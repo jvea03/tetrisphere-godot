@@ -60,6 +60,18 @@ func _run() -> void:
 		button.pressed.emit()
 	await get_tree().create_timer(1.0).timeout
 	_check("tapping the tile moves the walkthrough on to Buy", _tutorial.visible and str(_tutorial.steps[_tutorial.step_index].get("text", "")).begins_with("Tap Buy"))
+	while _tutorial.visible:
+		_tutorial._advance()
+		await get_tree().create_timer(0.3).timeout
+	# Replayed (Settings' Replay Tips): the gift's long gone and Doc unbought,
+	# with coins to spare -- no walking them into spending their own.
+	TSProfile.critter_unlocked[TUTORIAL_CRITTER] = false
+	TSProfile.coin_count = 100000
+	TSProfile.replay_tips()
+	_maybe_start_tutorial()
+	await get_tree().create_timer(0.8).timeout
+	_check("a replay shows the walkthrough, with no gift and no buying step", _tutorial.visible and TSProfile.coin_count == 100000 \
+		and not _tutorial.steps.any(func(s): return s.get("gate", false) or str(s.get("text", "")).contains("Tap Buy")))
 	print("")
 	print("ALL PASSED" if _failures == 0 else "%d FAILED" % _failures)
 	get_tree().quit(0 if _failures == 0 else 1)
