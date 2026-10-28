@@ -1,0 +1,25 @@
+// Google Play's in-app review sheet, as a Godot v2 Android plugin. Built into
+// addons/EggReview/bin/ by tools/build_notify_plugin.ps1 -Name EggReview,
+// compiled against the godot-lib in the installed Android build template
+// (android/build/libs). The Play Review library itself goes into the export
+// as a Gradle dependency (addons/EggReview/export_plugin.gd).
+plugins {
+    id 'com.android.library' version '8.6.1'
+}
+
+android {
+    namespace 'com.jvea.eggreview'
+    compileSdk 36
+    defaultConfig {
+        minSdk 24
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    compileOnly files('../../android/build/libs/release/godot-lib.template_release.aar')
+    compileOnly 'com.google.android.play:review:2.0.2'
+}

@@ -105,7 +105,10 @@ func build() -> void:
 	elif not TSProfile.notify_asked and features and Notify.available():
 		_open_notify_ask.call_deferred()
 	elif OS.get_name() == "Android" and TSProfile.review_due():
-		_open_review.call_deferred()
+		if Engine.has_singleton("EggReview"):
+			_play_review.call_deferred()
+		else:
+			_open_review.call_deferred()
 	TSProfile.won_since_home = false
 	var tick := Timer.new()
 	tick.wait_time = 1.0
@@ -1119,9 +1122,20 @@ func _setup_sale(walkthrough: bool) -> void:
 		_open_sale.call_deferred()
 
 
-## Asks for a rating on the way back from a win, a few levels apart: a button
-## to the Play listing's review page, a later, or never. Counted as asked as it
-## goes up, so Back is a later.
+## Asks for a rating on the way back from a win, a few levels apart, with
+## Google Play's own star sheet (the EggReview plugin) over Home -- no card or
+## "do you like it?" before it, as Play's guidelines ask. Play decides whether
+## it shows and never says if they rated, so it's simply counted as asked.
+func _play_review() -> void:
+	await _settled()
+	if not is_inside_tree():
+		return
+	TSProfile.note_review_asked()
+	Engine.get_singleton("EggReview").requestReview()
+
+
+## Without the plugin: a button to the Play listing's review page, a later, or
+## never. Counted as asked as it goes up, so Back is a later.
 func _open_review() -> void:
 	await _settled()
 	if not is_inside_tree():
@@ -1441,9 +1455,18 @@ func _build_settings() -> void:
 	var help := TSUI.card(Color(1.0, 0.95, 0.86), 20, 14, 0)
 	help.visible = false
 	help.add_child(TSUI.wrap(TSUI.label(TSUI.HOW_TO_PLAY, 20), 480))
-	var help_btn := TSUI.button("How to Play", TSUI.SKY, 26, Vector2(0, 64))
+	var help_btn := TSUI.expand(TSUI.button("How to Play", TSUI.SKY, 26, Vector2(0, 64))) as Button
 	help_btn.pressed.connect(func(): help.visible = not help.visible)
-	box.add_child(help_btn)
+	# The walkthroughs again: Home's start now, the rest where they first showed.
+	var tips := TSUI.expand(TSUI.button("Replay Tips", TSUI.SKY, 26, Vector2(0, 64))) as Button
+	tips.pressed.connect(func():
+		TSProfile.replay_tips()
+		TSUI.conceal(_settings["root"])
+		_start_walkthrough.call_deferred())
+	var help_row := TSUI.hbox(12)
+	help_row.add_child(help_btn)
+	help_row.add_child(tips)
+	box.add_child(help_row)
 	box.add_child(help)
 	var rows := [["music", "Music", "music_enabled"], ["sound", "Sound Effects", "sfx_enabled"], ["vibrate", "Haptics", "haptics_enabled"]]
 	if Notify.available():
@@ -1588,13 +1611,17 @@ func _start_home_tutorial() -> void:
 		return
 	tutorial.finished.connect(func():
 		TSProfile.home_tutorial_seen = true
+		TSProfile.starter_chest_given = true
 		TSProfile.save(), CONNECT_ONE_SHOT)
 	# A free Common chest to start with, for the player to unlock themselves --
-	# unless they already have one (the walkthrough was cut short before).
-	var slot := _tutorial_chest_slot()
-	if slot < 0:
-		slot = TSChests.give(TSChests.COMMON)
-		_refresh_chest_tray()
+	# unless they already have one (the walkthrough was cut short before). A
+	# replay (Settings' Replay Tips) skips it.
+	var slot := -1
+	if not TSProfile.starter_chest_given:
+		slot = _tutorial_chest_slot()
+		if slot < 0:
+			slot = TSChests.give(TSChests.COMMON)
+			_refresh_chest_tray()
 	var steps: Array = []
 	if slot >= 0 and not TSChests.is_unlocking(slot) and not TSChests.is_ready(slot):
 		var chest_rect := func() -> Rect2: return (_chest_slots[slot]["btn"] as Control).get_global_rect()
