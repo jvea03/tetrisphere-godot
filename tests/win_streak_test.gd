@@ -39,6 +39,10 @@ func _says(dialog: Dictionary, text: String) -> bool:
 	return (dialog["box"] as Node).find_children("*", "Label", true, false).any(func(l: Label) -> bool: return l.text.contains(text))
 
 
+func _says_tutorial(text: String) -> bool:
+	return _tutorial.find_children("*", "Label", true, false).any(func(l: Label) -> bool: return l.visible and l.text.contains(text))
+
+
 ## Starts a level on a streak of `n` and waits for its rocks.
 func _start_on(n: int) -> int:
 	TSProfile.win_streak = n
@@ -83,6 +87,18 @@ func _run() -> void:
 	var many := await _start_on(9)
 	_check("a longer run still throws two at most (%d)" % many, many >= 1 and many <= 2)
 	_check("the pill under the hearts shows the run", _streak_pill.visible and _streak_label.text == "9")
+
+	TSProfile.streak_intro_seen = false
+	TSProfile.win_streak = 1
+	_start_level(41)
+	await get_tree().create_timer(0.3).timeout
+	_check("the first level with the pill opens with the streak's card, on the pill", _tutorial.visible and _says_tutorial("Win streak!") and _says_tutorial("from 2 wins"))
+	_tutorial._next.pressed.emit()
+	await get_tree().create_timer(0.3).timeout
+	_check("and only once", TSProfile.streak_intro_seen and not _tutorial.visible)
+	_start_level(41)
+	await get_tree().create_timer(0.3).timeout
+	_check("(not again on the next level)", not _tutorial.visible)
 
 	TSProfile.win_streak = 2
 	_thrown = 0

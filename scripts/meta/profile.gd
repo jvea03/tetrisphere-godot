@@ -36,6 +36,7 @@ static func use_test_profile(level := 1) -> void:
 	challenge_done_through = 1 << 30   # no challenge levels unless a test asks for one
 	challenge_intro_seen = true
 	pieces_intro_seen = true
+	streak_intro_seen = true
 	tie_tutorial_seen = true
 	geode_tutorial_seen = true
 	vine_tutorial_seen = true
@@ -1641,6 +1642,34 @@ static var win_streak_best: int = 0
 static var challenge_done_through: int = 0
 static var challenge_intro_seen: bool = false
 static var pieces_intro_seen: bool = false   # the piece counter's card, once
+static var streak_intro_seen: bool = false   # the win streak's card, once, as its pill first shows
+static var starter_chest_given: bool = false   # Home's walkthrough's free chest: never twice, even on a replay
+
+
+## Settings' Replay Tips: the walkthroughs and one-time cards show again, each
+## where it first did -- Home's (the chests, Battle Pass, 7-Day Eggsperience,
+## the Daily Egg, the camp), the Collection's and Clubs', the blockers', the
+## piece counter's, the win streak's and the next challenge's. Not the lessons
+## of levels 1-3 or the boosters' first use (those hand out boosters), and
+## never the starter chest again.
+static func replay_tips() -> void:
+	ship_story_seen = false
+	home_tutorial_seen = false
+	daily_callout_seen = false
+	camp_callout_seen = false
+	collection_tutorial_seen = false
+	club_intro_seen = false
+	tie_tutorial_seen = false
+	geode_tutorial_seen = false
+	vine_tutorial_seen = false
+	lock_tutorial_seen = false
+	prism_tutorial_seen = false
+	fog_tutorial_seen = false
+	pieces_intro_seen = false
+	streak_intro_seen = false
+	challenge_intro_seen = false
+	starter_chest_given = true
+	save()
 
 
 ## The challenge waiting before the next level -- the newest one behind the
@@ -2684,6 +2713,8 @@ static func ensure_loaded() -> void:
 	challenge_done_through = int(g.call("challenge_done_through", 0))
 	challenge_intro_seen = bool(g.call("challenge_intro_seen", false))
 	pieces_intro_seen = bool(g.call("pieces_intro_seen", false))
+	streak_intro_seen = bool(g.call("streak_intro_seen", false))
+	starter_chest_given = bool(g.call("starter_chest_given", false))
 	login_streak_count = int(g.call("login_streak_count", 0))
 	login_streak_last_date = str(g.call("login_streak_last_date", ""))
 	daily_streak_count = int(g.call("daily_streak_count", 0))
@@ -2796,6 +2827,8 @@ static func save() -> void:
 	s.call("challenge_done_through", challenge_done_through)
 	s.call("challenge_intro_seen", challenge_intro_seen)
 	s.call("pieces_intro_seen", pieces_intro_seen)
+	s.call("streak_intro_seen", streak_intro_seen)
+	s.call("starter_chest_given", starter_chest_given)
 	s.call("login_streak_count", login_streak_count)
 	s.call("login_streak_last_date", login_streak_last_date)
 	s.call("daily_streak_count", daily_streak_count)

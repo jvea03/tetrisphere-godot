@@ -62,10 +62,30 @@ func _run() -> void:
 	_check("the walkthrough finishes and is remembered", not tutorial.visible and TSProfile.home_tutorial_seen)
 	# Left mid-way and back again: no second chest, and nothing to unlock again.
 	TSProfile.home_tutorial_seen = false
+	TSProfile.starter_chest_given = false
 	_start_home_tutorial()
 	await get_tree().create_timer(1.0).timeout
 	_check("coming back mid-way gives no second chest", [1, 2, 3].all(func(i): return TSChests.is_empty(i)))
 	_check("and skips the unlock step", tutorial.visible and not _text().contains("free chest") and not tutorial.steps.any(func(s): return s.get("gate", false)))
+	for _i in 4:
+		tutorial._advance()
+		await get_tree().create_timer(0.3).timeout
+	# Settings' Replay Tips, with the tray empty: the walkthrough again, but no chest.
+	TSChests.slots = [{}, {}, {}, {}]
+	_build_settings()
+	var replay: Button = null
+	for b in (_settings["box"] as Node).find_children("*", "Button", true, false):
+		if (b as Button).text == "Replay Tips":
+			replay = b
+	_check("Settings has Replay Tips", replay != null)
+	replay.pressed.emit()
+	await get_tree().create_timer(1.5).timeout
+	_check("it plays Home's walkthrough again, from the story", tutorial.visible and not TSProfile.ship_story_seen and not TSProfile.home_tutorial_seen)
+	for _i in 2:   # the story's two steps
+		tutorial._advance()
+		await get_tree().create_timer(0.5).timeout
+	_check("then the chests and pass, with no free chest this time", tutorial.visible and TSChests.slots.all(func(s): return (s as Dictionary).is_empty()) and tutorial.steps.any(func(s): return str(s["text"]).contains("Battle Pass")) and not _text().contains("free chest"))
+	_check("and the other tips are back for their screens", not TSProfile.collection_tutorial_seen and not TSProfile.daily_callout_seen and not TSProfile.pieces_intro_seen and not TSProfile.streak_intro_seen)
 	print("")
 	print("ALL PASSED" if _failures == 0 else "%d FAILED" % _failures)
 	get_tree().quit(0 if _failures == 0 else 1)

@@ -2633,6 +2633,23 @@ func _start_pieces_intro() -> void:
 	])
 
 
+## The win streak, once: as its pill first shows (the first level after a
+## counted win, from November 4), what each run of wins brings.
+func _start_streak_intro() -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if not is_inside_tree() or TSProfile.streak_intro_seen or _tutorial.visible or state != State.PLAYING or not _streak_pill.visible:
+		return
+	_tutorial.finished.connect(func():
+		TSProfile.streak_intro_seen = true
+		TSProfile.save(), CONNECT_ONE_SHOT)
+	var tiers: Array = TSProfile.WIN_STREAK_TIERS
+	_tutorial.start([
+		{"rect": _streak_pill.get_global_rect().grow(8.0),
+			"text": "Win streak! Win levels in a row: from %d wins each egg starts with a free rock, from %d you also get +%d pieces, and from %d a second rock. Lose a level and it starts over." % [tiers[0], tiers[1], TSProfile.WIN_STREAK_PIECES, tiers[2]]},
+	])
+
+
 ## What the next refill of hearts costs: the first on a ball is on sale.
 func _continue_cost() -> int:
 	return FIRST_CONTINUE_COST if continues_bought == 0 else LIVES_REFILL_COST
@@ -2881,6 +2898,8 @@ func _maybe_start_tutorials() -> void:
 		_start_booster_tutorial(_btn_swap, "swap", "The Any Piece! Tap it to turn your piece into a wild block that becomes whatever it touches -- drop it by any pair to make a match. Here are %d to start." % TSProfile.SWAP_UNLOCK_GRANT)
 	elif TSProfile.rocks_unlocked and not TSProfile.rocks_tutorial_seen:
 		_start_booster_tutorial(_btn_rocks, "rocks", "Rocks! Tap to fire two rocks: each one lands on a pair and finishes the match. Here are %d shots to start." % TSProfile.ROCKS_UNLOCK_GRANT)
+	elif not TSProfile.streak_intro_seen and _streak_level() and TSProfile.win_streak > 0:
+		_start_streak_intro()
 	elif not TSProfile.pieces_intro_seen and _has_piece_limit():
 		# Last in line: the first counted level with no other lesson.
 		_start_pieces_intro()
