@@ -169,7 +169,7 @@ func _run() -> void:
 	for i in sw.GROUND_NODES:
 		for lvl in TSProfile.PART_MAX_LEVEL:
 			sw._levels[i] = lvl
-			var p: Vector2 = sw._node_world(i) * sw.ZOOM
+			var p: Vector2 = sw._node_world(i) * sw.ZOOM - sw._node_lift(i)
 			var x_ok: bool = maxf(open.position.x - p.x, view.x - sw.W * sw.ZOOM) <= minf(open.end.x - p.x, 0.0)
 			var y_ok: bool = maxf(open.position.y - p.y, view.y - sw.H * sw.ZOOM) <= minf(open.end.y - p.y, 0.0)
 			if not (x_ok and y_ok):

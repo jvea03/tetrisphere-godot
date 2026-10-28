@@ -102,7 +102,7 @@ const HAMMOCK := Vector2(1820.0, 1390.0)
 const PICNIC := Vector2(2400.0, 1560.0)
 const CLOTHESLINE := Vector2(1880.0, 820.0)
 const MAILBOX := Vector2(2150.0, 770.0)
-const WINDMILL := Vector2(720.0, 560.0)
+const WINDMILL := Vector2(700.0, 650.0)   # low enough that its node, over its sails, clears the top bar
 const DOCK := Vector2(470.0, 1070.0)
 const PLAYGROUND := Vector2(600.0, 1580.0)
 const TREEHOUSE := Vector2(300.0, 1380.0)
@@ -218,18 +218,38 @@ var _falling: Array = []        # drifting leaves: [x, y, fall speed, sway phase
 
 ## Where the build nodes on the ground float, in world coordinates (above each
 ## camp spot, and the solar panels' stand), by TSProfile.PARTS index.
-## Each camp spot's build node (and the solar panels'), [where the spot stands,
-## how far over it the node floats once the spot is all but finished]. A
-## broken spot is low -- ashes, a pile of logs -- so its node starts close
-## over it and rises as the spot is built up (NODE_RISE), always just above
-## what is there, and never off at the top of the world.
-const GROUND_NODES := {0: [FIRE, 150.0], 1: [TENT, 230.0], 2: [BENCH, 190.0], 3: [GARDEN, 150.0], 4: [WELL, 210.0], 5: [LOOKOUT, 330.0], 14: [SOLAR, 190.0],
-	15: [HAMMOCK, 190.0], 16: [PICNIC, 160.0], 17: [CLOTHESLINE, 220.0], 18: [MAILBOX, 180.0],
-	19: [WINDMILL, 350.0], 20: [DOCK, 130.0], 21: [PLAYGROUND, 230.0], 22: [TREEHOUSE, 350.0], 23: [STALL, 240.0],
-	24: [GREENHOUSE, 230.0], 25: [SPRING, 150.0], 26: [OBSERVATORY, 280.0], 27: [OVEN, 210.0], 28: [STATUE, 250.0]}
-const NODE_LIFT_MIN := 40.0      # over the spot's ground, at the lowest
-const NODE_HEADROOM := 100.0     # of each full lift, the room over the finished spot
-const NODE_RISE := [0.2, 0.5, 0.75, 0.95]   # how much of the rest it rises, by the spot's level now
+## Each camp spot's build node (and the solar panels'): over where the spot
+## stands, just clear of the top of what is drawn there at its level now
+## (SPOT_TOPS), so it rises as the spot is built up.
+const GROUND_NODES := {0: FIRE, 1: TENT, 2: BENCH, 3: GARDEN, 4: WELL, 5: LOOKOUT, 14: SOLAR,
+	15: HAMMOCK, 16: PICNIC, 17: CLOTHESLINE, 18: MAILBOX, 19: WINDMILL, 20: DOCK, 21: PLAYGROUND, 22: TREEHOUSE, 23: STALL,
+	24: GREENHOUSE, 25: SPRING, 26: OBSERVATORY, 27: OVEN, 28: STATUE}
+## How tall each of those is drawn at levels 0-4, in world units over its
+## spot -- measured by tools/measure_camp_tops.gd (rerun it after redrawing one).
+const SPOT_TOPS := {
+	0: [9, 59, 59, 72, 128],   # Campfire
+	1: [42, 106, 149, 149, 168],   # Tent
+	2: [35, 60, 109, 109, 139],   # Workbench
+	3: [38, 38, 47, 47, 135],   # Garden
+	4: [56, 72, 170, 170, 170],   # Well
+	5: [43, 138, 156, 225, 260],   # Lookout
+	14: [19, 82, 82, 92, 93],   # Solar Panels
+	15: [107, 107, 107, 182, 182],   # Hammock
+	16: [35, 64, 70, 75, 110],   # Picnic Table
+	17: [119, 123, 123, 123, 138],   # Clothesline
+	18: [11, 102, 102, 117, 117],   # Mailbox
+	19: [77, 254, 253, 253, 253],   # Windmill
+	20: [18, 65, 104, 152, 152],   # Dock
+	21: [11, 174, 174, 174, 174],   # Playground
+	22: [320, 378, 378, 378, 378],   # Treehouse
+	23: [82, 172, 193, 193, 233],   # Market Stall
+	24: [24, 194, 194, 194, 194],   # Greenhouse
+	25: [11, 46, 46, 46, 124],   # Hot Spring
+	26: [48, 125, 219, 276, 276],   # Observatory
+	27: [46, 91, 188, 188, 188],   # Oven
+	28: [136, 136, 157, 201, 201],   # Statue
+}
+const NODE_GAP := 10.0           # on screen, between a spot's top and its node's rim
 ## The ship parts' nodes ring the ship (too many to sit on the hull itself):
 ## each at its own angle round SHIP_MIDDLE, in ship coordinates (0 towards the
 ## nose, 90 the belly), on an oval SHIP_RING across, with a dotted line in to
@@ -610,18 +630,22 @@ func _node_parts() -> Array:
 
 ## Where a part's node floats, in world coordinates.
 func _node_world(i: int) -> Vector2:
-	if GROUND_NODES.has(i):
-		var spot: Vector2 = GROUND_NODES[i][0]
-		var full: float = GROUND_NODES[i][1]
-		var rise: float = NODE_RISE[clampi(_lv(i), 0, NODE_RISE.size() - 1)]
-		return spot - Vector2(0.0, NODE_LIFT_MIN + (full - NODE_HEADROOM - NODE_LIFT_MIN) * rise)
+	if GROUND_NODES.has(i):   # the top of what stands there now (the node sits over it: _node_lift)
+		var tops: Array = SPOT_TOPS[i]
+		return (GROUND_NODES[i] as Vector2) - Vector2(0.0, float(tops[clampi(_lv(i), 0, tops.size() - 1)]))
 	var a := deg_to_rad(float(SHIP_SLOTS[i]))
 	return _xf * (SHIP_MIDDLE + Vector2(cos(a) * SHIP_RING.x, sin(a) * SHIP_RING.y))
 
 
 ## Where a part's node is on screen (this control's space).
 func node_screen_position(i: int) -> Vector2:
-	return _world.position + _node_world(i) * _zoom
+	return _world.position + _node_world(i) * _zoom - _node_lift(i)
+
+
+## A camp spot's node sits on screen just clear of the spot's top, whatever
+## the zoom; a ship part's sits on its ring.
+func _node_lift(i: int) -> Vector2:
+	return Vector2(0.0, NODE_R + 4.0 + NODE_GAP) if GROUND_NODES.has(i) else Vector2.ZERO
 
 
 ## The ship and its scaffold on screen (a walkthrough's spotlight), in the
