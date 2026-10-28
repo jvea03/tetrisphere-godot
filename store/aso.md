@@ -39,7 +39,7 @@ works, but "block puzzle" is the bigger search.
 
     💣 HANDY BOOSTERS
     • Bombs, Any Piece and Rocks for when you're stuck
-    • No timers – think as long as you like
+    • No timers on regular levels – think as long as you like
 
     🐣 COLLECT CUTE CRITTERS
     • Collect and level up 84 adorable hand-drawn critters
