@@ -57,11 +57,24 @@ func _handle_back() -> void:
 	if scene.has_method("on_back_requested") and scene.call("on_back_requested"):
 		return
 	if scene.scene_file_path == HOME:
-		get_tree().quit()
+		_leave_app()
 		return
 	if scene.scene_file_path.ends_with("loading.tscn") or scene.scene_file_path.ends_with("opening.tscn"):
 		return
 	go(HOME)
+
+
+## Back on Home: on Android, to the background (as Android's own apps do), not
+## quit -- ending the process tore down locks other threads (sound, the ad
+## and billing plugins) still held, and Play saw it as a crash. Elsewhere, quit.
+func _leave_app() -> void:
+	TSProfile.save()
+	if Engine.has_singleton("AndroidRuntime"):
+		var activity: Object = Engine.get_singleton("AndroidRuntime").getActivity()
+		if activity != null:
+			activity.moveTaskToBack(true)
+			return
+	get_tree().quit()
 
 
 func _exit_tree() -> void:
