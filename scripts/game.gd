@@ -2065,6 +2065,7 @@ func _update_creature() -> void:
 # celebration, so leaving mid-animation cannot lose them (as in Duckdoku).
 func _win() -> void:
 	state = State.WON
+	TSAnalytics.level_end(current_level, true, _analytics_kind())
 	if not TSSession.has_saved_game:
 		TSSession.forget()
 	_creature.react(TSCreature.Mood.HAPPY, 9999.0)
@@ -2181,8 +2182,14 @@ func _restart() -> void:
 		_start_level(current_level)
 
 
+## What TSAnalytics calls this egg.
+func _analytics_kind() -> String:
+	return "daily" if is_daily else ("challenge" if is_challenge else "level")
+
+
 func _lose() -> void:
 	state = State.LOST
+	TSAnalytics.level_end(current_level, false, _analytics_kind())
 	if not TSSession.has_saved_game:
 		TSSession.forget()
 	# The win streak ends here -- unless a continue saves the level (_revive).

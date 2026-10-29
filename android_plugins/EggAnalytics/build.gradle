@@ -1,0 +1,25 @@
+// Firebase Analytics, as a Godot v2 Android plugin. Built into
+// addons/EggAnalytics/bin/ by tools/build_notify_plugin.ps1 -Name EggAnalytics,
+// compiled against the godot-lib in the installed Android build template
+// (android/build/libs). The Firebase library itself goes into the export as a
+// Gradle dependency (addons/EggAnalytics/export_plugin.gd).
+plugins {
+    id 'com.android.library' version '8.6.1'
+}
+
+android {
+    namespace 'com.jvea.egganalytics'
+    compileSdk 36
+    defaultConfig {
+        minSdk 24
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    compileOnly files('../../android/build/libs/release/godot-lib.template_release.aar')
+    compileOnly 'com.google.firebase:firebase-analytics:22.1.2'
+}
