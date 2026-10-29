@@ -114,12 +114,11 @@ Covers 1.1 too, since 1.2 may be the first of them players get.
     Thanks for playing!
     </en-US>
 
-## Release notes for version code 7 (1.3)
+## Release notes for version code 8 (1.3)
 
-Release name: `1.3 (7) – Challenge Pieces & Replay Tips`
+Release name: `1.3 (8) – Challenge Pieces & Replay Tips`
 
-If 1.2 (6) never went out to players, use 1.2's notes with the first two
-lines below added.
+Code 7 (1.3 without Firebase) was uploaded too; 8 replaces it with the same notes.
 
     <en-US>
     New in Egg Escape!
