@@ -114,6 +114,26 @@ Covers 1.1 too, since 1.2 may be the first of them players get.
     Thanks for playing!
     </en-US>
 
+## Release notes for version code 7 (1.3)
+
+Release name: `1.3 (7) – Challenge Pieces & Replay Tips`
+
+If 1.2 (6) never went out to players, use 1.2's notes with the first two
+lines below added.
+
+    <en-US>
+    New in Egg Escape!
+
+    • Challenge levels have a piece counter too: 30 pieces to beat the clock
+    • Replay Tips in Settings: see the game's tips and walkthroughs again
+    • A quick guide to win streaks the first time yours starts
+    • Home is lighter on your battery when you're not touching it
+    • Rate Egg Escape right in the game, without leaving it
+    • Bug fixes
+
+    Thanks for playing!
+    </en-US>
+
 ## Other ASO levers
 
 - **Category and tags**: Game → Puzzle. Tags: Puzzle, Block puzzle, Match 3,
