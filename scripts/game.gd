@@ -682,6 +682,8 @@ func _resume() -> void:
 	lose_ad_used = bool(s["lose_ad_used"])
 	continues_bought = int(s.get("continues_bought", 0))
 	pieces_left = int(s.get("pieces_left", _piece_budget()))
+	if _has_piece_limit() and pieces_left <= 0:   # parked with no counter (a challenge, before they had one): a full one
+		pieces_left = _piece_budget()
 	_pieces_pending = 0
 	_ball_seq += 1
 	state = State.PLAYING

@@ -14,6 +14,7 @@ func _ready() -> void:
 	TSProfile.use_test_profile(41)   # just won level 40
 	TSProfile.challenge_done_through = 0
 	TSProfile.challenge_intro_seen = false
+	TSProfile.pieces_intro_seen = false
 	TSProfile.no_ads = true
 	TSProfile.coin_count = 10000
 	super()
@@ -49,12 +50,14 @@ func _run() -> void:
 
 	await get_tree().create_timer(1.0).timeout
 	_check("the first one opens with its intro, and the clock waits", _tutorial.visible and challenge_left > TSLevels.CHALLENGE_SECONDS - 0.2)
+	_check("its card names the pieces with the minutes", str(_tutorial.steps[0]["text"]).contains("2 minutes and %d pieces" % TSLevels.CHALLENGE_PIECES))
 	_tutorial._next.pressed.emit()
 	await get_tree().create_timer(0.3).timeout
 	_check("its intro has a second step: the rules", _tutorial.visible)
 	_tutorial._next.pressed.emit()
 	await get_tree().create_timer(1.2).timeout
 	_check("then it runs", challenge_left < TSLevels.CHALLENGE_SECONDS - 0.5 and challenge_left > TSLevels.CHALLENGE_SECONDS - 3.0 and TSProfile.challenge_intro_seen)
+	_check("the piece counter's own card doesn't pile on (the challenge's names its pieces)", not _tutorial.visible and not TSProfile.pieces_intro_seen)
 	_open_pause()
 	_check("Pause has no Restart on a challenge", not (_pause["restart"] as Button).visible)
 	var held := challenge_left
@@ -65,6 +68,11 @@ func _run() -> void:
 
 	var parked := _snapshot()
 	_check("a parked challenge keeps its clock", bool(parked["challenge"]) and absf(float(parked["challenge_left"]) - challenge_left) < 0.5)
+	# Parked before challenges had a counter (0 then): back with a full one.
+	parked["pieces_left"] = 0
+	TSSession.state = parked
+	_resume()
+	_check("a challenge parked before the counter comes back with a full one", pieces_left == TSLevels.CHALLENGE_PIECES and is_challenge)
 
 	challenge_left = 0.05
 	await get_tree().create_timer(0.3).timeout
