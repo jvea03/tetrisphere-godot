@@ -8,10 +8,10 @@ extends RefCounted
 ## Firebase project's Android app (Project settings > Your apps): client IDs
 ## every copy of the app carries, not secrets.
 
-const API_KEY := ""
-const APP_ID := ""
-const PROJECT_ID := ""
-const SENDER_ID := ""
+const API_KEY := "AIzaSyDQl6mbpdOcKRZ18pWDE7SzssjGYpxW_-k"
+const APP_ID := "1:261470909369:android:38d287eea0687404e43c68"
+const PROJECT_ID := "egg-escape-196b6"
+const SENDER_ID := "261470909369"
 
 static var _plugin: Object
 
