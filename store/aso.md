@@ -133,6 +133,22 @@ Code 7 (1.3 without Firebase) was uploaded too; 8 replaces it with the same note
     Thanks for playing!
     </en-US>
 
+## Release notes for version code 9 (1.3.1)
+
+Release name: `1.3.1 (9) – Fixes`
+
+    <en-US>
+    New in Egg Escape!
+
+    • The sliding lesson now always shows the right side of the egg
+    • Challenge levels have a piece counter: 30 pieces to beat the clock
+    • Replay Tips in Settings: see the game's tips and walkthroughs again
+    • Rate Egg Escape right in the game, without leaving it
+    • Bug fixes and performance improvements
+
+    Thanks for playing!
+    </en-US>
+
 ## Other ASO levers
 
 - **Category and tags**: Game → Puzzle. Tags: Puzzle, Block puzzle, Match 3,

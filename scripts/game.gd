@@ -68,6 +68,8 @@ var _streak_label: Label
 var lives := LIVES
 var lose_reason := ""
 var pieces_left := 0   # the piece counter (TSLevels.piece_budget): drops left, the piece in hand included
+var drops := 0              # pieces dropped this ball (boosters aside), for TSAnalytics
+var play_seconds := 0.0     # time spent playing this ball, cards and pauses aside, for TSAnalytics
 var current_level := 1
 var is_daily := false       # a Daily Egg: never touches level progress
 var is_challenge := false   # a challenge level (TSLevels.CHALLENGE_*): between two levels, against the clock, played once
@@ -642,6 +644,9 @@ func _start(seed_value: int, baked: Dictionary = {}) -> void:
 	lose_ad_used = false
 	continues_bought = 0
 	pieces_left = _piece_budget()
+	drops = 0
+	play_seconds = 0.0
+	TSAnalytics.level_start(current_level, _analytics_kind())
 	_pieces_pending = 0
 	if _has_piece_limit() and _streak_level():
 		_pieces_pending = TSProfile.win_streak_pieces()   # the streak's tier 2 on: shown flying in with its rocks
@@ -684,6 +689,8 @@ func _resume() -> void:
 	pieces_left = int(s.get("pieces_left", _piece_budget()))
 	if _has_piece_limit() and pieces_left <= 0:   # parked with no counter (a challenge, before they had one): a full one
 		pieces_left = _piece_budget()
+	drops = int(s.get("drops", 0))
+	play_seconds = float(s.get("play_seconds", 0.0))
 	_pieces_pending = 0
 	_ball_seq += 1
 	state = State.PLAYING
@@ -724,7 +731,7 @@ func _snapshot() -> Dictionary:
 		"board": board, "daily": is_daily, "level": current_level, "difficulty": difficulty,
 		"cur_type": cur_type, "next_type": next_type, "cursor": cursor, "lives": lives,
 		"first_attempt": is_first_attempt, "lose_ad_used": lose_ad_used, "continues_bought": continues_bought,
-		"pieces_left": pieces_left,
+		"pieces_left": pieces_left, "drops": drops, "play_seconds": play_seconds,
 		"streak_rocks_due": _streak_rocks_due,
 		"challenge": is_challenge, "challenge_left": challenge_left,
 	}
@@ -1009,6 +1016,7 @@ func _drop() -> void:
 	else:
 		var wild := cur_type == TSBoard.WILD
 		res = board.place_and_resolve(offsets, landing, cur_type, _current_depth())
+		drops += 1
 		if _has_piece_limit():
 			pieces_left -= 1   # a booster's bomb or rocks cost no piece
 		var grew := int(res.get("vine_grew", TSBoard.HOLE))
@@ -1711,6 +1719,8 @@ static func _heart_shape(s: float) -> PackedVector2Array:
 func _process(delta: float) -> void:
 	_animate_boosters(delta)
 	_tick_challenge(delta)
+	if state == State.PLAYING and not _any_card_open():
+		play_seconds += delta
 	# A touch held still long enough becomes a hold.
 	if _gesture == Gesture.PENDING and Time.get_ticks_msec() - _touch_ms >= int(HOLD_TIME * 1000.0):
 		_begin_hold()
@@ -2065,7 +2075,7 @@ func _update_creature() -> void:
 # celebration, so leaving mid-animation cannot lose them (as in Duckdoku).
 func _win() -> void:
 	state = State.WON
-	TSAnalytics.level_end(current_level, true, _analytics_kind())
+	TSAnalytics.level_end(current_level, true, _analytics_kind(), play_seconds, drops, lives)
 	if not TSSession.has_saved_game:
 		TSSession.forget()
 	_creature.react(TSCreature.Mood.HAPPY, 9999.0)
@@ -2189,7 +2199,7 @@ func _analytics_kind() -> String:
 
 func _lose() -> void:
 	state = State.LOST
-	TSAnalytics.level_end(current_level, false, _analytics_kind())
+	TSAnalytics.level_end(current_level, false, _analytics_kind(), play_seconds, drops, lives)
 	if not TSSession.has_saved_game:
 		TSSession.forget()
 	# The win streak ends here -- unless a continue saves the level (_revive).

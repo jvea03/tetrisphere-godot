@@ -65,4 +65,10 @@ public class EggAnalytics extends GodotPlugin {
         }
         analytics.logEvent(name, b);
     }
+
+    @UsedByGodot
+    public void setUserProperty(String name, String value) {
+        if (analytics == null) return;
+        analytics.setUserProperty(name, value);
+    }
 }
