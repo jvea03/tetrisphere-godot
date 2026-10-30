@@ -3059,11 +3059,7 @@ func _start_slide_tutorial() -> void:
 		return   # nothing can slide on this ball; the lesson waits for another
 	_lesson_line = id
 	cur_type = TSBoard.I_FLAT
-	var cols: Array = board.plate_cols[id]
-	var mid := Vector2.ZERO
-	for col in cols:
-		mid += Vector2(col)
-	_face(mid / float(cols.size()))
+	_face(_cells_middle(board.plate_cols[id]))
 	_snap_camera()
 	_refresh_piece()
 	_refresh_hud()
@@ -3075,6 +3071,18 @@ func _start_slide_tutorial() -> void:
 			"text": "Sliding! Press this line and drag it. You can slide any piece like the one you're holding."},
 		{"rect": _ball_rect(), "text": "A slide smashes grey blocks in its way, but never makes a match by itself -- slide pieces together, then drop one on them. Slides never cost a heart."},
 	])
+
+
+## The middle of some cells (in columns and rows, for _face), each counted
+## from the first the short way round: a line across the seam (columns 18, 19,
+## 0, 1) has its middle at 19.5, not at 9.5 -- the far side of the egg.
+static func _cells_middle(cells: Array) -> Vector2:
+	var first: Vector2i = cells[0]
+	var sum := Vector2.ZERO
+	for cell in cells:
+		var v: Vector2i = cell
+		sum += Vector2(first.x + posmod(v.x - first.x + TSBoard.COLS / 2, TSBoard.COLS) - TSBoard.COLS / 2, v.y)
+	return sum / float(cells.size())
 
 
 ## The sliding lesson's press: anywhere in its spotlight grabs the lesson's

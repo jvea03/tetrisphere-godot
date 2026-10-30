@@ -186,6 +186,19 @@ func _run() -> void:
 			await get_tree().process_frame
 		_check("a short drag and let go still passes the lesson", _lesson_passed())
 
+	# 7. The lesson turns the egg to its line, even a line across the seam
+	# between the last column and the first (it used to show the far side).
+	var seam := _cells_middle([Vector2i(18, 3), Vector2i(19, 3), Vector2i(0, 3), Vector2i(1, 3)])
+	_check("a line across the seam is faced at its middle (19.5, got %.1f)" % seam.x, is_equal_approx(fposmod(seam.x, float(TSBoard.COLS)), 19.5))
+	_check("a line clear of the seam keeps its plain middle", is_equal_approx(_cells_middle([Vector2i(4, 2), Vector2i(5, 2), Vector2i(6, 2), Vector2i(7, 2)]).x, 5.5))
+	for i in 6:
+		l = await _fresh_lesson()
+		if l["ok"]:
+			var shown := true
+			for col in board.plate_cols[int(l["id"])]:
+				shown = shown and _touchable(col)
+			_check("lesson %d: every block of its line is on the side shown" % (i + 1), shown)
+
 	print("")
 	print("ALL PASSED" if _failures == 0 else "%d FAILED" % _failures)
 	get_tree().quit(0 if _failures == 0 else 1)
