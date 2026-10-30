@@ -18,9 +18,10 @@ import java.util.Map;
 /**
  * Firebase Analytics: first opens and a few game events (scripts/meta/analytics.gd),
  * which Google Ads imports as conversions, so the install campaign can aim at
- * players who actually play. Firebase is started from the game with the
- * project's IDs (no google-services.json, so the Gradle build template stays
- * as Godot installs it).
+ * players who actually play. There is no google-services.json (the Gradle
+ * build template stays as Godot installs it): the project's IDs are string
+ * resources (res/values/firebase.xml), which Analytics itself needs, and
+ * start() initializes Firebase with them if it isn't already.
  */
 public class EggAnalytics extends GodotPlugin {
     private FirebaseAnalytics analytics;
