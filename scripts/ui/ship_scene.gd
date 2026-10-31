@@ -106,7 +106,7 @@ const WINDMILL := Vector2(700.0, 650.0)   # low enough that its node, over its s
 const DOCK := Vector2(470.0, 1070.0)
 const PLAYGROUND := Vector2(600.0, 1580.0)
 const TREEHOUSE := Vector2(300.0, 1380.0)
-const STALL := Vector2(1010.0, 1190.0)
+const STALL := Vector2(1010.0, 1260.0)   # down a little: the Tent stands just above it
 const GREENHOUSE := Vector2(2000.0, 1820.0)
 const SPRING := Vector2(1560.0, 1900.0)
 const OBSERVATORY := Vector2(2420.0, 1960.0)
@@ -171,8 +171,8 @@ const GROUND_SIZE := 76.0        # a ground critter's size where it is nearest
 const FEET := {
 	"flag": Vector2(1600, 770), "dig": Vector2(1400, 832), "paint": Vector2(1200, 830),
 	"telescope": Vector2(2360, 640), "kite": Vector2(280, 760), "read": Vector2(700, 880),
-	"fish": Vector2(800, 1016), "sweep": Vector2(1640, 1000), "campfire": Vector2(1970, 1072),
-	"dance": Vector2(2210, 1090), "juggle": Vector2(2080, 1260), "crater": CRATER,
+	"fish": Vector2(800, 1016), "sweep": Vector2(1700, 900), "campfire": FIRE + Vector2(-90, 12),
+	"dance": Vector2(2330, 1170), "juggle": Vector2(2080, 1260), "crater": CRATER,
 }
 ## The walkers: [from x, to x, feet y, speed].
 const PATHS := {
@@ -435,8 +435,10 @@ func _make_scenery() -> void:
 		var p := Vector2(rng.randf_range(10.0, W - 10.0), rng.randf_range(10.0, 300.0))
 		if p.y < _horizon(p.x) - 24.0 and p.distance_to(PLANET) > 110.0 and p.distance_to(MOON) > 60.0:
 			_stars.append([p, rng.randf_range(3.0, 8.0), rng.randf() * TAU])
+	# The meadow's random layout follows from these points: the Stall's is where
+	# it first stood, so moving it down (off the Tent) left every tree in place.
 	var keep_clear := [SHIP_AT, POND, MOUND, FIRE, CRATER, Vector2(1250, 930), CHASE, TENT, BENCH, GARDEN, WELL, LOOKOUT, SOLAR,
-		HAMMOCK, PICNIC, CLOTHESLINE, MAILBOX, WINDMILL, DOCK, PLAYGROUND, TREEHOUSE, STALL, GREENHOUSE, SPRING, OBSERVATORY, OVEN, STATUE]
+		HAMMOCK, PICNIC, CLOTHESLINE, MAILBOX, WINDMILL, DOCK, PLAYGROUND, TREEHOUSE, Vector2(1010, 1190), GREENHOUSE, SPRING, OBSERVATORY, OVEN, STATUE]
 	while _scatter.size() < 150:
 		var p := Vector2(rng.randf_range(20.0, W - 20.0), rng.randf_range(_horizon(W * 0.5) + 30.0, H - 20.0))
 		if p.y < _horizon(p.x) + 20.0:

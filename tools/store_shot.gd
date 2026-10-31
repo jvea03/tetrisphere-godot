@@ -24,6 +24,8 @@
 # --streak=<n>   on a win streak of n wins
 # --release      as players see it: features the editor switches on early stay off
 # --challenge    a challenge level waiting (one sits behind --level, e.g. 41)
+# --look=<x,y>  Home centred on that point of the camp (world units), as far as its edges allow
+# --bare        Home with its buttons and bars hidden: the camp alone
 # Over Home: camp (its info card), mine (a haul, and the ad to double it),
 # chest_skip (an unlocking chest's card), build (a build under way). And
 # streak_double: Daily Streaks with today's login coins claimed.
@@ -146,6 +148,18 @@ func _ready() -> void:
 		var w = inst._world
 		w.zoom_at(home_zoom, w.get_global_rect().get_center())
 		await get_tree().create_timer(0.6).timeout
+	if scene_name == "home":
+		for a in OS.get_cmdline_user_args():
+			if a.begins_with("--look="):   # the camp centred on a world point (x,y), as far as the edges allow
+				var p := a.substr(7).split(",")
+				var w = inst._world
+				var view: Vector2 = w._view_size()
+				var o: Vector2 = view * 0.5 - Vector2(float(p[0]), float(p[1])) * w._zoom
+				w._glide_to = Vector2(clampf(o.x, view.x - w.W * w._zoom, 0.0), clampf(o.y, view.y - w.H * w._zoom, 0.0))
+				await get_tree().create_timer(1.5).timeout
+		if OS.get_cmdline_user_args().has("--bare"):   # the camp alone: Home's buttons and bars hidden
+			_bare(inst, inst._world)
+			await get_tree().create_timer(0.3).timeout
 	if scene_name == "win":
 		inst._debug_win()
 		await get_tree().create_timer(wait).timeout
@@ -195,6 +209,17 @@ func _ready() -> void:
 		return
 	print("SHOT_OK ", out)
 	get_tree().quit(0)
+
+
+# Hides everything under `node` but the camp (`world`) and what holds it.
+func _bare(node: Node, world: Node) -> void:
+	for c in node.get_children():
+		if c == world or world.is_ancestor_of(c):
+			continue
+		if c.is_ancestor_of(world):
+			_bare(c, world)
+		elif c is CanvasItem:
+			c.visible = false
 
 
 # A mid-game profile like tests/menu_capture.gd's: everything unlocked, coins,
