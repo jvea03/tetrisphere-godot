@@ -72,8 +72,13 @@ func _dress_crash_site() -> void:
 	_dress(_to_theme, _t, 800.0)
 
 
+## Not the opening: not counted, and Home loads as it always has.
+func _start_ahead() -> void:
+	pass
+
+
 ## Home, on the new planet, and the voyage is done.
-func _finish() -> void:
+func _finish(_how := "tap") -> void:
 	if _done:
 		return
 	_done = true

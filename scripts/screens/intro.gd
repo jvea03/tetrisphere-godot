@@ -41,6 +41,7 @@ const CAPTIONS := [
 
 var _t := 0.0
 var _done := false
+var _level_due := false   # finished, and on its way into level 1 as soon as that has loaded
 var _rng := RandomNumberGenerator.new()
 var _stars: Array = []       # [position, size, phase]
 var _puffs: Array = []       # smoke and dust: {pos, vel, r, grow, life, age, col}
@@ -124,7 +125,7 @@ func _ready() -> void:
 	skip.offset_right = -24.0
 	skip.offset_top = top
 	skip.offset_bottom = top + 60.0
-	skip.pressed.connect(_finish)
+	skip.pressed.connect(_finish.bind("skip"))
 	add_child(skip)
 
 	_tap_hint = TSUI.outlined(TSUI.label("Tap to start!", 44, TSUI.PINK, HORIZONTAL_ALIGNMENT_CENTER), TSUI.INK, 12)
@@ -133,35 +134,63 @@ func _ready() -> void:
 	_tap_hint.offset_bottom = -110.0 - TSUI.safe_bottom()
 	_tap_hint.visible = false
 	add_child(_tap_hint)
+	_start_ahead()
+
+
+## A new player's cutscene: counted (intro_start), and level 1 loading behind
+## it, so the tap at its end goes straight in rather than to a still screen.
+func _start_ahead() -> void:
+	TSAnalytics.intro_start()
+	ResourceLoader.load_threaded_request(SceneFlow.GAME)
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	var pressed := (event is InputEventScreenTouch and (event as InputEventScreenTouch).pressed) \
 		or (event is InputEventMouseButton and (event as InputEventMouseButton).pressed)
 	if pressed and _t >= DONE:
-		_finish()
+		_finish("tap")
 
 
 ## Android back skips the cutscene, like the Skip button.
 func on_back_requested() -> bool:
-	_finish()
+	_finish("skip")
 	return true
 
 
-## Straight into level 1 -- no Home, no loading screen -- and never again.
-func _finish() -> void:
+## Straight into level 1 -- no Home, no loading screen -- and never again:
+## as soon as it has loaded (see _leave_when_loaded).
+func _finish(how := "tap") -> void:
 	if _done:
 		return
 	_done = true
 	TSProfile.intro_seen = true
 	TSProfile.save()
-	SceneFlow.go(SceneFlow.GAME)
+	TSAnalytics.intro_end(how, _t)
+	_level_due = true
+
+
+## Into level 1 once it is loaded; till then the cutscene plays on and the
+## hint says it is loading, so the screen never stands still.
+func _leave_when_loaded() -> void:
+	if SceneFlow.in_flight:   # still fading in: a change asked for now would be dropped
+		return
+	var status := ResourceLoader.load_threaded_get_status(SceneFlow.GAME)
+	if status == ResourceLoader.THREAD_LOAD_LOADED:
+		_level_due = false
+		SceneFlow.go_packed(ResourceLoader.load_threaded_get(SceneFlow.GAME))
+	elif status != ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+		_level_due = false
+		SceneFlow.go(SceneFlow.GAME)   # the background load failed: load it here
+	else:
+		_tap_hint.text = "Loading" + ".".repeat(int(_t * 3.0) % 4)
 
 
 func _process(delta: float) -> void:
 	_t += delta
 	if _t >= AUTO_ADVANCE:
-		_finish()
+		_finish("auto")
+	if _level_due:
+		_leave_when_loaded()
 	if not _alarmed and _t >= CRUISE_END:
 		_alarmed = true
 		TSSfx.play("miss")
@@ -171,7 +200,7 @@ func _process(delta: float) -> void:
 	_update_smoke(delta)
 	_update_eggs(delta)
 	_flash.modulate.a = clampf(1.0 - (_t - IMPACT) / 0.5, 0.0, 1.0) if _t >= IMPACT else 0.0
-	_tap_hint.visible = _t >= DONE + 0.4
+	_tap_hint.visible = _t >= DONE + 0.4 or _level_due
 	_tap_hint.modulate.a = 0.8 + 0.2 * sin(_t * 4.0)
 	_stage.position = _stage_origin() + _shake()
 	_stage.queue_redraw()

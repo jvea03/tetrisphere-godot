@@ -149,6 +149,20 @@ Release name: `1.3.1 (9) – Fixes`
     Thanks for playing!
     </en-US>
 
+## Release notes for version code 10 (1.3.2)
+
+Release name: `1.3.2 (10) – Faster start`
+
+    <en-US>
+    New in Egg Escape!
+
+    • Your first egg is ready the moment the opening story ends: no more waiting on a still screen
+    • The camp's critters are back at their jobs, each in the right spot
+    • Bug fixes and performance improvements
+
+    Thanks for playing!
+    </en-US>
+
 ## Other ASO levers
 
 - **Category and tags**: Game → Puzzle. Tags: Puzzle, Block puzzle, Match 3,

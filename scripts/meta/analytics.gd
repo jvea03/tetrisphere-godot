@@ -15,6 +15,7 @@ const SENDER_ID := "261470909369"
 
 static var _plugin: Object
 static var recent: Array = []   # the last events sent, as [name, params], newest last (for tests)
+static var _load_began := -1    # Time.get_ticks_msec() as the cutscene handed over to level 1
 
 
 static func _ready_plugin() -> Object:
@@ -43,6 +44,27 @@ static func user_property(name: String, value: String) -> void:
 	var p := _ready_plugin()
 	if p != null:
 		p.setUserProperty(name, value)
+
+
+## A new player's way from first_open to level 1's level_start: the crash
+## cutscene shown (intro_start); how it ended (intro_end: "skip" for the Skip
+## button or Back, "tap" after the last caption, "auto" if left to run out,
+## and when); then how long level 1 took to appear after it (level_loaded).
+static func intro_start() -> void:
+	event("intro_start")
+
+
+static func intro_end(how: String, seconds: float) -> void:
+	event("intro_end", {"how": how, "seconds": roundi(seconds)})
+	_load_began = Time.get_ticks_msec()
+
+
+## Sent once, as the game screen is ready after the cutscene; nothing otherwise.
+static func level_loaded() -> void:
+	if _load_began < 0:
+		return
+	event("level_loaded", {"seconds": snappedf((Time.get_ticks_msec() - _load_began) / 1000.0, 0.1)})
+	_load_began = -1
 
 
 ## An egg begun (Firebase's level_start), fresh or retried: a player who

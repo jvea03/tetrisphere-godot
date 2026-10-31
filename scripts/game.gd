@@ -198,6 +198,7 @@ func _ready() -> void:
 		_start_challenge(TSProfile.challenge_due())
 	else:
 		_start_level(TSProfile.last_level)
+	TSAnalytics.level_loaded()   # straight after the cutscene: how long the wait was
 
 
 func _build_environment() -> void:
