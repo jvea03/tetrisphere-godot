@@ -2382,6 +2382,12 @@ func _show_win_card() -> void:
 	var close := TSUI.close_button()
 	close.pressed.connect(_on_win_close)
 	top.add_child(close)
+	# The first few levels' card has one way on, Next Level: no detour Home, no
+	# ad. (The pause menu in the next egg still goes Home.) Hidden, not
+	# removed, so the banner stays centred.
+	var early := _early_win()
+	close.modulate.a = 0.0 if early else 1.0
+	close.disabled = early
 	# The creature that was sealed in the egg: a Milky, safe and sound.
 	box.add_child(TSUI.halo(TSIcon.make("milky", 200, 0, "rescued"), 280.0))
 	box.add_child(TSUI.label("You saved a Milky!", 30, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER))
@@ -2413,7 +2419,7 @@ func _show_win_card() -> void:
 		box.add_child(TSUI.label(_win_bonus, 22, TSFX.COL_GAIN, HORIZONTAL_ALIGNMENT_CENTER))
 	if _streak_level() and TSProfile.win_streak > 0:
 		box.add_child(_streak_line())
-	if _win_coins > 0 and TSProfile.ad_rewards_left("win_coins") > 0:
+	if _win_coins > 0 and not early and TSProfile.ad_rewards_left("win_coins") > 0:
 		var double := TSUI.button(TSAdReward.text("Double Coins (+%s)" % TSProfile.fmt_coins(_win_coins)), TSUI.SKY, 28, Vector2(0, 76))
 		double.pressed.connect(func(): _double_win_coins(double, coin_amount))
 		box.add_child(double)
@@ -2438,6 +2444,12 @@ func _show_win_card() -> void:
 					if is_instance_valid(coin_amount):
 						TSSfx.play("tick", pow(2.0, float(POP_SCALE[k]) / 12.0)))
 			count.tween_callback(func(): TSSfx.play("ding")))
+
+
+## A level before the Collection opens (1-4): its win card only goes on. In
+## 1.3.1 two in three new players who won level 1 never won level 5.
+func _early_win() -> bool:
+	return not is_daily and not is_challenge and current_level < TSNav.COLLECTION_UNLOCK_LEVEL
 
 
 ## The win card's rewarded ad: the win's coins again (ad_win_coins_per_day a

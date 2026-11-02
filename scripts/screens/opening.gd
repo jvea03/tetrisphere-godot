@@ -3,9 +3,9 @@ extends Control
 ## The first screen: the studio's splash, The Little Guy Games' logo, as in
 ## Duckdoku -- the same logo on the same pale blue, at the same share of the
 ## screen -- for a moment, then on. A brand-new player sees the crash cutscene
-## next (the intro scene), which goes straight into level 1; everyone else
-## goes through the loading screen (with the game's own logo) to Home. A tap
-## skips the splash.
+## next (the intro scene), which goes straight into level 1; a player still on
+## levels 1-4 goes through the loading screen (with the game's own logo) into
+## their next egg, and everyone else to Home. A tap skips the splash.
 
 const SPLASH_SECONDS := 1.5
 const INTRO := "res://scenes/intro.tscn"
@@ -49,9 +49,15 @@ func _advance() -> void:
 	if _wants_intro():
 		SceneFlow.go(INTRO)
 		return
-	var first_launch := not TSProfile.tutorial_seen and TSProfile.last_level <= 1
-	Loading.target_scene_path = SceneFlow.GAME if first_launch else ("res://scenes/voyage.tscn" if TSProfile.voyage_due() else SceneFlow.HOME)
+	Loading.target_scene_path = SceneFlow.GAME if _straight_in() else ("res://scenes/voyage.tscn" if TSProfile.voyage_due() else SceneFlow.HOME)
 	SceneFlow.go("res://scenes/loading.tscn")
+
+
+## Still on the first few levels (before the Collection opens): straight back
+## into the next egg, not Home. In 1.3.1, new players who came back landed on
+## Home and some left again without starting one.
+static func _straight_in() -> bool:
+	return TSProfile.last_level < TSNav.COLLECTION_UNLOCK_LEVEL
 
 
 ## A brand-new player, before level 1, who has not seen the crash cutscene.

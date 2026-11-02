@@ -158,6 +158,7 @@ Release name: `1.3.2 (10) – Faster start`
 
     • Your first egg is ready the moment the opening story ends: no more waiting on a still screen
     • The first egg is a free practice: a miss there costs no heart
+    • The first few eggs flow straight one into the next, and the game opens right where you left off
     • The camp's critters are back at their jobs, each in the right spot
     • Bug fixes and performance improvements
 
