@@ -5,4 +5,5 @@ func _ready() -> void:
 	get_tree().create_timer(secs).timeout.connect(func():
 		var s := get_tree().current_scene
 		print("BOOT_END scene=", s.scene_file_path if s else "none", " fps=", Engine.get_frames_per_second())
+		print("BOOT_EVENTS ", TSAnalytics.recent)
 		get_tree().quit())

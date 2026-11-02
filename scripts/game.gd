@@ -146,6 +146,7 @@ var _drawn_next := -1
 var _deal_tweens: Array = [] # the deal animation (see _animate_deal)
 var _dealt: Array = []       # the latest deals, for TSBoard.deal_avoid
 var _hearts: Array[Polygon2D] = []
+var _hearts_note_label: Label   # the note under the hearts showing now, if any
 var _tie_pill: PanelContainer   # tie-downs left, beside the hearts, on levels with them
 var _tie_label: Label
 var _ties_seen := -1            # tie-downs standing at the last HUD refresh (-1: a new ball)
@@ -1015,6 +1016,14 @@ func _drop() -> void:
 		_refresh_hud()
 		return
 	else:
+		# Level 1: a drop that would pile the shell past TSBoard.MAX_STACK, with
+		# no match to bring it down, is turned away rather than losing the egg.
+		var depth := board.landing_depth(offsets, landing)
+		if _forgiving() and depth >= TSBoard.MAX_STACK and board.combo_preview(offsets, landing, cur_type, depth) == 0:
+			TSSfx.play("miss")
+			TSHaptics.light()
+			_hearts_note("Too high here: drop it somewhere else!")
+			return
 		var wild := cur_type == TSBoard.WILD
 		res = board.place_and_resolve(offsets, landing, cur_type, _current_depth())
 		drops += 1
@@ -1046,7 +1055,7 @@ func _missed() -> void:
 	if _forgiving():
 		TSSfx.play("miss")
 		TSHaptics.light()
-		_note_at("No heart lost: aim for the glow!", Vector2(_hearts_rect().get_center().x - 200.0, _hearts_rect().end.y + 6.0), 400.0)
+		_hearts_note("No match! Drop it on 2 or more of the same piece.")
 		return
 	lives -= 1
 	TSSfx.play("heartbreak" if lives <= 0 else "miss")   # the last heart breaks
@@ -1056,8 +1065,17 @@ func _missed() -> void:
 		lose_reason = "OUT OF LIVES"
 
 
-## Level 1 costs no hearts: a new player is still finding out what a drop
-## does, and in 1.3.1 most who started it lost it within seconds, three
+## A note under the hearts (level 1's misses and refused drops), in place of
+## the last one: quick taps show one note, not a pile.
+func _hearts_note(text: String) -> void:
+	if is_instance_valid(_hearts_note_label):
+		_hearts_note_label.queue_free()
+	_hearts_note_label = _note_at(text, Vector2(_hearts_rect().get_center().x - 320.0, _hearts_rect().end.y + 6.0), 640.0)
+
+
+## Level 1 cannot be lost: a miss costs no heart, and a drop that would
+## overload the shell is turned away. A new player is still finding out what a
+## drop does, and in 1.3.1 most who started it lost it within seconds, three
 ## careless drops in, and never came back. Not the Daily Egg or a challenge.
 func _forgiving() -> bool:
 	return current_level == 1 and not is_daily and not is_challenge
@@ -1188,7 +1206,7 @@ func _pieces_note(text: String) -> void:
 
 ## A short coral note at `at` that drifts down and fades; `width` > 0 centres
 ## it in that width.
-func _note_at(text: String, at: Vector2, width := 0.0) -> void:
+func _note_at(text: String, at: Vector2, width := 0.0) -> Label:
 	var note := TSUI.label(text, 24, TSUI.CORAL)
 	note.add_theme_color_override("font_outline_color", TSToon.PAPER)
 	note.add_theme_constant_override("outline_size", 8)
@@ -1204,6 +1222,7 @@ func _note_at(text: String, at: Vector2, width := 0.0) -> void:
 	tw.tween_property(note, "modulate:a", 0.0, 1.4).set_delay(0.6)
 	tw.set_parallel(false)
 	tw.tween_callback(note.queue_free)
+	return note
 
 
 ## The piece counter, "12 pieces left": the one in hand included, coral near the end.
@@ -3089,7 +3108,7 @@ func _start_tutorial() -> void:
 		{"rect": ball, "text": "A little Milky is sealed in this egg! Dig a hole big enough and it escapes."},
 		{"rect": ball, "text": "Tap the egg to aim. Swipe to turn it around."},
 		{"rect": _piece_column_rect(), "text": "Your piece, with the next one above it. Pieces never rotate."},
-		{"rect": ball, "text": "Your aim glows where a drop will match. Double-tap to drop -- two or more of a kind pop!"},
+		{"rect": ball, "text": "Drop your piece on top of two or more of the same piece and they all pop! Your aim glows where a drop will match. Double-tap to drop."},
 		{"rect": _hearts_rect(), "text": "A drop that matches nothing costs a heart -- but not on this first egg. Practise!"},
 	])
 
