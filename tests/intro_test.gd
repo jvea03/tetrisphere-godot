@@ -59,7 +59,7 @@ func _ready() -> void:
 		await get_tree().process_frame
 	var loaded := _last("level_loaded")
 	_check("the game sends level_loaded with the wait (%s s)" % str(loaded.get("seconds")), loaded.has("seconds") and float(loaded["seconds"]) >= 0.0)
-	_check("...and level 1's level_start", _last("level_start").get("level") == 1)
+	_check("...and level 1's level_start", _last("level_start").get("level") == "1")
 
 	var count := 0
 	TSAnalytics.level_loaded()   # again, with no cutscene before it

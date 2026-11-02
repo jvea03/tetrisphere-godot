@@ -71,8 +71,10 @@ static func level_loaded() -> void:
 ## starts a level and never ends it is where churn shows, and starts per
 ## level count the attempts. Also keeps the max_level user property, the
 ## furthest level reached, for splitting any report by progress.
+## level and success go as text: they are custom dimensions, and Analytics
+## shows a number sent to a dimension as "(not set)" (1.3.1 sent numbers).
 static func level_start(level: int, kind: String) -> void:
-	event("level_start", {"level_name": "%s_%d" % [kind, level], "level": level, "kind": kind})
+	event("level_start", {"level_name": "%s_%d" % [kind, level], "level": str(level), "kind": kind})
 	user_property("max_level", str(TSProfile.last_level))
 
 
@@ -80,7 +82,7 @@ static func level_start(level: int, kind: String) -> void:
 ## time, cards and pauses aside), the pieces dropped and the hearts left;
 ## and the first level won (tutorial_complete: past the first lesson).
 static func level_end(level: int, won: bool, kind: String, seconds := 0.0, drops := 0, hearts := 0) -> void:
-	event("level_end", {"level_name": "%s_%d" % [kind, level], "level": level, "kind": kind, "success": won,
+	event("level_end", {"level_name": "%s_%d" % [kind, level], "level": str(level), "kind": kind, "success": "1" if won else "0",
 		"seconds": roundi(seconds), "drops": drops, "hearts_left": hearts})
 	if won and kind == "level":
 		if level == 1:

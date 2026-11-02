@@ -39,7 +39,7 @@ func _run() -> void:
 	TSAnalytics.recent.clear()
 	_start_level(20)
 	var s := _last("level_start")
-	_check("a level sends level_start with its number and kind", s.get("level") == 20 and s.get("kind") == "level" and s.get("level_name") == "level_20")
+	_check("a level sends level_start with its number and kind", s.get("level") == "20" and s.get("kind") == "level" and s.get("level_name") == "level_20")
 
 	_drop()
 	_drop()
@@ -60,7 +60,7 @@ func _run() -> void:
 	lose_reason = "OUT OF LIVES"
 	_lose()
 	var e := _last("level_end")
-	_check("a loss sends level_end with success false", e.get("success") == false and e.get("level") == 20 and e.get("kind") == "level")
+	_check("a loss sends level_end with success \"0\"", e.get("success") == "0" and e.get("level") == "20" and e.get("kind") == "level")
 	_check("...its play time in whole seconds (61, got %s)" % str(e.get("seconds")), e.get("seconds") == 61)
 	_check("...the pieces dropped and the hearts left", e.get("drops") == 2 and e.get("hearts_left") == 0)
 
