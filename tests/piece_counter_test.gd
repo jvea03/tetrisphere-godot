@@ -145,5 +145,23 @@ func _run() -> void:
 	await get_tree().create_timer(0.5).timeout
 	_check("the counter's card shows once, on a counted level", _tutorial.visible)
 
+	# The last heart lost on the last piece: the egg is lost once, and no heart
+	# buys a piece after it (the buy is the last link of the win/lose chain).
+	_close_cards()
+	_start_level(40)
+	var offs := current_offsets()
+	for c in TSBoard.COLS:
+		for r in TSBoard.ROWS:
+			var at := Vector2i(c, r)
+			var depth := board.landing_depth(offs, at)
+			if board.footprint_valid(offs, at) and depth < TSBoard.MAX_STACK and board.combo_preview(offs, at, cur_type, depth) < TSBoard.MIN_MATCH:
+				cursor = at
+	lives = 1
+	pieces_left = 1
+	TSAnalytics.recent.clear()
+	_drop()
+	var ends := TSAnalytics.recent.filter(func(e: Array) -> bool: return e[0] == "level_end").size()
+	_check("last heart on the last piece: lost once, no heart spent after (%d level_end)" % ends, state == State.LOST and lives == 0 and ends == 1)
+
 	print("piece_counter_test: %d failure(s)" % _failures)
 	get_tree().quit(1 if _failures > 0 else 0)

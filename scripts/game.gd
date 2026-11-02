@@ -147,9 +147,9 @@ var _deal_tweens: Array = [] # the deal animation (see _animate_deal)
 var _dealt: Array = []       # the latest deals, for TSBoard.deal_avoid
 var _hearts: Array[Polygon2D] = []
 var _hearts_note_label: Label   # the note under the hearts showing now, if any
-var _pointer: Node2D   # level 1: the arrow over the held piece's best match, after a miss
+var _pointer: Node2D   # level 1: the arrow over the held piece's best match
 var _pointer_at := Vector2i(-1, -1)   # the aim it points at; it goes once the aim moves
-var _point_due := false   # a level 1 miss: point once the next piece is dealt
+var _point_due := false   # a level 1 miss: say so as the arrow points the next piece
 var _tie_pill: PanelContainer   # tie-downs left, beside the hearts, on levels with them
 var _tie_label: Label
 var _ties_seen := -1            # tie-downs standing at the last HUD refresh (-1: a new ball)
@@ -1062,7 +1062,7 @@ func _missed() -> void:
 		TSSfx.play("miss")
 		TSHaptics.light()
 		_hearts_note("No match! Drop it on 2 or more of the same piece.")
-		_point_due = true   # and, with the next piece dealt, where it would match
+		_point_due = true   # the note changes as the arrow points the next piece (_finish_drop)
 		return
 	lives -= 1
 	TSSfx.play("heartbreak" if lives <= 0 else "miss")   # the last heart breaks
@@ -1080,7 +1080,8 @@ func _hearts_note(text: String) -> void:
 	_hearts_note_label = _note_at(text, Vector2(_hearts_rect().get_center().x - 320.0, _hearts_rect().end.y + 6.0), 640.0)
 
 
-## Level 1, after a miss or a drop turned away: aims the held piece at its
+## Level 1, before the first drop (_point_first), after every drop and after a
+## drop turned away: aims the held piece at its
 ## best match on the ball, turns the egg to face it and bounces an arrow over
 ## it (_track_pointer). False, and nothing changed, if it can match nowhere.
 func _point_to_match() -> bool:
@@ -1100,13 +1101,24 @@ func _point_to_match() -> bool:
 	return true
 
 
+## Level 1, before the first drop: the arrow over a match for the held piece
+## -- once the walkthrough is done, or at once when it was seen before.
+func _point_first() -> void:
+	await get_tree().process_frame   # the HUD laid out (the note sits under the hearts)
+	await get_tree().process_frame
+	if not is_inside_tree() or not _forgiving() or drops > 0 or state != State.PLAYING:
+		return
+	if _point_to_match():
+		_hearts_note("Drop it where the arrow points!")
+
+
 ## A fat down arrow in pink and ink, bobbing; its tip is at the node's origin.
 func _make_pointer() -> Node2D:
 	var root := Node2D.new()
 	var arrow := Node2D.new()
 	root.add_child(arrow)
-	var pts := PackedVector2Array([Vector2(-13, -72), Vector2(13, -72), Vector2(13, -32), Vector2(30, -32),
-		Vector2(0, 0), Vector2(-30, -32), Vector2(-13, -32)])
+	var pts := PackedVector2Array([Vector2(-22, -120), Vector2(22, -120), Vector2(22, -54), Vector2(50, -54),
+		Vector2(0, 0), Vector2(-50, -54), Vector2(-22, -54)])
 	var fill := Polygon2D.new()
 	fill.polygon = pts
 	fill.color = HEART_ALIVE
@@ -1115,13 +1127,13 @@ func _make_pointer() -> Node2D:
 	var line := Line2D.new()
 	line.points = pts
 	line.closed = true
-	line.width = 5.0
+	line.width = 7.0
 	line.default_color = TSToon.INK
 	line.joint_mode = Line2D.LINE_JOINT_ROUND
 	line.antialiased = true
 	arrow.add_child(line)
 	var bob := arrow.create_tween().set_loops()
-	bob.tween_property(arrow, "position:y", -18.0, 0.35).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	bob.tween_property(arrow, "position:y", -24.0, 0.35).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	bob.tween_property(arrow, "position:y", 0.0, 0.35).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 	return root
 
@@ -1131,7 +1143,7 @@ func _make_pointer() -> Node2D:
 func _track_pointer() -> void:
 	if _pointer == null or not _pointer.visible:
 		return
-	if cursor != _pointer_at or state != State.PLAYING or _any_card_open():
+	if cursor != _pointer_at or state != State.PLAYING or _any_card_open() or _tutorial.visible:
 		_pointer.visible = false
 		return
 	var cells := board.footprint_cells(current_offsets(), cursor)
@@ -1228,12 +1240,14 @@ func _finish_drop(res: Dictionary) -> void:
 	elif bool(res["overload"]):
 		lose_reason = "SHELL OVERLOADED"
 		_lose()
-	if _point_due:
-		_point_due = false
-		if state == State.PLAYING and _point_to_match():
-			_hearts_note("No match! Try where the arrow points.")
 	elif _has_piece_limit() and pieces_left <= 0:
 		_buy_piece_with_heart()
+
+	# Level 1 guides every move: the next piece aimed at a match, the arrow over it.
+	var missed := _point_due
+	_point_due = false
+	if _forgiving() and state == State.PLAYING and _point_to_match() and missed:
+		_hearts_note("No match! Try where the arrow points.")
 
 	view.rebuild()
 	_refresh_piece()
@@ -3035,6 +3049,8 @@ func _close_ad() -> void:
 # -- walkthroughs --------------------------------------------------------------------
 
 func _maybe_start_tutorials() -> void:
+	if _forgiving() and TSProfile.tutorial_seen:
+		_point_first()   # level 1 again (a retry, or back after leaving): the arrow at once
 	if not TSProfile.tutorial_seen and current_level == 1:
 		_start_tutorial()
 	elif current_level == 2 and not TSProfile.slide_tutorial_seen:
@@ -3177,7 +3193,8 @@ func _start_tutorial() -> void:
 	var ball := Rect2(Vector2(60.0, vp.y * 0.28), Vector2(vp.x - 120.0, vp.y * 0.42))
 	_tutorial.finished.connect(func():
 		TSProfile.tutorial_seen = true
-		TSProfile.save(), CONNECT_ONE_SHOT)
+		TSProfile.save()
+		_point_first(), CONNECT_ONE_SHOT)
 	# Only what the first drops need: aim, the piece, the drop, hearts. Sliding
 	# waits for level 2's own lesson.
 	_tutorial.start([
