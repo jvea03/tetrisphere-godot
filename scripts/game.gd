@@ -1029,12 +1029,7 @@ func _drop() -> void:
 			_fx.ring(landing_at, Color.WHITE, 16.0, 150.0, 0.35)
 			TSSfx.play("rainbow")
 		if int(res["chain"]) == 0:
-			lives -= 1
-			TSSfx.play("heartbreak" if lives <= 0 else "miss")   # the last heart breaks
-			_creature.react(TSCreature.Mood.SCARED)
-			TSHaptics.medium()
-			if lives <= 0:
-				lose_reason = "OUT OF LIVES"
+			_missed()
 		else:
 			# The clear speaks for itself: blocks fly off the ball, and a
 			# chain is called out as it floats up.
@@ -1043,6 +1038,29 @@ func _drop() -> void:
 			if int(res["chain"]) >= 2:
 				_creature.react(TSCreature.Mood.HAPPY)
 	_finish_drop(res)
+
+
+## A drop that matched nothing costs a heart, and the last one loses the egg
+## (once the drop has finished) -- except on level 1 (_forgiving).
+func _missed() -> void:
+	if _forgiving():
+		TSSfx.play("miss")
+		TSHaptics.light()
+		_note_at("No heart lost: aim for the glow!", Vector2(_hearts_rect().get_center().x - 200.0, _hearts_rect().end.y + 6.0), 400.0)
+		return
+	lives -= 1
+	TSSfx.play("heartbreak" if lives <= 0 else "miss")   # the last heart breaks
+	_creature.react(TSCreature.Mood.SCARED)
+	TSHaptics.medium()
+	if lives <= 0:
+		lose_reason = "OUT OF LIVES"
+
+
+## Level 1 costs no hearts: a new player is still finding out what a drop
+## does, and in 1.3.1 most who started it lost it within seconds, three
+## careless drops in, and never came back. Not the Daily Egg or a challenge.
+func _forgiving() -> bool:
+	return current_level == 1 and not is_daily and not is_challenge
 
 
 ## A bomb falls from the top of the screen onto `cell` (`at` on screen),
@@ -1165,12 +1183,21 @@ func _buy_piece_with_heart() -> void:
 
 ## A word floating up off the piece counter.
 func _pieces_note(text: String) -> void:
+	_note_at(text, _pieces_pill.position + Vector2(0.0, _pieces_pill.size.y + 4.0))
+
+
+## A short coral note at `at` that drifts down and fades; `width` > 0 centres
+## it in that width.
+func _note_at(text: String, at: Vector2, width := 0.0) -> void:
 	var note := TSUI.label(text, 24, TSUI.CORAL)
 	note.add_theme_color_override("font_outline_color", TSToon.PAPER)
 	note.add_theme_constant_override("outline_size", 8)
 	note.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if width > 0.0:
+		note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		note.custom_minimum_size.x = width
 	_hud.add_child(note)
-	note.position = _pieces_pill.position + Vector2(0.0, _pieces_pill.size.y + 4.0)
+	note.position = at
 	var tw := note.create_tween()
 	tw.set_parallel(true)
 	tw.tween_property(note, "position:y", note.position.y + 36.0, 1.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
@@ -3051,7 +3078,7 @@ func _start_tutorial() -> void:
 		{"rect": ball, "text": "Tap the egg to aim. Swipe to turn it around."},
 		{"rect": _piece_column_rect(), "text": "Your piece, with the next one above it. Pieces never rotate."},
 		{"rect": ball, "text": "Your aim glows where a drop will match. Double-tap to drop -- two or more of a kind pop!"},
-		{"rect": _hearts_rect(), "text": "A drop that matches nothing costs a heart."},
+		{"rect": _hearts_rect(), "text": "A drop that matches nothing costs a heart -- but not on this first egg. Practise!"},
 	])
 
 

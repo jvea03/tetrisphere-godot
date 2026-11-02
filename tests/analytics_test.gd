@@ -1,6 +1,6 @@
 # What TSAnalytics sends from a level (off-device it only keeps TSAnalytics.recent):
-# level_start when an egg begins or is retried; level_end with the level as a
-# number, its kind, the play time, the pieces dropped and the hearts left; and
+# level_start when an egg begins or is retried; level_end with the level (as text), its
+# kind, the play time, the pieces dropped and the hearts left; and
 # a parked egg keeps its drops and time. Run with:
 #   Godot.exe --headless --path . res://tests/analytics_test.tscn
 extends "res://scripts/game.gd"

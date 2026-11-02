@@ -157,6 +157,7 @@ Release name: `1.3.2 (10) – Faster start`
     New in Egg Escape!
 
     • Your first egg is ready the moment the opening story ends: no more waiting on a still screen
+    • The first egg is a free practice: a miss there costs no heart
     • The camp's critters are back at their jobs, each in the right spot
     • Bug fixes and performance improvements
 
