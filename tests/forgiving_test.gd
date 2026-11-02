@@ -1,7 +1,7 @@
 # Level 1 cannot be lost: a drop that matches nothing there leaves the
 # hearts alone, and one that would overload the shell is turned away. From
 # level 2 on, and on a Daily Egg even at level 1, a miss costs a heart and
-# the third loses.
+# the third loses. And a miss on level 1 points the next piece at a match.
 # Run with:
 #   Godot.exe --headless --path . res://tests/forgiving_test.tscn
 extends "res://scripts/game.gd"
@@ -54,6 +54,25 @@ func _run() -> void:
 	_check("mashing one spot on level 1 never loses it", not lost)
 	_close_cards()
 	_start_level(1)
+
+	# A real miss: the next piece is aimed at a match, with the arrow over it,
+	# and the arrow goes once the aim moves.
+	var offs := current_offsets()
+	var miss_at := Vector2i(-1, -1)
+	for c in TSBoard.COLS:
+		for r in TSBoard.ROWS:
+			var at := Vector2i(c, r)
+			var depth := board.landing_depth(offs, at)
+			if board.footprint_valid(offs, at) and depth < TSBoard.MAX_STACK and board.combo_preview(offs, at, cur_type, depth) < TSBoard.MIN_MATCH:
+				miss_at = at
+	cursor = miss_at
+	_drop()
+	await get_tree().process_frame
+	var aimed := board.combo_preview(current_offsets(), cursor, cur_type, board.landing_depth(current_offsets(), cursor))
+	_check("a miss aims the next piece at a match (%d pieces), arrow up" % aimed, _pointer != null and _pointer.visible and aimed >= TSBoard.MIN_MATCH)
+	cursor.x = (cursor.x + 5) % TSBoard.COLS
+	await get_tree().process_frame
+	_check("and the arrow goes once the aim moves", not _pointer.visible)
 
 	is_daily = true
 	_missed()

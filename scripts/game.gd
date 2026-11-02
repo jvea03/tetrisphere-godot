@@ -147,6 +147,9 @@ var _deal_tweens: Array = [] # the deal animation (see _animate_deal)
 var _dealt: Array = []       # the latest deals, for TSBoard.deal_avoid
 var _hearts: Array[Polygon2D] = []
 var _hearts_note_label: Label   # the note under the hearts showing now, if any
+var _pointer: Node2D   # level 1: the arrow over the held piece's best match, after a miss
+var _pointer_at := Vector2i(-1, -1)   # the aim it points at; it goes once the aim moves
+var _point_due := false   # a level 1 miss: point once the next piece is dealt
 var _tie_pill: PanelContainer   # tie-downs left, beside the hearts, on levels with them
 var _tie_label: Label
 var _ties_seen := -1            # tie-downs standing at the last HUD refresh (-1: a new ball)
@@ -642,6 +645,7 @@ func _start(seed_value: int, baked: Dictionary = {}) -> void:
 	_stop_deal_animation()
 	lives = LIVES
 	lose_reason = ""
+	_point_due = false
 	is_first_attempt = true
 	lose_ad_used = false
 	continues_bought = 0
@@ -996,6 +1000,8 @@ func _crack_geodes(res: Dictionary) -> void:
 func _drop() -> void:
 	if state != State.PLAYING or _rocks_flying:
 		return
+	if _pointer != null:
+		_pointer.visible = false
 	var offsets := current_offsets()
 	var landing := cursor
 	var bomb_was_armed := bomb_armed and TSProfile.bomb_count > 0
@@ -1022,7 +1028,7 @@ func _drop() -> void:
 		if _forgiving() and depth >= TSBoard.MAX_STACK and board.combo_preview(offsets, landing, cur_type, depth) == 0:
 			TSSfx.play("miss")
 			TSHaptics.light()
-			_hearts_note("Too high here: drop it somewhere else!")
+			_hearts_note("Too high here: try where the arrow points!" if _point_to_match() else "Too high here: drop it somewhere else!")
 			return
 		var wild := cur_type == TSBoard.WILD
 		res = board.place_and_resolve(offsets, landing, cur_type, _current_depth())
@@ -1056,6 +1062,7 @@ func _missed() -> void:
 		TSSfx.play("miss")
 		TSHaptics.light()
 		_hearts_note("No match! Drop it on 2 or more of the same piece.")
+		_point_due = true   # and, with the next piece dealt, where it would match
 		return
 	lives -= 1
 	TSSfx.play("heartbreak" if lives <= 0 else "miss")   # the last heart breaks
@@ -1071,6 +1078,70 @@ func _hearts_note(text: String) -> void:
 	if is_instance_valid(_hearts_note_label):
 		_hearts_note_label.queue_free()
 	_hearts_note_label = _note_at(text, Vector2(_hearts_rect().get_center().x - 320.0, _hearts_rect().end.y + 6.0), 640.0)
+
+
+## Level 1, after a miss or a drop turned away: aims the held piece at its
+## best match on the ball, turns the egg to face it and bounces an arrow over
+## it (_track_pointer). False, and nothing changed, if it can match nowhere.
+func _point_to_match() -> bool:
+	var pick := board.best_piece([cur_type])
+	if int(pick["pieces"]) < TSBoard.MIN_MATCH:
+		return false
+	cursor = pick["at"]
+	selected = TSBoard.HOLE
+	_clamp_cursor()
+	_face(_piece_centre())
+	_refresh_piece()
+	if _pointer == null:
+		_pointer = _make_pointer()
+		_hud.add_child(_pointer)
+	_pointer_at = cursor
+	_pointer.visible = true
+	return true
+
+
+## A fat down arrow in pink and ink, bobbing; its tip is at the node's origin.
+func _make_pointer() -> Node2D:
+	var root := Node2D.new()
+	var arrow := Node2D.new()
+	root.add_child(arrow)
+	var pts := PackedVector2Array([Vector2(-13, -72), Vector2(13, -72), Vector2(13, -32), Vector2(30, -32),
+		Vector2(0, 0), Vector2(-30, -32), Vector2(-13, -32)])
+	var fill := Polygon2D.new()
+	fill.polygon = pts
+	fill.color = HEART_ALIVE
+	fill.antialiased = true
+	arrow.add_child(fill)
+	var line := Line2D.new()
+	line.points = pts
+	line.closed = true
+	line.width = 5.0
+	line.default_color = TSToon.INK
+	line.joint_mode = Line2D.LINE_JOINT_ROUND
+	line.antialiased = true
+	arrow.add_child(line)
+	var bob := arrow.create_tween().set_loops()
+	bob.tween_property(arrow, "position:y", -18.0, 0.35).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	bob.tween_property(arrow, "position:y", 0.0, 0.35).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	return root
+
+
+## Every frame: the arrow stays over the aimed piece as the egg turns, and
+## goes once the aim moves, a piece drops or the egg is over.
+func _track_pointer() -> void:
+	if _pointer == null or not _pointer.visible:
+		return
+	if cursor != _pointer_at or state != State.PLAYING or _any_card_open():
+		_pointer.visible = false
+		return
+	var cells := board.footprint_cells(current_offsets(), cursor)
+	var x := 0.0
+	var top := INF
+	for c in cells:
+		var p := _screen_of_cell(c)
+		x += p.x
+		top = minf(top, p.y)
+	_pointer.position = Vector2(x / float(cells.size()), top - 24.0)
 
 
 ## Level 1 cannot be lost: a miss costs no heart, and a drop that would
@@ -1157,6 +1228,10 @@ func _finish_drop(res: Dictionary) -> void:
 	elif bool(res["overload"]):
 		lose_reason = "SHELL OVERLOADED"
 		_lose()
+	if _point_due:
+		_point_due = false
+		if state == State.PLAYING and _point_to_match():
+			_hearts_note("No match! Try where the arrow points.")
 	elif _has_piece_limit() and pieces_left <= 0:
 		_buy_piece_with_heart()
 
@@ -1766,6 +1841,7 @@ static func _heart_shape(s: float) -> PackedVector2Array:
 func _process(delta: float) -> void:
 	_animate_boosters(delta)
 	_tick_challenge(delta)
+	_track_pointer()
 	if state == State.PLAYING and not _any_card_open():
 		play_seconds += delta
 	# A touch held still long enough becomes a hold.
