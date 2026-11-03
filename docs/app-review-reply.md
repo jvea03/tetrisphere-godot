@@ -82,3 +82,12 @@ Reply draft:
 > continuing after the choice. The recording is also in the App Review Notes.
 >
 > Thank you.
+
+**Resubmitted 3 Nov 2026 (2:26 AM):** the version had been pulled from review by
+accident, so no Resolution Center reply was possible. Instead the recording was
+attached under App Review Information > Attachment (`ATT-recording.mov`), note 1
+was updated to describe it, and 1.0 (8) was resubmitted with all 19 purchases
+(20 items, "Waiting for Review"). Tips for next time: the version page's
+"Draft Submissions" button can submit straight away; the purchases list's bulk
+"Add for Review" silently added only one or two at a time, so add each from its
+own page and check the draft shows 20 items before submitting.
