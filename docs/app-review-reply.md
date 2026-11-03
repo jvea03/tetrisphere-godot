@@ -42,3 +42,43 @@ only thing still needed (record on an iPhone from TestFlight build 5).
    Sprinkle from level 8; Hatch Day Feast only 26-29 Nov). Restore Purchases is
    Home > Settings. Ads: optional rewarded ads when out of a booster or hearts, and
    an ad after every third win from level 30; the No Ads Pass removes them all.
+
+## Guideline 2.1: ATT prompt not found (3 Nov 2026, build 8)
+
+Apple could not find the App Tracking Transparency request on iOS/iPadOS 27.2
+(iPhone 17 Pro Max, iPad Air 11-inch M3). The App Privacy answers declare
+tracking, so the request must appear before any tracking data is collected.
+
+**Cause:** the game never asks for ATT itself; it shows Google's UMP form when
+UMP says one is required, and UMP only triggers the ATT alert when an AdMob
+**IDFA explainer** message exists. Only the European and US-state messages
+existed, so a US reviewer saw no form and no ATT alert.
+
+**Fix (no new build):** AdMob > Privacy & messaging > IDFA explainer, message
+"iOS IDFA explainer (Egg Escape, Duckdoku)", published 2 Nov 2026 for the iOS
+apps Egg Escape: Puzzle Break and Duckdoku Blast (Google's default text: "Our app
+wants to stay free for you" > Continue > Apple's alert). Build 8 already has
+`NSUserTrackingUsageDescription`. It can take an hour to start showing.
+
+**Still to do:** record on a physical iPhone (TestFlight build 8): delete the app,
+reinstall, launch: the explainer, then Apple's "Allow tracking?" alert, before
+any ad; tap a choice and play on. If the alert never comes, check Settings >
+Privacy & Security > Tracking > "Allow Apps to Request to Track" is on, or reset
+it by deleting and reinstalling. Attach the recording to the reply below and to
+App Review Information > Notes, then resubmit.
+
+Reply draft:
+
+> Hello,
+>
+> Thank you for the review. The App Tracking Transparency request is now shown
+> on launch, before any ad is requested: the app first shows a short
+> explanation screen ("Our app wants to stay free for you"), then Apple's
+> tracking permission alert. Ads are not loaded until the player has answered.
+>
+> The attached screen recording, captured on a physical iPhone running the
+> latest iOS from a fresh install of build 8, shows the launch, the
+> explanation screen, the App Tracking Transparency alert, and the game
+> continuing after the choice. The recording is also in the App Review Notes.
+>
+> Thank you.

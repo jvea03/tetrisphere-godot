@@ -42,7 +42,7 @@ information") and bounced the whole review submission, while builds 1-3 (false) 
 If it is ever turned on, list the ad domains too, knowing iOS then blocks them until the
 player allows tracking, which stops most ad requests. Google's own manifest lists none,
 and Duckdoku ships with false. The App Privacy answers in App Store Connect are separate
-and do declare tracking.
+and do declare tracking. The ATT alert itself comes from the AdMob **IDFA explainer** message (published 2 Nov 2026, after App Review could not find the alert): without it UMP never shows ATT outside Europe. See docs/app-review-reply.md.
 
 ## Still to do, in order
 
