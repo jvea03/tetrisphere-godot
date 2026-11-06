@@ -197,13 +197,23 @@ func _run_gestures() -> void:
 	_drag_to(on, on + Vector2(24.0, 0.0), 3)
 	_touch(on + Vector2(24.0, 0.0), false)
 	_check("a wobbly second tap still drops", _drops == 3)
-	# A wobble that big on a lone touch is still a swipe, as before.
+	# A wobble that big on a lone touch is still a swipe, as before. That drop
+	# can win the egg, depending on the piece dealt before it, and a finished
+	# egg takes no touches, so play this one on a live egg.
+	if state != State.PLAYING:
+		_start_level(current_level)
+	_face(_piece_centre())
+	_cam_theta = _cam_target_theta
+	_cam_phi = _cam_target_phi
+	_process(0.0)
 	_last_tap_ms = -100000
+	on = _screen_of(board.footprint_cells(current_offsets(), cursor)[0])
 	var turned_before := _cam_target_theta
 	_touch(on, true)
 	_drag_to(on, on + Vector2(24.0, 0.0), 3)
 	_touch(on + Vector2(24.0, 0.0), false)
-	_check("...but the same wobble on its own turns the ball", _cam_target_theta != turned_before and _drops == 3)
+	var wobble_turn := wrapf(_cam_target_theta - turned_before, -PI, PI)
+	_check("...but the same wobble on its own turns the ball (%.3f rad)" % wobble_turn, absf(wobble_turn + 24.0 * TURN_RATE) < 0.001 and _drops == 3)
 
 
 
