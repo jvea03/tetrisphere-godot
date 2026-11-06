@@ -104,6 +104,7 @@ static func roll_starter_claims() -> void:
 const AD_SKIP_SECONDS := 30 * 60
 static var ad_rewards_used: Dictionary = {}   # kind -> times today
 static var ad_rewards_date: String = ""
+static var inbox_done: Dictionary = {}   # TSInbox: message id -> collected or read
 
 
 static func ad_rewards_left(kind: String) -> int:
@@ -2630,6 +2631,8 @@ static func ensure_loaded() -> void:
 	var used: Variant = g.call("ad_rewards_used", {})
 	ad_rewards_used = used if used is Dictionary else {}
 	ad_rewards_date = str(g.call("ad_rewards_date", ""))
+	var inbox: Variant = g.call("inbox_done", {})
+	inbox_done = inbox if inbox is Dictionary else {}
 	no_ads = bool(g.call("no_ads", false))
 	is_payer = bool(g.call("is_payer", false)) or no_ads
 	interstitial_owed = bool(g.call("interstitial_owed", false))
@@ -2764,6 +2767,7 @@ static func save() -> void:
 	s.call("starter_coin_claims_date", starter_coin_claims_date)
 	s.call("ad_rewards_used", ad_rewards_used)
 	s.call("ad_rewards_date", ad_rewards_date)
+	s.call("inbox_done", inbox_done)
 	s.call("no_ads", no_ads)
 	s.call("is_payer", is_payer)
 	s.call("interstitial_owed", interstitial_owed)

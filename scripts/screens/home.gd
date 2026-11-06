@@ -26,6 +26,8 @@ var pass_btn: Button
 var pass_dot: Panel
 var hunt_btn: Button
 var hunt_dot: Panel
+var inbox_btn: Button
+var inbox_badge: Control
 var sale_btn: Button
 var sale_timer: Label
 var tray: PanelContainer
@@ -39,6 +41,7 @@ var camp_label: Label
 var camp_bar: ProgressBar
 var materials_pill: Button   # building materials, beside the coins
 var materials_label: Label
+const INBOX_SHOWN := 2   # messages on the inbox card at once: two long ones still fit a short phone
 const VOYAGE := "res://scenes/voyage.tscn"   # the flight to a new planet, each new season
 
 var _chest_slots: Array = [] # per slot: {btn, plate, art, pill, pill_label, band}
@@ -48,6 +51,7 @@ const EXTREME_RED := Color(0.86, 0.22, 0.3)   # PLAY on an Extreme level
 const CHALLENGE_PURPLE := Color(0.56, 0.38, 0.86)   # PLAY with a challenge level waiting
 const STORE_URL := "https://play.google.com/store/apps/details?id=com.jvea.eggescape"
 var _review: Dictionary   # the rating ask, and the one-time reminders ask
+var _inbox: Dictionary
 var _profile: Dictionary
 var _sale: Dictionary
 var _skip: Dictionary
@@ -90,6 +94,7 @@ func build() -> void:
 	if features:
 		TSHunt.roll()
 	_refresh_side()
+	TSInbox.fetch(self, _refresh_inbox)
 	# Off on the season's voyage first: walkthroughs, the sale and the board
 	# results wait for Home on the new planet.
 	var walkthrough := TSProfile.voyage_due() or _start_walkthrough()
@@ -128,6 +133,7 @@ func _tick() -> void:
 			_fill_part_card()
 	_refresh_chest_tray()
 	_refresh_sale_icon()
+	_refresh_inbox()
 	_tick_boards()
 	if _sale["root"].visible and TSSales.current().is_empty():
 		TSUI.conceal(_sale["root"])
@@ -355,6 +361,10 @@ func _build_side_tiles() -> void:
 	pass_dot = TSUI.dot(pass_btn)
 	hunt_btn = _side_tile("hunt", func(): SceneFlow.go("res://scenes/hunt.tscn"))
 	hunt_dot = TSUI.dot(hunt_btn)
+	inbox_btn = _side_tile("mail", _open_inbox)
+	inbox_badge = TSUI.pill("0", TSUI.CORAL, 18)
+	inbox_badge.position = Vector2(56, -12)
+	inbox_btn.add_child(inbox_badge)
 	sale_btn = _side_tile("tag", _open_sale)
 	var tag := TSUI.pill("SALE", TSUI.CORAL, 16)
 	tag.position = Vector2(10, -16)
@@ -379,6 +389,7 @@ func _refresh_side() -> void:
 	daily_dot.visible = daily_btn.visible and TSProfile.daily_streak_last_date != TSClock.date_string()
 	pass_dot.visible = TSProfile.has_claimable_battle_pass_reward() or TSProfile.has_unclaimed_quests()
 	hunt_dot.visible = TSHunt.has_alert()
+	_refresh_inbox()
 
 
 func _open_streaks() -> void:
@@ -1287,6 +1298,69 @@ func _on_purchase_result(product_id: String, success: bool) -> void:
 	coin_pill.receive(from, _sale_coins_before, TSProfile.coin_count)
 
 
+# -- inbox ---------------------------------------------------------------------------
+
+## The inbox's tile shows only while a message is waiting.
+func _refresh_inbox() -> void:
+	var waiting := TSInbox.active().size()
+	inbox_btn.visible = waiting > 0
+	inbox_badge.get_meta("label").text = str(waiting)
+
+
+func _open_inbox() -> void:
+	_fill_inbox()
+	TSUI.reveal(_inbox["root"], _inbox["panel"])
+
+
+## The first few messages waiting; the rest come up as these are collected.
+func _fill_inbox() -> void:
+	var box: VBoxContainer = _inbox["box"]
+	for c in box.get_children():
+		c.queue_free()
+	var top := TSUI.hbox(8)
+	box.add_child(top)
+	top.add_child(TSUI.spacer(60))
+	top.add_child(TSUI.expand(TSUI.title("Inbox", 40)))
+	var close := TSUI.close_button()
+	close.pressed.connect(func(): TSUI.conceal(_inbox["root"]))
+	top.add_child(close)
+	for m: Dictionary in TSInbox.active().slice(0, INBOX_SHOWN):
+		box.add_child(_inbox_card(m))
+	TSUI.juice(box)
+
+
+func _inbox_card(m: Dictionary) -> Control:
+	var card := TSUI.card(TSUI.PAPER, 22, 14, 2)
+	var v := TSUI.vbox(8)
+	card.add_child(v)
+	v.add_child(TSUI.wrap(TSUI.label(str(m["title"]), 28, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER)))
+	if str(m["body"]) != "":
+		v.add_child(TSUI.wrap(TSUI.label(str(m["body"]), 22, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER)))
+	var rewards: Dictionary = m["rewards"]
+	if not rewards.is_empty():
+		var row := TSUI.hbox(24)
+		row.alignment = BoxContainer.ALIGNMENT_CENTER
+		for key: String in rewards:
+			row.add_child(_stack(TSInbox.REWARDS[key], TSProfile.fmt_coins(int(rewards[key])) if key == "coins" or key == "materials" else "x%d" % int(rewards[key])))
+		v.add_child(row)
+	var b := TSUI.button("OK" if rewards.is_empty() else "Collect", TSUI.SKY if rewards.is_empty() else TSUI.GREEN, 28)
+	b.pressed.connect(func():
+		b.disabled = true
+		var from := b.get_global_rect()
+		var before := TSProfile.coin_count
+		TSInbox.claim(m)
+		_refresh_materials()
+		_refresh_inbox()
+		if TSProfile.coin_count != before:
+			coin_pill.receive(from, before, TSProfile.coin_count)
+		if TSInbox.active().is_empty():
+			TSUI.conceal(_inbox["root"])
+		else:
+			_fill_inbox())
+	v.add_child(b)
+	return card
+
+
 # -- leaderboard results -------------------------------------------------------------
 
 func _tick_boards() -> void:
@@ -1354,6 +1428,7 @@ func _build_dialogs() -> void:
 	_ad_wait = TSUI.dialog(self, 480)
 	_mine = TSUI.dialog(self, 520)
 	_review = TSUI.dialog(self, 540)
+	_inbox = TSUI.dialog(self, 600)
 
 	# the mine's haul, and its rewarded ad
 	var mbox: VBoxContainer = _mine["box"]
@@ -1709,7 +1784,7 @@ func on_back_requested() -> bool:
 	if _chest["root"].visible:
 		_close_chest()
 		return true
-	for d in [_sale, _skip, _settings, _profile, _results, _part, _mine, _review]:
+	for d in [_sale, _skip, _settings, _profile, _results, _part, _mine, _review, _inbox]:
 		if d["root"].visible:
 			TSUI.conceal(d["root"])
 			return true

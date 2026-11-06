@@ -180,6 +180,7 @@ func _draw() -> void:
 		"material_pack": _draw_material_pack(index)
 		"skip": _draw_skip()
 		"tag": _draw_tag()
+		"mail": _draw_mail()
 		"cog": _draw_cog()
 		"home": _draw_home()
 		"shop": _draw_shop()
@@ -864,6 +865,11 @@ func _draw_tag() -> void:
 	_poly(pts, _col(Color(1.0, 0.44, 0.5)))
 	_circle(Vector2(0.74, 0.26), 0.06, WHITE)
 	_text(Vector2(0.54, 0.52), "%", 0.34, WHITE)
+
+
+func _draw_mail() -> void:
+	_rrect(Rect2(0.1, 0.24, 0.8, 0.54), 0.07, WHITE)
+	_poly([Vector2(0.12, 0.27), Vector2(0.88, 0.27), Vector2(0.5, 0.58)], _col(Color(1.0, 0.5, 0.56)))
 
 
 func _draw_cog() -> void:
