@@ -147,9 +147,10 @@ var _deal_tweens: Array = [] # the deal animation (see _animate_deal)
 var _dealt: Array = []       # the latest deals, for TSBoard.deal_avoid
 var _hearts: Array[Polygon2D] = []
 var _hearts_note_label: Label   # the note under the hearts showing now, if any
-var _pointer: Node2D   # level 1: the arrow over the held piece's best match
+var _pointer: Node2D   # levels 1 and 2: the arrow over the held piece's best match
 var _pointer_at := Vector2i(-1, -1)   # the aim it points at; it goes once the aim moves
-var _point_due := false   # a level 1 miss: say so as the arrow points the next piece
+var _point_note := ""   # a miss on level 1 or 2: said as the arrow points the next piece
+var _free_miss_used := false   # level 2: this egg's free miss is gone
 var _tie_pill: PanelContainer   # tie-downs left, beside the hearts, on levels with them
 var _tie_label: Label
 var _ties_seen := -1            # tie-downs standing at the last HUD refresh (-1: a new ball)
@@ -645,7 +646,8 @@ func _start(seed_value: int, baked: Dictionary = {}) -> void:
 	_stop_deal_animation()
 	lives = LIVES
 	lose_reason = ""
-	_point_due = false
+	_point_note = ""
+	_free_miss_used = false
 	is_first_attempt = true
 	lose_ad_used = false
 	continues_bought = 0
@@ -1056,14 +1058,24 @@ func _drop() -> void:
 
 
 ## A drop that matched nothing costs a heart, and the last one loses the egg
-## (once the drop has finished) -- except on level 1 (_forgiving).
+## (once the drop has finished) -- except on level 1 (_forgiving) and for the
+## first on level 2 (_second_egg), which also points the next piece at a match.
 func _missed() -> void:
 	if _forgiving():
 		TSSfx.play("miss")
 		TSHaptics.light()
 		_hearts_note("No match! Drop it on 2 or more of the same piece.")
-		_point_due = true   # the note changes as the arrow points the next piece (_finish_drop)
+		_point_note = "No match! Try where the arrow points."   # the note changes as the arrow points the next piece (_finish_drop)
 		return
+	if _second_egg():
+		_point_note = "No match! Try where the arrow points."
+		if not _free_miss_used:
+			_free_miss_used = true
+			TSSfx.play("miss")
+			TSHaptics.light()
+			_hearts_note("Free miss! Drop it on 2 or more of the same piece.")
+			_point_note = "Free miss! Try where the arrow points."
+			return
 	lives -= 1
 	TSSfx.play("heartbreak" if lives <= 0 else "miss")   # the last heart breaks
 	_creature.react(TSCreature.Mood.SCARED)
@@ -1072,7 +1084,7 @@ func _missed() -> void:
 		lose_reason = "OUT OF LIVES"
 
 
-## A note under the hearts (level 1's misses and refused drops), in place of
+## A note under the hearts (the misses of levels 1 and 2, refused drops), in place of
 ## the last one: quick taps show one note, not a pile.
 func _hearts_note(text: String) -> void:
 	if is_instance_valid(_hearts_note_label):
@@ -1081,7 +1093,7 @@ func _hearts_note(text: String) -> void:
 
 
 ## Level 1, before the first drop (_point_first), after every drop and after a
-## drop turned away: aims the held piece at its
+## drop turned away, and level 2 after a miss: aims the held piece at its
 ## best match on the ball, turns the egg to face it and bounces an arrow over
 ## it (_track_pointer). False, and nothing changed, if it can match nowhere.
 func _point_to_match() -> bool:
@@ -1164,6 +1176,14 @@ func _forgiving() -> bool:
 	return current_level == 1 and not is_daily and not is_challenge
 
 
+## Level 2 keeps teaching: its first miss in an egg is free, and every miss
+## points the next piece at a match, though the player aims the rest alone. In
+## 1.3.2, with level 1 won by following the arrow, 31 of the 45 who started level
+## 2 lost it at least once and only 18 won it. Not the Daily Egg or a challenge.
+func _second_egg() -> bool:
+	return current_level == 2 and not is_daily and not is_challenge
+
+
 ## A bomb falls from the top of the screen onto `cell` (`at` on screen),
 ## spinning and trailing fuse sparks, and blows up as it lands. While it falls
 ## it counts as a rock in flight: drops and boosters wait, and a restart or a
@@ -1244,10 +1264,11 @@ func _finish_drop(res: Dictionary) -> void:
 		_buy_piece_with_heart()
 
 	# Level 1 guides every move: the next piece aimed at a match, the arrow over it.
-	var missed := _point_due
-	_point_due = false
-	if _forgiving() and state == State.PLAYING and _point_to_match() and missed:
-		_hearts_note("No match! Try where the arrow points.")
+	# Level 2 only after a miss (and never over its sliding lesson).
+	var note := _point_note
+	_point_note = ""
+	if state == State.PLAYING and (_forgiving() or (note != "" and _second_egg() and not _tutorial.visible)) and _point_to_match() and note != "":
+		_hearts_note(note)
 
 	view.rebuild()
 	_refresh_piece()

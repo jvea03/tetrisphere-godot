@@ -165,6 +165,19 @@ Release name: `1.3.2 (10) – Faster start`
     Thanks for playing!
     </en-US>
 
+## Release notes for version code 11 (1.3.3)
+
+Release name: `1.3.3 (11) – Gentler second egg`
+
+    <en-US>
+    New in Egg Escape!
+
+    • A gentler second egg: your first miss is free, and an arrow shows where your next piece will match after a miss
+    • Bug fixes and performance improvements
+
+    Thanks for playing!
+    </en-US>
+
 ## Other ASO levers
 
 - **Category and tags**: Game → Puzzle. Tags: Puzzle, Block puzzle, Match 3,

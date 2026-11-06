@@ -5,7 +5,8 @@
 #   miss       a miss on level 1 (no heart lost: the note under the hearts)
 #   first      level 1 before the first drop: the arrow over a match
 #   arrow      a real miss on level 1: the next piece aimed, the arrow over it
-#   miss2      a miss on level 2 (a heart lost)
+#   miss2      level 2's free miss
+#   arrow2     a real miss on level 2: the next piece aimed, the arrow over it
 #   win2       level 2's win card (Next Level only)
 #   win6       level 6's win card (close and Double Coins back)
 #   toohigh    level 1's note for a drop turned away
@@ -20,7 +21,7 @@ var _shot := ""
 func _ready() -> void:
 	var args := OS.get_cmdline_user_args()
 	_shot = args[0] if args.size() > 0 else "miss"
-	var at := {"match": 1, "hearts": 1, "miss": 1, "arrow": 1, "first": 1, "miss2": 2, "win2": 2, "win6": 6, "toohigh": 1}
+	var at := {"match": 1, "hearts": 1, "miss": 1, "arrow": 1, "first": 1, "miss2": 2, "arrow2": 2, "win2": 2, "win6": 6, "toohigh": 1}
 	TSProfile.use_test_profile(int(at.get(_shot, 1)))
 	TSProfile.tutorial_seen = not _shot in ["match", "hearts"]
 	TSProfile.slide_tutorial_seen = true
@@ -45,7 +46,7 @@ func _set_up() -> void:
 		"miss", "miss2":
 			_missed()
 			_refresh_hud()
-		"arrow":
+		"arrow", "arrow2":
 			for kind in level["pieces"]:
 				var offs: Array = TSBoard.SHAPES[int(kind)]["offsets"]
 				for c in TSBoard.COLS:

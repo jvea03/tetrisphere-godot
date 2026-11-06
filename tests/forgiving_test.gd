@@ -1,8 +1,9 @@
 # Level 1 cannot be lost: a drop that matches nothing there leaves the
-# hearts alone, and one that would overload the shell is turned away. From
-# level 2 on, and on a Daily Egg even at level 1, a miss costs a heart and
-# the third loses. On level 1 an arrow points the held piece at a match:
-# before the first drop (once the walkthrough is done) and after a miss.
+# hearts alone, and one that would overload the shell is turned away. Level 2's
+# first miss in an egg is free. Otherwise, and on a Daily Egg even at level 1, a
+# miss costs a heart and the third loses. On level 1 an arrow points the held
+# piece at a match: before the first drop (once the walkthrough is done) and
+# after every drop. On level 2 it does so only after a miss.
 # Run with:
 #   Godot.exe --headless --path . res://tests/forgiving_test.tscn
 extends "res://scripts/game.gd"
@@ -33,6 +34,17 @@ func _check(label: String, cond: bool) -> void:
 ## How many pieces a drop at the aim would pop (the drop included).
 func _aimed() -> int:
 	return board.combo_preview(current_offsets(), cursor, cur_type, board.landing_depth(current_offsets(), cursor))
+
+
+## Aims the held piece where a drop would match nothing (and not overload).
+func _aim_at_miss() -> void:
+	var offs := current_offsets()
+	for c in TSBoard.COLS:
+		for r in TSBoard.ROWS:
+			var at := Vector2i(c, r)
+			var depth := board.landing_depth(offs, at)
+			if board.footprint_valid(offs, at) and depth < TSBoard.MAX_STACK and board.combo_preview(offs, at, cur_type, depth) < TSBoard.MIN_MATCH:
+				cursor = at
 
 
 func _run() -> void:
@@ -74,15 +86,7 @@ func _run() -> void:
 
 	# A real miss: the next piece is aimed at a match, with the arrow over it,
 	# and the arrow goes once the aim moves.
-	var offs := current_offsets()
-	var miss_at := Vector2i(-1, -1)
-	for c in TSBoard.COLS:
-		for r in TSBoard.ROWS:
-			var at := Vector2i(c, r)
-			var depth := board.landing_depth(offs, at)
-			if board.footprint_valid(offs, at) and depth < TSBoard.MAX_STACK and board.combo_preview(offs, at, cur_type, depth) < TSBoard.MIN_MATCH:
-				miss_at = at
-	cursor = miss_at
+	_aim_at_miss()
 	_drop()
 	await get_tree().process_frame
 	var aimed := _aimed()
@@ -108,15 +112,43 @@ func _run() -> void:
 		await get_tree().process_frame
 	_check("following the arrow wins level 1 (%d drops)" % followed, state == State.WON)
 
-	# Level 2 has no arrow.
+	# Level 2: no arrow until a miss. The first miss is free, every miss brings
+	# the arrow, and a drop that matches leaves the aiming to the player.
 	_close_cards()
 	TSProfile.last_level = 2
+	TSProfile.slide_tutorial_seen = true
 	_start_level(2)
 	for _i in 3:
 		await get_tree().process_frame
+	_check("level 2 has no arrow before a miss", not _pointer.visible)
+	_aim_at_miss()
 	_drop()
 	await get_tree().process_frame
-	_check("level 2 has no arrow", not _pointer.visible)
+	_check("level 2's first miss is free", lives == LIVES and state == State.PLAYING)
+	aimed = _aimed()
+	_check("and aims the next piece at a match (%d pieces), arrow up" % aimed, _pointer.visible and aimed >= TSBoard.MIN_MATCH)
+	notes = _hud.find_children("*", "Label", true, false).filter(func(l: Label) -> bool: return l.text.begins_with("Free miss!"))
+	_check("and says so", notes.size() == 1)
+	_drop()   # where the arrow points
+	await get_tree().process_frame
+	_check("a match on level 2 brings no arrow", state != State.PLAYING or not _pointer.visible)
+	_close_cards()
+	_start_level(2)
+	for _i in 3:
+		await get_tree().process_frame
+	_missed()
+	_check("a new try at level 2 has its free miss back", lives == LIVES)
+	_missed()
+	_check("the next miss costs a heart", lives == LIVES - 1)
+	_missed()
+	_missed()
+	_check("and two more use up the hearts", lives == 0 and lose_reason == "OUT OF LIVES")
+	_close_cards()
+	_start_level(2)
+	is_daily = true
+	_missed()
+	_check("a Daily Egg's first miss costs a heart at level 2", lives == LIVES - 1)
+	is_daily = false
 	_close_cards()
 	_start_level(1)
 
@@ -124,12 +156,6 @@ func _run() -> void:
 	_missed()
 	_check("a Daily Egg's miss costs one, even at level 1", lives == LIVES - 1)
 	is_daily = false
-
-	current_level = 2
-	lives = LIVES
-	for _i in LIVES:
-		_missed()
-	_check("on level 2 three misses use up the hearts", lives == 0 and lose_reason == "OUT OF LIVES")
 
 	print("")
 	print("ALL PASSED" if _failures == 0 else "%d FAILED" % _failures)
