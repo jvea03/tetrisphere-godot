@@ -32,7 +32,7 @@ signal mine_tapped
 ## which glides the world over to them.
 
 const W := 2600.0                # the world, in the menus' 720-wide units
-const H := 2610.0                # 10% less ground than it was (2900): still deep enough to scroll the far south (the camp's last wave) up into view
+const H := 2610.0                # deep enough to scroll the far south (the village square and the hot spring) up over the chest tray (home_test checks)
 const INK := Color(0.27, 0.16, 0.19)
 const GLASS := Color(0.62, 0.84, 1.0)
 const DIRT := Color(0.74, 0.58, 0.44)
@@ -87,31 +87,42 @@ const SPOT_BEAM := Color(0.95, 0.95, 0.84)   # the floodlights on the ship at ni
 const KITE_SKY := Vector2(340.0, 250.0)     # where the kite flies
 const POND := Vector2(560.0, 1000.0)
 const MOUND := SHIP_AT + Vector2(195.0, 62.0)
-const FIRE := Vector2(1530.0, 980.0)    # the first wave sits round the ship, in view as Home opens
-const CRATER := Vector2(1250.0, 1500.0)
-# The camp spots (TSProfile.PARTS) round the crash, and the solar panels' stand.
-const TENT := Vector2(1060.0, 960.0)
-const BENCH := Vector2(1760.0, 1080.0)
-const GARDEN := Vector2(1500.0, 1200.0)
-const WELL := Vector2(840.0, 930.0)
-const LOOKOUT := Vector2(2480.0, 640.0)
-const SOLAR := Vector2(470.0, 700.0)
-# The camp's later waves: the second round the camp to the east, the third
-# by the pond to the west, the fourth across the south.
-const HAMMOCK := Vector2(1820.0, 1390.0)
-const PICNIC := Vector2(2400.0, 1560.0)
-const CLOTHESLINE := Vector2(1880.0, 820.0)
-const MAILBOX := Vector2(2150.0, 770.0)
-const WINDMILL := Vector2(700.0, 650.0)   # low enough that its node, over its sails, clears the top bar
+const FIRE := Vector2(1140.0, 1010.0)   # the heart of the camp, by the ship: in view as Home opens, over the chest tray
+const CRATER := Vector2(640.0, 2160.0)
+# The camp spots (TSProfile.PARTS), in neighbourhoods that make sense. The
+# first wave round the ship, where Home opens (the band between the top bar
+# and the chest tray is world y 350-1030): the workbench by the engine it is
+# fixing, the fire, the tent on the far side; the garden and its well just
+# below, a short pan down.
+const TENT := Vector2(1590.0, 1000.0)
+const BENCH := Vector2(960.0, 900.0)
+const GARDEN := Vector2(1000.0, 1290.0)
+const WELL := Vector2(1290.0, 1400.0)
+const LOOKOUT := Vector2(2160.0, 640.0)   # up on the north-east rise, the telescope beside it
+const SOLAR := Vector2(880.0, 690.0)     # by the ship's tail, which it powers
+# Home life to the east, by the tent: the picnic table by the fire, washing
+# out beside the tent, the hammock past it, the mailbox where the path leaves
+# for the square.
+const PICNIC := Vector2(1590.0, 1360.0)
+const CLOTHESLINE := Vector2(1830.0, 940.0)
+const HAMMOCK := Vector2(1960.0, 1220.0)
+const MAILBOX := Vector2(1380.0, 1610.0)
+# The farm to the west, past the garden: windmill and greenhouse in the fields;
+# the dock on the pond.
+const WINDMILL := Vector2(420.0, 1440.0)
+const GREENHOUSE := Vector2(760.0, 1600.0)
 const DOCK := Vector2(470.0, 1070.0)
-const PLAYGROUND := Vector2(600.0, 1580.0)
-const TREEHOUSE := Vector2(300.0, 1380.0)
-const STALL := Vector2(1010.0, 1260.0)   # down a little: the Tent stands just above it
-const GREENHOUSE := Vector2(2000.0, 1820.0)
-const SPRING := Vector2(1560.0, 1900.0)
-const OBSERVATORY := Vector2(2420.0, 1960.0)
-const OVEN := Vector2(1080.0, 1860.0)
-const STATUE := Vector2(470.0, 1950.0)
+# The play corner to the south-east, and the village square to the south:
+# the market, the bakery's oven and the statue in the middle.
+const TREEHOUSE := Vector2(2230.0, 1460.0)
+const PLAYGROUND := Vector2(1960.0, 1730.0)
+const STALL := Vector2(1640.0, 1880.0)
+const OVEN := Vector2(1000.0, 1880.0)
+const STATUE := Vector2(1320.0, 1980.0)
+# Out in the meadow: the hot spring in the far south-east, the observatory
+# up on the north-west hill where the sky is clear.
+const SPRING := Vector2(2100.0, 1960.0)
+const OBSERVATORY := Vector2(560.0, 640.0)
 ## The materials mine: a cart under the ship that fills by itself
 ## (TSProfile.mine_stored), its node floating just over it.
 const MINE := Vector2(1300.0, 985.0)
@@ -170,16 +181,16 @@ const GROUND_SIZE := 76.0        # a ground critter's size where it is nearest
 ## Where each standing job's feet go.
 const FEET := {
 	"flag": Vector2(1600, 770), "dig": Vector2(1400, 832), "paint": Vector2(1200, 830),
-	"telescope": Vector2(2360, 640), "kite": Vector2(280, 760), "read": Vector2(700, 880),
-	"fish": Vector2(800, 1016), "sweep": Vector2(1700, 900), "campfire": FIRE + Vector2(-90, 12),
-	"dance": Vector2(2330, 1170), "juggle": Vector2(2080, 1260), "crater": CRATER,
+	"telescope": Vector2(2340, 650), "kite": Vector2(280, 760), "read": Vector2(700, 880),
+	"fish": Vector2(800, 1016), "sweep": Vector2(1760, 1150), "campfire": FIRE + Vector2(-90, 12),
+	"dance": Vector2(2390, 1000), "juggle": Vector2(2150, 1020), "crater": CRATER,
 }
 ## The walkers: [from x, to x, feet y, speed].
 const PATHS := {
-	"walk": [600.0, 900.0, 1300.0, 0.07], "carry": [1640.0, 1960.0, 1180.0, 0.06],
-	"stroll": [1480.0, 1960.0, 1580.0, 0.05],
+	"walk": [600.0, 900.0, 1300.0, 0.07], "carry": [1700.0, 2000.0, 1520.0, 0.06],
+	"stroll": [1500.0, 1900.0, 2070.0, 0.05],
 }
-const CHASE := Vector2(840.0, 1420.0)       # the middle of the bug chase's loop
+const CHASE := Vector2(1060.0, 2230.0)       # the middle of the bug chase's loop
 
 # Left alone, Home runs at IDLE_FPS: the camp's crew and flames don't need
 # 60, and every frame repaints whatever moves on screen (the battery and the
@@ -435,10 +446,9 @@ func _make_scenery() -> void:
 		var p := Vector2(rng.randf_range(10.0, W - 10.0), rng.randf_range(10.0, 300.0))
 		if p.y < _horizon(p.x) - 24.0 and p.distance_to(PLANET) > 110.0 and p.distance_to(MOON) > 60.0:
 			_stars.append([p, rng.randf_range(3.0, 8.0), rng.randf() * TAU])
-	# The meadow's random layout follows from these points: the Stall's is where
-	# it first stood, so moving it down (off the Tent) left every tree in place.
+	# The meadow's clutter and trees keep clear of everything built or worked at.
 	var keep_clear := [SHIP_AT, POND, MOUND, FIRE, CRATER, Vector2(1250, 930), CHASE, TENT, BENCH, GARDEN, WELL, LOOKOUT, SOLAR,
-		HAMMOCK, PICNIC, CLOTHESLINE, MAILBOX, WINDMILL, DOCK, PLAYGROUND, TREEHOUSE, Vector2(1010, 1190), GREENHOUSE, SPRING, OBSERVATORY, OVEN, STATUE]
+		HAMMOCK, PICNIC, CLOTHESLINE, MAILBOX, WINDMILL, DOCK, PLAYGROUND, TREEHOUSE, STALL, GREENHOUSE, SPRING, OBSERVATORY, OVEN, STATUE]
 	while _scatter.size() < 150:
 		var p := Vector2(rng.randf_range(20.0, W - 20.0), rng.randf_range(_horizon(W * 0.5) + 30.0, H - 20.0))
 		if p.y < _horizon(p.x) + 20.0:
@@ -452,14 +462,17 @@ func _make_scenery() -> void:
 		var kind: String = kinds[rng.randi() % kinds.size()]
 		_scatter.append([kind, p, rng.randf_range(0.7, 1.3)])
 	_scatter.sort_custom(func(a: Array, b: Array) -> bool: return (a[1] as Vector2).y < (b[1] as Vector2).y)
-	# The season's trees round the meadow, clear of everything built or worked at.
+	# The season's trees round the meadow, clear of everything built or worked
+	# at: neither crown nor trunk over a spot, nor a spot standing in front of a
+	# crown (a crown rises about 340 over its foot; a spot up to about 260).
+	var shade: Array = keep_clear + FEET.values() + [SHIP_AT - Vector2(0.0, 270.0)]   # nor over a critter at work, or behind the ship
 	var tries := 0
-	while _trees.size() < 9 and tries < 400:
+	while _trees.size() < 9 and tries < 1000:
 		tries += 1
 		var p := Vector2(rng.randf_range(80.0, W - 80.0), rng.randf_range(_horizon(W * 0.5) + 120.0, H - 120.0))
 		var clear := true
-		for q in keep_clear:
-			clear = clear and p.distance_to(q) > 240.0
+		for q in shade:
+			clear = clear and p.distance_to(q) > 240.0 and (absf(p.x - q.x) > 300.0 or q.y < p.y - 340.0 or q.y > p.y + 260.0)
 		for t in _trees:
 			clear = clear and p.distance_to(t[0]) > 300.0
 		if clear:

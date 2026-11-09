@@ -17,6 +17,13 @@ static func args_has(a: String) -> bool:
 
 
 func _ready() -> void:
+	if OS.get_environment("OUT") != "":
+		# OUT=folder: saves shot.png there after a few seconds (or SHOT=name.png) and quits.
+		var t0 := get_tree()
+		t0.create_timer(3.0).timeout.connect(func():
+			await RenderingServer.frame_post_draw
+			t0.root.get_texture().get_image().save_png(OS.get_environment("OUT").path_join(OS.get_environment("SHOT") if OS.get_environment("SHOT") != "" else "shot.png"))
+			t0.quit())
 	TSProfile.use_test_profile(30)
 	TSProfile.home_tutorial_seen = true
 	TSProfile.daily_callout_seen = true
