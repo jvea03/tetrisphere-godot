@@ -305,7 +305,7 @@ func _run() -> void:
 		await get_tree().process_frame
 		if not _rocks_flying:
 			break
-	_check("the blast moves it on to the last card", _tutorial.visible and not _tutorial.on_step("blast") and TSProfile.bomb_count == TSProfile.BOMB_UNLOCK_GRANT - 1)
+	_check("the blast moves it on to the last card, and the lesson's bomb is free", _tutorial.visible and not _tutorial.on_step("blast") and TSProfile.bomb_count == TSProfile.BOMB_UNLOCK_GRANT)
 	_tutorial._finish()
 	_check("and it is marked seen", TSProfile.bomb_tutorial_seen)
 

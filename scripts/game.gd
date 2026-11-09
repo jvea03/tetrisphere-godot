@@ -22,6 +22,8 @@ const NEXT_MID_Y := 192.0       # below the top margin: the next piece, centred 
 const TRAY_TOP := 256.0         # below the top margin: the holding tray
 const BOOSTER_SPACING := 150.0  # the Any Piece and Rocks buttons, either side of the bomb
 const ROCKS_PER_SHOT := 2       # rocks fired per use of the Rocks booster
+const FREE_BOOSTERS := 99      # what a booster counts as on its lesson level (_free_booster): never runs out
+const FREE_BADGE := "∞"        # its button's badge there
 const STREAK_ROCK_DELAY := 1.2  # a level's start on a win streak: its banner, then the rocks
 # A drop that makes no combo costs a life. The reference HUD shows three slots.
 const LIVES := 3
@@ -815,10 +817,22 @@ func _slide(dir: Vector2i) -> void:
 	_refresh_hud()
 
 
+## The level a booster is taught on (TSProfile.booster_unlock_level: bombs on
+## 3, the Any Piece on 4, rocks on 8), on the journey: there that booster is
+## free and endless, retries too, so a lost lesson egg never runs it dry. What
+## the player holds is left alone (and free uses count for no quest).
+func _free_booster(id: String) -> bool:
+	return not is_daily and not is_challenge and current_level == TSProfile.booster_unlock_level(id)
+
+
+func _boosters_left(id: String) -> int:
+	return FREE_BOOSTERS if _free_booster(id) else TSProfile.booster_count(id)
+
+
 ## Arms or stows a bomb. With none left, the empty button offers an ad (one
 ## bomb) or a coin buy, the way Duckdoku's empty boosters do.
 func _toggle_bomb() -> void:
-	if TSProfile.bomb_count <= 0:
+	if _boosters_left("bomb") <= 0:
 		bomb_armed = false
 		_open_ad("bomb")
 	else:
@@ -847,7 +861,7 @@ func _toggle_bomb() -> void:
 func _use_any_piece() -> void:
 	if _rocks_flying:
 		return
-	if TSProfile.swap_count <= 0:
+	if _boosters_left("swap") <= 0:
 		_refresh_hud()
 		_open_ad("swap")
 		return
@@ -856,9 +870,10 @@ func _use_any_piece() -> void:
 	var pick := board.best_piece([TSBoard.WILD])
 	if int(pick["kind"]) == TSBoard.HOLE:
 		return
-	TSProfile.add_boosters("swap", -1)
-	TSProfile.record_quest_event("booster")
-	TSProfile.save()
+	if not _free_booster("swap"):
+		TSProfile.add_boosters("swap", -1)
+		TSProfile.record_quest_event("booster")
+		TSProfile.save()
 	cur_type = TSBoard.WILD
 	cursor = pick["at"]
 	selected = TSBoard.HOLE
@@ -878,16 +893,17 @@ func _use_any_piece() -> void:
 func _fire_rocks() -> void:
 	if _rocks_flying:
 		return
-	if TSProfile.rock_count <= 0:
+	if _boosters_left("rocks") <= 0:
 		_refresh_hud()
 		_open_ad("rocks")
 		return
 	var targets := board.rock_targets(ROCKS_PER_SHOT, cursor)
 	if targets.is_empty():
 		return
-	TSProfile.add_boosters("rocks", -1)
-	TSProfile.record_quest_event("booster")
-	TSProfile.save()
+	if not _free_booster("rocks"):
+		TSProfile.add_boosters("rocks", -1)
+		TSProfile.record_quest_event("booster")
+		TSProfile.save()
 	# The launcher kicks back with a puff of dust as the rocks leave it.
 	_kick_button(_btn_rocks)
 	var muzzle := _btn_rocks.get_global_rect().get_center()
@@ -1006,7 +1022,7 @@ func _drop() -> void:
 		_pointer.visible = false
 	var offsets := current_offsets()
 	var landing := cursor
-	var bomb_was_armed := bomb_armed and TSProfile.bomb_count > 0
+	var bomb_was_armed := bomb_armed and _boosters_left("bomb") > 0
 	# A bomb falls exactly where the double-tap was, not on the aimed piece's
 	# anchor (a wide piece is centred on the tap, and kept clear of the poles).
 	if bomb_was_armed and _drop_cell.x >= 0:
@@ -1017,9 +1033,10 @@ func _drop() -> void:
 	if bomb_was_armed:
 		# The bomb is spent now, but goes off only once it has fallen onto the
 		# egg (_drop_bomb), and the drop finishes then.
-		TSProfile.bomb_count -= 1
 		bomb_armed = false
-		TSProfile.record_quest_event("booster")
+		if not _free_booster("bomb"):
+			TSProfile.bomb_count -= 1
+			TSProfile.record_quest_event("booster")
 		_drop_bomb(landing, landing_at)
 		_refresh_hud()
 		return
@@ -1614,9 +1631,9 @@ func _refresh_bomb_button() -> void:
 	normal.border_color = TSToon.INK
 	for style in ["normal", "hover", "pressed", "disabled"]:
 		_btn_bomb.add_theme_stylebox_override(style, normal)
-	var have := TSProfile.bomb_count
+	var have := _boosters_left("bomb")
 	_btn_bomb.self_modulate.a = 1.0 if have > 0 else 0.55
-	_bomb_badge.text = str(have) if have > 0 else "+"
+	_bomb_badge.text = FREE_BADGE if _free_booster("bomb") else (str(have) if have > 0 else "+")
 	_btn_bomb.visible = state == State.PLAYING and TSProfile.bombs_unlocked
 	for pair in [[_btn_swap, "swap"], [_btn_rocks, "rocks"]]:
 		var btn: Button = pair[0]
@@ -1626,9 +1643,9 @@ func _refresh_bomb_button() -> void:
 		style.set_border_width_all(4)
 		for s in ["normal", "hover", "pressed", "disabled"]:
 			btn.add_theme_stylebox_override(s, style)
-		var count := TSProfile.booster_count(id)
+		var count := _boosters_left(id)
 		btn.self_modulate.a = 1.0 if count > 0 else 0.55
-		(_booster_badges[id] as Label).text = str(count) if count > 0 else "+"
+		(_booster_badges[id] as Label).text = FREE_BADGE if _free_booster(id) else (str(count) if count > 0 else "+")
 		btn.visible = state == State.PLAYING and TSProfile.booster_unlocked(id)
 	_refresh_streak_pill()
 	_refresh_timer()
@@ -2054,7 +2071,7 @@ func _tap(pos: Vector2) -> void:
 	var now := Time.get_ticks_msec()
 	var on_piece := _on_aimed_piece(_cell_at(pos))
 	# (A bomb lands exactly where the second tap is, so it keeps to taps near the first.)
-	var bomb := bomb_armed and TSProfile.bomb_count > 0
+	var bomb := bomb_armed and _boosters_left("bomb") > 0
 	if now - _last_tap_ms <= int(DOUBLE_TAP_TIME * 1000.0) and (pos.distance_to(_last_tap_pos) <= DOUBLE_TAP_DIST or (on_piece and not bomb)):
 		_last_tap_ms = -100000   # a third tap starts over rather than dropping again
 		_drop_cell = _cell_at(pos)
@@ -3092,9 +3109,9 @@ func _maybe_start_tutorials() -> void:
 	elif not board.fog.is_empty() and not TSProfile.fog_tutorial_seen:
 		_start_blocker_card(board.top_piece(board.fog.keys()[0].x, board.fog.keys()[0].y), func() -> void: TSProfile.fog_tutorial_seen = true, "Fog! You can't see the colours under a cloud. Pop a piece right next to it to blow that part clear -- a bomb or a rock clears the whole cloud.")
 	elif TSProfile.swaps_unlocked and not TSProfile.swap_tutorial_seen:
-		_start_booster_tutorial(_btn_swap, "swap", "The Any Piece! Tap it to turn your piece into a wild block that becomes whatever it touches -- drop it by any pair to make a match. Here are %d to start." % TSProfile.SWAP_UNLOCK_GRANT)
+		_start_booster_tutorial(_btn_swap, "swap", "The Any Piece! Tap it to turn your piece into a wild block that becomes whatever it touches -- drop it by any pair to make a match. Free on this level, and %d to keep." % TSProfile.SWAP_UNLOCK_GRANT)
 	elif TSProfile.rocks_unlocked and not TSProfile.rocks_tutorial_seen:
-		_start_booster_tutorial(_btn_rocks, "rocks", "Rocks! Tap to fire two rocks: each one lands on a pair and finishes the match. Here are %d shots to start." % TSProfile.ROCKS_UNLOCK_GRANT)
+		_start_booster_tutorial(_btn_rocks, "rocks", "Rocks! Tap to fire two rocks: each one lands on a pair and finishes the match. Free on this level, and %d shots to keep." % TSProfile.ROCKS_UNLOCK_GRANT)
 	elif not TSProfile.streak_intro_seen and _streak_level() and TSProfile.win_streak > 0:
 		_start_streak_intro()
 	elif not TSProfile.pieces_intro_seen and _has_piece_limit():
@@ -3374,10 +3391,10 @@ func _start_bomb_tutorial() -> void:
 		TSProfile.save(), CONNECT_ONE_SHOT)
 	_tutorial.start([
 		{"id": "arm_bomb", "gate": true, "rect": _btn_bomb.get_global_rect(),
-			"text": "Bombs! Here are %d to start. Tap the bomb to arm one." % TSProfile.BOMB_UNLOCK_GRANT},
+			"text": "Bombs! They're free on this level -- use as many as you like, and keep %d for later. Tap the bomb to arm one." % TSProfile.BOMB_UNLOCK_GRANT},
 		{"id": "blast", "gate": true, "rect": _ball_rect(),
 			"text": "Armed! Now double-tap the egg: the bomb blasts every piece around the spot."},
-		{"rect": _btn_bomb.get_global_rect(), "text": "Boom! Bombs never cost a heart. When you run out, the empty button offers more."},
+		{"rect": _btn_bomb.get_global_rect(), "text": "Boom! Bombs never cost a heart. After this level, when you run out, the empty button offers more."},
 	])
 
 
