@@ -38,3 +38,4 @@ Things to know:
 - **There's no targeting of individual players or of a real top 10**: the game has no accounts. Rules are all a phone can check about itself.
 - Editing a message that's already out changes it for anyone who hasn't collected it. Changing its `id` sends it again to everyone.
 - The tile on Home only shows while a message is waiting. It hides on its own when the inbox is empty.
+- The same file can also change ad frequency and other numbers: see [remote-settings.md](remote-settings.md).

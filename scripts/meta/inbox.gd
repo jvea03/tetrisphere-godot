@@ -5,7 +5,8 @@ extends RefCounted
 ## small file (store/inbox.json on GitHub; see docs/inbox.md) and each phone
 ## works out which messages are for it, by level, login streak and date. A
 ## message shows until it is collected or read (TSProfile.inbox_done). One small
-## request, no player data; offline, the last file read is used.
+## request, no player data; offline, the last file read is used. The same file
+## carries the remote settings (TSTunables; docs/remote-settings.md).
 
 const URL := "https://raw.githubusercontent.com/jvea03/tetrisphere-godot/main/store/inbox.json"
 const CACHE_PATH := "user://inbox_cache.json"
@@ -53,7 +54,7 @@ static func applies(m: Dictionary, level: int, streak: int, date: String) -> boo
 
 ## The messages showing for this player now, newest in the file first.
 static func active() -> Array:
-	_read_cache()
+	load_cache()
 	var out: Array = []
 	for m: Dictionary in messages:
 		if not TSProfile.inbox_done.has(m["id"]) and applies(m, TSProfile.last_level, TSProfile.login_streak_count, TSClock.date_string()):
@@ -81,6 +82,7 @@ static func claim(m: Dictionary) -> void:
 static func fetch(host: Node, done: Callable) -> void:
 	if _fetched or not TSProfile.persist:
 		return
+	load_cache()
 	var http := HTTPRequest.new()
 	http.timeout = 8.0
 	http.body_size_limit = 64 * 1024
@@ -90,12 +92,10 @@ static func fetch(host: Node, done: Callable) -> void:
 		if result != HTTPRequest.RESULT_SUCCESS or code != 200:
 			return
 		var text := body.get_string_from_utf8()
-		var read: Variant = parse(text)
-		if read == null:
+		if not take(text):
 			return
 		_fetched = true
 		_cache_read = true
-		messages = read
 		var f := FileAccess.open(CACHE_PATH, FileAccess.WRITE)
 		if f != null:
 			f.store_string(text)
@@ -104,11 +104,24 @@ static func fetch(host: Node, done: Callable) -> void:
 		http.queue_free()
 
 
-static func _read_cache() -> void:
+## Uses a file's messages and its settings (TSTunables), if it is an inbox
+## file at all.
+static func take(text: String) -> bool:
+	var read: Variant = parse(text)
+	if read == null:
+		return false
+	messages = read
+	var data: Dictionary = JSON.parse_string(text)
+	var name: String = data["settings_name"] if data.get("settings_name") is String else ""
+	TSTunables.apply_remote(data.get("settings"), name)
+	TSAnalytics.user_property("remote_settings", name if name != "" else "default")
+	return true
+
+
+## The last file read, once a run: its messages and settings.
+static func load_cache() -> void:
 	if _cache_read or not TSProfile.persist:
 		return
 	_cache_read = true
 	if FileAccess.file_exists(CACHE_PATH):
-		var read: Variant = parse(FileAccess.get_file_as_string(CACHE_PATH))
-		if read != null:
-			messages = read
+		take(FileAccess.get_file_as_string(CACHE_PATH))

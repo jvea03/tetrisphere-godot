@@ -124,6 +124,18 @@ func _run() -> void:
 	TSUI.conceal(_inbox["root"])
 	TSInbox.messages = []
 
+	# Remote settings ride in the same file.
+	_check("no settings: the shipped numbers", TSTunables.get_int("interstitial_from_level") == 30)
+	var taken := TSInbox.take(JSON.stringify({"messages": [], "settings_name": "ads-l10", "settings": {
+		"interstitial_from_level": 10, "interstitial_every_n_wins": 2.0, "social_enabled": true,
+		"ad_chest_per_day": -1, "ad_build_per_day": 2.5, "coins_per_star": "500", "piece_budget_extra": 99999999, "no_such_key": 7}}))
+	_check("a file's settings are taken", taken and TSTunables.get_int("interstitial_from_level") == 10 and TSTunables.get_int("interstitial_every_n_wins") == 2 and TSTunables.get_bool("social_enabled") and TSTunables.remote_name == "ads-l10")
+	_check("bad values keep the shipped ones (negative, fraction, text)", TSTunables.get_int("ad_chest_per_day") == 3 and TSTunables.get_int("ad_build_per_day") == 3 and TSTunables.get_int("coins_per_star") == 100)
+	_check("a huge number is capped", TSTunables.get_int("piece_budget_extra") == TSTunables.MAX_REMOTE)
+	_check("a broken file changes nothing", not TSInbox.take("{oops") and TSTunables.get_int("interstitial_from_level") == 10)
+	TSInbox.take("{\"messages\": []}")
+	_check("a key taken out goes back to its default", TSTunables.get_int("interstitial_from_level") == 30 and not TSTunables.get_bool("social_enabled") and TSTunables.remote_name == "")
+
 	TSProfile.inbox_done = {}
 	TSProfile.persist = false
 	TSInbox.fetch(self, func() -> void: pass)
