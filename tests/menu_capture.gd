@@ -59,11 +59,11 @@ func _ready() -> void:
 		var spot := int(args_all[args_all.find("at") + 1])
 		var t := get_tree()
 		t.create_timer(0.8).timeout.connect(func(): t.current_scene._world.glide_to_part(spot))
-	if last_arg == "max":
+	if last_arg == "max" or args_all.has("max"):
 		TSProfile.part_level = []
 		for i in TSProfile.PART_COUNT:
 			TSProfile.part_level.append(TSProfile.PART_MAX_LEVEL)
-	elif last_arg == "broken":
+	elif last_arg == "broken" or args_all.has("broken"):
 		TSProfile.part_level = []
 		for i in TSProfile.PART_COUNT:
 			TSProfile.part_level.append(0)

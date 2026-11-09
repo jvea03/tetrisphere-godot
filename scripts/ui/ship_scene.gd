@@ -714,6 +714,11 @@ func glide_to_part(i: int) -> void:
 	_velocity = Vector2.ZERO
 
 
+## Still on its way to a glide_to_part (or an edge arrow's) spot.
+func is_gliding() -> bool:
+	return _glide_to != null
+
+
 ## The part levels have changed (a node was spent): the scene catches up --
 ## and if enough of the ship is fixed, it is righted or set on its pad.
 func refresh_parts() -> void:

@@ -95,6 +95,9 @@ func build() -> void:
 		TSHunt.roll()
 	_refresh_side()
 	TSInbox.fetch(self, _refresh_inbox)
+	side.minimum_size_changed.connect(_fit_side, CONNECT_DEFERRED)   # a tile shown or hidden
+	tray.item_rect_changed.connect(_fit_side, CONNECT_DEFERRED)
+	_fit_side.call_deferred()
 	# Off on the season's voyage first: walkthroughs, the sale and the board
 	# results wait for Home on the new planet.
 	var walkthrough := TSProfile.voyage_due() or _start_walkthrough()
@@ -373,6 +376,20 @@ func _build_side_tiles() -> void:
 	sale_timer.position = Vector2(-10, 88)
 	sale_timer.size = Vector2(116, 24)
 	sale_btn.add_child(sale_timer)
+
+
+## The side column shrinks to fit above the chest tray: on a short (16:9)
+## screen, with every tile up (streak, Daily Egg, Battle Pass, Eggsperience,
+## a message and a sale), the sale tile would otherwise sit on the tray.
+func _fit_side() -> void:
+	if not is_instance_valid(side) or not is_instance_valid(tray) or not tray.is_visible_in_tree():
+		return
+	var need := side.get_combined_minimum_size().y + (20.0 if sale_btn.visible else 0.0)   # the sale's timer hangs under its tile
+	var room := tray.get_global_rect().position.y - 12.0 - side.global_position.y
+	var s := clampf(room / maxf(need, 1.0), 0.6, 1.0)
+	if not is_equal_approx(side.scale.x, s):
+		side.scale = Vector2(s, s)
+		_update_node_area()
 
 
 func _side_tile(icon: String, on_press: Callable) -> Button:
@@ -1769,7 +1786,12 @@ func _start_camp_callout() -> void:
 	if not is_inside_tree():
 		return
 	_world.glide_to_part(TSProfile.CAMP_FIRE)
-	await get_tree().create_timer(0.8).timeout
+	# Spotlight the plus where the glide ends, not where it is on its way.
+	var waited := 0.0
+	while waited < 3.0 and is_inside_tree() and _world.is_gliding():
+		await get_tree().process_frame
+		waited += get_process_delta_time()
+	await get_tree().create_timer(0.2).timeout
 	if not is_inside_tree():
 		return
 	tutorial.finished.connect(func():

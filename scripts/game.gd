@@ -91,6 +91,7 @@ var _win_coins := 0
 var _win_count: Tween   # the win card's coins counting up (a doubling takes over from it)
 var _win_materials := 0       # building materials the win paid
 var _win_chest := ""
+var _win_features := false  # stars and chests were open as this win was paid (level 6's win opens them: its card shows neither)
 var _win_bonus := ""
 const FIRST_ATTEMPT_STAR_BONUS := 2
 const LIVES_REFILL_COST := 2500
@@ -2296,6 +2297,7 @@ func _win() -> void:
 ## quests, the Eggsperience and level progress -- all banked at the moment of the win.
 func _pay_win() -> void:
 	TSProfile.settle_boards()
+	_win_features = TSNav.features_unlocked()
 	var before := TSProfile.coin_count
 	var bonus := FIRST_ATTEMPT_STAR_BONUS if is_first_attempt else 0
 	_win_stars = TSProfile.add_stars(lives, bonus, difficulty)
@@ -2545,10 +2547,10 @@ func _show_win_card() -> void:
 	var coin_amount := TSUI.label("0", 34)
 	row.add_child(_reward_stack("coin", coin_amount))
 	row.add_child(_reward_stack("materials", TSUI.label("+%d" % _win_materials, 34)))
-	if TSProfile.stars_open():
+	if _win_features:
 		var star_amount := TSUI.label("+%d" % _win_stars, 34)
 		row.add_child(_reward_stack("star", star_amount))
-	if not is_daily and TSNav.features_unlocked():
+	if not is_daily and _win_features:
 		var chest := TSIcon.make("chest", 64, 0, _win_chest if _win_chest != "" else "common")
 		var chest_text := TSUI.label("+1" if _win_chest != "" else "%d/%d" % [TSChests.WINS_PER_CHEST - TSChests.wins_to_next(), TSChests.WINS_PER_CHEST], 30)
 		if _win_chest == "":
@@ -2560,7 +2562,7 @@ func _show_win_card() -> void:
 		v.add_child(chest_text)
 		row.add_child(v)
 	box.add_child(rewards)
-	if is_first_attempt and TSProfile.stars_open():
+	if is_first_attempt and _win_features:
 		box.add_child(TSUI.label("First try! +%d bonus stars" % FIRST_ATTEMPT_STAR_BONUS, 22, TSFX.COL_GAIN, HORIZONTAL_ALIGNMENT_CENTER))
 	if _win_bonus != "":
 		box.add_child(TSUI.label(_win_bonus, 22, TSFX.COL_GAIN, HORIZONTAL_ALIGNMENT_CENTER))
