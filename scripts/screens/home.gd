@@ -95,6 +95,11 @@ func build() -> void:
 		TSHunt.roll()
 	_refresh_side()
 	TSInbox.fetch(self, _refresh_inbox)
+	# The leaderboards: finished boards placed (prizes), and stickers sent here.
+	TSProfile.resolve_board_results()
+	Online.check_stickers()
+	if not Online.stickers_arrived.is_connected(_on_stickers):
+		Online.stickers_arrived.connect(_on_stickers)
 	side.minimum_size_changed.connect(_fit_side, CONNECT_DEFERRED)   # a tile shown or hidden
 	tray.item_rect_changed.connect(_fit_side, CONNECT_DEFERRED)
 	_fit_side.call_deferred()
@@ -1693,6 +1698,7 @@ func _on_profile_save() -> void:
 	TSProfile.player_name = new_name if new_name != "" else TSProfile.DEFAULT_NAME
 	TSProfile.avatar_index = _avatar_choice
 	TSProfile.save()
+	TSProfile.push_boards()   # the boards show the new name and critter
 	_refresh_avatar()
 	TSUI.conceal(_profile["root"])
 
@@ -1832,3 +1838,10 @@ func _settled() -> void:
 	await get_tree().process_frame
 	while SceneFlow.in_flight and is_inside_tree():
 		await get_tree().process_frame
+
+
+## Stickers other players sent, shown once Home is free of cards.
+func _on_stickers() -> void:
+	if not is_inside_tree() or tutorial.visible:
+		return
+	TSStickerCards.show_received(self)

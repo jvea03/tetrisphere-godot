@@ -1,10 +1,11 @@
 extends TSScreen
 
 ## The leaderboards (Duckdoku's LeaderboardScreen): Daily, Weekly and Season,
-## scored in stars. Top 3 win coins, paid once a board resets (the prize waits
-## on Home). The rivals are simulated locally -- there is no backend -- the
-## same for everyone on a given day. The player's own row stays pinned at the
-## bottom while it is scrolled out of view.
+## scored in stars, against real players (Online: Firebase). Top 3 win coins,
+## paid once a board resets and its place is known (the prize waits on Home).
+## Tapping another player opens their card: send a sticker, block, report.
+## The player's own row stays pinned at the bottom while it is scrolled out of
+## view.
 
 const TAB_INFO := {
 	"daily": {"title": "Daily Leaderboard", "sub": "Win levels to earn stars -- one for every heart you had left. Top 3 each day win coins."},
@@ -24,6 +25,7 @@ var _scroll: ScrollContainer
 var _pinned: MarginContainer
 var _player_row: Control
 var _info: Dictionary
+var _status: Label            # connecting, offline, or only you so far
 
 
 func tab_id() -> String:
@@ -45,13 +47,16 @@ func build() -> void:
 	_tabs = TSUI.tabs(["Daily", "Weekly", "Season"], func(i: int):
 		_tab = PERIODS[i]
 		TSUI.style_tabs(_tabs, i)
-		_refresh())
+		_refresh()
+		_fetch())
 	content.add_child(_tabs)
 	_countdown = TSUI.label("", 22, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER)
 	content.add_child(_countdown)
 	_banner = TSUI.card(TSUI.BUTTER, 20, 12, 2)
 	_banner.add_child(TSUI.wrap(TSUI.label("", 22, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER)))
 	content.add_child(_banner)
+	_status = TSUI.wrap(TSUI.label("", 20, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER), 600)
+	content.add_child(_status)
 	_list = TSUI.vbox(10)
 	_scroll = TSUI.scroll(_list)
 	content.add_child(_scroll)
@@ -61,7 +66,7 @@ func build() -> void:
 	_info = TSUI.dialog(self, 580)
 	var ibox: VBoxContainer = _info["box"]
 	ibox.add_child(TSUI.title("Climb the Leaderboards", 38))
-	for line in ["Win levels to earn stars.", "Climb the daily, weekly and season boards.", "Finish top 3 to win coins -- collect them on Home when the board resets."]:
+	for line in ["Win levels to earn stars.", "Climb the daily, weekly and season boards against players everywhere.", "Finish top 3 to win coins -- collect them on Home when the board resets.", "Tap a player to send them a sticker."]:
 		var row := TSUI.hbox(10)
 		row.add_child(TSIcon.make("star", 36))
 		row.add_child(TSUI.wrap(TSUI.label(line, 22), 440))
@@ -74,7 +79,19 @@ func build() -> void:
 	tick.autostart = true
 	tick.timeout.connect(_refresh_countdown)
 	add_child(tick)
+	Online.boards_changed.connect(_refresh)
+	TSProfile.push_boards()
+	TSProfile.resolve_board_results(_refresh)
 	_refresh()
+	_fetch()
+	Online.check_stickers(true)
+	Online.stickers_arrived.connect(func() -> void: TSStickerCards.show_received(self))
+	TSStickerCards.show_received(self)
+
+
+## Asks Online for the open board (a minute fresh at most).
+func _fetch() -> void:
+	Online.fetch(TSProfile.current_board(_tab))
 
 
 func _refresh() -> void:
@@ -92,6 +109,16 @@ func _refresh() -> void:
 		c.queue_free()
 	_player_row = null
 	var entries: Array = TSProfile.standings_for(_tab)
+	var fetched := not Online.entries(TSProfile.current_board(_tab)).is_empty()
+	if entries.size() > 1:
+		_status.text = ""
+	elif fetched:
+		_status.text = "Only you so far -- win levels to stay on top!"
+	elif Online.last_error != "":
+		_status.text = "Can't reach the leaderboard right now. Check your connection."
+	else:
+		_status.text = "Loading the leaderboard..."
+	_status.visible = _status.text != ""
 	for i in entries.size():
 		var row := _row(i + 1, entries[i])
 		_list.add_child(row)
@@ -117,7 +144,7 @@ func _podium(entries: Array) -> Control:
 		var col := TSUI.vbox(0)
 		col.size_flags_vertical = Control.SIZE_SHRINK_END
 		col.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var who := TSIcon.make("critter", steps[rank][2], TSProfile.avatar() if me else TSProfile.npc_critter(hash(str(entry["name"]))))
+		var who := TSIcon.make("critter", steps[rank][2], TSProfile.avatar() if me else int(entry.get("avatar", 0)))
 		who.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		if rank == 1:   # the winner's crown, tipped on its head
 			var crown := TSIcon.make("crown", 70)
@@ -182,7 +209,7 @@ func _row(rank: int, entry: Dictionary) -> Control:
 	var rank_lbl := TSUI.label(str(rank), 30, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER)
 	rank_lbl.custom_minimum_size = Vector2(56, 56)
 	h.add_child(TSFX.medal_plate(rank, rank_lbl))
-	h.add_child(TSIcon.make("critter", 52, TSProfile.avatar() if me else TSProfile.npc_critter(hash(str(entry["name"])))))
+	h.add_child(TSIcon.make("critter", 52, TSProfile.avatar() if me else int(entry.get("avatar", 0))))
 	var name_lbl := TSUI.label("%s (You)" % entry["name"] if me else str(entry["name"]), 24)
 	name_lbl.clip_text = true
 	TSUI.expand(name_lbl)
@@ -201,4 +228,24 @@ func _row(rank: int, entry: Dictionary) -> Control:
 	ch.add_child(TSIcon.make("star", 32))
 	ch.add_child(TSUI.label(str(entry["stars"]), 26))
 	h.add_child(chip)
+	if not me:
+		# Another player: tap for their card (a sticker, block, report).
+		card.mouse_filter = Control.MOUSE_FILTER_STOP
+		card.gui_input.connect(func(e: InputEvent) -> void:
+			if (e is InputEventMouseButton and not e.pressed and e.button_index == MOUSE_BUTTON_LEFT) or (e is InputEventScreenTouch and not e.pressed):
+				if not _scroll_moved():
+					TSStickerCards.show_player(self, entry, _refresh))
 	return card
+
+
+var _press_scroll := 0
+
+
+## A drag through the list (scrolling it) isn't a tap on a row.
+func _scroll_moved() -> bool:
+	return absi(_scroll.scroll_vertical - _press_scroll) > 12
+
+
+func _input(e: InputEvent) -> void:
+	if (e is InputEventMouseButton and e.pressed) or (e is InputEventScreenTouch and e.pressed):
+		_press_scroll = _scroll.scroll_vertical if is_instance_valid(_scroll) else 0

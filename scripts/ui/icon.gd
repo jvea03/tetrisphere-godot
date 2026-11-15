@@ -181,6 +181,7 @@ func _draw() -> void:
 		"skip": _draw_skip()
 		"tag": _draw_tag()
 		"mail": _draw_mail()
+		"sticker": _draw_sticker(variant)
 		"cog": _draw_cog()
 		"home": _draw_home()
 		"shop": _draw_shop()
@@ -1234,3 +1235,74 @@ func _draw_ship_icon() -> void:
 		return
 	_line([Vector2(0.6, 0.2), Vector2(0.6, 0.76)], Color(0.62, 0.8, 1.0), 1.4)
 	_circle(Vector2(0.48, 0.42), 0.08, Color(0.62, 0.84, 1.0))
+
+
+# -- stickers (TSStickers) -------------------------------------------------------
+# Round die-cut stickers: a white rim, a face or a thing in the middle.
+
+func _sticker_face(c: Vector2, r: float, skin: Color) -> void:
+	_circle(c, r, _col(skin))
+
+
+func _draw_sticker(id: String) -> void:
+	_circle(Vector2(0.5, 0.5), 0.47, WHITE)
+	var c := Vector2(0.5, 0.52)
+	match id:
+		"angry":
+			_sticker_face(c, 0.36, Color(1.0, 0.45, 0.4))
+			_line([Vector2(0.3, 0.38), Vector2(0.44, 0.46)], INK, 1.4)
+			_line([Vector2(0.7, 0.38), Vector2(0.56, 0.46)], INK, 1.4)
+			_circle(Vector2(0.39, 0.52), 0.035, INK, false)
+			_circle(Vector2(0.61, 0.52), 0.035, INK, false)
+			_line([Vector2(0.38, 0.7), Vector2(0.5, 0.64), Vector2(0.62, 0.7)], INK, 1.3)
+			_line([Vector2(0.74, 0.14), Vector2(0.8, 0.2), Vector2(0.74, 0.24), Vector2(0.82, 0.3)], INK, 1.0)
+		"sad":
+			_sticker_face(c, 0.36, Color(0.6, 0.78, 1.0))
+			_line([Vector2(0.3, 0.44), Vector2(0.43, 0.39)], INK, 1.2)
+			_line([Vector2(0.7, 0.44), Vector2(0.57, 0.39)], INK, 1.2)
+			_circle(Vector2(0.39, 0.52), 0.035, INK, false)
+			_circle(Vector2(0.61, 0.52), 0.035, INK, false)
+			_line([Vector2(0.4, 0.71), Vector2(0.5, 0.66), Vector2(0.6, 0.71)], INK, 1.3)
+			_poly([Vector2(0.33, 0.55), Vector2(0.36, 0.61), Vector2(0.33, 0.64), Vector2(0.3, 0.61)], _col(Color(0.82, 0.94, 1.0)))
+		"congrats":
+			_sticker_face(c + Vector2(0, 0.04), 0.33, GOLD)
+			_poly([Vector2(0.38, 0.3), Vector2(0.5, 0.04), Vector2(0.62, 0.3)], _col(PINK))
+			_circle(Vector2(0.5, 0.05), 0.04, _col(Color(0.62, 0.84, 1.0)))
+			_line([Vector2(0.36, 0.52), Vector2(0.41, 0.48), Vector2(0.46, 0.52)], INK, 1.2)
+			_line([Vector2(0.54, 0.52), Vector2(0.59, 0.48), Vector2(0.64, 0.52)], INK, 1.2)
+			_poly([Vector2(0.36, 0.6), Vector2(0.64, 0.6), Vector2(0.5, 0.76)], _col(Color(0.96, 0.42, 0.48)))
+			for p in [[Vector2(0.16, 0.3), PINK], [Vector2(0.84, 0.32), Color(0.62, 0.84, 1.0)], [Vector2(0.14, 0.66), Color(0.58, 0.87, 0.64)], [Vector2(0.86, 0.7), PINK]]:
+				_circle(p[0], 0.035, _col(p[1]), false)
+		"jolly":
+			_sticker_face(c + Vector2(0, 0.06), 0.31, Color(1.0, 0.86, 0.76))
+			_poly([Vector2(0.22, 0.38), Vector2(0.5, 0.06), Vector2(0.82, 0.3), Vector2(0.78, 0.38)], _col(Color(0.92, 0.3, 0.32)))
+			_rrect(Rect2(0.2, 0.34, 0.62, 0.1), 0.05, _col(WHITE))
+			_circle(Vector2(0.84, 0.3), 0.06, _col(WHITE))
+			_circle(Vector2(0.41, 0.54), 0.03, INK, false)
+			_circle(Vector2(0.59, 0.54), 0.03, INK, false)
+			_ellipse(Vector2(0.5, 0.76), 0.2, 0.1, _col(WHITE))
+			_line([Vector2(0.42, 0.66), Vector2(0.5, 0.7), Vector2(0.58, 0.66)], INK, 1.2)
+		"snowman":
+			_sticker_face(c, 0.34, Color(0.97, 0.98, 1.0))
+			_circle(Vector2(0.4, 0.46), 0.035, INK, false)
+			_circle(Vector2(0.6, 0.46), 0.035, INK, false)
+			_poly([Vector2(0.5, 0.54), Vector2(0.72, 0.58), Vector2(0.5, 0.6)], _col(Color(1.0, 0.6, 0.25)))
+			for x in [0.4, 0.47, 0.54, 0.61]:
+				_circle(Vector2(x, 0.7 - absf(x - 0.5) * 0.3), 0.018, INK, false)
+			_rrect(Rect2(0.3, 0.14, 0.4, 0.08), 0.02, _col(INK.lightened(0.2)))
+			_rrect(Rect2(0.37, 0.0, 0.26, 0.16), 0.03, _col(INK.lightened(0.2)))
+		"gift":
+			_rrect(Rect2(0.22, 0.4, 0.56, 0.4), 0.05, _col(Color(0.58, 0.87, 0.64)))
+			_rrect(Rect2(0.18, 0.3, 0.64, 0.14), 0.04, _col(Color(0.58, 0.87, 0.64)))
+			_rrect(Rect2(0.45, 0.3, 0.1, 0.5), 0.0, _col(Color(0.92, 0.3, 0.32)))
+			_ellipse(Vector2(0.4, 0.24), 0.1, 0.07, _col(Color(0.92, 0.3, 0.32)), true, -0.4)
+			_ellipse(Vector2(0.6, 0.24), 0.1, 0.07, _col(Color(0.92, 0.3, 0.32)), true, 0.4)
+		"cocoa":
+			_rrect(Rect2(0.24, 0.38, 0.4, 0.42), 0.08, _col(PINK))
+			draw_arc(_u(Vector2(0.66, 0.56)), 0.1 * _s, -PI * 0.5, PI * 0.5, 16, INK, _w() * 1.3, true)
+			_ellipse(Vector2(0.44, 0.4), 0.2, 0.05, _col(Color(0.55, 0.36, 0.28)))
+			for x in [0.36, 0.48]:
+				_line([Vector2(x, 0.32), Vector2(x + 0.03, 0.24), Vector2(x, 0.16)], INK.lightened(0.4), 1.0)
+			_circle(Vector2(0.44, 0.6), 0.05, _col(WHITE), false)
+		_:
+			_sticker_face(c, 0.36, GOLD)

@@ -202,6 +202,8 @@ func _reward_card(tier: int, current: int, reward: Dictionary, premium: bool) ->
 		h.add_child(_item("critter", int(reward["critter"]), TSProfile.critter_name(int(reward["critter"]))))
 	if reward.has("part"):
 		h.add_child(_item("part", int(reward["part"]), TSProfile.part_name(int(reward["part"]))))
+	if reward.has("sticker"):
+		h.add_child(_item("sticker", 0, "Sticker", str(reward["sticker"])))
 	if int(reward.get("coins", 0)) > 0:
 		h.add_child(_item("coin", 0, "x%s" % TSProfile.fmt_coins(int(reward["coins"]))))
 	if int(reward.get("materials", 0)) > 0:
@@ -228,10 +230,10 @@ func _reward_card(tier: int, current: int, reward: Dictionary, premium: bool) ->
 	return card
 
 
-func _item(icon: String, idx: int, caption: String) -> Control:
+func _item(icon: String, idx: int, caption: String, var_name := "") -> Control:
 	var v := TSUI.vbox(0)
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var ic := TSIcon.make(icon, 56, idx)
+	var ic := TSIcon.make(icon, 56, idx, var_name)
 	ic.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	v.add_child(ic)
 	var l := TSUI.label(caption, 19, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER)

@@ -1232,6 +1232,7 @@ static func set_avatar_critter(i: int) -> void:
 		return
 	avatar_critter = i
 	save()
+	push_boards()
 
 
 static func avatar_color() -> Color:
@@ -1879,6 +1880,14 @@ static var leaderboard_reward_message: String = ""
 ## Board prizes are paid for a board's FINAL standing, once it has reset:
 ## settling queues the prize here, and Home's results card pays it.
 static var pending_board_prizes: Array = []
+## Finished boards still to be placed online: {period, board, stars}. Each is
+## asked once there is a connection (resolve_board_results); a top-3 place
+## queues its prize.
+static var pending_board_results: Array = []
+## Stickers from the Battle Pass (TSStickers; the basic three need no entry),
+## and the players whose stickers this player has blocked (Online uids).
+static var stickers_owned: Array = []
+static var blocked_players: Array = []
 
 
 static func _queue_board_prize(board: String, place: int, score: String, coins: int) -> void:
@@ -1900,16 +1909,6 @@ static func _append_leaderboard_message(msg: String) -> void:
 	leaderboard_reward_message = msg if leaderboard_reward_message == "" else "%s\n%s" % [leaderboard_reward_message, msg]
 
 
-static func simulated_rivals_for(date_str: String, days: float = 1.0) -> Array:
-	var rng := RandomNumberGenerator.new()
-	rng.seed = hash("leaderboard_" + date_str)
-	var rivals := []
-	for rival_name in LEADERBOARD_RIVAL_NAMES:
-		rivals.append({"name": rival_name, "stars": roundi(rng.randi_range(2, 22) * maxf(days, 1.0)), "is_player": false})
-	rivals.sort_custom(func(a, b): return int(a["stars"]) > int(b["stars"]))
-	return rivals
-
-
 static func _roll_leaderboard_day() -> void:
 	var today := TSClock.date_string()
 	if daily_star_date == today:
@@ -1923,14 +1922,29 @@ static func _roll_leaderboard_day() -> void:
 static func _resolve_leaderboard_day(date_str: String, player_total: int) -> void:
 	if not TSNav.leaderboards_open():
 		return
-	var better := 0
-	for rival in simulated_rivals_for(date_str):
-		if int(rival["stars"]) > player_total:
-			better += 1
-	if better < LEADERBOARD_DAILY_COIN_REWARDS.size():
-		var reward: int = boost_earned_coins(LEADERBOARD_DAILY_COIN_REWARDS[better])
-		_queue_board_prize("Daily Leaderboard", better + 1, "%d stars" % player_total, reward)
-		_append_leaderboard_message("Daily leaderboard: #%d place (%d stars)! Collect +%s coins on Home." % [better + 1, player_total, fmt_coins(reward)])
+	pending_board_results.append({"period": "daily", "board": Online.board_id("daily", date_str), "stars": player_total})
+
+
+## Places each finished board online, as the real players finished it; a top-3
+## place queues its coins (Home's results card pays them). Boards it can't
+## ask about yet wait for the next try. done() runs after each one placed.
+static func resolve_board_results(done := Callable()) -> void:
+	if pending_board_results.is_empty() or not Online.enabled():
+		return
+	for r: Dictionary in pending_board_results.duplicate():
+		Online.place_on(str(r["board"]), int(r["stars"]), func(place: int) -> void:
+			if place <= 0 or not pending_board_results.has(r):
+				return
+			pending_board_results.erase(r)
+			var period := str(r["period"])
+			var table: Array = LEADERBOARD_DAILY_COIN_REWARDS if period == "daily" else (LEADERBOARD_WEEKLY_COIN_REWARDS if period == "weekly" else LEADERBOARD_SEASON_COIN_REWARDS)
+			if place <= table.size():
+				var coins: int = boost_earned_coins(table[place - 1])
+				_queue_board_prize("%s Leaderboard" % period.capitalize(), place, "%d stars" % int(r["stars"]), coins)
+				_append_leaderboard_message("%s leaderboard: #%d place (%d stars)! Collect +%s coins on Home." % [period.capitalize(), place, int(r["stars"]), fmt_coins(coins)])
+			save()
+			if done.is_valid():
+				done.call())
 
 
 ## Coins per star on a win. Live-tunable.
@@ -2040,15 +2054,38 @@ static func add_stars(lives_remaining: int, bonus: int = 0, difficulty: int = 0)
 		daily_star_total += earned
 		period_star_total["weekly"] += earned
 		period_star_total["season"] += earned
+		push_boards()
 	save()
 	return earned
 
 
-static func todays_standings() -> Array:
-	_roll_leaderboard_day()
-	var entries := simulated_rivals_for(TSClock.date_string())
-	entries.append({"name": player_name, "stars": daily_star_total, "is_player": true})
-	entries.sort_custom(func(a, b): return int(a["stars"]) > int(b["stars"]))
+## The board a period is on now (its Online id).
+static func current_board(period: String) -> String:
+	if period == "daily":
+		_roll_leaderboard_day()
+		return Online.board_id("daily", daily_star_date)
+	_roll_period(period)
+	return Online.board_id(period, period_star_key[period])
+
+
+## This player's stars on a period's board now.
+static func my_board_stars(period: String) -> int:
+	return daily_star_total if period == "daily" else int(period_star_total[period])
+
+
+## Writes this player's row on every board (after a win, a new name or avatar).
+static func push_boards() -> void:
+	for period in ["daily", "weekly", "season"]:
+		Online.push(current_board(period), my_board_stars(period))
+
+
+## A board's rows as last fetched from Online (none from blocked players),
+## with this player's own row, as it stands on the phone, in its place.
+static func standings_for(period: String) -> Array:
+	var board := current_board(period)
+	var entries: Array = Online.entries(board).filter(func(e: Dictionary) -> bool: return not e.get("is_player", false) and not blocked_players.has(e.get("uid", "")))
+	entries.append({"uid": Online.uid, "name": player_name, "avatar": avatar(), "stars": my_board_stars(period), "is_player": true})
+	entries.sort_custom(func(a, b): return int(a["stars"]) > int(b["stars"]) or (int(a["stars"]) == int(b["stars"]) and a.get("is_player", false) and not b.get("is_player", false)))
 	return entries
 
 
@@ -2123,29 +2160,7 @@ static func _roll_period(period: String) -> void:
 static func _resolve_period(period: String, key: String, player_total: int) -> void:
 	if not TSNav.leaderboards_open():
 		return
-	var better := 0
-	for rival in simulated_rivals_for(period + "_" + key, _board_length_days(period, key)):
-		if int(rival["stars"]) > player_total:
-			better += 1
-	var table: Array = LEADERBOARD_WEEKLY_COIN_REWARDS if period == "weekly" else LEADERBOARD_SEASON_COIN_REWARDS
-	if better < table.size():
-		var coins: int = boost_earned_coins(table[better])
-		_queue_board_prize("%s Leaderboard" % period.capitalize(), better + 1, "%d stars" % player_total, coins)
-		_append_leaderboard_message("%s leaderboard: #%d place (%d stars)! Collect +%s coins on Home." % [period.capitalize(), better + 1, player_total, fmt_coins(coins)])
-
-
-static func period_standings(period: String) -> Array:
-	_roll_period(period)
-	var entries := simulated_rivals_for(period + "_" + _period_key(period), period_days_elapsed(period))
-	entries.append({"name": player_name, "stars": period_star_total[period], "is_player": true})
-	entries.sort_custom(func(a, b): return int(a["stars"]) > int(b["stars"]))
-	return entries
-
-
-static func standings_for(period: String) -> Array:
-	if period == "daily":
-		return todays_standings()
-	return period_standings(period)
+	pending_board_results.append({"period": period, "board": Online.board_id(period, key), "stars": player_total})
 
 
 # -- Battle Pass ------------------------------------------------------------------
@@ -2311,7 +2326,7 @@ static func purchase_battle_pass() -> bool:
 ## pass-only.
 const BATTLE_PASS_SEASON_REWARDS := [
 	{"theme": "autumn", "free_critters": {15: 31, 30: 99}, "paid_critters": {1: 52, 30: 82}, "paid_parts": {25: PART_COCKPIT}}, # Autumn, Patch; Camper, Turkey; the cockpit
-	{"theme": "christmas", "free_critters": {15: 70, 30: 3}, "paid_critters": {1: 91, 30: 71}, "paid_parts": {25: PART_ENGINE}}, # Snowman, Ginger; Santa, Frost Queen; the engine
+	{"theme": "christmas", "free_critters": {15: 70, 30: 3}, "paid_critters": {1: 91, 30: 71}, "paid_parts": {25: PART_ENGINE}, "free_stickers": {10: "snowman", 20: "cocoa"}, "paid_stickers": {5: "jolly", 15: "gift"}}, # Snowman, Ginger; Santa, Frost Queen; the engine
 	{"theme": "newyear", "free_critters": {15: 49, 30: 56}, "paid_critters": {1: 32, 30: 4}, "paid_parts": {25: PART_FINS}}, # Party, Flurry; Firework, Goldie; the fins
 	{"theme": "valentine", "free_critters": {15: 87, 30: 11}, "paid_critters": {1: 42, 30: 101}, "paid_parts": {25: PART_PORTHOLES}}, # Rosie, Smooch; Cupid, Princess; the portholes
 ]
@@ -2370,8 +2385,11 @@ static func _pass_currency(tier: int, coins: int, materials: int, skips: int) ->
 static func battle_pass_free_reward(tier: int) -> Dictionary:
 	var r := _pass_currency(tier, BATTLE_PASS_FREE_COINS_BASE + BATTLE_PASS_COINS_STEP * (tier - 1), 100 + 20 * tier, 5)
 	var critters: Dictionary = season_rewards()["free_critters"]
+	var stickers: Dictionary = season_rewards().get("free_stickers", {})
 	if critters.has(tier):
 		r["critter"] = critters[tier]
+	elif stickers.has(tier):
+		r["sticker"] = stickers[tier]
 	elif tier % 5 == 0:
 		r["bomb"] = 2
 	return r
@@ -2387,6 +2405,8 @@ static func battle_pass_paid_reward(tier: int) -> Dictionary:
 		r["critter"] = season["paid_critters"][tier]
 	elif season["paid_parts"].has(tier):
 		r["part"] = season["paid_parts"][tier]
+	elif (season.get("paid_stickers", {}) as Dictionary).has(tier):
+		r["sticker"] = season["paid_stickers"][tier]
 	elif tier % 10 == 0:
 		r["bomb"] = 5
 	elif tier % 5 == 0:
@@ -2410,6 +2430,8 @@ static func _apply_reward(reward: Dictionary) -> void:
 	if int(reward.get("bomb", 0)) > 0:
 		bomb_count += int(reward["bomb"])
 		bombs_unlocked = true
+	if reward.has("sticker"):
+		TSStickers.grant(str(reward["sticker"]))
 
 
 static func has_claimable_battle_pass_reward() -> bool:
@@ -2757,6 +2779,12 @@ static func ensure_loaded() -> void:
 	for p in g.call("pending_board_prizes", []):
 		if p is Dictionary and p.has("coins"):
 			pending_board_prizes.append(p)
+	pending_board_results = []
+	for r in g.call("pending_board_results", []):
+		if r is Dictionary and r.has("board") and r.has("stars"):
+			pending_board_results.append(r)
+	stickers_owned = (g.call("stickers_owned", []) as Array).filter(func(id: Variant) -> bool: return TSStickers.ALL.has(str(id)))
+	blocked_players = (g.call("blocked_players", []) as Array).duplicate()
 	battle_pass_key = str(g.call("battle_pass_key", ""))
 	battle_pass_xp = int(g.call("battle_pass_xp", 0))
 	battle_pass_purchased = bool(g.call("battle_pass_purchased", false))
@@ -2871,6 +2899,9 @@ static func save() -> void:
 	s.call("period_star_total", period_star_total)
 	s.call("period_star_key", period_star_key)
 	s.call("pending_board_prizes", pending_board_prizes)
+	s.call("pending_board_results", pending_board_results)
+	s.call("stickers_owned", stickers_owned)
+	s.call("blocked_players", blocked_players)
 	s.call("battle_pass_key", battle_pass_key)
 	s.call("battle_pass_xp", battle_pass_xp)
 	s.call("battle_pass_purchased", battle_pass_purchased)

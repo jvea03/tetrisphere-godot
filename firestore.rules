@@ -1,0 +1,41 @@
+rules_version = '2';
+// Egg Escape's online data (scripts/meta/online.gd; docs/online.md). Paste into
+// Firebase console > Firestore Database > Rules and Publish after a change.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function okName(n) { return n is string && n.size() >= 1 && n.size() <= 24; }
+
+    // A board's rows: anyone signed in reads; each player writes only their own.
+    match /boards/{board}/entries/{player} {
+      allow read: if signedIn();
+      allow create, update: if signedIn() && request.auth.uid == player
+        && request.resource.data.keys().hasOnly(['name', 'avatar', 'stars', 't'])
+        && okName(request.resource.data.name)
+        && request.resource.data.avatar is int && request.resource.data.avatar >= 0 && request.resource.data.avatar < 200
+        && request.resource.data.stars is int && request.resource.data.stars >= 0 && request.resource.data.stars <= 100000
+        && request.resource.data.t is int;
+      allow delete: if false;
+    }
+
+    // Stickers to a player: one per sender (the doc id is the sender), only
+    // the sticker ids the game has; the receiver reads and deletes them.
+    match /stickers/{to}/got/{from} {
+      allow read, delete: if signedIn() && request.auth.uid == to;
+      allow create, update: if signedIn() && request.auth.uid == from && from != to
+        && request.resource.data.keys().hasOnly(['name', 'avatar', 'sticker', 't'])
+        && okName(request.resource.data.name)
+        && request.resource.data.avatar is int
+        && request.resource.data.sticker in ['angry', 'sad', 'congrats', 'jolly', 'snowman', 'gift', 'cocoa']
+        && request.resource.data.t is int;
+    }
+
+    // Name reports, for review in the console. Write-only.
+    match /reports/{id} {
+      allow create: if signedIn() && request.resource.data.by == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid', 'name', 'by', 't']);
+      allow read, update, delete: if false;
+    }
+  }
+}

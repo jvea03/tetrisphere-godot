@@ -138,6 +138,22 @@ func _ready() -> void:
 		ts.create_timer(0.6).timeout.connect(func():
 			for s in ts.current_scene.find_children("*", "ScrollContainer", true, false):
 				(s as ScrollContainer).scroll_vertical = px)
+	if args_has("players") or args_has("sticker") or args_has("got"):
+		# `-- leaderboard players`: sample players on the boards (as if fetched);
+		# `sticker` opens the second one's card, `got` shows stickers received.
+		TSProfile.stickers_owned = ["jolly", "snowman", "gift", "cocoa"]
+		var names := ["Sunny", "Pip", "Marshmallow", "Bean", "Clover", "Waffles", "Juniper", "Tofu"]
+		for period in ["daily", "weekly", "season"]:
+			var rows: Array = []
+			for k in names.size():
+				rows.append({"uid": "u%d" % k, "name": names[k], "avatar": [3, 11, 15, 22, 31, 40, 52, 8][k], "stars": (40 - k * 5) * (1 if period == "daily" else 4), "is_player": false})
+			Online.boards[TSProfile.current_board(period)] = {"entries": rows, "at": Time.get_unix_time_from_system() + 9999}
+		if args_has("got"):
+			Online.received = [{"from": "u1", "name": "Pip", "avatar": 11, "sticker": "congrats"}, {"from": "u4", "name": "Clover", "avatar": 31, "sticker": "angry"}]
+		if args_has("sticker"):
+			var ts2 := get_tree()
+			ts2.create_timer(0.8).timeout.connect(func():
+				TSStickerCards.show_player(ts2.current_scene, Online.entries(TSProfile.current_board("daily"))[1], func(): pass))
 	if args_has("bottom"):
 		# `-- shop bottom`: the screen's list scrolled to its end.
 		var t := get_tree()
