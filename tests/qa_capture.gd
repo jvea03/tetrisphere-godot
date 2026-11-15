@@ -11,6 +11,8 @@
 #   win6       level 6's win card (close and Double Coins back)
 #   win7       level 7's win card (stars and the chest count from here)
 #   toohigh    level 1's note for a drop turned away
+#   critter0, critter1, critter2   the critter in the egg with its shell
+#              cleared, at difficulty 0 (small), 1 (medium) and 2 (large)
 #   lesson3, lesson4, lesson8   the bomb, Any Piece and rocks lessons (each
 #              booster free there, an infinity badge on its button), none owned
 # Run (not headless, so there is a screen to save) with:
@@ -24,7 +26,7 @@ var _shot := ""
 func _ready() -> void:
 	var args := OS.get_cmdline_user_args()
 	_shot = args[0] if args.size() > 0 else "miss"
-	var at := {"match": 1, "hearts": 1, "miss": 1, "arrow": 1, "first": 1, "miss2": 2, "arrow2": 2, "win2": 2, "win6": 6, "win7": 7, "toohigh": 1, "lesson3": 3, "lesson4": 4, "lesson8": 8}
+	var at := {"match": 1, "hearts": 1, "miss": 1, "arrow": 1, "first": 1, "miss2": 2, "arrow2": 2, "win2": 2, "win6": 6, "win7": 7, "toohigh": 1, "lesson3": 3, "lesson4": 4, "lesson8": 8, "critter0": 3, "critter1": 3, "critter2": 3}
 	TSProfile.use_test_profile(int(at.get(_shot, 1)))
 	TSProfile.tutorial_seen = not _shot in ["match", "hearts"]
 	TSProfile.slide_tutorial_seen = true
@@ -69,6 +71,15 @@ func _set_up() -> void:
 			_drop()
 			wait = 1.2
 		"first", "lesson3", "lesson4", "lesson8":
+			wait = 1.5
+		"critter0", "critter1", "critter2":
+			difficulty = int(_shot.right(1))
+			_restyle_creature()
+			for id in board.plate_kind.keys():
+				board._remove_plate(id)
+			cursor = Vector2i((cursor.x + TSBoard.COLS / 2) % TSBoard.COLS, cursor.y)   # the aim round the back, off the face
+			_refresh_piece()
+			view.rebuild()
 			wait = 1.5
 		"toohigh":
 			_hearts_note("Too high here: drop it somewhere else!")

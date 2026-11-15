@@ -252,9 +252,9 @@ func _build_environment() -> void:
 	paper.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_camera.add_child(paper)
 
-	# The prize buried under the shell: the player's avatar critter (Collection)
-	# as a wide-eyed creature sealed inside, with moods of its own (TSCreature).
-	_creature = TSCreature.new(TSProfile.critter_color(TSProfile.avatar()))
+	# The prize buried under the shell: a wide-eyed creature sealed inside, with
+	# moods of its own (TSCreature); each size has its own colour and look.
+	_creature = TSCreature.new(TSCreature.KINDS[1]["body"])
 	add_child(_creature)
 
 
@@ -634,7 +634,7 @@ func _start(seed_value: int, baked: Dictionary = {}) -> void:
 		_escape_tween.kill()
 	_escaping = false
 	_creature.position = Vector3.ZERO
-	_creature.scale = Vector3.ONE * _creature_scale()
+	_restyle_creature()
 	_creature.visible = true
 	_creature.react(TSCreature.Mood.IDLE)
 	cursor = Vector2i(0, TSBoard.ROWS / 2)
@@ -707,7 +707,7 @@ func _resume() -> void:
 	state = State.PLAYING
 	_escaping = false
 	_creature.position = Vector3.ZERO
-	_creature.scale = Vector3.ONE * _creature_scale()
+	_restyle_creature()
 	_creature.visible = true
 	_creature.react(TSCreature.Mood.IDLE)
 	_update_creature()
@@ -2230,6 +2230,13 @@ func _escape_size() -> int:
 
 func _creature_scale() -> float:
 	return float(TSLevels.DIFFICULTIES[difficulty]["scale"])
+
+
+## The critter in the egg: its size (by difficulty) and that size's look.
+func _restyle_creature() -> void:
+	var s := _creature_scale()
+	_creature.scale = Vector3.ONE * s
+	_creature.set_kind(TSCreature.kind_for_scale(s))
 
 
 ## After every drop: how near the most-dug way out is to open and which way

@@ -14,6 +14,17 @@ extends Node3D
 enum Mood { IDLE, LOOK, WIGGLE, PUSH, SCARED, HAPPY }
 
 const R := TSBoardView.CORE_RADIUS
+## Each size of critter (the egg's difficulty sets its scale) has its own
+## colour and its own little extra: the small one a leaf sprout, the middle
+## one bunny ears, the big one a pair of horns. KINDS is smallest first.
+const KINDS := [
+	{"body": Color(1.0, 0.85, 0.36), "extra": "sprout"},
+	{"body": Color(0.52, 0.86, 0.72), "extra": "ears"},
+	{"body": Color(1.0, 0.56, 0.52), "extra": "horns"},
+]
+const LEAF := Color(0.45, 0.8, 0.42)
+const HORN := Color(1.0, 0.8, 0.38)
+const INNER_EAR := Color(1.0, 0.7, 0.78)
 const PUSH_REACH := 0.22     # how far a push carries the body toward the way out
 const PUSH_BEAT := 0.7       # seconds per push
 
@@ -22,6 +33,10 @@ var hole_dir := Vector3.ZERO # toward that way out (unit), or zero for none
 var nervous := false         # down to the last heart: scared more often
 
 var _body: Node3D            # wobbles, squashes and bumps; the face rides on it
+var _core: MeshInstance3D
+var _patch: MeshInstance3D    # the lighter face patch behind the eyes
+var _extras: Array = []       # the kind's sprout, ears or horns
+var kind := -1
 var _face: Node3D
 var _eyes: Array = []        # per eye: {"eye": Node3D, "pupil": Node3D, "rest": Vector3}
 var _mouth: MeshInstance3D
@@ -50,9 +65,14 @@ func _init(colour: Color) -> void:
 	core.mesh = sm
 	core.material_override = TSToon.material(colour, 1.0, 0.12)   # a faint glow of its own
 	_body.add_child(core)
+	_core = core
 	# Big shiny eyes and pink cheeks: -z faces the viewer, +z runs into the core.
 	_face = Node3D.new()
 	_body.add_child(_face)
+	# A lighter patch for the face, pressed against the core: two-tone, like a
+	# plush toy, so the eyes stand out.
+	_patch = _part(Vector3(0.0, -0.1, 0.55), 2.05, Vector3(1.0, 0.8, 0.28), colour.lightened(0.5), 0.15, false)
+	_face.add_child(_patch)
 	for side in [-1.0, 1.0]:
 		var eye := Node3D.new()
 		eye.position = Vector3(side * 0.80, 0.35, -0.05)
@@ -75,6 +95,50 @@ func _init(colour: Color) -> void:
 	_sweat = _part(Vector3(1.7, 0.9, 0.25), 0.24, Vector3(0.8, 1.25, 0.6), Color(0.62, 0.86, 1.0), 0.5, true)
 	_face.add_child(_sweat)
 	_set_mood(Mood.IDLE, 2.0)
+
+
+## The kind of critter for a size (TSLevels' "scale"): 0 small, 1 middle, 2 big.
+static func kind_for_scale(s: float) -> int:
+	return 0 if s < 0.62 else (1 if s < 0.78 else 2)
+
+
+## Dresses the critter as a kind (KINDS): its colour, face patch and extra.
+func set_kind(k: int) -> void:
+	k = clampi(k, 0, KINDS.size() - 1)
+	if k == kind:
+		return
+	kind = k
+	var body: Color = KINDS[k]["body"]
+	_core.material_override = TSToon.material(body, 1.0, 0.12)
+	_patch.material_override = TSToon.material(body.lightened(0.5), 1.0, 0.15, false, false)
+	for e in _extras:
+		e.queue_free()
+	_extras = []
+	# On the face node: +y is up on screen and the core's middle is R into +z,
+	# so the top of the head is near (0, R, R). Kept inside the shell's first
+	# layer at the biggest size.
+	match str(KINDS[k]["extra"]):
+		"sprout":
+			_extra(Vector3(0.0, R * 0.9, R * 0.9), 0.2, Vector3(1.0, 3.0, 1.0), LEAF.darkened(0.15), true)
+			_extra(Vector3(-0.62, R * 0.9 + 0.62, R * 0.9), 0.56, Vector3(1.5, 0.62, 0.7), LEAF, true).rotation.z = 0.5
+			_extra(Vector3(0.62, R * 0.9 + 0.62, R * 0.9), 0.56, Vector3(1.5, 0.62, 0.7), LEAF, true).rotation.z = -0.5
+		"ears":
+			for side in [-1.0, 1.0]:
+				var ear := _extra(Vector3(side * 1.15, R * 0.86, R * 0.85), 0.62, Vector3(0.62, 1.45, 0.5), body, true)
+				ear.rotation.z = -side * 0.22
+				var inner := _part(Vector3(0.0, -0.05, -0.32), 0.62, Vector3(0.55, 0.78, 0.3), INNER_EAR, 0.2, false)
+				ear.add_child(inner)
+		"horns":
+			for side in [-1.0, 1.0]:
+				var horn := _extra(Vector3(side * 1.3, R * 0.8, R * 0.85), 0.48, Vector3(0.85, 1.7, 0.85), HORN, true)
+				horn.rotation.z = -side * 0.4
+
+
+func _extra(offset: Vector3, radius: float, squash: Vector3, tint: Color, inked: bool) -> MeshInstance3D:
+	var p := _part(offset, radius, squash, tint, 0.12, inked)
+	_face.add_child(p)
+	_extras.append(p)
+	return p
 
 
 func _part(offset: Vector3, radius: float, squash: Vector3, tint: Color, glow: float, inked: bool) -> MeshInstance3D:
