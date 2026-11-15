@@ -229,11 +229,7 @@ func _set_card(st: Dictionary) -> Control:
 		art.position = Vector2(4, 4)
 		art.size = Vector2(56, 56)
 		b.add_child(art)
-		if not owned:
-			var lock := TSIcon.make("lock", 22)
-			lock.position = Vector2(40, 40)
-			lock.size = Vector2(22, 22)
-			b.add_child(lock)
+		art.lock_scale = 0.5
 		b.pressed.connect(func() -> void:
 			_sel_critter = i
 			_build_feature())
@@ -528,7 +524,7 @@ func _listed_count() -> int:
 func _tile(i: int) -> Control:
 	var owned := TSProfile.is_critter_unlocked(i)
 	var rarity: Color = TSUI.RARITY_COLORS[TSProfile.critter_rarity(i)]
-	var bg: Color = TSProfile.critter_color(i).lerp(Color.WHITE, 0.45) if owned else Color(0.93, 0.91, 0.9)
+	var bg: Color = TSProfile.critter_color(i).lerp(Color.WHITE, 0.45) if owned else rarity.lerp(Color.WHITE, 0.8)   # still to collect: a wash of its rarity
 	var selected := i == _sel_critter
 	var b := _tile_button(bg, rarity, selected, TSIcon.make("critter", TILE * 0.84, i), not owned)
 	if owned:
@@ -576,6 +572,7 @@ func _tile_button(bg: Color, rarity: Color, selected: bool, art: TSIcon, silhoue
 		lip.size = Vector2(TILE - 8, 8)
 		b.add_child(lip)
 	art.silhouette = silhouette
+	art.lock_scale = 0.42
 	art.position = Vector2(TILE * 0.08, TILE * 0.04)
 	art.size = Vector2(TILE * 0.84, TILE * 0.84)
 	b.add_child(art)
@@ -597,17 +594,24 @@ func _tile_column(b: Button, i: int, owned: bool) -> Control:
 	name.custom_minimum_size.x = TILE
 	v.add_child(name)
 	if not owned:
+		var exclusive := TSProfile.is_critter_pass_exclusive(i)
+		var cost := TSProfile.critter_unlock_cost(i)
+		var can_buy := not exclusive and TSProfile.coin_count >= cost
+		var chip := PanelContainer.new()
+		chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		chip.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		chip.add_theme_stylebox_override("panel", TSUI.sb(TSUI.LILAC.lerp(Color.WHITE, 0.3) if exclusive else (TSUI.GREEN.lerp(Color.WHITE, 0.25) if can_buy else TSUI.CARD), 99, 2, 0, 8))
 		var price := TSUI.hbox(3)
 		price.alignment = BoxContainer.ALIGNMENT_CENTER
 		price.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		if TSProfile.is_critter_pass_exclusive(i):
+		chip.add_child(price)
+		if exclusive:
 			price.add_child(TSIcon.make("pass", 20))
-			price.add_child(TSUI.label("Pass", 16, TSUI.MUTED))
+			price.add_child(TSUI.label("Pass", 16, TSUI.INK))
 		else:
-			var cost := TSProfile.critter_unlock_cost(i)
 			price.add_child(TSIcon.make("coin", 18))
-			price.add_child(TSUI.label(_short_coins(cost), 16, TSUI.INK if TSProfile.coin_count >= cost else TSUI.MUTED))
-		v.add_child(price)
+			price.add_child(TSUI.label(_short_coins(cost), 16, TSUI.INK if can_buy else TSUI.MUTED))
+		v.add_child(chip)
 	return v
 
 

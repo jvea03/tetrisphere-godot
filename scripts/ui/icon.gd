@@ -15,6 +15,7 @@ var icon: String = "coin"
 var index: int = 0 # critter / shell / badge index
 var variant: String = "" # chest rarity, etc.
 var silhouette: bool = false # a locked collectible: a soft grey shape with a lock
+var lock_scale := 0.62       # that lock's size (the Collection's tiles use a smaller one)
 var tint: Color = Color(0, 0, 0, 0) # overrides an icon's main colour when set
 
 const INK := Color(0.27, 0.16, 0.19)
@@ -212,7 +213,7 @@ func _draw() -> void:
 		"badge": _draw_badge(index)
 		_: _circle(Vector2(0.5, 0.5), 0.4, _col(GOLD))
 	if silhouette and icon != "lock":
-		_draw_lock_at(Vector2(0.76, 0.8), 0.62)
+		_draw_lock_at(Vector2(1.0 - lock_scale * 0.39, 1.0 - lock_scale * 0.32), lock_scale)
 
 
 # -- icons ----------------------------------------------------------------------
