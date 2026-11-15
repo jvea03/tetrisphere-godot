@@ -1,6 +1,8 @@
 class_name TSStickerCards
 extends RefCounted
 
+static var _counted := {}   # "date|player" already counted toward sticker quests (this run)
+
 ## The sticker cards Home and the leaderboards share: the stickers other
 ## players sent (each with a Block), and a player's card from a board, where
 ## a sticker is sent and a name can be blocked or reported.
@@ -85,7 +87,12 @@ static func show_player(parent: Control, entry: Dictionary, changed: Callable) -
 				if not is_instance_valid(status):
 					return
 				if ok:
-					TSProfile.record_quest_event("sticker")   # sticker quests (daily, weekly, the 7-day event)
+					# Sticker quests (daily, weekly, the 7-day event) count each player once a
+					# day, so tapping one player five times isn't five stickers sent.
+					var key := "%s|%s" % [TSClock.date_string(), entry.get("uid", "")]
+					if not _counted.has(key):
+						_counted[key] = true
+						TSProfile.record_quest_event("sticker")
 					status.text = "Sent \"%s\" to %s!" % [TSStickers.sticker_name(id), entry["name"]]
 					TSSfx.play("pop1")
 				else:
