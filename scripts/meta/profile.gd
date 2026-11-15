@@ -67,7 +67,7 @@ const AVATAR_COLORS := [
 
 static var player_name: String = DEFAULT_NAME
 static var avatar_index: int = 0
-static var avatar_critter: int = 0 # the critter on the Home card, the Profile, and sealed in the egg
+static var avatar_critter: int = 0 # the critter on the Home card, the Profile and the leaderboards
 static var last_level: int = 1
 static var coin_count: int = 0
 ## The Shop's daily 1,000-coin pack: claims taken today (free first, then
@@ -1226,7 +1226,7 @@ static func clear_new_critters(indices: Array = []) -> void:
 		save()
 
 
-## Makes an owned critter the avatar (and the one sealed in the egg).
+## Makes an owned critter the avatar (Home, the Profile, the leaderboards).
 static func set_avatar_critter(i: int) -> void:
 	if not is_critter_unlocked(i) or avatar_critter == i:
 		return

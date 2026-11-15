@@ -4,7 +4,7 @@ extends TSScreen
 ## feature card shows the selected critter, big, with its title, level stars
 ## and one button: Buy while locked, Upgrade while there is a level to gain,
 ## Max Level at the top; tapping an owned critter makes it your avatar -- the
-## one sealed in the egg. Every critter level counts toward the collection
+## player's profile critter. Every critter level counts toward the collection
 ## level, and each collection level adds 1% to the materials a win pays. (The camp
 ## and the ship are built from their nodes on Home, and don't count.)
 
@@ -81,7 +81,7 @@ func build() -> void:
 	_info = TSUI.dialog(self, 580)
 	var ibox: VBoxContainer = _info["box"]
 	ibox.add_child(TSUI.title("Your Collection", 40))
-	ibox.add_child(TSUI.wrap(TSUI.label("Buy and upgrade critters with coins. Every critter level counts toward your Collection level, and each Collection level adds +1% to the building materials every win pays (and fills the mine under the ship faster). Your Camp level adds +1% coins per level.\n\nTap a critter to make it yours: it's the one sealed in the egg. Your camp and ship are built on Home -- tap the plus signs at the crash site.", 22), 520))
+	ibox.add_child(TSUI.wrap(TSUI.label("Buy and upgrade critters with coins. Every critter level counts toward your Collection level, and each Collection level adds +1% to the building materials every win pays (and fills the mine under the ship faster). Your Camp level adds +1% coins per level.\n\nTap a critter you own to make it your profile critter: it shows on Home, your Profile and the leaderboards. Your camp and ship are built on Home -- tap the plus signs at the crash site.", 22), 520))
 	var ok := TSUI.button("Got it", TSUI.PINK, 26)
 	ok.pressed.connect(func(): TSUI.conceal(_info["root"]))
 	ibox.add_child(ok)
@@ -155,15 +155,17 @@ func _build_critter_feature(i: int) -> void:
 	tags.add_child(TSUI.pill(TSProfile.RARITY_NAMES[rarity].to_upper(), TSUI.RARITY_COLORS[rarity], 18))
 	tags.add_child(TSUI.label("Lv %d/%d" % [level, TSProfile.CRITTER_MAX_LEVEL] if owned else "Not yet yours", 22, TSFX.COL_GAIN if owned else TSUI.MUTED))
 	info.add_child(tags)
+	# A line about them (TSCritterBios).
+	info.add_child(TSUI.wrap(TSUI.label(TSCritterBios.bio(TSProfile.critter_name(i)), 19, TSUI.INK if owned else TSUI.MUTED), 380))
 	if owned:
 		info.add_child(_stars(level, TSProfile.CRITTER_MAX_LEVEL, 28.0))
 		if i == TSProfile.avatar():
 			var here := TSUI.hbox(6)
-			here.add_child(TSIcon.make("egg", 30))
-			here.add_child(TSUI.label("In your egg", 20, TSUI.INK))
+			here.add_child(TSIcon.make("check", 30))
+			here.add_child(TSUI.label("Your profile critter", 20, TSUI.INK))
 			info.add_child(here)
 		else:
-			info.add_child(TSUI.label("Tap its tile to put it in your egg", 18, TSUI.MUTED))
+			info.add_child(TSUI.label("Tap its tile to make it your profile critter", 18, TSUI.MUTED))
 	elif TSProfile.is_critter_pass_exclusive(i):
 		var pass_row := TSUI.hbox(6)
 		pass_row.add_child(TSIcon.make("pass", 30))
@@ -187,7 +189,7 @@ func _build_critter_feature(i: int) -> void:
 
 ## The feature card's stage -- the critter over a slowly turning sunburst in
 ## its rarity's colour (sparkling for Epic and Legendary), a gold glow round
-## it while it's the one in the egg -- and, beside it, the column the caller
+## it while it's the profile critter -- and, beside it, the column the caller
 ## fills.
 func _feature_row(i: int, owned: bool, rarity: int) -> VBoxContainer:
 	var row := TSUI.hbox(16)
@@ -340,7 +342,7 @@ func _tile(i: int) -> Control:
 		if TSProfile.is_critter_new(i):
 			_badge(b, "NEW", TSUI.RED_DOT, Vector2(4, 4))
 		if i == TSProfile.avatar():
-			var egg := TSIcon.make("egg", 30)
+			var egg := TSIcon.make("check", 30)   # the profile critter
 			egg.position = Vector2(4, TILE - 40)
 			egg.size = Vector2(30, 30)
 			b.add_child(egg)
@@ -468,7 +470,7 @@ func _maybe_start_tutorial() -> void:
 		_scroll_tile_into_view(TUTORIAL_CRITTER)
 		steps.append({"rect": func() -> Rect2: return _tile_rect(TUTORIAL_CRITTER), "text": "Tap %s." % TSProfile.critter_name(TUTORIAL_CRITTER), "gate": true})
 		steps.append({"rect": func() -> Rect2: return _feature_btn.get_global_rect(), "text": "Tap Buy to adopt it.", "gate": true})
-	steps.append({"rect": func() -> Rect2: return _feature.get_global_rect(), "text": "It's yours! Tap an owned critter to seal it in the egg, and upgrade it here." if buying else "Tap an owned critter to seal it in the egg, and upgrade it here."})
+	steps.append({"rect": func() -> Rect2: return _feature.get_global_rect(), "text": "It's yours! Tap an owned critter to make it your profile critter, and upgrade it here." if buying else "Tap an owned critter to make it your profile critter, and upgrade it here."})
 	steps.append({"rect": func() -> Rect2: return _level_card.get_global_rect(), "text": "Each Collection level adds +1% building materials on every win."})
 	_tutorial.start(steps)
 
