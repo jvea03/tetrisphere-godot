@@ -1897,6 +1897,7 @@ func _process(delta: float) -> void:
 	_track_pointer()
 	if state == State.PLAYING and not _any_card_open():
 		play_seconds += delta
+		TSProfile.lifetime_seconds += delta
 	# A touch held still long enough becomes a hold.
 	if _gesture == Gesture.PENDING and Time.get_ticks_msec() - _touch_ms >= int(HOLD_TIME * 1000.0):
 		_begin_hold()
@@ -2376,6 +2377,7 @@ func _analytics_kind() -> String:
 
 func _lose() -> void:
 	state = State.LOST
+	TSProfile.add_lifetime("loss")
 	TSAnalytics.level_end(current_level, false, _analytics_kind(), play_seconds, drops, lives)
 	if not TSSession.has_saved_game:
 		TSSession.forget()

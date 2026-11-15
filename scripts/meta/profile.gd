@@ -2049,6 +2049,7 @@ static func add_stars(lives_remaining: int, bonus: int = 0, difficulty: int = 0)
 		save()
 		return 0
 	add_battle_pass_xp(earned)
+	add_lifetime("stars", earned)
 	if TSNav.leaderboards_open():
 		settle_boards()
 		daily_star_total += earned
@@ -2548,7 +2549,29 @@ static func _pad_quest_flags(done: Array, claimed: Array, count: int) -> void:
 		claimed.append(false)
 
 
+## Lifetime totals for the Profile's stats: every quest event ("win",
+## "flawless", "clear" (pieces popped), "booster", "daily_puzzle", "chest"...),
+## and "loss" and "stars"; lifetime_seconds is time in play. Counting began
+## with 1.3.3, so an older save's wins start from the levels it had beaten.
+static var lifetime: Dictionary = {}
+static var lifetime_seconds: float = 0.0
+
+
+static func add_lifetime(stat: String, amount: int = 1) -> void:
+	lifetime[stat] = int(lifetime.get(stat, 0)) + amount
+
+
+static func lifetime_of(stat: String) -> int:
+	return int(lifetime.get(stat, 0))
+
+
+## Eggs won in all: journey levels and challenges ("win"), and Daily Eggs.
+static func eggs_won() -> int:
+	return lifetime_of("win") + lifetime_of("daily_puzzle")
+
+
 static func record_quest_event(stat: String, amount: int = 1) -> Array:
+	add_lifetime(stat, amount)
 	_roll_quests()
 	var completed: Array = []
 	quest_daily_progress[stat] = int(quest_daily_progress.get(stat, 0)) + amount
@@ -2779,6 +2802,10 @@ static func ensure_loaded() -> void:
 	for p in g.call("pending_board_prizes", []):
 		if p is Dictionary and p.has("coins"):
 			pending_board_prizes.append(p)
+	lifetime = (g.call("lifetime", {}) as Dictionary).duplicate()
+	lifetime_seconds = float(g.call("lifetime_seconds", 0.0))
+	if not lifetime.has("win") and last_level > 1:
+		lifetime["win"] = last_level - 1   # a save from before the stats: the levels it had beaten
 	pending_board_results = []
 	for r in g.call("pending_board_results", []):
 		if r is Dictionary and r.has("board") and r.has("stars"):
@@ -2899,6 +2926,8 @@ static func save() -> void:
 	s.call("period_star_total", period_star_total)
 	s.call("period_star_key", period_star_key)
 	s.call("pending_board_prizes", pending_board_prizes)
+	s.call("lifetime", lifetime)
+	s.call("lifetime_seconds", lifetime_seconds)
 	s.call("pending_board_results", pending_board_results)
 	s.call("stickers_owned", stickers_owned)
 	s.call("blocked_players", blocked_players)

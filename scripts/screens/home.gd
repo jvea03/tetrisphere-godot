@@ -1632,7 +1632,7 @@ func _open_settings() -> void:
 func _build_profile() -> void:
 	var box: VBoxContainer = _profile["box"]
 	box.add_child(TSUI.title("Profile", 44))
-	var preview := TSIcon.make("critter", 150, TSProfile.avatar())
+	var preview := TSIcon.make("critter", 120, TSProfile.avatar())
 	preview.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	box.add_child(preview)
 	_profile["preview"] = preview
@@ -1642,6 +1642,13 @@ func _build_profile() -> void:
 		box.add_child(go)
 	else:
 		box.add_child(TSUI.wrap(TSUI.label("Reach level %d to pick your critter in the Collection" % TSNav.COLLECTION_UNLOCK_LEVEL, 20, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER)))
+	box.add_child(TSUI.label("STATS", 20, TSUI.MUTED))
+	var stats := GridContainer.new()
+	stats.columns = 3
+	stats.add_theme_constant_override("h_separation", 10)
+	stats.add_theme_constant_override("v_separation", 10)
+	box.add_child(stats)
+	_profile["stats"] = stats
 	box.add_child(TSUI.label("NAME", 20, TSUI.MUTED))
 	_name_edit = LineEdit.new()
 	_name_edit.max_length = 18
@@ -1682,7 +1689,50 @@ func _refresh_swatches() -> void:
 		row.add_child(b)
 
 
+## The Profile's stats: three across, each an icon, a number and what it is.
+func _fill_stats() -> void:
+	var grid: GridContainer = _profile["stats"]
+	for c in grid.get_children():
+		c.queue_free()
+	var won := TSProfile.eggs_won()
+	var played := won + TSProfile.lifetime_of("loss")
+	var mins := int(TSProfile.lifetime_seconds / 60.0)
+	@warning_ignore("integer_division")
+	var time := ("%dh %dm" % [mins / 60, mins % 60]) if mins >= 60 else ("%dm" % mins)
+	var owned := 0
+	for i in TSProfile.CRITTER_COUNT:
+		if TSProfile.is_critter_unlocked(i):
+			owned += 1
+	var rows := [
+		["play", str(TSProfile.last_level), "Level"],
+		["check", TSProfile.fmt_coins(won), "Eggs won"],
+		["trophy", ("%d%%" % roundi(100.0 * won / played)) if played > 0 else "--", "Win rate"],
+		["heart", TSProfile.fmt_coins(TSProfile.lifetime_of("flawless")), "Flawless"],
+		["flame", str(TSProfile.win_streak_best), "Best streak"],
+		["star", TSProfile.fmt_coins(TSProfile.lifetime_of("stars")), "Stars"],
+		["swap", TSProfile.fmt_coins(TSProfile.lifetime_of("clear")), "Pieces popped"],
+		["bomb", TSProfile.fmt_coins(TSProfile.lifetime_of("booster")), "Boosters"],
+		["calendar", TSProfile.fmt_coins(TSProfile.lifetime_of("daily_puzzle")), "Daily Eggs"],
+		["collection", "%d/%d" % [owned, TSProfile.CRITTER_COUNT], "Critters"],
+		["chest", TSProfile.fmt_coins(TSProfile.lifetime_of("chest")), "Chests"],
+		["clock", time, "Time played"],
+	]
+	for r in rows:
+		var tile := TSUI.card(TSUI.CARD, 16, 8, 2)
+		tile.custom_minimum_size = Vector2(160, 0)
+		var v := TSUI.vbox(0)
+		tile.add_child(v)
+		var top := TSUI.hbox(6)
+		top.alignment = BoxContainer.ALIGNMENT_CENTER
+		top.add_child(TSIcon.make(r[0], 30))
+		top.add_child(TSUI.label(r[1], 26))
+		v.add_child(top)
+		v.add_child(TSUI.label(r[2], 16, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+		grid.add_child(tile)
+
+
 func _open_profile() -> void:
+	_fill_stats()
 	_name_edit.text = TSProfile.player_name
 	_avatar_choice = TSProfile.avatar_index
 	(_profile["preview"] as TSIcon).set_icon("critter", TSProfile.avatar())

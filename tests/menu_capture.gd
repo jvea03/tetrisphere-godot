@@ -154,6 +154,13 @@ func _ready() -> void:
 			var ts2 := get_tree()
 			ts2.create_timer(0.8).timeout.connect(func():
 				TSStickerCards.show_player(ts2.current_scene, Online.entries(TSProfile.current_board("daily"))[1], func(): pass))
+	if args_has("profile"):
+		# `-- home profile`: the Profile card, with some lifetime stats.
+		TSProfile.lifetime = {"win": 42, "loss": 9, "flawless": 17, "stars": 186, "clear": 5230, "booster": 34, "daily_puzzle": 6, "chest": 12}
+		TSProfile.lifetime_seconds = 3.0 * 3600.0 + 25.0 * 60.0
+		TSProfile.win_streak_best = 8
+		var tp := get_tree()
+		tp.create_timer(0.8).timeout.connect(func(): tp.current_scene._open_profile())
 	if args_has("bottom"):
 		# `-- shop bottom`: the screen's list scrolled to its end.
 		var t := get_tree()
