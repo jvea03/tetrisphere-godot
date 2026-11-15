@@ -1,3 +1,11 @@
 {
-  "messages": []
+  "messages": [
+    {
+      "id": "welcome-2026-11",
+      "title": "Welcome to Egg Escape!",
+      "body": "Thanks for playing! Here's a little gift to get you started: coins, plus Tier Skips to climb the Battle Pass faster.",
+      "rewards": {"coins": 500, "tier_skips": 5},
+      "until": "2027-01-31"
+    }
+  ]
 }
