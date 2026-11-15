@@ -2638,6 +2638,7 @@ const DAILY_QUESTS := [
 	{"name": "Win 5 levels", "points": 8, "stat": "win", "target": 5},
 	{"name": "Complete a Daily Egg", "points": 10, "stat": "daily_puzzle", "target": 1},
 	{"name": "Open 5 chests", "points": 10, "stat": "chest", "target": 5},
+	{"name": "Send a sticker", "points": 3, "stat": "sticker", "target": 1},
 ]
 const WEEKLY_QUESTS := [
 	{"name": "Log in 5 days", "points": 12, "stat": "login", "target": 5},
@@ -2647,6 +2648,8 @@ const WEEKLY_QUESTS := [
 	{"name": "Clear 300 pieces", "points": 20, "stat": "clear", "target": 300},
 	{"name": "Buy or upgrade 3 critters", "points": 15, "stat": "critter_spend", "target": 3},
 	{"name": "Win 7 levels without losing a life", "points": 30, "stat": "flawless", "target": 7},
+	{"name": "Send 5 stickers", "points": 10, "stat": "sticker", "target": 5},
+	{"name": "Win a challenge level", "points": 20, "stat": "challenge", "target": 1},
 ]
 ## Each new week ADDS its set; older weeks' quests stay listed for this long.
 const QUEST_WEEKS_KEPT := 4

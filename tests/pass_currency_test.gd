@@ -60,6 +60,23 @@ func _ready() -> void:
 		TSProfile.quest_daily_claimed[i] = false
 	var quests := TSProfile.claim_all_quests()
 	_check("Collect All takes every finished quest (%d)" % quests, quests == TSProfile.quest_daily_done.size() and not TSProfile.has_unclaimed_daily_quests())
+	# Sticker and challenge quests.
+	TSProfile.quest_daily_progress = {}
+	TSProfile.quest_daily_done.fill(false)
+	TSProfile.quest_daily_claimed.fill(false)
+	var daily := TSProfile.daily_quest_rows().filter(func(q: Dictionary) -> bool: return q["name"] == "Send a sticker")
+	_check("a daily sticker quest", daily.size() == 1 and not daily[0]["done"])
+	TSProfile.record_quest_event("sticker")
+	daily = TSProfile.daily_quest_rows().filter(func(q: Dictionary) -> bool: return q["name"] == "Send a sticker")
+	_check("sending one finishes it", daily[0]["done"])
+	var weekly: Array = TSProfile.weekly_quest_groups()[0]["rows"]
+	var names := weekly.map(func(q: Dictionary) -> String: return q["name"])
+	_check("weekly: Send 5 stickers and Win a challenge level", names.has("Send 5 stickers") and names.has("Win a challenge level"))
+	var hunt_stats := []
+	for day in TSHunt.QUESTS:
+		for q in day:
+			hunt_stats.append(q["stat"])
+	_check("the 7-day event has sticker and challenge quests", hunt_stats.count("sticker") == 2 and hunt_stats.has("challenge_played"))
 	print("")
 	print("ALL PASSED" if _failures == 0 else "%d FAILED" % _failures)
 	get_tree().quit(0 if _failures == 0 else 1)

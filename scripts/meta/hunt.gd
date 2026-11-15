@@ -18,11 +18,11 @@ const HUNT_LENGTH_DAYS := 10 # days 1-7 unlock over a week, then 3 days of grace
 ## Collection level.
 const QUESTS := [
 	[{"name": "Reach level", "stat": "level", "target": 7}, {"name": "Clear 60 pieces", "stat": "clear", "target": 60}, {"name": "Use 1 booster", "stat": "booster", "target": 1}],
-	[{"name": "Reach level", "stat": "level", "target": 14}, {"name": "Reach Collection level 2", "stat": "collection", "target": 2}, {"name": "Open 2 chests", "stat": "chest", "target": 2}],
+	[{"name": "Reach level", "stat": "level", "target": 14}, {"name": "Reach Collection level 2", "stat": "collection", "target": 2}, {"name": "Send a sticker", "stat": "sticker", "target": 1}],
 	[{"name": "Reach level", "stat": "level", "target": 21}, {"name": "Use 5 boosters", "stat": "booster", "target": 5}, {"name": "Win 1 level flawless", "stat": "flawless", "target": 1}],
-	[{"name": "Reach level", "stat": "level", "target": 28}, {"name": "Clear 120 pieces", "stat": "clear", "target": 120}, {"name": "Complete a Daily Egg", "stat": "daily_puzzle", "target": 1}],
+	[{"name": "Reach level", "stat": "level", "target": 28}, {"name": "Send 3 stickers", "stat": "sticker", "target": 3}, {"name": "Complete a Daily Egg", "stat": "daily_puzzle", "target": 1}],
 	[{"name": "Reach level", "stat": "level", "target": 35}, {"name": "Open 3 chests", "stat": "chest", "target": 3}, {"name": "Win 2 levels flawless", "stat": "flawless", "target": 2}],
-	[{"name": "Reach level", "stat": "level", "target": 42}, {"name": "Use 8 boosters", "stat": "booster", "target": 8}, {"name": "Clear 150 pieces", "stat": "clear", "target": 150}],
+	[{"name": "Reach level", "stat": "level", "target": 42}, {"name": "Use 8 boosters", "stat": "booster", "target": 8}, {"name": "Play a challenge level", "stat": "challenge_played", "target": 1}],
 	[{"name": "Reach level", "stat": "level", "target": 49}, {"name": "Win 3 levels flawless", "stat": "flawless", "target": 3}, {"name": "Open 5 chests", "stat": "chest", "target": 5}],
 ]
 const DAY_REWARDS := [1000, 1000, 1000, 1000, 1000, 1000, 3000]

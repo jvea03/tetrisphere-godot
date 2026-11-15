@@ -1803,9 +1803,8 @@ func _streak_banner(rocks: int) -> void:
 	TSSfx.play("shimmer")
 
 
-## The win card's streak line: the run so far, what the next level starts
-## with, and the next tier's perk -- "Next level starts with a free rock --
-## win 2 more for +2 pieces!"
+## The win card's streak line: the run so far, and the next tier's perk --
+## "Win 2 more for +2 pieces!" (nothing more at the top tier).
 func _streak_line() -> Control:
 	var col := TSUI.vbox(0)
 	var row := TSUI.hbox(6)
@@ -1814,19 +1813,11 @@ func _streak_line() -> Control:
 	row.add_child(TSUI.label("Win streak: %d" % TSProfile.win_streak, 26, TSUI.CORAL))
 	col.add_child(row)
 	var tier := TSProfile.win_streak_tier()
-	const REWARD := ["", "a free rock", "a free rock and +{n} pieces", "2 free rocks and +{n} pieces"]
 	const PERK := ["", "a free rock", "+{n} pieces", "a 2nd rock"]
-	var n := str(TSProfile.WIN_STREAK_PIECES)
-	var parts := PackedStringArray()
-	if tier > 0:
-		# A challenge waiting next has no streak perks: they come on the level after it.
-		var next := "the level after the challenge" if TSProfile.challenge_due() == current_level else "next level"
-		parts.append("%s starts with %s" % [next, str(REWARD[tier]).replace("{n}", n)])
 	if tier < TSProfile.WIN_STREAK_TIERS.size():
 		var more := int(TSProfile.WIN_STREAK_TIERS[tier]) - TSProfile.win_streak
-		parts.append("win %d more for %s!" % [more, str(PERK[tier + 1]).replace("{n}", n)])
-	var line := " -- ".join(parts)
-	col.add_child(TSUI.wrap(TSUI.label(line[0].to_upper() + line.substr(1), 20, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER)))
+		var perk := str(PERK[tier + 1]).replace("{n}", str(TSProfile.WIN_STREAK_PIECES))
+		col.add_child(TSUI.wrap(TSUI.label("Win %d more for %s!" % [more, perk], 20, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER)))
 	return col
 
 
@@ -2320,6 +2311,8 @@ func _pay_win() -> void:
 	elif is_challenge:
 		# Beaten against the clock: the bonus on top. No level progress, no streak.
 		TSProfile.record_quest_event("win")
+		TSProfile.record_quest_event("challenge")
+		TSProfile.record_quest_event("challenge_played")
 		TSProfile.won_since_home = true
 		var prize := TSProfile.boost_earned_coins(TSLevels.CHALLENGE_BONUS_COINS)
 		TSProfile.coin_count += prize
@@ -2385,6 +2378,8 @@ func _analytics_kind() -> String:
 func _lose() -> void:
 	state = State.LOST
 	TSProfile.add_lifetime("loss")
+	if is_challenge:
+		TSProfile.record_quest_event("challenge_played")   # played counts, won or lost (the 7-day event)
 	TSAnalytics.level_end(current_level, false, _analytics_kind(), play_seconds, drops, lives)
 	if not TSSession.has_saved_game:
 		TSSession.forget()

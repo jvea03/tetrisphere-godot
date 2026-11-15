@@ -85,6 +85,7 @@ static func show_player(parent: Control, entry: Dictionary, changed: Callable) -
 				if not is_instance_valid(status):
 					return
 				if ok:
+					TSProfile.record_quest_event("sticker")   # sticker quests (daily, weekly, the 7-day event)
 					status.text = "Sent \"%s\" to %s!" % [TSStickers.sticker_name(id), entry["name"]]
 					TSSfx.play("pop1")
 				else:

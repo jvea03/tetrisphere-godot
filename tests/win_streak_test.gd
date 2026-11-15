@@ -63,7 +63,7 @@ func _run() -> void:
 	_start_level(40)
 	_debug_win()
 	await get_tree().create_timer(3.0).timeout
-	_check("before a challenge, the perks are for the level after it", _says(_win_card, "The level after the challenge starts with a free rock"))
+	_check("no \"starts with\" line on the win card, only what's next to win", not _says(_win_card, "starts with") and _says(_win_card, "Win 1 more for +"))
 	TSProfile.challenge_done_through = 1 << 30
 	TSProfile.win_streak = 1
 
