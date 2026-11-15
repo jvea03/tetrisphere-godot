@@ -23,6 +23,10 @@ const SIGN_UP := "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=
 const REFRESH := "https://securetoken.googleapis.com/v1/token?key=" + API_KEY
 const DOCS := "https://firestore.googleapis.com/v1/projects/" + PROJECT + "/databases/(default)/documents"
 const AUTH_PATH := "user://online_auth.json"
+## tools/online_check: talks to Firebase from a throwaway profile, with its
+## own sign-in file, so the real save on that machine is never touched.
+var check_mode := false
+var auth_path := AUTH_PATH
 const TOP_N := 50
 const FETCH_EVERY := 60.0       # seconds a board stays fresh
 const STICKERS_EVERY := 120.0   # seconds between looks for new stickers
@@ -42,7 +46,7 @@ var last_error := ""
 
 
 func enabled() -> bool:
-	return TSProfile.persist and TSNav.leaderboards_open()
+	return check_mode or (TSProfile.persist and TSNav.leaderboards_open())
 
 
 # -- boards ------------------------------------------------------------------------
@@ -279,15 +283,15 @@ func _fail_waiting() -> void:
 
 
 func _load_auth() -> void:
-	if not FileAccess.file_exists(AUTH_PATH):
+	if not FileAccess.file_exists(auth_path):
 		return
-	var d: Variant = JSON.parse_string(FileAccess.get_file_as_string(AUTH_PATH))
+	var d: Variant = JSON.parse_string(FileAccess.get_file_as_string(auth_path))
 	if d is Dictionary:
 		uid = str(d.get("uid", ""))
 		_refresh_token = str(d.get("refresh", ""))
 
 
 func _save_auth() -> void:
-	var f := FileAccess.open(AUTH_PATH, FileAccess.WRITE)
+	var f := FileAccess.open(auth_path, FileAccess.WRITE)
 	if f != null:
 		f.store_string(JSON.stringify({"uid": uid, "refresh": _refresh_token}))
