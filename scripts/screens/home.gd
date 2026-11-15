@@ -199,6 +199,15 @@ func _build_top_bar() -> void:
 	cog.pressed.connect(_open_settings)
 	cog.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	top.add_child(cog)
+	# The inbox, always just under Settings: a count on it while messages wait.
+	inbox_btn = TSUI.icon_button("mail", 76)
+	inbox_btn.pressed.connect(_open_inbox)
+	inbox_btn.position = Vector2(0, 86)
+	inbox_btn.size = Vector2(76, 76)
+	cog.add_child(inbox_btn)
+	inbox_badge = TSUI.pill("0", TSUI.CORAL, 18)
+	inbox_badge.position = Vector2(50, -10)
+	inbox_btn.add_child(inbox_badge)
 	_build_camp_badge(right)
 
 
@@ -369,10 +378,6 @@ func _build_side_tiles() -> void:
 	pass_dot = TSUI.dot(pass_btn)
 	hunt_btn = _side_tile("hunt", func(): SceneFlow.go("res://scenes/hunt.tscn"))
 	hunt_dot = TSUI.dot(hunt_btn)
-	inbox_btn = _side_tile("mail", _open_inbox)
-	inbox_badge = TSUI.pill("0", TSUI.CORAL, 18)
-	inbox_badge.position = Vector2(56, -12)
-	inbox_btn.add_child(inbox_badge)
 	sale_btn = _side_tile("tag", _open_sale)
 	var tag := TSUI.pill("SALE", TSUI.CORAL, 16)
 	tag.position = Vector2(10, -16)
@@ -1322,10 +1327,10 @@ func _on_purchase_result(product_id: String, success: bool) -> void:
 
 # -- inbox ---------------------------------------------------------------------------
 
-## The inbox's tile shows only while a message is waiting.
+## The inbox under Settings: its count shows only while messages wait.
 func _refresh_inbox() -> void:
 	var waiting := TSInbox.active().size()
-	inbox_btn.visible = waiting > 0
+	inbox_badge.visible = waiting > 0
 	inbox_badge.get_meta("label").text = str(waiting)
 
 
@@ -1346,8 +1351,15 @@ func _fill_inbox() -> void:
 	var close := TSUI.close_button()
 	close.pressed.connect(func(): TSUI.conceal(_inbox["root"]))
 	top.add_child(close)
-	for m: Dictionary in TSInbox.active().slice(0, INBOX_SHOWN):
+	var waiting := TSInbox.active()
+	for m: Dictionary in waiting.slice(0, INBOX_SHOWN):
 		box.add_child(_inbox_card(m))
+	if waiting.is_empty():
+		box.add_child(TSUI.halo(TSIcon.make("mail", 110), 170.0, TSUI.SKY, false))
+		box.add_child(TSUI.wrap(TSUI.label("No messages right now. News and gifts from us show up here!", 24, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER)))
+		var ok := TSUI.button("OK", TSUI.SKY, 28)
+		ok.pressed.connect(func(): TSUI.conceal(_inbox["root"]))
+		box.add_child(ok)
 	TSUI.juice(box)
 
 

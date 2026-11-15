@@ -161,6 +161,10 @@ func _ready() -> void:
 		TSProfile.win_streak_best = 8
 		var tp := get_tree()
 		tp.create_timer(0.8).timeout.connect(func(): tp.current_scene._open_profile())
+	if args_has("inbox"):
+		# `-- home inbox`: the inbox opened (empty on a test profile).
+		var ti := get_tree()
+		ti.create_timer(0.8).timeout.connect(func(): ti.current_scene._open_inbox())
 	if args_has("bottom"):
 		# `-- shop bottom`: the screen's list scrolled to its end.
 		var t := get_tree()

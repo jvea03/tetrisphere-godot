@@ -73,7 +73,7 @@ func _run() -> void:
 	_check("a broken file isn't read", TSInbox.parse("{oops") == null and TSInbox.parse("[1]") == null and TSInbox.parse("{}") == null)
 	_check("an empty one is", (TSInbox.parse("{\"messages\": []}") as Array).is_empty())
 	_refresh_inbox()
-	_check("no messages: no tile", not inbox_btn.visible)
+	_check("no messages: the inbox is there, with no count", inbox_btn.is_visible_in_tree() and not inbox_badge.visible)
 
 	var read: Array = TSInbox.parse(FILE)
 	_check("broken messages are left out (%d)" % read.size(), read.size() == 7)
@@ -81,7 +81,7 @@ func _run() -> void:
 	_refresh_inbox()
 	var ids := _ids()
 	_check("this player gets the two meant for them, last in the file first (%s)" % str(ids), ids == ["gift", "plain"])
-	_check("the tile shows and counts them", inbox_btn.visible and inbox_badge.get_meta("label").text == "2")
+	_check("it counts them", inbox_badge.visible and inbox_badge.get_meta("label").text == "2")
 
 	var m: Dictionary = read[2]
 	_check("a level rule", TSInbox.applies(m, 50, 0, "2026-11-06") and not TSInbox.applies(m, 49, 0, "2026-11-06"))
@@ -111,7 +111,7 @@ func _run() -> void:
 	_check("a reward is given once", TSProfile.coin_count == coins + 500)
 	_press("OK")
 	await get_tree().process_frame
-	_check("the last message read: no tile", _ids().is_empty() and not inbox_btn.visible)
+	_check("the last message read: no count", _ids().is_empty() and not inbox_badge.visible)
 
 	var long := "A long message from the studio, as long as a message can be, to see that it still fits on a short phone with its rewards and its button. ".repeat(3)
 	var gift := {"id": "a", "title": "The longest title you would ever write here", "body": long, "rewards": {"coins": 500000, "materials": 40000, "bomb": 2, "swap": 1, "rocks": 3, "skips": 4}}
