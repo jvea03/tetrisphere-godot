@@ -1644,7 +1644,7 @@ func _build_profile() -> void:
 		box.add_child(TSUI.wrap(TSUI.label("Reach level %d to pick your critter in the Collection" % TSNav.COLLECTION_UNLOCK_LEVEL, 20, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER)))
 	box.add_child(TSUI.label("STATS", 20, TSUI.MUTED))
 	var stats := GridContainer.new()
-	stats.columns = 3
+	stats.columns = 4
 	stats.add_theme_constant_override("h_separation", 10)
 	stats.add_theme_constant_override("v_separation", 10)
 	box.add_child(stats)
@@ -1689,37 +1689,27 @@ func _refresh_swatches() -> void:
 		row.add_child(b)
 
 
-## The Profile's stats: three across, each an icon, a number and what it is.
+## The Profile's stats: four across, each an icon, a number and what it is.
 func _fill_stats() -> void:
 	var grid: GridContainer = _profile["stats"]
 	for c in grid.get_children():
 		c.queue_free()
-	var won := TSProfile.eggs_won()
-	var played := won + TSProfile.lifetime_of("loss")
 	var mins := int(TSProfile.lifetime_seconds / 60.0)
 	@warning_ignore("integer_division")
 	var time := ("%dh %dm" % [mins / 60, mins % 60]) if mins >= 60 else ("%dm" % mins)
-	var owned := 0
-	for i in TSProfile.CRITTER_COUNT:
-		if TSProfile.is_critter_unlocked(i):
-			owned += 1
 	var rows := [
 		["play", str(TSProfile.last_level), "Level"],
-		["check", TSProfile.fmt_coins(won), "Eggs won"],
-		["trophy", ("%d%%" % roundi(100.0 * won / played)) if played > 0 else "--", "Win rate"],
 		["heart", TSProfile.fmt_coins(TSProfile.lifetime_of("flawless")), "Flawless"],
 		["flame", str(TSProfile.win_streak_best), "Best streak"],
 		["star", TSProfile.fmt_coins(TSProfile.lifetime_of("stars")), "Stars"],
 		["swap", TSProfile.fmt_coins(TSProfile.lifetime_of("clear")), "Pieces popped"],
-		["bomb", TSProfile.fmt_coins(TSProfile.lifetime_of("booster")), "Boosters"],
 		["calendar", TSProfile.fmt_coins(TSProfile.lifetime_of("daily_puzzle")), "Daily Eggs"],
-		["collection", "%d/%d" % [owned, TSProfile.CRITTER_COUNT], "Critters"],
 		["chest", TSProfile.fmt_coins(TSProfile.lifetime_of("chest")), "Chests"],
 		["clock", time, "Time played"],
 	]
 	for r in rows:
 		var tile := TSUI.card(TSUI.CARD, 16, 8, 2)
-		tile.custom_minimum_size = Vector2(160, 0)
+		tile.custom_minimum_size = Vector2(118, 0)
 		var v := TSUI.vbox(0)
 		tile.add_child(v)
 		var top := TSUI.hbox(6)
