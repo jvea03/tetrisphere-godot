@@ -167,13 +167,18 @@ Release name: `1.3.2 (10) – Faster start`
 
 ## Release notes for version code 11 (1.3.3)
 
-Release name: `1.3.3 (11) – Gentler second egg`
+Release name: `1.3.3 (11) – Leaderboards & stickers`
 
     <en-US>
     New in Egg Escape!
 
-    • A gentler second egg: your first miss is free, and an arrow shows where your next piece will match after a miss
-    • Bug fixes and performance improvements
+    • Online leaderboards: climb daily, weekly and season boards against real players
+    • Stickers: send Grr!, Aww... or Congrats! to other players
+    • Collection Sets: complete a themed set to win coins
+    • Inbox: news and gifts from us, with a welcome gift waiting
+    • Battle Pass: Tier Skips, Pass Tickets and Collect All
+    • Free boosters on the levels that teach them
+    • Gentler second egg, a roomier camp, profile stats and volume sliders
 
     Thanks for playing!
     </en-US>
