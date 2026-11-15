@@ -188,14 +188,12 @@ func _scroll_to_player() -> void:
 
 
 func _refresh_countdown() -> void:
-	var dt := TSClock.datetime_dict()
-	var day_secs := int(dt["hour"]) * 3600 + int(dt["minute"]) * 60 + int(dt["second"])
 	var secs := 0
-	match _tab:
+	match _tab:   # the boards reset at UTC midnight, the same moment for everyone
 		"daily":
-			secs = 86400 - day_secs
+			secs = TSProfile.seconds_until_board_day()
 		"weekly":
-			secs = TSProfile.seconds_until_weekly_reset()
+			secs = TSProfile.seconds_until_board_week()
 		_:   # the season: as the Battle Pass season
 			secs = TSProfile.seconds_until_season_reset()
 	_countdown.text = "%s in %s" % ["Resets" if _tab == "daily" else "Ends", TSUI.fmt_duration(maxi(secs, 0))]

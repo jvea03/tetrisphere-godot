@@ -1910,7 +1910,7 @@ static func _append_leaderboard_message(msg: String) -> void:
 
 
 static func _roll_leaderboard_day() -> void:
-	var today := TSClock.date_string()
+	var today := TSClock.utc_date_string()   # the shared board's day: UTC, the same for everyone
 	if daily_star_date == today:
 		return
 	if daily_star_date != "" and daily_star_total > 0:
@@ -2117,7 +2117,7 @@ static func _board_length_days(period: String, key: String) -> int:
 
 static func period_days_elapsed(period: String) -> int:
 	if period == "weekly":
-		return (_local_day_index() + 3) % 7 + 1
+		return (_utc_day_index() + 3) % 7 + 1
 	@warning_ignore("integer_division")
 	return clampi((int(TSClock.now()) - _board_season_start(battle_pass_season_number())) / 86400 + 1, 1, period_length_days(period))
 
@@ -2146,8 +2146,34 @@ static func _local_week_index() -> int:
 	return (_local_day_index() + 3) / 7
 
 
+## A leaderboard's current key: as _period_key, but its week runs in UTC so
+## every player is on the same board (quests, clubs and the shop keep the
+## player's local week).
+static func _board_key(period: String) -> String:
+	if period == "season":
+		return _period_key("season")
+	@warning_ignore("integer_division")
+	return "W%d" % ((_utc_day_index() + 3) / 7)
+
+
+## Days since the epoch in UTC.
+static func _utc_day_index() -> int:
+	@warning_ignore("integer_division")
+	return int(TSClock.now()) / 86400
+
+
+## Seconds to the leaderboards' next day and week, at UTC midnight (the week
+## from Monday).
+static func seconds_until_board_day() -> int:
+	return 86400 - int(TSClock.now()) % 86400
+
+
+static func seconds_until_board_week() -> int:
+	return (6 - (_utc_day_index() + 3) % 7) * 86400 + seconds_until_board_day()
+
+
 static func _roll_period(period: String) -> void:
-	var key := _period_key(period)
+	var key := _board_key(period)
 	if period_star_key[period] == key:
 		return
 	var prev_key: String = period_star_key[period]

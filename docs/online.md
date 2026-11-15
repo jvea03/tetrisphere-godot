@@ -12,7 +12,7 @@ and iOS work the same way, with no plugin.
   refresh token live in `user://online_auth.json`; reinstalling makes a new one.
 - **Boards:** `boards/{board}/entries/{uid}` with `name`, `avatar` (a critter),
   `stars`, `t`. Board ids: `daily_2026-11-14`, `weekly_W2915`, `season_S2`
-  (the player's local date and week, as before). The phone writes its own row
+  (the UTC date and week, so every player is on the same board and it resets at UTC midnight for everyone; the week starts Monday, the season with the Battle Pass). The phone writes its own row
   after each win, name change or new avatar, and reads the top 50.
 - **Prizes:** when a board ends, the phone asks how many rows beat it (a count
   query) and pays the top-3 coins as before. If it's offline, it asks next time.

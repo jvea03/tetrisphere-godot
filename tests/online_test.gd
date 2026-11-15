@@ -51,6 +51,15 @@ func _ready() -> void:
 	Online.send_sticker("a", "angry", func(ok: bool) -> void: sent.append(ok))
 	_check("offline, sending says so at once", sent == [false])
 
+	# The shared boards run on UTC, the same day and week for everyone.
+	TSProfile.current_board("daily")
+	_check("the daily board is today in UTC (%s)" % TSProfile.daily_star_date, TSProfile.daily_star_date == TSClock.utc_date_string())
+	_check("the daily board id is that UTC date", TSProfile.current_board("daily") == "daily_" + TSClock.utc_date_string())
+	var day_left := TSProfile.seconds_until_board_day()
+	var week_left := TSProfile.seconds_until_board_week()
+	_check("its reset is the next UTC midnight (%d s), the week's within 7 days (%d s)" % [day_left, week_left], day_left > 0 and day_left <= 86400 and week_left >= day_left and week_left <= 7 * 86400 and (int(TSClock.now()) + day_left) % 86400 == 0)
+	_check("the weekly board is the UTC week", TSProfile.current_board("weekly") == "weekly_W%d" % ((int(TSClock.now()) / 86400 + 3) / 7))
+
 	TSProfile.pending_board_results = []
 	TSProfile._resolve_period("weekly", "W100", 30)
 	_check("a finished board waits to be placed online", TSProfile.pending_board_results.size() == 1 and TSProfile.pending_board_results[0]["board"] == "weekly_W100")

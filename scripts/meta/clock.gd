@@ -30,6 +30,12 @@ static func date_string() -> String:
 	return Time.get_date_string_from_unix_time(local_unix())
 
 
+## Today's date in UTC, "2026-10-05": the shared leaderboards' day, the same
+## for every player wherever they are.
+static func utc_date_string() -> String:
+	return Time.get_date_string_from_unix_time(int(now()))
+
+
 ## The local date and time, as Time.get_datetime_dict_from_system() gives it.
 static func datetime_dict() -> Dictionary:
 	return Time.get_datetime_dict_from_unix_time(local_unix())
