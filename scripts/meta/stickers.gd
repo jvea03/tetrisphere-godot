@@ -21,6 +21,8 @@ const BASE := ["angry", "sad", "congrats"]
 
 
 static func owns(id: String) -> bool:
+	if Online.fake() and ALL.has(id):
+		return true   # the editor's fake leaderboard: every sticker, to try them all
 	return BASE.has(id) or TSProfile.stickers_owned.has(id)
 
 

@@ -11,7 +11,7 @@ extends Node
 ##   TOP_N. A finished board's place is a count of rows with more stars.
 ## - A sticker is stickers/{to}/got/{from}: one waiting per sender per
 ##   receiver (a new one replaces it), so nobody can be flooded. Received
-##   ones are shown once (Home and Ranks) and deleted.
+##   ones are shown once, when the player opens Ranks, and deleted.
 ## Everything is quiet offline, and on a throwaway profile (tests).
 
 signal boards_changed   # a board arrived
@@ -46,7 +46,49 @@ var last_error := ""
 
 
 func enabled() -> bool:
-	return check_mode or (TSProfile.persist and TSNav.leaderboards_open())
+	return check_mode or force_fake or (TSProfile.persist and TSNav.leaderboards_open())
+
+
+# -- a fake leaderboard, for testing in the editor ------------------------------------
+# Run from the Godot editor with the real save (not a test's throwaway profile,
+# not tools/online_check, not as_released), the boards fill with made-up
+# players and nothing goes to Firebase: a sticker sent to one "arrives", and
+# about half the time they send one back a few seconds later, so receiving can
+# be tried too. Every sticker is owned there (TSStickers.owns). A release
+# build never does any of this.
+const FAKE_NAMES := ["Sunny", "Pip", "Marshmallow", "Bean", "Clover", "Waffles", "Juniper", "Tofu", "Biscuit", "Pebble",
+	"Noodle", "Maple", "Sprout", "Dumpling", "Comet", "Peaches", "Mochi", "Rascal", "Button", "Ziggy"]
+
+
+var _fake_greeted := false
+var force_fake := false   # tests/menu_capture `fake`: on a throwaway profile too
+
+func fake() -> bool:
+	return force_fake or (OS.has_feature("editor") and not TSNav.as_released and not check_mode and TSProfile.persist)
+
+
+## A fake board's rows: the same for a board id every time.
+func _fake_rows(board: String) -> Array:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash("fake_" + board)
+	var per_day := 1 if board.begins_with("daily") else (4 if board.begins_with("weekly") else 12)
+	var rows: Array = []
+	for k in FAKE_NAMES.size():
+		rows.append({"uid": "fake_%d" % k, "name": FAKE_NAMES[k], "avatar": rng.randi_range(0, TSProfile.CRITTER_COUNT - 1),
+			"stars": rng.randi_range(0, 30) * per_day, "is_player": false})
+	rows.sort_custom(func(a, b): return int(a["stars"]) > int(b["stars"]))
+	return rows
+
+
+## A fake player sometimes answers a sticker with one of their own.
+func _fake_reply(to_uid: String) -> void:
+	if randf() < 0.5:
+		return
+	var k := int(to_uid.trim_prefix("fake_"))
+	var reply: String = TSStickers.ALL.keys().pick_random()
+	get_tree().create_timer(randf_range(2.0, 5.0)).timeout.connect(func() -> void:
+		received.append({"from": to_uid, "name": FAKE_NAMES[k % FAKE_NAMES.size()], "avatar": k * 7 % TSProfile.CRITTER_COUNT, "sticker": reply})
+		stickers_arrived.emit())
 
 
 # -- boards ------------------------------------------------------------------------
@@ -59,6 +101,8 @@ static func board_id(period: String, key: String) -> String:
 
 ## Writes the player's row on a board (name, avatar, stars), if any changed.
 func push(board: String, stars: int) -> void:
+	if fake():
+		return
 	var sig := "%d|%s|%d" % [stars, TSProfile.player_name, TSProfile.avatar()]   # what the row says now
 	if not enabled() or str(_pushed.get(board, "")) == sig:
 		return
@@ -72,6 +116,10 @@ func push(board: String, stars: int) -> void:
 ## Fetches a board's top TOP_N (if it isn't fresh), then boards_changed.
 func fetch(board: String, force := false) -> void:
 	if not enabled():
+		return
+	if fake():
+		boards[board] = {"entries": _fake_rows(board), "at": Time.get_unix_time_from_system()}
+		boards_changed.emit.call_deferred()
 		return
 	var have: Dictionary = boards.get(board, {})
 	if not force and not have.is_empty() and Time.get_unix_time_from_system() - float(have["at"]) < FETCH_EVERY:
@@ -106,6 +154,9 @@ func place_on(board: String, stars: int, done: Callable) -> void:
 	if not enabled():
 		done.call(0)
 		return
+	if fake():
+		done.call(1 + _fake_rows(board).filter(func(e: Dictionary) -> bool: return int(e["stars"]) > stars).size())
+		return
 	var query := {"structuredAggregationQuery": {
 		"structuredQuery": {"from": [{"collectionId": "entries"}],
 			"where": {"fieldFilter": {"field": {"fieldPath": "stars"}, "op": "GREATER_THAN", "value": {"integerValue": str(stars)}}}},
@@ -126,6 +177,10 @@ func send_sticker(to_uid: String, sticker: String, done: Callable) -> void:
 	if not enabled() or to_uid == "" or to_uid == uid or not TSStickers.owns(sticker):
 		done.call(false)
 		return
+	if fake():
+		get_tree().create_timer(0.4).timeout.connect(func() -> void: done.call(true))
+		_fake_reply(to_uid)
+		return
 	var fields := {"name": TSProfile.player_name, "avatar": TSProfile.avatar(), "sticker": sticker, "t": int(Time.get_unix_time_from_system())}
 	_call("PATCH", "%s/stickers/%s/got/%s" % [DOCS, to_uid, uid_placeholder()], {"fields": to_fields(fields)}, func(ok: bool, _data: Variant) -> void:
 		done.call(ok))
@@ -134,6 +189,16 @@ func send_sticker(to_uid: String, sticker: String, done: Callable) -> void:
 ## Looks for stickers sent to this player (now and then), leaving the new
 ## ones in `received` (not from anyone blocked) and deleting them online.
 func check_stickers(force := false) -> void:
+	if fake():
+		# The fake leaderboard: one sticker from a fake player, once a run, to try
+		# the received card without sending first.
+		if not _fake_greeted:
+			_fake_greeted = true
+			var k := randi() % FAKE_NAMES.size()
+			get_tree().create_timer(1.5).timeout.connect(func() -> void:
+				received.append({"from": "fake_%d" % k, "name": FAKE_NAMES[k], "avatar": k * 7 % TSProfile.CRITTER_COUNT, "sticker": TSStickers.ALL.keys().pick_random()})
+				stickers_arrived.emit())
+		return
 	if not enabled() or (not force and Time.get_unix_time_from_system() - _stickers_at < STICKERS_EVERY):
 		return
 	_stickers_at = Time.get_unix_time_from_system()
@@ -162,7 +227,7 @@ func take_received() -> Array:
 
 ## Reports a player's name (for review in the Firebase console).
 func report(player: String, name: String) -> void:
-	if not enabled():
+	if not enabled() or fake():
 		return
 	var fields := {"uid": player, "name": name, "by": uid_placeholder(), "t": int(Time.get_unix_time_from_system())}
 	_call("POST", "%s/reports" % DOCS, {"fields": to_fields(fields)}, func(_ok: bool, _d: Variant) -> void: pass)

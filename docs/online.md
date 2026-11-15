@@ -18,7 +18,7 @@ and iOS work the same way, with no plugin.
   query) and pays the top-3 coins as before. If it's offline, it asks next time.
 - **Stickers:** `stickers/{to}/got/{from}`. One waiting per sender per receiver;
   a new one replaces it, so nobody can be flooded. The receiver's game shows them
-  (Home and Ranks) and deletes them. Only the sticker ids in `firestore.rules`
+  when the player opens Ranks (never anywhere else) and deletes them. Only the sticker ids in `firestore.rules`
   can be sent, so there is no free text.
 - **Block** hides a player's rows and stickers on that phone. **Report Name**
   adds a document to `reports` (player id, name, who reported).
@@ -64,3 +64,13 @@ writes a day.
 - Play Console → Data safety: add "Name" (user-generated, shared: shown to other
   players) and "User IDs" (the anonymous id), collected for app functionality.
 - iOS App Privacy: the same, and update the review notes, which say no server.
+
+## Testing in the editor: the fake leaderboard
+
+Run the game from the Godot editor (with your normal save) and the boards fill
+with 20 made-up players; nothing is read from or written to Firebase. Tap one
+to send a sticker: it "arrives", and about half the time they send one back a
+few seconds later. A sticker from one of them also arrives once per run as you
+open Ranks, to try the received card. Every sticker is unlocked there,
+the Christmas ones too. Release builds, the test suite (throwaway profiles) and
+`tools/online_check` never use it. Screenshots: `menu_capture -- leaderboard fake`.

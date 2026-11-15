@@ -85,7 +85,7 @@ func build() -> void:
 	_refresh()
 	_fetch()
 	Online.check_stickers(true)
-	Online.stickers_arrived.connect(func() -> void: TSStickerCards.show_received(self))
+	Online.stickers_arrived.connect(_on_stickers)
 	TSStickerCards.show_received(self)
 
 
@@ -249,3 +249,10 @@ func _scroll_moved() -> bool:
 func _input(e: InputEvent) -> void:
 	if (e is InputEventMouseButton and e.pressed) or (e is InputEventScreenTouch and e.pressed):
 		_press_scroll = _scroll.scroll_vertical if is_instance_valid(_scroll) else 0
+
+
+## Stickers show only here, while the leaderboard is open; any that arrive
+## after the player has left wait in Online.received for their next visit.
+func _on_stickers() -> void:
+	if is_inside_tree() and is_visible_in_tree():
+		TSStickerCards.show_received(self)

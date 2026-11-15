@@ -165,6 +165,9 @@ func _ready() -> void:
 		# `-- home inbox`: the inbox opened (empty on a test profile).
 		var ti := get_tree()
 		ti.create_timer(0.8).timeout.connect(func(): ti.current_scene._open_inbox())
+	if args_has("fake"):
+		# `-- leaderboard fake`: the editor's fake leaderboard, on this throwaway profile.
+		Online.force_fake = true
 	if args_has("bottom"):
 		# `-- shop bottom`: the screen's list scrolled to its end.
 		var t := get_tree()
