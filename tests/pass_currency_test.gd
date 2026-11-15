@@ -46,6 +46,20 @@ func _ready() -> void:
 	var had := TSProfile.pass_tickets
 	TSProfile._apply_reward(TSProfile.battle_pass_free_reward(12, 2))
 	_check("claiming that tier gives the ticket", TSProfile.pass_tickets == had + 1)
+	# Collect All: every reached tier, both tracks; every finished quest.
+	TSProfile.battle_pass_free_claimed.fill(false)
+	TSProfile.battle_pass_paid_claimed.fill(false)
+	TSProfile.battle_pass_purchased = true
+	TSProfile.battle_pass_xp = TSProfile.battle_pass_stars_for_tier(4)
+	var got := TSProfile.claim_all_battle_pass()
+	_check("Collect All takes 4 tiers on both tracks (%d)" % got, got == 8 and not TSProfile.has_claimable_battle_pass_reward())
+	_check("and again finds nothing", TSProfile.claim_all_battle_pass() == 0)
+	TSProfile.daily_quest_rows()   # rolls the day
+	for i in TSProfile.quest_daily_done.size():
+		TSProfile.quest_daily_done[i] = true
+		TSProfile.quest_daily_claimed[i] = false
+	var quests := TSProfile.claim_all_quests()
+	_check("Collect All takes every finished quest (%d)" % quests, quests == TSProfile.quest_daily_done.size() and not TSProfile.has_unclaimed_daily_quests())
 	print("")
 	print("ALL PASSED" if _failures == 0 else "%d FAILED" % _failures)
 	get_tree().quit(0 if _failures == 0 else 1)

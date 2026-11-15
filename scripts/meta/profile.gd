@@ -2752,6 +2752,30 @@ static func claim_quest(week_key: String, index: int) -> int:
 	return credited
 
 
+## Collect All on the pass: every reached, unclaimed reward on both tracks.
+## Returns how many were collected.
+static func claim_all_battle_pass() -> int:
+	var n := 0
+	for t in range(1, BATTLE_PASS_TIER_COUNT + 1):
+		if can_claim_battle_pass_free(t) and not claim_battle_pass_free(t).is_empty():
+			n += 1
+		if can_claim_battle_pass_paid(t) and not claim_battle_pass_paid(t).is_empty():
+			n += 1
+	return n
+
+
+## Collect All on the quests: every finished, unclaimed daily and weekly quest.
+static func claim_all_quests() -> int:
+	var n := 0
+	var rows: Array = daily_quest_rows()
+	for group in weekly_quest_groups():
+		rows += group["rows"]
+	for q in rows:
+		if q["done"] and not q["claimed"] and claim_quest(q["week_key"], q["index"]) >= 0:
+			n += 1
+	return n
+
+
 static func has_unclaimed_quests() -> bool:
 	return has_unclaimed_daily_quests() or has_unclaimed_weekly_quests()
 
