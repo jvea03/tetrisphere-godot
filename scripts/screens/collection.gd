@@ -80,8 +80,10 @@ func build() -> void:
 	content.add_child(_tabs)
 	_sets_badge = TSUI.pill("0", TSUI.CORAL, 18)
 	_sets_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	(_tabs.get_meta("buttons")[1] as Button).add_child(_sets_badge)
-	_sets_badge.position = Vector2(8, -6)
+	var sets_tab: Button = _tabs.get_meta("buttons")[1]
+	sets_tab.add_child(_sets_badge)
+	sets_tab.resized.connect(func() -> void:
+		_sets_badge.position = Vector2(sets_tab.size.x * 0.5 + 36.0, (sets_tab.size.y - _sets_badge.size.y) * 0.5))
 	_sets_list = TSUI.vbox(12)
 	_sets_scroll = TSUI.scroll(_sets_list)
 	_sets_scroll.visible = false
@@ -171,7 +173,18 @@ func _build_sets() -> void:
 	var waiting := TSSets.claimable_count()
 	_sets_badge.visible = waiting > 0
 	_sets_badge.get_meta("label").text = str(waiting)
-	_sets_list.add_child(TSUI.wrap(TSUI.label("Collect every critter in a set to win its coins!", 20, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER)))
+	var done_n := 0
+	for st: Dictionary in TSSets.SETS:
+		done_n += int(TSSets.is_claimed(st))
+	var head := TSUI.card(TSUI.CARD, 22, 12, 3)
+	var hrow := TSUI.hbox(12)
+	head.add_child(hrow)
+	hrow.add_child(TSIcon.make("trophy", 56))
+	var hv := TSUI.vbox(4)
+	hv.add_child(TSUI.label("Sets complete  %d/%d" % [done_n, TSSets.SETS.size()], 26))
+	hv.add_child(TSUI.wrap(TSUI.label("Collect every critter in a set to win its coins!", 18, TSUI.MUTED)))
+	hrow.add_child(TSUI.expand(hv))
+	_sets_list.add_child(head)
 	for st: Dictionary in TSSets.ordered():
 		_sets_list.add_child(_set_card(st))
 	_sets_list.add_child(TSUI.spacer(10))
@@ -180,16 +193,28 @@ func _build_sets() -> void:
 func _set_card(st: Dictionary) -> Control:
 	var done := TSSets.is_complete(st)
 	var claimed := TSSets.is_claimed(st)
-	var card := TSUI.card(TSUI.BUTTER.lerp(Color.WHITE, 0.4) if TSSets.can_claim(st) else TSUI.CARD, 22, 12, 3)
+	var colour: Color = st.get("color", TSUI.BUTTER)
+	var ready_now := TSSets.can_claim(st)
+	var card := PanelContainer.new()
+	var face := TSUI.sb(colour.lerp(Color.WHITE, 0.72), 24, 5 if ready_now else 3, 4, 14)
+	face.border_color = TSUI.GOLD_DARK if ready_now else colour.darkened(0.35)
+	if ready_now:
+		face.shadow_color = Color(TSUI.GOLD, 0.8)
+		face.shadow_size = 8
+	card.add_theme_stylebox_override("panel", face)
 	if claimed:
-		card.modulate = Color(1, 1, 1, 0.65)
-	var v := TSUI.vbox(8)
+		card.modulate = Color(1, 1, 1, 0.7)
+	var v := TSUI.vbox(10)
 	card.add_child(v)
 	var top := TSUI.hbox(8)
 	v.add_child(top)
-	top.add_child(TSUI.expand(TSUI.label(str(st["name"]), 26)))
+	var title := TSUI.pill(str(st["name"]), colour, 24)
+	title.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	top.add_child(title)
+	top.add_child(TSUI.expand(Control.new()))
+	if ready_now:
+		top.add_child(TSUI.pill("Complete!", TSUI.GOLD, 18))
 	var members: Array = st["critters"]
-	top.add_child(TSUI.label("%d/%d" % [TSSets.owned_in(st), members.size()], 22, TSFX.COL_GAIN if done else TSUI.MUTED))
 	var icons := TSUI.hbox(6)
 	v.add_child(icons)
 	for i: int in members:
@@ -204,20 +229,37 @@ func _set_card(st: Dictionary) -> Control:
 		art.position = Vector2(4, 4)
 		art.size = Vector2(56, 56)
 		b.add_child(art)
+		if not owned:
+			var lock := TSIcon.make("lock", 22)
+			lock.position = Vector2(40, 40)
+			lock.size = Vector2(22, 22)
+			b.add_child(lock)
 		b.pressed.connect(func() -> void:
 			_sel_critter = i
 			_build_feature())
 		icons.add_child(b)
+	# How far along: a bar in the set's colour, and the count.
+	var have := TSSets.owned_in(st)
+	var prog := TSUI.hbox(10)
+	v.add_child(prog)
+	var bar := TSUI.bar(colour.darkened(0.12) if not done else TSUI.GREEN, 18)
+	bar.max_value = members.size()
+	bar.value = have
+	prog.add_child(TSUI.expand(bar))
+	prog.add_child(TSUI.label("%d/%d" % [have, members.size()], 22, TSFX.COL_GAIN if done else TSUI.INK))
 	var bottom := TSUI.hbox(8)
 	v.add_child(bottom)
-	var prize := TSUI.hbox(6)
-	prize.add_child(TSIcon.make("coin", 30))
-	prize.add_child(TSUI.label("+%s" % TSProfile.fmt_coins(TSSets.reward(st)), 24))
-	bottom.add_child(TSUI.expand(prize))
+	var prize := TSUI.card(TSUI.BUTTER.lerp(Color.WHITE, 0.35), 99, 6, 0)
+	prize.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	var ph := TSUI.hbox(6)
+	prize.add_child(ph)
+	ph.add_child(TSIcon.make("coin", 30))
+	ph.add_child(TSUI.label("+%s" % TSProfile.fmt_coins(TSSets.reward(st)), 24))
+	bottom.add_child(prize)
+	bottom.add_child(TSUI.expand(Control.new()))
 	if claimed:
-		var got := TSUI.hbox(6)
-		got.add_child(TSIcon.make("check", 30))
-		got.add_child(TSUI.label("Claimed", 22, TSFX.COL_GAIN))
+		var got := TSUI.pill("CLAIMED", TSUI.MINT, 20)
+		got.rotation = -0.08
 		bottom.add_child(got)
 	elif done:
 		var claim := TSUI.button("Claim", TSUI.GREEN, 24, Vector2(150, 56))

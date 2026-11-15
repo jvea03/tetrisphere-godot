@@ -5,22 +5,22 @@ extends RefCounted
 ## lets the player claim its coins, once (TSProfile.sets_claimed). Only
 ## critters anyone can buy are in sets (none held back for a later release,
 ## none only in the Battle Pass), and each critter is in one set at most.
-## The reward is a quarter of what the set's critters cost to buy, rounded
-## to 500.
+## Each has its own colour for its card. The reward is a quarter of what
+## the set's critters cost to buy, rounded to 500.
 
 const SETS := [
-	{"id": "snacks", "name": "Snack Time", "critters": [18, 27, 36, 37, 38, 68]},     # Popcorn, Donut, Choco, Cocoa, Cinnamon, S'more
-	{"id": "pets", "name": "Pet Pals", "critters": [25, 34, 33, 41, 94, 26, 35]},       # Puppy, Kitty, Capy, Moo, Piggy, Donkey, Chick
-	{"id": "garden", "name": "In the Garden", "critters": [1, 8, 73, 87, 77]},          # Gardy, Sprout, Berry, Rosie, Violet
-	{"id": "family", "name": "Family Tree", "critters": [6, 7, 16, 45]},                # Granny, Grandpa, Mama, Baby
-	{"id": "crew", "name": "Camp Crew", "critters": [40, 59, 39, 48, 14]},             # Builder, Wrench, Scrubby, Explorer, Postie
-	{"id": "clinic", "name": "Doctor's Office", "critters": [19, 24, 62, 63, 92]},     # Nurse, Doc, Dentist, Medic, Labby
-	{"id": "outdoors", "name": "Out & About", "critters": [47, 89, 81, 74, 75]},        # Biker, Jogger, Tourist, Sunny, Shades
-	{"id": "splash", "name": "Splash Zone", "critters": [64, 65, 93, 90, 84, 83]},     # Sharky, Pearl, Diver, Sailor, Puddles, Drizzle
-	{"id": "snow", "name": "Snow Day", "critters": [66, 69, 56, 88]},                   # Skier, Boarder, Flurry, Rudy
-	{"id": "show", "name": "Showtime", "critters": [23, 44, 49, 98, 9]},               # Director, Artist, Party, Groovy, Skater
-	{"id": "royal", "name": "Royal Court", "critters": [10, 12, 43, 60, 61]},          # King, Knight, Gent, Mayor, Boss
-	{"id": "magic", "name": "Magic & Myth", "critters": [28, 30, 57, 17, 22, 103]},    # Dragon, Fairy, Witch, Rawr, Dino, Rainbow
+	{"id": "snacks", "color": Color(1.0, 0.72, 0.5), "name": "Snack Time", "critters": [18, 27, 36, 37, 38, 68]},     # Popcorn, Donut, Choco, Cocoa, Cinnamon, S'more
+	{"id": "pets", "color": Color(1.0, 0.8, 0.45), "name": "Pet Pals", "critters": [25, 34, 33, 41, 94, 26, 35]},       # Puppy, Kitty, Capy, Moo, Piggy, Donkey, Chick
+	{"id": "garden", "color": Color(0.6, 0.86, 0.56), "name": "In the Garden", "critters": [1, 8, 73, 87, 77]},          # Gardy, Sprout, Berry, Rosie, Violet
+	{"id": "family", "color": Color(1.0, 0.68, 0.76), "name": "Family Tree", "critters": [6, 7, 16, 45]},                # Granny, Grandpa, Mama, Baby
+	{"id": "crew", "color": Color(0.95, 0.74, 0.52), "name": "Camp Crew", "critters": [40, 59, 39, 48, 14]},             # Builder, Wrench, Scrubby, Explorer, Postie
+	{"id": "clinic", "color": Color(0.62, 0.86, 0.9), "name": "Doctor's Office", "critters": [19, 24, 62, 63, 92]},     # Nurse, Doc, Dentist, Medic, Labby
+	{"id": "outdoors", "color": Color(0.66, 0.84, 0.98), "name": "Out & About", "critters": [47, 89, 81, 74, 75]},        # Biker, Jogger, Tourist, Sunny, Shades
+	{"id": "splash", "color": Color(0.52, 0.76, 1.0), "name": "Splash Zone", "critters": [64, 65, 93, 90, 84, 83]},     # Sharky, Pearl, Diver, Sailor, Puddles, Drizzle
+	{"id": "snow", "color": Color(0.78, 0.88, 1.0), "name": "Snow Day", "critters": [66, 69, 56, 88]},                   # Skier, Boarder, Flurry, Rudy
+	{"id": "show", "color": Color(0.88, 0.7, 1.0), "name": "Showtime", "critters": [23, 44, 49, 98, 9]},               # Director, Artist, Party, Groovy, Skater
+	{"id": "royal", "color": Color(1.0, 0.82, 0.32), "name": "Royal Court", "critters": [10, 12, 43, 60, 61]},          # King, Knight, Gent, Mayor, Boss
+	{"id": "magic", "color": Color(0.76, 0.64, 1.0), "name": "Magic & Myth", "critters": [28, 30, 57, 17, 22, 103]},    # Dragon, Fairy, Witch, Rawr, Dino, Rainbow
 ]
 
 
