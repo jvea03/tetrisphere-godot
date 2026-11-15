@@ -172,9 +172,14 @@ static func ensure_buses() -> void:
 	apply_settings()
 
 
+## Each bus at its Settings slider, muted at 0. The slider is squared on the
+## way to decibels, so its middle sounds like the middle (half way is -12 dB).
 static func apply_settings() -> void:
-	AudioServer.set_bus_mute(AudioServer.get_bus_index(MUSIC_BUS), not TSProfile.music_enabled)
-	AudioServer.set_bus_mute(AudioServer.get_bus_index(SFX_BUS), not TSProfile.sfx_enabled)
+	for pair in [[MUSIC_BUS, TSProfile.music_volume], [SFX_BUS, TSProfile.sfx_volume]]:
+		var bus := AudioServer.get_bus_index(pair[0])
+		var v: float = pair[1]
+		AudioServer.set_bus_mute(bus, v <= 0.0)
+		AudioServer.set_bus_volume_db(bus, linear_to_db(v * v) if v > 0.0 else -80.0)
 
 
 static func _stream(name: String) -> AudioStreamWAV:

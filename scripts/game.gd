@@ -2457,8 +2457,9 @@ func _build_dialogs(root: Control) -> void:
 	help_row.add_child(replay)
 	pbox.add_child(help_row)
 	pbox.add_child(help)
-	for row in [["music", "Music", "music_enabled"], ["sound", "Sound Effects", "sfx_enabled"], ["vibrate", "Haptics", "haptics_enabled"]]:
-		pbox.add_child(_toggle_row(row[0], row[1], row[2]))
+	pbox.add_child(TSUI.volume_row("music", "Music", "music", 24, 44.0))
+	pbox.add_child(TSUI.volume_row("sound", "Sound Effects", "sfx", 24, 44.0))
+	pbox.add_child(_toggle_row("vibrate", "Haptics", "haptics_enabled"))
 	var home := TSUI.button("Home", TSUI.PINK, 28)
 	home.pressed.connect(_go_home)
 	pbox.add_child(home)

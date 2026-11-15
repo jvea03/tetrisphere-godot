@@ -326,8 +326,10 @@ static var collection_gift_claimed: bool = false
 static var _loaded: bool = false
 
 # -- audio/haptics toggles (Settings) ---------------------------------------
-static var music_enabled: bool = true
-static var sfx_enabled: bool = true
+static var music_enabled: bool = true   # music_volume > 0 (kept for older saves)
+static var sfx_enabled: bool = true     # sfx_volume > 0
+static var music_volume: float = 1.0    # 0..1, Settings' slider: 0 is off
+static var sfx_volume: float = 1.0
 static var haptics_enabled: bool = true
 static var notifications_enabled: bool = true   # reminders (scripts/meta/notify.gd)
 static var notify_asked: bool = false   # Home's "want reminders?" ask, once
@@ -342,6 +344,21 @@ static func get_toggle(name: String) -> bool:
 		"haptics_enabled": return haptics_enabled
 		"notifications_enabled": return notifications_enabled
 	return false
+
+
+## Settings' volume sliders, by name ("music", "sfx"): 0 to 1, 0 being off.
+static func get_volume(name: String) -> float:
+	return music_volume if name == "music" else sfx_volume
+
+
+static func set_volume(name: String, v: float) -> void:
+	v = clampf(v, 0.0, 1.0)
+	if name == "music":
+		music_volume = v
+		music_enabled = v > 0.0
+	else:
+		sfx_volume = v
+		sfx_enabled = v > 0.0
 
 
 static func set_toggle(name: String, on: bool) -> void:
@@ -2668,6 +2685,11 @@ static func ensure_loaded() -> void:
 	collection_gift_claimed = bool(g.call("collection_gift_claimed", false))
 	music_enabled = bool(g.call("music_enabled", true))
 	sfx_enabled = bool(g.call("sfx_enabled", true))
+	# A save from before the sliders: Off becomes 0, On full volume.
+	music_volume = clampf(float(g.call("music_volume", 1.0 if music_enabled else 0.0)), 0.0, 1.0)
+	sfx_volume = clampf(float(g.call("sfx_volume", 1.0 if sfx_enabled else 0.0)), 0.0, 1.0)
+	music_enabled = music_volume > 0.0
+	sfx_enabled = sfx_volume > 0.0
 	haptics_enabled = bool(g.call("haptics_enabled", true))
 	notifications_enabled = bool(g.call("notifications_enabled", true))
 	notify_asked = bool(g.call("notify_asked", false))
@@ -2802,6 +2824,8 @@ static func save() -> void:
 	s.call("collection_gift_claimed", collection_gift_claimed)
 	s.call("music_enabled", music_enabled)
 	s.call("sfx_enabled", sfx_enabled)
+	s.call("music_volume", music_volume)
+	s.call("sfx_volume", sfx_volume)
 	s.call("haptics_enabled", haptics_enabled)
 	s.call("notifications_enabled", notifications_enabled)
 	s.call("notify_asked", notify_asked)

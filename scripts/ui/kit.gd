@@ -220,6 +220,71 @@ static func bar(fill := GOLD, height := 26) -> ProgressBar:
 	return pb
 
 
+## A chunky slider from 0 to 1 in the menus' style: a white track that fills
+## with `fill`, and a round paper knob with an ink rim.
+static func slider(value: float, fill := MINT) -> HSlider:
+	var s := HSlider.new()
+	s.min_value = 0.0
+	s.max_value = 1.0
+	s.step = 0.05
+	s.value = value
+	s.focus_mode = Control.FOCUS_NONE
+	s.custom_minimum_size = Vector2(0, 56)
+	s.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var track := sb(Color(1, 1, 1, 0.9), 99, 3, 0, 0)
+	var filled := sb(fill, 99, 3, 0, 0)
+	for st in [track, filled]:
+		st.content_margin_top = 8.0
+		st.content_margin_bottom = 8.0
+	s.add_theme_stylebox_override("slider", track)
+	s.add_theme_stylebox_override("grabber_area", filled)
+	s.add_theme_stylebox_override("grabber_area_highlight", filled)
+	var knob := _knob()
+	for icon in ["grabber", "grabber_highlight", "grabber_disabled"]:
+		s.add_theme_icon_override(icon, knob)
+	return s
+
+
+static var _knob_tex: ImageTexture
+
+static func _knob() -> ImageTexture:
+	if _knob_tex == null:
+		var n := 44
+		var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
+		var c := Vector2(n, n) * 0.5
+		var r := n * 0.5 - 1.0
+		for y in n:
+			for x in n:
+				var d := Vector2(x + 0.5, y + 0.5).distance_to(c)
+				var col := INK if d > r - 4.0 else PAPER
+				col.a = clampf(r - d + 0.5, 0.0, 1.0)
+				img.set_pixel(x, y, col)
+		_knob_tex = ImageTexture.create_from_image(img)
+	return _knob_tex
+
+
+## A Settings row for a volume ("music" or "sfx"): its icon, its name and a
+## slider, 0 being off. Sound effects click as the slider is let go, so the
+## player hears the new level.
+static func volume_row(icon: String, text: String, which: String, font_size := 26, icon_size := 48.0) -> HBoxContainer:
+	var row := hbox(12)
+	row.add_child(TSIcon.make(icon, icon_size))
+	var caption := label(text, font_size)
+	caption.custom_minimum_size.x = 190.0
+	row.add_child(caption)
+	var s := slider(TSProfile.get_volume(which))
+	s.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	s.value_changed.connect(func(v: float) -> void:
+		TSProfile.set_volume(which, v)
+		TSSfx.apply_settings())
+	s.drag_ended.connect(func(_changed: bool) -> void:
+		TSProfile.save()
+		if which == "sfx":
+			TSSfx.play("click"))
+	row.add_child(s)
+	return row
+
+
 ## A small red "something waiting" dot for a button's corner.
 static func dot(parent: Control, px := 26.0) -> Panel:
 	var d := Panel.new()

@@ -1560,7 +1560,9 @@ func _build_settings() -> void:
 	help_row.add_child(tips)
 	box.add_child(help_row)
 	box.add_child(help)
-	var rows := [["music", "Music", "music_enabled"], ["sound", "Sound Effects", "sfx_enabled"], ["vibrate", "Haptics", "haptics_enabled"]]
+	box.add_child(TSUI.volume_row("music", "Music", "music"))
+	box.add_child(TSUI.volume_row("sound", "Sound Effects", "sfx"))
+	var rows := [["vibrate", "Haptics", "haptics_enabled"]]
 	if Notify.available():
 		rows.append(["clock", "Reminders", "notifications_enabled"])
 	for row in rows:
