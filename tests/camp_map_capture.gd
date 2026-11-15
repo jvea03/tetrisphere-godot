@@ -24,8 +24,11 @@ func _ready() -> void:
 		TSProfile.critter_level[i] = 1
 	for i in TSProfile.PART_COUNT:
 		TSProfile.part_level[i] = _level if TSProfile.PARTS[i]["group"] == "camp" else 0
-	var scale := 0.5
-	get_window().size = Vector2i(roundi(TSShipScene.W * scale), roundi(TSShipScene.H * scale))
+	# `ship`: just the crash site round the ship, closer up.
+	var ship := OS.get_cmdline_user_args().has("ship")
+	var scale := 0.9 if ship else 0.5
+	var view := Rect2(650, 380, 1350, 1000) if ship else Rect2(0, 0, TSShipScene.W, TSShipScene.H)
+	get_window().size = Vector2i(roundi(view.size.x * scale), roundi(view.size.y * scale))
 	get_window().content_scale_mode = Window.CONTENT_SCALE_MODE_DISABLED
 	var holder := Control.new()
 	holder.size = Vector2(get_window().size)
@@ -37,14 +40,14 @@ func _ready() -> void:
 	await get_tree().process_frame
 	_scene._zoom = scale
 	_scene._world.scale = Vector2.ONE * scale
-	_scene._offset = Vector2.ZERO
-	_scene._world.position = Vector2.ZERO
+	_scene._offset = -view.position * scale
+	_scene._world.position = _scene._offset
 	var marks := Control.new()
 	marks.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	marks.draw.connect(func():
 		var font := ThemeDB.fallback_font
 		for i in LABELS:
-			var p: Vector2 = TSShipScene.GROUND_NODES[i] * scale
+			var p: Vector2 = (TSShipScene.GROUND_NODES[i] - view.position) * scale
 			marks.draw_circle(p, 4.0, Color.RED)
 			marks.draw_string_outline(font, p + Vector2(6, 16), LABELS[i], HORIZONTAL_ALIGNMENT_LEFT, -1, 16, 4, Color.WHITE)
 			marks.draw_string(font, p + Vector2(6, 16), LABELS[i], HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color.BLACK))
@@ -53,5 +56,5 @@ func _ready() -> void:
 	await RenderingServer.frame_post_draw
 	var out := OS.get_environment("OUT")
 	if out != "":
-		get_viewport().get_texture().get_image().save_png(out.path_join("camp_map_%d.png" % _level))
+		get_viewport().get_texture().get_image().save_png(out.path_join(("camp_ship_%d.png" if ship else "camp_map_%d.png") % _level))
 	get_tree().quit()

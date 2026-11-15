@@ -87,24 +87,24 @@ const SPOT_BEAM := Color(0.95, 0.95, 0.84)   # the floodlights on the ship at ni
 const KITE_SKY := Vector2(340.0, 250.0)     # where the kite flies
 const POND := Vector2(560.0, 1000.0)
 const MOUND := SHIP_AT + Vector2(195.0, 62.0)
-const FIRE := Vector2(1140.0, 1010.0)   # the heart of the camp, by the ship: in view as Home opens, over the chest tray
+const FIRE := Vector2(1110.0, 1045.0)   # the heart of the camp, by the ship: in view as Home opens, over the chest tray
 const CRATER := Vector2(640.0, 2160.0)
 # The camp spots (TSProfile.PARTS), in neighbourhoods that make sense. The
 # first wave round the ship, where Home opens (the band between the top bar
-# and the chest tray is world y 350-1030): the workbench by the engine it is
+# and the chest tray is world y 310-1065 at ZOOM): the workbench by the engine it is
 # fixing, the fire, the tent on the far side; the garden and its well just
 # below, a short pan down.
-const TENT := Vector2(1590.0, 1000.0)
-const BENCH := Vector2(960.0, 900.0)
-const GARDEN := Vector2(1000.0, 1290.0)
-const WELL := Vector2(1290.0, 1400.0)
+const TENT := Vector2(1665.0, 1035.0)
+const BENCH := Vector2(940.0, 940.0)
+const GARDEN := Vector2(975.0, 1380.0)
+const WELL := Vector2(1310.0, 1480.0)
 const LOOKOUT := Vector2(2160.0, 640.0)   # up on the north-east rise, the telescope beside it
 const SOLAR := Vector2(880.0, 690.0)     # by the ship's tail, which it powers
 # Home life to the east, by the tent: the picnic table by the fire, washing
 # out beside the tent, the hammock past it, the mailbox where the path leaves
 # for the square.
-const PICNIC := Vector2(1590.0, 1360.0)
-const CLOTHESLINE := Vector2(1830.0, 940.0)
+const PICNIC := Vector2(1640.0, 1420.0)
+const CLOTHESLINE := Vector2(1980.0, 905.0)
 const HAMMOCK := Vector2(1960.0, 1220.0)
 const MAILBOX := Vector2(1380.0, 1610.0)
 # The farm to the west, past the garden: windmill and greenhouse in the fields;
@@ -121,7 +121,7 @@ const OVEN := Vector2(1000.0, 1880.0)
 const STATUE := Vector2(1320.0, 1980.0)
 # Out in the meadow: the hot spring in the far south-east, the observatory
 # up on the north-west hill where the sky is clear.
-const SPRING := Vector2(2100.0, 1960.0)
+const SPRING := Vector2(2110.0, 1905.0)
 const OBSERVATORY := Vector2(560.0, 640.0)
 ## The materials mine: a cart under the ship that fills by itself
 ## (TSProfile.mine_stored), its node floating just over it.
@@ -182,7 +182,7 @@ const GROUND_SIZE := 76.0        # a ground critter's size where it is nearest
 const FEET := {
 	"flag": Vector2(1600, 770), "dig": Vector2(1400, 832), "paint": Vector2(1200, 830),
 	"telescope": Vector2(2340, 650), "kite": Vector2(280, 760), "read": Vector2(700, 880),
-	"fish": Vector2(800, 1016), "sweep": Vector2(1760, 1150), "campfire": FIRE + Vector2(-90, 12),
+	"fish": Vector2(800, 1016), "sweep": Vector2(1470, 1230), "campfire": FIRE + Vector2(-90, 12),
 	"dance": Vector2(2390, 1000), "juggle": Vector2(2150, 1020), "crater": CRATER,
 }
 ## The walkers: [from x, to x, feet y, speed].
@@ -294,7 +294,7 @@ var _glide_to = null            # an offset the world is gliding to, or null
 var _builder_icons := {}        # part -> the TSIcon of the critter building it
 
 var _offset := Vector2.ZERO     # where the world sits on screen
-const ZOOM := 0.85              # the world as Home opens: drawn a little small, so more of the camp shows
+const ZOOM := 0.78              # the world as Home opens: drawn a little small, so more of the camp shows
 const ZOOM_MIN := 0.7           # the furthest a pinch zooms out
 const ZOOM_MAX := 1.6           # and the closest it zooms in
 var _zoom := ZOOM               # the zoom now (pinch, or the mouse wheel)
