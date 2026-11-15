@@ -193,6 +193,9 @@ func _ready() -> void:
 			sc._tab = 1
 			TSUI.style_tabs(sc._tabs, 1)
 			sc._show_tab())
+	if args_has("passleft"):
+		# `-- home passleft`: last season's unclaimed Battle Pass rewards, collected.
+		TSProfile.battle_pass_auto_claimed = {"coins": 22700, "materials": 2340, "skips": 15, "bomb": 9, "critters": [31], "stickers": ["jolly"]}
 	if args_has("bottom"):
 		# `-- shop bottom`: the screen's list scrolled to its end.
 		var t := get_tree()

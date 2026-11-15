@@ -106,10 +106,15 @@ func build() -> void:
 	var walkthrough := TSProfile.voyage_due() or _start_walkthrough()
 	TSProfile.settle_boards()
 	TSProfile.save()
-	var results := not walkthrough and not TSProfile.pending_board_prizes.is_empty()
+	# Last season's Battle Pass rewards the player hadn't claimed, collected for
+	# them as the season ended (TSProfile._collect_left_behind): say so first.
+	var pass_left := not walkthrough and not TSProfile.battle_pass_auto_claimed.is_empty()
+	var results := not walkthrough and not pass_left and not TSProfile.pending_board_prizes.is_empty()
 	var sale_up := not TSSales.current().is_empty() and not TSSales.popup_shown
-	_setup_sale(walkthrough or results)
-	if results:
+	_setup_sale(walkthrough or results or pass_left)
+	if pass_left:
+		_open_pass_collected.call_deferred()
+	elif results:
 		_open_board_results.call_deferred()
 	elif walkthrough or sale_up:
 		pass   # one pop-up at a time
@@ -1407,6 +1412,54 @@ func _tick_boards() -> void:
 	TSProfile.save()
 	if not TSProfile.pending_board_prizes.is_empty() and not _results["root"].visible:
 		_open_board_results()
+
+
+## The card for last season's unclaimed Battle Pass rewards, already in the
+## player's wallet: what came in, and one button.
+func _open_pass_collected() -> void:
+	var got: Dictionary = TSProfile.battle_pass_auto_claimed
+	if got.is_empty():
+		return
+	var d := TSUI.dialog(self, 600)
+	var box: VBoxContainer = d["box"]
+	box.add_child(TSUI.ribbon("Battle Pass Rewards", TSUI.LILAC, 38, 480.0))
+	box.add_child(TSUI.wrap(TSUI.label("Last season ended with rewards you hadn't claimed, so we collected them for you!", 22, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER)))
+	var grid := GridContainer.new()
+	grid.columns = 4
+	grid.add_theme_constant_override("h_separation", 18)
+	grid.add_theme_constant_override("v_separation", 12)
+	for pair in [["coins", "coin"], ["materials", "materials"], ["skips", "skip"], ["bomb", "bomb"]]:
+		var n := int(got.get(pair[0], 0))
+		if n > 0:
+			grid.add_child(_stack(pair[1], TSProfile.fmt_coins(n) if pair[0] == "coins" or pair[0] == "materials" else "x%d" % n))
+	for c in got.get("critters", []):
+		grid.add_child(_got_item(TSIcon.make("critter", 64, int(c)), TSProfile.critter_name(int(c))))
+	for p in got.get("parts", []):
+		grid.add_child(_got_item(TSIcon.make("part", 64, int(p)), TSProfile.part_name(int(p))))
+	for st in got.get("stickers", []):
+		grid.add_child(_got_item(TSIcon.make("sticker", 64, 0, str(st)), TSStickers.sticker_name(str(st))))
+	var center := CenterContainer.new()
+	center.add_child(grid)
+	box.add_child(center)
+	var ok := TSUI.button("Great!", TSUI.GREEN, 30, Vector2(0, 80))
+	ok.pressed.connect(func() -> void:
+		TSProfile.battle_pass_auto_claimed = {}
+		TSProfile.save()
+		_refresh_materials()
+		TSUI.conceal(d["root"])
+		d["root"].queue_free.call_deferred())
+	box.add_child(ok)
+	TSUI.juice(box)
+	TSUI.reveal(d["root"], d["panel"])
+	TSSfx.play("popper")
+
+
+func _got_item(art: Control, caption: String) -> Control:
+	var v := TSUI.vbox(2)
+	art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	v.add_child(art)
+	v.add_child(TSUI.label(caption, 18, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER))
+	return v
 
 
 func _open_board_results() -> void:
