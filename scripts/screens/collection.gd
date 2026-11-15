@@ -17,6 +17,7 @@ var _bonus_label: Label
 var _level_bar: ProgressBar
 var _feature: VBoxContainer
 var _feature_tile: Control
+var _bubble: Control          # what the featured critter is saying (tap its picture)
 var _feature_btn: Button
 var _owned_grid: GridContainer   # the critters you have
 var _locked_grid: GridContainer  # and the ones still to collect
@@ -155,8 +156,6 @@ func _build_critter_feature(i: int) -> void:
 	tags.add_child(TSUI.pill(TSProfile.RARITY_NAMES[rarity].to_upper(), TSUI.RARITY_COLORS[rarity], 18))
 	tags.add_child(TSUI.label("Lv %d/%d" % [level, TSProfile.CRITTER_MAX_LEVEL] if owned else "Not yet yours", 22, TSFX.COL_GAIN if owned else TSUI.MUTED))
 	info.add_child(tags)
-	# A line about them (TSCritterBios).
-	info.add_child(TSUI.wrap(TSUI.label(TSCritterBios.bio(TSProfile.critter_name(i)), 19, TSUI.INK if owned else TSUI.MUTED), 380))
 	if owned:
 		info.add_child(_stars(level, TSProfile.CRITTER_MAX_LEVEL, 28.0))
 		if i == TSProfile.avatar():
@@ -212,11 +211,60 @@ func _feature_row(i: int, owned: bool, rarity: int) -> VBoxContainer:
 	stage.add_child(art)
 	row.add_child(stage)
 	_feature_tile = stage
+	# Tap the picture and the critter says something (TSCritterBios).
+	stage.mouse_filter = Control.MOUSE_FILTER_STOP
+	stage.gui_input.connect(func(e: InputEvent) -> void:
+		if (e is InputEventMouseButton and not e.pressed and e.button_index == MOUSE_BUTTON_LEFT) or (e is InputEventScreenTouch and not e.pressed):
+			_say(i))
 	var info := TSUI.vbox(8)
 	TSUI.expand(info)
 	info.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_child(info)
 	return info
+
+
+## The featured critter's speech bubble: its line from TSCritterBios, popping
+## out beside its picture with a tail pointing at it, gone after a few seconds
+## (or when another is said).
+func _say(i: int) -> void:
+	if is_instance_valid(_bubble):
+		_bubble.queue_free()
+	var bubble := PanelContainer.new()
+	bubble.add_theme_stylebox_override("panel", TSUI.sb(Color.WHITE, 24, 3, 2, 18))
+	bubble.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bubble.z_index = 40
+	bubble.add_child(TSUI.wrap(TSUI.label(TSCritterBios.bio(TSProfile.critter_name(i)), 22, TSUI.INK), 300))
+	var tail := Control.new()
+	tail.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tail.show_behind_parent = false
+	tail.draw.connect(func() -> void:
+		var h := bubble.size.y
+		var pts := PackedVector2Array([Vector2(34, h - 4), Vector2(6, h + 26), Vector2(66, h - 4)])   # down at the critter
+		tail.draw_colored_polygon(pts, Color.WHITE)
+		tail.draw_polyline(PackedVector2Array([pts[0], pts[1], pts[2]]), TSUI.INK, 3.0, true))
+	bubble.add_child(tail)
+	add_child(bubble)
+	_bubble = bubble
+	bubble.reset_size()
+	bubble.size = bubble.get_combined_minimum_size()
+	var r := _feature_tile.get_global_rect()
+	# Up and to the right of the picture, its tail down at the critter's face.
+	var at := Vector2(r.position.x + r.size.x * 0.55, r.position.y + 30.0 - bubble.size.y)
+	at.x = minf(at.x, get_viewport_rect().size.x - bubble.size.x - 12.0)
+	bubble.global_position = at
+	tail.position = Vector2.ZERO
+	tail.queue_redraw()
+	bubble.pivot_offset = Vector2(20.0, bubble.size.y)
+	bubble.scale = Vector2(0.4, 0.4)
+	bubble.modulate.a = 0.0
+	TSSfx.play("pop1")
+	var tw := bubble.create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(bubble, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(bubble, "modulate:a", 1.0, 0.12)
+	tw.chain().tween_interval(4.0)
+	tw.chain().tween_property(bubble, "modulate:a", 0.0, 0.3)
+	tw.chain().tween_callback(bubble.queue_free)
 
 
 ## A sunburst behind the featured critter: soft rays turning slowly inside a

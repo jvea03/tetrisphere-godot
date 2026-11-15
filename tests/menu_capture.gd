@@ -168,6 +168,10 @@ func _ready() -> void:
 	if args_has("fake"):
 		# `-- leaderboard fake`: the editor's fake leaderboard, on this throwaway profile.
 		Online.force_fake = true
+	if args_has("bubble"):
+		# `-- collection bubble`: the featured critter's speech bubble, as its picture is tapped.
+		var tb := get_tree()
+		tb.create_timer(1.0).timeout.connect(func(): tb.current_scene._say(tb.current_scene._sel_critter))
 	if args_has("bottom"):
 		# `-- shop bottom`: the screen's list scrolled to its end.
 		var t := get_tree()
