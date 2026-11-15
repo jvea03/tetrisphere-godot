@@ -31,6 +31,12 @@ and iOS work the same way, with no plugin.
 
 ## One-time setup in the Firebase console
 
+Done on 2026-11-14: Anonymous sign-in on (auto clean-up off, so players keep
+their id), Firestore created (Standard edition, nam5, production mode, no
+backups on the free plan), rules published. The Android key works for the REST
+calls as it is (checked: Firestore, Identity Toolkit and Token Service accept
+it), so no key change was needed.
+
 1. **Authentication → Sign-in method:** enable **Anonymous**.
 2. **Firestore Database → Create database:** production mode, a location near
    most players (e.g. `nam5`, US). This can't be changed later.
