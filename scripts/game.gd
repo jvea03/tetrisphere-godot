@@ -2548,7 +2548,7 @@ func _show_win_card() -> void:
 	close.modulate.a = 0.0 if early else 1.0
 	close.disabled = early
 	# The creature that was sealed in the egg: a Milky, safe and sound.
-	box.add_child(TSUI.halo(TSIcon.make("milky", 200, 0, "rescued"), 280.0))
+	box.add_child(TSUI.halo(TSIcon.make("milky", 200, _creature.kind + 1, "rescued"), 280.0))
 	box.add_child(TSUI.label("You saved a Milky!", 30, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER))
 	var rewards := TSUI.card(Color(1.0, 0.95, 0.84), 24, 16, 2)
 	var row := TSUI.hbox(28)
@@ -2713,7 +2713,7 @@ func _refresh_lose_card() -> void:
 		var k := _escape_size()
 		var open := int(board.best_escape_patch(k)["open"])
 		var pct := clampi(roundi(100.0 * float(open) / float(k * k)), 0, 99)
-		box.add_child(TSUI.halo(TSIcon.make("milky", 120), 190.0, TSUI.LILAC, false))
+		box.add_child(TSUI.halo(TSIcon.make("milky", 120, _creature.kind + 1), 190.0, TSUI.LILAC, false))
 		box.add_child(TSUI.wrap(TSUI.label("The Milky is %d%% of the way out!" % pct, 28, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER)))
 		var progress := TSUI.bar(TSUI.MINT, 24)
 		progress.value = pct

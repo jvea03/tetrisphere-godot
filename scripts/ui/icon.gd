@@ -1103,8 +1103,49 @@ func _draw_badge(i: int) -> void:
 ## slightly bottom-heavy blob with big shiny eyes, pink cheeks and a smile,
 ## drawn as it was before the sticker critters came. c/r in unit coordinates.
 const MILKY := Color(1.0, 0.97, 0.93)
+
+## Which egg critter a "milky" icon is: its index 1-3 is TSCreature.KINDS 0-2
+## (small, middle, big: their colour, face patch and sprout, ears or horns);
+## 0 is the classic white Milky.
+func _milky_kind() -> int:
+	return index - 1 if index >= 1 and index <= TSCreature.KINDS.size() else -1
+
+
+## A kind's ears or horns, drawn before the body so it overlaps their roots.
+func _milky_back(c: Vector2, r: float, kind: int) -> void:
+	var body: Color = TSCreature.KINDS[kind]["body"]
+	match str(TSCreature.KINDS[kind]["extra"]):
+		"ears":
+			for side in [-1.0, 1.0]:
+				var at := c + Vector2(side * 0.5, -0.88) * r
+				_ellipse(at, 0.2 * r, 0.44 * r, _col(body), true, side * 0.28)
+				if not silhouette:
+					_ellipse(at + Vector2(0, 0.06) * r, 0.1 * r, 0.28 * r, TSCreature.INNER_EAR, false, side * 0.28)
+		"horns":
+			for side in [-1.0, 1.0]:
+				# Plump, rounded horns, tipped outward.
+				var at := c + Vector2(side * 0.52, -0.92) * r
+				_ellipse(at, 0.17 * r, 0.32 * r, _col(TSCreature.HORN), true, side * 0.45)
+				if not silhouette:
+					_ellipse(at + Vector2(-side * 0.04, -0.1) * r, 0.05 * r, 0.1 * r, Color(1, 1, 1, 0.7), false, side * 0.45)
+
+
+## A kind's sprout, over the top of the head.
+func _milky_front(c: Vector2, r: float, kind: int) -> void:
+	if str(TSCreature.KINDS[kind]["extra"]) != "sprout":
+		return
+	var root := c + Vector2(0, -0.9) * r
+	var top := c + Vector2(0, -1.2) * r
+	_line([root, top], TSCreature.LEAF.darkened(0.2), 1.2)
+	for side in [-1.0, 1.0]:
+		_ellipse(top + Vector2(side * 0.2, -0.04) * r, 0.22 * r, 0.1 * r, _col(TSCreature.LEAF), true, -side * 0.5)
+
+
 func _draw_milky(c: Vector2, r: float) -> void:
-	var body: Color = tint if tint.a > 0.0 else MILKY
+	var kind := _milky_kind()
+	var body: Color = TSCreature.KINDS[kind]["body"] if kind >= 0 else (tint if tint.a > 0.0 else MILKY)
+	if kind >= 0:
+		_milky_back(c, r, kind)
 	var pts: Array = []
 	for k in 40:
 		var a := TAU * float(k) / 40.0
@@ -1113,6 +1154,9 @@ func _draw_milky(c: Vector2, r: float) -> void:
 	_poly(pts, body)
 	if silhouette:
 		return
+	if kind >= 0:
+		# The lighter face patch, as on the critter in the egg.
+		_ellipse(c + Vector2(0, 0.1) * r, 0.66 * r, 0.5 * r, body.lightened(0.5), false)
 	# A soft shine on the upper left.
 	_ellipse(c + Vector2(-0.42, -0.5) * r, 0.2 * r, 0.11 * r, Color(1, 1, 1, 0.75), false, -0.6)
 	var eye_y := -0.06 * r
@@ -1123,6 +1167,8 @@ func _draw_milky(c: Vector2, r: float) -> void:
 		draw_circle(_u(e + Vector2(0.05, 0.06) * r), 0.028 * r * _s, WHITE, true, -1.0, true)
 		_ellipse(c + Vector2(side * 0.6 * r, 0.22 * r), 0.13 * r, 0.07 * r, Color(1.0, 0.58, 0.68, 0.8), false)
 	draw_arc(_u(c + Vector2(0, 0.14) * r), 0.1 * r * _s, 0.25, PI - 0.25, 12, INK, _w() * 0.8, true)
+	if kind >= 0:
+		_milky_front(c, r, kind)
 
 
 ## The win card's Milky: just hatched -- sitting in the bottom of its cracked
@@ -1134,8 +1180,10 @@ func _draw_milky_rescued() -> void:
 	var c := Vector2(0.5, 0.44)
 	var r := 0.26
 	# Arms flung up and out, behind the body.
+	var kind := _milky_kind()
+	var body: Color = TSCreature.KINDS[kind]["body"] if kind >= 0 else MILKY
 	for side in [-1.0, 1.0]:
-		_ellipse(c + Vector2(side * 0.31, -0.03), 0.055, 0.115, MILKY, true, side * 1.0)
+		_ellipse(c + Vector2(side * 0.31, -0.03), 0.055, 0.115, body, true, side * 1.0)
 	_draw_milky(c, r)
 	# The shell's bottom half round its middle: a zigzag rim, the inside shown
 	# in a darker cream behind the front.
@@ -1158,10 +1206,13 @@ func _draw_milky_rescued() -> void:
 		cap.append(Vector2(0.5 + cos(a) * 0.15, 0.25 + sin(a) * 0.13))
 	for k in 7:
 		cap.append(Vector2(0.65 - 0.3 * float(k) / 6.0, 0.25 + (0.0 if k % 2 == 0 else 0.04)))
-	var tipped: Array = []
-	for v in cap:
-		tipped.append(Vector2(0.53, 0.24) + ((v as Vector2) - Vector2(0.5, 0.2)).rotated(0.32))
-	_poly(tipped, SHELL)
+	# The classic Milky wears it tipped on its head; a critter with a sprout,
+	# ears or horns has popped it clean off.
+	if kind < 0:
+		var tipped: Array = []
+		for v in cap:
+			tipped.append(Vector2(0.53, 0.24) + ((v as Vector2) - Vector2(0.5, 0.2)).rotated(0.32))
+		_poly(tipped, SHELL)
 	# Sparkles.
 	_sparkle(Vector2(0.1, 0.42), 0.09, Color(1.0, 0.82, 0.3))
 	_sparkle(Vector2(0.9, 0.5), 0.08, Color(1.0, 0.82, 0.3))
