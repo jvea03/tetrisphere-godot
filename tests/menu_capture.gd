@@ -20,7 +20,8 @@ func _ready() -> void:
 	if OS.get_environment("OUT") != "":
 		# OUT=folder: saves shot.png there after a few seconds (or SHOT=name.png) and quits.
 		var t0 := get_tree()
-		t0.create_timer(3.0).timeout.connect(func():
+		var delay := float(OS.get_environment("SHOT_DELAY")) if OS.get_environment("SHOT_DELAY") != "" else 3.0
+		t0.create_timer(delay).timeout.connect(func():
 			await RenderingServer.frame_post_draw
 			t0.root.get_texture().get_image().save_png(OS.get_environment("OUT").path_join(OS.get_environment("SHOT") if OS.get_environment("SHOT") != "" else "shot.png"))
 			t0.quit())
@@ -148,6 +149,14 @@ func _ready() -> void:
 			for k in names.size():
 				rows.append({"uid": "u%d" % k, "name": names[k], "avatar": [3, 11, 15, 22, 31, 40, 52, 8][k], "stars": (40 - k * 5) * (1 if period == "daily" else 4), "is_player": false})
 			Online.boards[TSProfile.current_board(period)] = {"entries": rows, "at": Time.get_unix_time_from_system() + 9999}
+		if args_has("moved"):
+			# `moved`: as if last seen with the player 8th on 2 stars, and the rows
+			# in another order (Bean was 1st, Waffles new) -- to see the changes.
+			var daily := TSProfile.current_board("daily")
+			TSProfile.daily_star_total = 33
+			TSProfile.board_seen[daily] = [8, 2]
+			var lb_script: GDScript = load("res://scripts/screens/leaderboard.gd")
+			lb_script.set("_seen", {daily: {"u0": [2, 35], "u1": [3, 30], "u2": [4, 25], "u3": [1, 38], "u4": [5, 20], "u6": [6, 10], "u7": [7, 5]}})
 		if args_has("got"):
 			Online.received = [{"from": "u1", "name": "Pip", "avatar": 11, "sticker": "congrats"}, {"from": "u4", "name": "Clover", "avatar": 31, "sticker": "angry"}]
 		if args_has("sticker"):

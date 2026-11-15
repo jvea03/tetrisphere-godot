@@ -26,6 +26,11 @@ var _pinned: MarginContainer
 var _player_row: Control
 var _info: Dictionary
 var _status: Label            # connecting, offline, or only you so far
+## What each board looked like when last shown this run: board -> {player key
+## -> [rank, stars]} (the player's own also lasts across runs, in
+## TSProfile.board_seen), so a refresh can show what changed since.
+static var _seen := {}
+const MOVE_SECONDS := 0.7
 
 
 func tab_id() -> String:
@@ -119,16 +124,66 @@ func _refresh() -> void:
 	else:
 		_status.text = "Loading the leaderboard..."
 	_status.visible = _status.text != ""
+	# What changed since this board was last shown: only once its rows have
+	# arrived (the first look, with only the player on it, says nothing).
+	var board := TSProfile.current_board(_tab)
+	var before: Dictionary = (_seen.get(board, {}) as Dictionary).duplicate()
+	if TSProfile.board_seen.has(board) and not before.has("me"):
+		before["me"] = TSProfile.board_seen[board]
+	var compare := fetched and not before.is_empty()
+	var now := {}
+	var moves: Array = []   # [row card, places it rose (negative: fell)]
 	for i in entries.size():
-		var row := _row(i + 1, entries[i])
-		_list.add_child(row)
-		if entries[i].get("is_player", false):
-			_player_row = row
-			_pinned.add_child(_row(i + 1, entries[i]))
+		var e: Dictionary = entries[i]
+		var key := "me" if e.get("is_player", false) else str(e.get("uid", e["name"]))
+		now[key] = [i + 1, int(e["stars"])]
+		var was: Variant = before.get(key) if compare else null
+		var holder := _row(i + 1, e, was if was != null else ([] if not compare else ["new"]))
+		_list.add_child(holder)
+		if was != null and int(was[0]) != i + 1:
+			moves.append([holder.get_child(0), int(was[0]) - (i + 1), key == "me"])
+		if e.get("is_player", false):
+			_player_row = holder
+			_pinned.add_child(_row(i + 1, e, []))
 	if entries.size() >= 3:
 		_list.add_child(_podium(entries))
+	if fetched:
+		_seen[board] = now
+		if now.has("me"):
+			TSProfile.board_seen[board] = now["me"]
 	_refresh_countdown()
 	_scroll_to_player()
+	if not moves.is_empty():
+		_play_moves(moves)
+
+
+## Each row that moved glides from where it was to where it is now (the
+## player's own on top, with a bounce as it lands).
+func _play_moves(moves: Array) -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if not is_inside_tree():
+		return
+	var step := 0.0
+	for c in _list.get_children():
+		if c is Control and (c as Control).size.y > 0.0:
+			step = (c as Control).size.y + float(_list.get_theme_constant("separation"))
+			break
+	if step <= 0.0:
+		return
+	var span := float(_list.get_child_count()) * step
+	for m in moves:
+		var card: Control = m[0]
+		var from := clampf(float(m[1]) * step, -span, span)
+		card.position.y = from
+		card.z_index = 2 if m[2] else 1
+		var tw := card.create_tween()
+		tw.tween_property(card, "position:y", 0.0, MOVE_SECONDS).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+		if m[2]:
+			card.pivot_offset = card.size * 0.5
+			tw.tween_property(card, "scale", Vector2(1.04, 1.04), 0.12)
+			tw.tween_property(card, "scale", Vector2.ONE, 0.18)
+			tw.tween_callback(func() -> void: TSSfx.play("ding" if int(m[1]) > 0 else "tick"))
 
 
 ## Under the list, the board's top three on a podium: gold in the middle,
@@ -199,7 +254,10 @@ func _refresh_countdown() -> void:
 	_countdown.text = "%s in %s" % ["Resets" if _tab == "daily" else "Ends", TSUI.fmt_duration(maxi(secs, 0))]
 
 
-func _row(rank: int, entry: Dictionary) -> Control:
+## A row, in a holder of its own height so the card can glide inside it
+## (_play_moves). `was` is [rank, stars] when it was last shown, ["new"] for
+## someone who wasn't there then, or [] for nothing to show.
+func _row(rank: int, entry: Dictionary, was: Array = []) -> Control:
 	var me: bool = entry.get("is_player", false)
 	var card := TSUI.card(Color(0.86, 0.96, 0.8) if me else TSUI.CARD, 22, 12, 3)
 	var h := TSUI.hbox(10)
@@ -224,7 +282,23 @@ func _row(rank: int, entry: Dictionary) -> Control:
 	var ch := TSUI.hbox(4)
 	chip.add_child(ch)
 	ch.add_child(TSIcon.make("star", 32))
-	ch.add_child(TSUI.label(str(entry["stars"]), 26))
+	var stars_lbl := TSUI.label(str(entry["stars"]), 26)
+	ch.add_child(stars_lbl)
+	# What changed since last time: places up or down, or new here; stars
+	# gained count up.
+	if was.size() == 1:
+		h.add_child(TSUI.pill("NEW", TSUI.SKY, 14))
+	elif was.size() == 2:
+		var moved := int(was[0]) - rank
+		if moved != 0:
+			h.add_child(_move_chip(moved))
+		var old_stars := int(was[1])
+		var new_stars := int(entry["stars"])
+		if new_stars > old_stars:
+			stars_lbl.text = str(old_stars)
+			var tw := stars_lbl.create_tween()
+			tw.tween_interval(0.3)
+			tw.tween_method(func(v: float) -> void: stars_lbl.text = str(roundi(v)), float(old_stars), float(new_stars), 0.8)
 	h.add_child(chip)
 	if not me:
 		# Another player: tap for their card (a sticker, block, report).
@@ -233,7 +307,29 @@ func _row(rank: int, entry: Dictionary) -> Control:
 			if (e is InputEventMouseButton and not e.pressed and e.button_index == MOUSE_BUTTON_LEFT) or (e is InputEventScreenTouch and not e.pressed):
 				if not _scroll_moved():
 					TSStickerCards.show_player(self, entry, _refresh))
-	return card
+	var holder := Control.new()
+	holder.mouse_filter = Control.MOUSE_FILTER_PASS
+	holder.custom_minimum_size = Vector2(0, card.get_combined_minimum_size().y)
+	holder.add_child(card)
+	holder.resized.connect(func() -> void: card.size = Vector2(holder.size.x, holder.custom_minimum_size.y))
+	return holder
+
+
+## Places up (green, an arrow up) or down (red, an arrow down).
+func _move_chip(moved: int) -> Control:
+	var up := moved > 0
+	var chip := TSUI.card(Color(0.78, 0.94, 0.76) if up else Color(1.0, 0.82, 0.82), 99, 6, 0)
+	var row := TSUI.hbox(2)
+	chip.add_child(row)
+	var arrow := Control.new()
+	arrow.custom_minimum_size = Vector2(16, 16)
+	arrow.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	arrow.draw.connect(func() -> void:
+		var pts := PackedVector2Array([Vector2(8, 2), Vector2(15, 14), Vector2(1, 14)]) if up else PackedVector2Array([Vector2(1, 2), Vector2(15, 2), Vector2(8, 14)])
+		arrow.draw_colored_polygon(pts, Color(0.2, 0.62, 0.3) if up else Color(0.86, 0.28, 0.32)))
+	row.add_child(arrow)
+	row.add_child(TSUI.label(str(absi(moved)), 18, TSUI.INK))
+	return chip
 
 
 var _press_scroll := 0

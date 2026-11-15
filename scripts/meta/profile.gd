@@ -1889,6 +1889,9 @@ static var pending_board_results: Array = []
 static var stickers_owned: Array = []
 ## Collection sets whose coins have been claimed (TSSets ids).
 static var sets_claimed: Array = []
+## Where this player last saw themselves on each board: board id -> [rank,
+## stars], so the leaderboard can animate a climb (or a slip) since then.
+static var board_seen: Dictionary = {}
 static var blocked_players: Array = []
 
 
@@ -2841,6 +2844,12 @@ static func ensure_loaded() -> void:
 	stickers_owned = (g.call("stickers_owned", []) as Array).filter(func(id: Variant) -> bool: return TSStickers.ALL.has(str(id)))
 	blocked_players = (g.call("blocked_players", []) as Array).duplicate()
 	sets_claimed = (g.call("sets_claimed", []) as Array).duplicate()
+	board_seen = {}
+	var seen: Variant = g.call("board_seen", {})
+	if seen is Dictionary:
+		for b: String in seen:   # only the boards still running are worth keeping
+			if b.ends_with(TSClock.utc_date_string()) or b.begins_with("weekly") or b.begins_with("season"):
+				board_seen[b] = seen[b]
 	battle_pass_key = str(g.call("battle_pass_key", ""))
 	battle_pass_xp = int(g.call("battle_pass_xp", 0))
 	battle_pass_purchased = bool(g.call("battle_pass_purchased", false))
@@ -2960,6 +2969,7 @@ static func save() -> void:
 	s.call("pending_board_results", pending_board_results)
 	s.call("stickers_owned", stickers_owned)
 	s.call("sets_claimed", sets_claimed)
+	s.call("board_seen", board_seen)
 	s.call("blocked_players", blocked_players)
 	s.call("battle_pass_key", battle_pass_key)
 	s.call("battle_pass_xp", battle_pass_xp)
