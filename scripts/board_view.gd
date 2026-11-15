@@ -33,11 +33,14 @@ const EGG_TAPER := 0.13
 # The caps stand level with a fresh shell, however deep this ball is (see
 # _cap_radius); they are rebuilt when a ball of another depth is loaded.
 const CAP_TRIM := 0.07      # latitude the trim ring covers, in radians
-## The caps are shell, not play: a dark dusky plum, darker and greyer than any
-## piece (and a warmer hue than the blue-grey armour), so they never read as
-## something to tap. The trim ring is a lighter shade of the same.
-const CAP_COLOR := Color(0.42, 0.31, 0.40)
-const CAP_TRIM_COLOR := Color(0.55, 0.43, 0.52)
+## The caps are the egg's own shell, not play: a warm cream eggshell with soft
+## brown speckles (CAP_SPECKLE), a far quieter colour than any piece's pastel
+## and with a pattern no piece has, so they never read as something to tap.
+## The trim ring where they meet the band is a toasty tan.
+const CAP_COLOR := Color(0.99, 0.94, 0.84)
+const CAP_TRIM_COLOR := Color(0.86, 0.68, 0.5)
+const CAP_SPECKLE := Color(0.66, 0.48, 0.36)
+const CAP_SPECKLES := 26          # per cap
 
 # One colour per piece, in TSBoard.SHAPES order: soft pastels, kept far enough
 # apart in hue to tell at a glance. The two lines keep the footage's pairing --
@@ -134,7 +137,10 @@ func _build_caps() -> void:
 	var cap := CAP_COLOR
 	var dome_mat := make_material(cap, 1.0)
 	var trim_mat := make_material(CAP_TRIM_COLOR, 1.0, 0.0, false)
-	var wall_mat := make_material(cap.darkened(0.25), 1.0, 0.0, false)
+	var wall_mat := make_material(CAP_TRIM_COLOR.darkened(0.25), 1.0, 0.0, false)
+	var speck_mat := make_material(CAP_SPECKLE, 1.0, 0.0, false)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 1712   # the same speckles on every egg
 	var outward := func(p: Vector3) -> Vector3: return p
 	for side in [1.0, -1.0]:
 		var s: float = side
@@ -143,6 +149,26 @@ func _build_caps() -> void:
 		var dome := func(u: float, v: float) -> Vector3:
 			return _sphere_dir(u * TAU, lerpf(edge + CAP_TRIM * 0.5 * s, PI * 0.5 * s, v)) * cap_r
 		_add_cap_part(dome, outward, 64, 14, dome_mat)
+		# Speckles over the dome, pressed flat on it, like a real egg's.
+		for k in CAP_SPECKLES:
+			var theta := rng.randf() * TAU
+			var phi := lerpf(edge + CAP_TRIM * 1.6 * s, PI * 0.5 * s, sqrt(rng.randf()) * 0.92)
+			var at := egg(_sphere_dir(theta, phi) * (cap_r + 0.015))
+			var dot := MeshInstance3D.new()
+			var sm := SphereMesh.new()
+			var r := rng.randf_range(0.1, 0.2)
+			sm.radius = r
+			sm.height = r * 2.0
+			sm.radial_segments = 10
+			sm.rings = 5
+			dot.mesh = sm
+			dot.material_override = speck_mat
+			dot.position = at
+			var up := at.normalized()
+			var across := up.cross(Vector3.RIGHT if absf(up.x) < 0.9 else Vector3.FORWARD).normalized()
+			dot.basis = Basis(across * rng.randf_range(1.0, 1.6), up * 0.25, across.cross(up))   # flat along the shell
+			add_child(dot)
+			_caps.append(dot)
 		# Trim: a ring standing a little proud of the dome, over the band's edge.
 		var trim := func(u: float, v: float) -> Vector3:
 			return _sphere_dir(u * TAU, lerpf(edge - 0.01 * s, edge + CAP_TRIM * s, v)) * (cap_r + 0.06)

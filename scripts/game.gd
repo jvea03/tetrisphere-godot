@@ -372,6 +372,11 @@ func _build_hud() -> void:
 	next_tray.add_theme_stylebox_override("panel", next_style)
 	next_tray.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(next_tray)
+	# A little tag on its corner, so it reads as what comes after the piece in hand.
+	var next_tag := TSUI.pill("NEXT", TSUI.BUTTER, 14)
+	next_tag.position = Vector2(-10.0, -14.0)
+	next_tag.rotation = -0.12
+	next_tray.add_child(next_tag)
 	_next_box = Control.new()
 	_next_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(_next_box)
