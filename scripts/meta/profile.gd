@@ -2313,12 +2313,13 @@ static func _collect_left_behind(season_n: int, xp: int, bought: bool, free_clai
 
 static func _collect_reward(reward: Dictionary) -> void:
 	var s := battle_pass_auto_claimed
-	var before := {"coins": coin_count, "materials": materials, "skips": time_skips, "bomb": bomb_count}
+	var before := {"coins": coin_count, "materials": materials, "skips": time_skips, "bomb": bomb_count, "pass_tickets": pass_tickets}
 	_apply_reward(reward)
 	s["coins"] = int(s.get("coins", 0)) + coin_count - int(before["coins"])
 	s["materials"] = int(s.get("materials", 0)) + materials - int(before["materials"])
 	s["skips"] = int(s.get("skips", 0)) + time_skips - int(before["skips"])
 	s["bomb"] = int(s.get("bomb", 0)) + bomb_count - int(before["bomb"])
+	s["pass_tickets"] = int(s.get("pass_tickets", 0)) + pass_tickets - int(before["pass_tickets"])
 	for k in ["critter", "part", "sticker"]:
 		if reward.has(k):
 			var list: Array = s.get(k + "s", [])
@@ -2375,6 +2376,50 @@ static func battle_pass_tier_buy_cost() -> int:
 		return 0
 	var needed: int = battle_pass_stars_for_tier(tier + 1) - battle_pass_xp
 	return maxi(needed, 1) * TIER_BUY_COINS_PER_STAR
+
+
+## Two Battle Pass currencies, sent as inbox gifts (TSInbox): a Tier Skip
+## moves the pass up one tier; PASS_TICKETS_FOR_PREMIUM Pass Tickets unlock
+## this season's premium track. Both keep from season to season.
+const PASS_TICKETS_FOR_PREMIUM := 10
+## From the Christmas season (season 2) on, every season's pass gives Pass
+## Tickets: one on each of these tiers, on top of what the tier already pays
+## -- 2 on the free track, 3 on the premium one.
+const PASS_TICKET_SEASON := 2
+const PASS_TICKET_FREE_TIERS := [12, 24]
+const PASS_TICKET_PAID_TIERS := [8, 18, 28]
+static var tier_skips: int = 0
+static var pass_tickets: int = 0
+
+
+static func can_use_tier_skip() -> bool:
+	return tier_skips > 0 and battle_pass_open() and battle_pass_tier() < BATTLE_PASS_TIER_COUNT
+
+
+## Spends a Tier Skip: the pass moves up to the start of the next tier.
+static func use_tier_skip() -> bool:
+	if not can_use_tier_skip():
+		return false
+	var tier := battle_pass_tier()
+	tier_skips -= 1
+	battle_pass_xp = battle_pass_stars_for_tier(tier + 1)
+	save()
+	return true
+
+
+static func can_redeem_pass_tickets() -> bool:
+	_roll_battle_pass()
+	return pass_tickets >= PASS_TICKETS_FOR_PREMIUM and not battle_pass_purchased and battle_pass_open()
+
+
+## Trades PASS_TICKETS_FOR_PREMIUM tickets for this season's premium track.
+static func redeem_pass_tickets() -> bool:
+	if not can_redeem_pass_tickets():
+		return false
+	pass_tickets -= PASS_TICKETS_FOR_PREMIUM
+	battle_pass_purchased = true
+	save()
+	return true
 
 
 static func purchase_battle_pass_tier() -> bool:
@@ -2439,6 +2484,11 @@ static func battle_pass_season_number() -> int:
 	return n
 
 
+## Whether season `n` (this one for 0) gives Pass Tickets.
+static func _tickets_season(n: int) -> bool:
+	return (n if n > 0 else battle_pass_season_number()) >= PASS_TICKET_SEASON
+
+
 ## A season's rewards: this one's, or season `n`'s.
 static func season_rewards(n := 0) -> Dictionary:
 	if n <= 0:
@@ -2470,6 +2520,8 @@ static func _pass_currency(tier: int, coins: int, materials: int, skips: int) ->
 
 static func battle_pass_free_reward(tier: int, season_n := 0) -> Dictionary:
 	var r := _pass_currency(tier, BATTLE_PASS_FREE_COINS_BASE + BATTLE_PASS_COINS_STEP * (tier - 1), 100 + 20 * tier, 5)
+	if _tickets_season(season_n) and PASS_TICKET_FREE_TIERS.has(tier):
+		r["pass_tickets"] = 1
 	var critters: Dictionary = season_rewards(season_n)["free_critters"]
 	var stickers: Dictionary = season_rewards(season_n).get("free_stickers", {})
 	if critters.has(tier):
@@ -2486,6 +2538,8 @@ static func battle_pass_free_reward(tier: int, season_n := 0) -> Dictionary:
 ## out a critter or a ship part.
 static func battle_pass_paid_reward(tier: int, season_n := 0) -> Dictionary:
 	var r := _pass_currency(tier, BATTLE_PASS_PAID_COINS_BASE + BATTLE_PASS_COINS_STEP * (tier - 1), 200 + 40 * tier, 10)
+	if _tickets_season(season_n) and PASS_TICKET_PAID_TIERS.has(tier):
+		r["pass_tickets"] = 1
 	var season := season_rewards(season_n)
 	if season["paid_critters"].has(tier):
 		r["critter"] = season["paid_critters"][tier]
@@ -2518,6 +2572,7 @@ static func _apply_reward(reward: Dictionary) -> void:
 		bombs_unlocked = true
 	if reward.has("sticker"):
 		TSStickers.grant(str(reward["sticker"]))
+	pass_tickets += int(reward.get("pass_tickets", 0))
 
 
 static func has_claimable_battle_pass_reward() -> bool:
@@ -2900,6 +2955,8 @@ static func ensure_loaded() -> void:
 	sets_claimed = (g.call("sets_claimed", []) as Array).duplicate()
 	var auto: Variant = g.call("battle_pass_auto_claimed", {})
 	battle_pass_auto_claimed = (auto as Dictionary).duplicate(true) if auto is Dictionary else {}
+	tier_skips = maxi(0, int(g.call("tier_skips", 0)))
+	pass_tickets = maxi(0, int(g.call("pass_tickets", 0)))
 	board_seen = {}
 	var seen: Variant = g.call("board_seen", {})
 	if seen is Dictionary:
@@ -3026,6 +3083,8 @@ static func save() -> void:
 	s.call("stickers_owned", stickers_owned)
 	s.call("sets_claimed", sets_claimed)
 	s.call("board_seen", board_seen)
+	s.call("tier_skips", tier_skips)
+	s.call("pass_tickets", pass_tickets)
 	s.call("battle_pass_auto_claimed", battle_pass_auto_claimed)
 	s.call("blocked_players", blocked_players)
 	s.call("battle_pass_key", battle_pass_key)

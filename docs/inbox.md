@@ -25,7 +25,7 @@ cache). No app update is needed once a version with the inbox is live.
 | `id` | yes | Unique, and never reused: a phone that collected this id never sees it again |
 | `title` | yes | The heading |
 | `body` | no | The text, up to 200 characters (anything longer is cut off) |
-| `rewards` | no | Any of `coins`, `materials`, `bomb`, `swap` (the Any Piece), `rocks`, `skips`. With none, the button says OK |
+| `rewards` | no | Any of `coins`, `materials`, `bomb`, `swap` (the Any Piece), `rocks`, `skips` (time skips), `tier_skips` (Battle Pass Tier Skips), `pass_tickets` (10 unlock that season's premium pass). With none, the button says OK |
 | `min_level`, `max_level` | no | Only players on these levels |
 | `min_streak` | no | Only players on this login streak or longer |
 | `from`, `until` | no | Dates, `YYYY-MM-DD`, in the player's local time, both included |

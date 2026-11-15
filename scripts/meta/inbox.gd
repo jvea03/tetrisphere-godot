@@ -12,7 +12,8 @@ const URL := "https://raw.githubusercontent.com/jvea03/tetrisphere-godot/main/st
 const CACHE_PATH := "user://inbox_cache.json"
 const MAX_BODY := 200
 ## What a message can give: its key in the file -> its icon.
-const REWARDS := {"coins": "coin", "materials": "materials", "bomb": "bomb", "swap": "swap", "rocks": "rocks", "skips": "skip"}
+const REWARDS := {"coins": "coin", "materials": "materials", "bomb": "bomb", "swap": "swap", "rocks": "rocks", "skips": "skip",
+	"tier_skips": "tier_skip", "pass_tickets": "ticket"}
 
 static var messages: Array = []
 static var _fetched := false
@@ -71,6 +72,8 @@ static func claim(m: Dictionary) -> void:
 	TSProfile.coin_count += int(rewards.get("coins", 0))
 	TSProfile.add_materials(int(rewards.get("materials", 0)))
 	TSProfile.time_skips += int(rewards.get("skips", 0))
+	TSProfile.tier_skips += int(rewards.get("tier_skips", 0))
+	TSProfile.pass_tickets += int(rewards.get("pass_tickets", 0))
 	for booster: String in ["bomb", "swap", "rocks"]:
 		if rewards.has(booster):
 			TSProfile.add_boosters(booster, int(rewards[booster]))

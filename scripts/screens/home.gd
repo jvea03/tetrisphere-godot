@@ -1428,7 +1428,7 @@ func _open_pass_collected() -> void:
 	grid.columns = 4
 	grid.add_theme_constant_override("h_separation", 18)
 	grid.add_theme_constant_override("v_separation", 12)
-	for pair in [["coins", "coin"], ["materials", "materials"], ["skips", "skip"], ["bomb", "bomb"]]:
+	for pair in [["coins", "coin"], ["materials", "materials"], ["skips", "skip"], ["bomb", "bomb"], ["pass_tickets", "ticket"]]:
 		var n := int(got.get(pair[0], 0))
 		if n > 0:
 			grid.add_child(_stack(pair[1], TSProfile.fmt_coins(n) if pair[0] == "coins" or pair[0] == "materials" else "x%d" % n))

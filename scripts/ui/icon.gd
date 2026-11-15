@@ -182,6 +182,8 @@ func _draw() -> void:
 		"skip": _draw_skip()
 		"tag": _draw_tag()
 		"mail": _draw_mail()
+		"ticket": _draw_ticket()
+		"tier_skip": _draw_tier_skip()
 		"sticker": _draw_sticker(variant)
 		"cog": _draw_cog()
 		"home": _draw_home()
@@ -1329,3 +1331,32 @@ func _draw_sticker(id: String) -> void:
 			_circle(Vector2(0.44, 0.6), 0.05, _col(WHITE), false)
 		_:
 			_sticker_face(c, 0.36, GOLD)
+
+
+## A Pass Ticket: a golden ticket, notched at the ends, a star in the middle.
+func _draw_ticket() -> void:
+	var pts: Array = []
+	for k in 7:   # the left end, bitten in
+		var a := -PI * 0.5 + PI * float(k) / 6.0
+		pts.append(Vector2(0.1, 0.5) + Vector2(cos(a), sin(a)) * 0.08)
+	pts.reverse()
+	pts = [Vector2(0.1, 0.24)] + pts + [Vector2(0.1, 0.76), Vector2(0.9, 0.76)]
+	for k in 7:   # and the right
+		var a := PI * 0.5 + PI * float(k) / 6.0
+		pts.append(Vector2(0.9, 0.5) + Vector2(cos(a), sin(a)) * 0.08)
+	pts.append(Vector2(0.9, 0.24))
+	_poly(pts, _col(GOLD))
+	if silhouette:
+		return
+	_line([Vector2(0.3, 0.3), Vector2(0.3, 0.7)], Color(INK, 0.35), 0.7)
+	_line([Vector2(0.7, 0.3), Vector2(0.7, 0.7)], Color(INK, 0.35), 0.7)
+	_poly(_star_pts(Vector2(0.5, 0.51), 0.15, 0.07), Color(1.0, 0.55, 0.7))
+
+
+## A Tier Skip: a lilac badge with two chevrons pointing up.
+func _draw_tier_skip() -> void:
+	_rrect(Rect2(0.16, 0.12, 0.68, 0.76), 0.16, _col(Color(0.78, 0.64, 1.0)))
+	if silhouette:
+		return
+	for y in [0.36, 0.56]:
+		_line([Vector2(0.32, y + 0.12), Vector2(0.5, y), Vector2(0.68, y + 0.12)], WHITE, 1.8)

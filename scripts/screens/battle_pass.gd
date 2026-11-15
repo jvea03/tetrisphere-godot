@@ -22,6 +22,7 @@ var _tier_list: VBoxContainer
 var _tier_scroll: ScrollContainer
 var _quest_list: VBoxContainer
 var _buy_btn: Button
+var _gifts: HBoxContainer       # Tier Skips and Pass Tickets, when the player has any
 var _purchased: Label
 var _buy: Dictionary
 var _info: Dictionary
@@ -57,6 +58,8 @@ func build() -> void:
 	content.add_child(_progress_label)
 	_progress = TSUI.bar(TSUI.GOLD, 30)
 	content.add_child(_progress)
+	_gifts = TSUI.hbox(10)
+	content.add_child(_gifts)
 	_tabs = TSUI.tabs(["Battle Pass", "Quests"], _on_main_tab)
 	content.add_child(_tabs)
 	for b in _tabs.get_meta("buttons"):
@@ -132,8 +135,52 @@ func _refresh() -> void:
 		_tier_buy.disabled = TSProfile.coin_count < cost
 	_buy_btn.visible = not TSProfile.battle_pass_purchased
 	_purchased.visible = TSProfile.battle_pass_purchased
+	_build_gifts()
 	_build_tiers()
 	_refresh_dots()
+
+
+## Tier Skips and Pass Tickets (inbox gifts), side by side under the bar,
+## each with its button; hidden while the player has neither.
+func _build_gifts() -> void:
+	for c in _gifts.get_children():
+		c.queue_free()
+	var skips := TSProfile.tier_skips
+	var tickets := TSProfile.pass_tickets
+	_gifts.visible = skips > 0 or tickets > 0
+	if skips > 0:
+		var use := _gift_card("tier_skip", "Tier Skips  x%d" % skips, "Skip a Tier", TSProfile.can_use_tier_skip())
+		use.pressed.connect(func() -> void:
+			if TSProfile.use_tier_skip():
+				TSSfx.play("upgrade")
+				TSFX.sparkle_burst(self, _progress)
+				_refresh())
+	if tickets > 0:
+		var need := TSProfile.PASS_TICKETS_FOR_PREMIUM
+		var redeem := _gift_card("ticket", "Pass Tickets  %d/%d" % [tickets, need], ("Use %d Tickets" % need) if not TSProfile.battle_pass_purchased else "Premium on", TSProfile.can_redeem_pass_tickets())
+		redeem.pressed.connect(func() -> void:
+			if TSProfile.redeem_pass_tickets():
+				TSSfx.play("popper")
+				TSFX.confetti(self)
+				_refresh())
+
+
+## One currency's card: its icon and count, and the button that spends it.
+func _gift_card(icon: String, text: String, action: String, enabled: bool) -> Button:
+	var card := TSUI.card(TSUI.CARD, 20, 10, 2)
+	TSUI.expand(card)
+	var v := TSUI.vbox(6)
+	card.add_child(v)
+	var top := TSUI.hbox(6)
+	top.alignment = BoxContainer.ALIGNMENT_CENTER
+	top.add_child(TSIcon.make(icon, 36))
+	top.add_child(TSUI.label(text, 20))
+	v.add_child(top)
+	var b := TSUI.button(action, COL_PREMIUM_RIM if icon == "ticket" else TSUI.BUTTER, 20, Vector2(0, 52), 4)
+	b.disabled = not enabled
+	v.add_child(b)
+	_gifts.add_child(card)
+	return b
 
 
 func _refresh_timer() -> void:
@@ -212,6 +259,8 @@ func _reward_card(tier: int, current: int, reward: Dictionary, premium: bool) ->
 		h.add_child(_item("skip", 0, "x%d" % int(reward["skips"])))
 	if int(reward.get("bomb", 0)) > 0:
 		h.add_child(_item("bomb", 0, "x%d" % int(reward["bomb"])))
+	if int(reward.get("pass_tickets", 0)) > 0:
+		h.add_child(_item("ticket", 0, "Ticket"))
 	if (not premium and not reached) or (premium and not TSProfile.battle_pass_purchased):
 		var lock := TSIcon.make("lock", 28)
 		lock.size_flags_horizontal = Control.SIZE_SHRINK_END

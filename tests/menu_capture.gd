@@ -196,6 +196,10 @@ func _ready() -> void:
 	if args_has("passleft"):
 		# `-- home passleft`: last season's unclaimed Battle Pass rewards, collected.
 		TSProfile.battle_pass_auto_claimed = {"coins": 22700, "materials": 2340, "skips": 15, "bomb": 9, "critters": [31], "stickers": ["jolly"]}
+	if args_has("gifts"):
+		# `-- battle_pass gifts`: some Tier Skips and a full set of Pass Tickets.
+		TSProfile.tier_skips = 3
+		TSProfile.pass_tickets = 10
 	if args_has("bottom"):
 		# `-- shop bottom`: the screen's list scrolled to its end.
 		var t := get_tree()
