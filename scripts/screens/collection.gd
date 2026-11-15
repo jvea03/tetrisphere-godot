@@ -17,6 +17,11 @@ var _bonus_label: Label
 var _level_bar: ProgressBar
 var _feature: VBoxContainer
 var _feature_tile: Control
+var _tabs: PanelContainer      # Critters | Sets
+var _tab := 0
+var _sets_badge: Control       # how many finished sets wait to be claimed
+var _sets_list: VBoxContainer
+var _sets_scroll: ScrollContainer
 var _bubble: Control          # what the featured critter is saying (tap its picture)
 var _feature_btn: Button
 var _owned_grid: GridContainer   # the critters you have
@@ -66,6 +71,21 @@ func build() -> void:
 	_feature_btn = TSUI.button("", TSUI.GREEN, 28, Vector2(0, 72))
 	_feature_btn.pressed.connect(_on_feature_pressed)
 
+	# Two tabs over the list: every critter, or the sets they make.
+	_tabs = TSUI.tabs(["Critters", "Sets"], func(k: int) -> void:
+		_tab = k
+		TSUI.style_tabs(_tabs, k)
+		_show_tab())
+	TSUI.style_tabs(_tabs, 0)
+	content.add_child(_tabs)
+	_sets_badge = TSUI.pill("0", TSUI.CORAL, 18)
+	_sets_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	(_tabs.get_meta("buttons")[1] as Button).add_child(_sets_badge)
+	_sets_badge.position = Vector2(8, -6)
+	_sets_list = TSUI.vbox(12)
+	_sets_scroll = TSUI.scroll(_sets_list)
+	_sets_scroll.visible = false
+
 	# Every critter: yours first, then the ones still to collect.
 	var lists := TSUI.vbox(10)
 	_owned_head = _section(lists, TSUI.MINT)
@@ -78,11 +98,14 @@ func build() -> void:
 	lists.add_child(TSUI.spacer(10))
 	_critter_scroll = TSUI.scroll(lists)
 	content.add_child(_critter_scroll)
+	content.add_child(_sets_scroll)
 
 	_info = TSUI.dialog(self, 580)
 	var ibox: VBoxContainer = _info["box"]
 	ibox.add_child(TSUI.title("Your Collection", 40))
-	ibox.add_child(TSUI.wrap(TSUI.label("Buy and upgrade critters with coins. Every critter level counts toward your Collection level, and each Collection level adds +1% to the building materials every win pays (and fills the mine under the ship faster). Your Camp level adds +1% coins per level.\n\nTap a critter you own to make it your profile critter: it shows on Home, your Profile and the leaderboards. Your camp and ship are built on Home -- tap the plus signs at the crash site.", 22), 520))
+	ibox.add_child(TSUI.wrap(TSUI.label("Buy and upgrade critters with coins. Every critter level counts toward your Collection level, and each Collection level adds +1% to the building materials every win pays (and fills the mine under the ship faster). Your Camp level adds +1% coins per level.\n\nTap a critter you own to make it your profile critter: it shows on Home, your Profile and the leaderboards. Finish a set (the Sets tab) to win its coins.
+
+Your camp and ship are built on Home -- tap the plus signs at the crash site.", 22), 520))
 	var ok := TSUI.button("Got it", TSUI.PINK, 26)
 	ok.pressed.connect(func(): TSUI.conceal(_info["root"]))
 	ibox.add_child(ok)
@@ -128,7 +151,88 @@ func _refresh() -> void:
 		_sel_critter = TSProfile.avatar()
 	_build_feature()
 	_build_critters()
+	_build_sets()
 	TSUI.juice(self)
+
+
+func _show_tab() -> void:
+	_critter_scroll.visible = _tab == 0
+	_sets_scroll.visible = _tab == 1
+
+
+# -- sets --------------------------------------------------------------------------------
+
+## The Sets tab: a card per set (TSSets) -- its name and coins, its critters
+## (a shadow for each still to collect; tap one to see it above), how many are
+## in, and Claim once all are.
+func _build_sets() -> void:
+	for c in _sets_list.get_children():
+		c.queue_free()
+	var waiting := TSSets.claimable_count()
+	_sets_badge.visible = waiting > 0
+	_sets_badge.get_meta("label").text = str(waiting)
+	_sets_list.add_child(TSUI.wrap(TSUI.label("Collect every critter in a set to win its coins!", 20, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER)))
+	for st: Dictionary in TSSets.ordered():
+		_sets_list.add_child(_set_card(st))
+	_sets_list.add_child(TSUI.spacer(10))
+
+
+func _set_card(st: Dictionary) -> Control:
+	var done := TSSets.is_complete(st)
+	var claimed := TSSets.is_claimed(st)
+	var card := TSUI.card(TSUI.BUTTER.lerp(Color.WHITE, 0.4) if TSSets.can_claim(st) else TSUI.CARD, 22, 12, 3)
+	if claimed:
+		card.modulate = Color(1, 1, 1, 0.65)
+	var v := TSUI.vbox(8)
+	card.add_child(v)
+	var top := TSUI.hbox(8)
+	v.add_child(top)
+	top.add_child(TSUI.expand(TSUI.label(str(st["name"]), 26)))
+	var members: Array = st["critters"]
+	top.add_child(TSUI.label("%d/%d" % [TSSets.owned_in(st), members.size()], 22, TSFX.COL_GAIN if done else TSUI.MUTED))
+	var icons := TSUI.hbox(6)
+	v.add_child(icons)
+	for i: int in members:
+		var b := Button.new()
+		b.focus_mode = Control.FOCUS_NONE
+		b.custom_minimum_size = Vector2(64, 64)
+		var owned := TSProfile.is_critter_unlocked(i)
+		for s2 in ["normal", "hover", "pressed", "focus"]:
+			b.add_theme_stylebox_override(s2, TSUI.sb(TSProfile.critter_color(i).lerp(Color.WHITE, 0.45) if owned else Color(0.93, 0.91, 0.9), 16, 2, 0, 2))
+		var art := TSIcon.make("critter", 56, i)
+		art.silhouette = not owned
+		art.position = Vector2(4, 4)
+		art.size = Vector2(56, 56)
+		b.add_child(art)
+		b.pressed.connect(func() -> void:
+			_sel_critter = i
+			_build_feature())
+		icons.add_child(b)
+	var bottom := TSUI.hbox(8)
+	v.add_child(bottom)
+	var prize := TSUI.hbox(6)
+	prize.add_child(TSIcon.make("coin", 30))
+	prize.add_child(TSUI.label("+%s" % TSProfile.fmt_coins(TSSets.reward(st)), 24))
+	bottom.add_child(TSUI.expand(prize))
+	if claimed:
+		var got := TSUI.hbox(6)
+		got.add_child(TSIcon.make("check", 30))
+		got.add_child(TSUI.label("Claimed", 22, TSFX.COL_GAIN))
+		bottom.add_child(got)
+	elif done:
+		var claim := TSUI.button("Claim", TSUI.GREEN, 24, Vector2(150, 56))
+		claim.pressed.connect(func() -> void:
+			var from := claim.get_global_rect()
+			var before := TSProfile.coin_count
+			if TSSets.claim(st) > 0:
+				_last_coins = TSProfile.coin_count
+				wallet.receive(from, before, TSProfile.coin_count)
+				TSSfx.play("coin")
+				TSFX.confetti(self)
+				_build_sets())
+		bottom.add_child(claim)
+		TSUI.breathe(claim, 1.6)
+	return card
 
 
 # -- the feature card -------------------------------------------------------------------

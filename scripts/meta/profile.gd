@@ -1887,6 +1887,8 @@ static var pending_board_results: Array = []
 ## Stickers from the Battle Pass (TSStickers; the basic three need no entry),
 ## and the players whose stickers this player has blocked (Online uids).
 static var stickers_owned: Array = []
+## Collection sets whose coins have been claimed (TSSets ids).
+static var sets_claimed: Array = []
 static var blocked_players: Array = []
 
 
@@ -2838,6 +2840,7 @@ static func ensure_loaded() -> void:
 			pending_board_results.append(r)
 	stickers_owned = (g.call("stickers_owned", []) as Array).filter(func(id: Variant) -> bool: return TSStickers.ALL.has(str(id)))
 	blocked_players = (g.call("blocked_players", []) as Array).duplicate()
+	sets_claimed = (g.call("sets_claimed", []) as Array).duplicate()
 	battle_pass_key = str(g.call("battle_pass_key", ""))
 	battle_pass_xp = int(g.call("battle_pass_xp", 0))
 	battle_pass_purchased = bool(g.call("battle_pass_purchased", false))
@@ -2956,6 +2959,7 @@ static func save() -> void:
 	s.call("lifetime_seconds", lifetime_seconds)
 	s.call("pending_board_results", pending_board_results)
 	s.call("stickers_owned", stickers_owned)
+	s.call("sets_claimed", sets_claimed)
 	s.call("blocked_players", blocked_players)
 	s.call("battle_pass_key", battle_pass_key)
 	s.call("battle_pass_xp", battle_pass_xp)

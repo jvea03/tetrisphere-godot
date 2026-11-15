@@ -172,6 +172,18 @@ func _ready() -> void:
 		# `-- collection bubble`: the featured critter's speech bubble, as its picture is tapped.
 		var tb := get_tree()
 		tb.create_timer(1.0).timeout.connect(func(): tb.current_scene._say(tb.current_scene._sel_critter))
+	if args_has("sets"):
+		# `-- collection sets`: the Sets tab, with Snack Time finished and one set claimed.
+		for i in [18, 27, 36, 37, 38, 68, 6, 7, 16, 45, 25, 34, 33]:
+			TSProfile.critter_unlocked[i] = true
+			TSProfile.critter_level[i] = 1
+		TSProfile.sets_claimed = ["family"]
+		var tq := get_tree()
+		tq.create_timer(0.8).timeout.connect(func():
+			var sc = tq.current_scene
+			sc._tab = 1
+			TSUI.style_tabs(sc._tabs, 1)
+			sc._show_tab())
 	if args_has("bottom"):
 		# `-- shop bottom`: the screen's list scrolled to its end.
 		var t := get_tree()
