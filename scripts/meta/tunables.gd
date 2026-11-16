@@ -10,8 +10,7 @@ extends RefCounted
 const DEFAULTS := {
 	"interstitial_from_level": 30, # non-payers see a post-level ad every Nth win from this level on
 	"interstitial_every_n_wins": 3,
-	"interstitial_late_from_level": 60, # from here non-payers see one every interstitial_late_every_n_wins wins (payers' first start here)
-	"interstitial_late_every_n_wins": 2,
+	"interstitial_every_win_from_level": 60, # from here non-payers see one after every win (payers' first start here, every Nth win)
 	"coins_per_star": 100, # base win payout per star
 	"no_ads_coin_bonus_percent": 5,
 	"bomb_buy_count": 3, # bombs per mid-game coin buy

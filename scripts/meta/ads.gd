@@ -19,6 +19,7 @@ extends Node
 
 signal rewarded_result(earned: bool)
 signal interstitial_closed()
+signal interstitial_started(source: String)   # an interstitial really went on screen
 
 const SIMULATED_SECONDS := 2.5
 
@@ -47,6 +48,8 @@ const ADMOB_BACKEND_PATH := "res://scripts/ads/AdmobBackend.gd"
 const ADMOB_ADDON_MARKER := "res://addons/admob/plugin.cfg"
 
 var simulated: bool = true
+var last_interstitial_source := ""   # "Level" or "Home", see show_interstitial
+var last_interstitial_filled := false   # false: none was loaded, it closed at once
 var _backend: Node = null
 var _busy: bool = false
 
@@ -104,16 +107,25 @@ func show_rewarded() -> void:
 	_backend.show_rewarded()
 
 
-## Emits interstitial_closed() when it is gone -- at once if none loaded.
-func show_interstitial() -> void:
+## Emits interstitial_closed() when it is gone -- at once if none loaded, so the
+## caller never waits on an ad that is not there. `source` says where it was
+## shown from ("Level" after a win, "Home" for one owed from a closed win
+## card), for Analytics. While one is on screen TSProfile.interstitial_open is
+## saved as true, so an app killed mid-ad is noticed at the next launch.
+func show_interstitial(source: String = "Level") -> void:
 	if _busy:
 		return
 	_busy = true
+	last_interstitial_source = source
+	last_interstitial_filled = simulated or _backend.interstitial_loaded()
+	if not last_interstitial_filled:
+		_finish_interstitial()
+		return
+	TSProfile.interstitial_open = true
+	TSProfile.save()
+	interstitial_started.emit(source)
 	if simulated:
 		get_tree().create_timer(SIMULATED_SECONDS).timeout.connect(_finish_interstitial)
-		return
-	if not _backend.interstitial_loaded():
-		_finish_interstitial()
 		return
 	_backend.show_interstitial()
 
@@ -125,4 +137,7 @@ func _finish_rewarded(earned: bool) -> void:
 
 func _finish_interstitial() -> void:
 	_busy = false
+	if TSProfile.interstitial_open:
+		TSProfile.interstitial_open = false
+		TSProfile.save()
 	interstitial_closed.emit()

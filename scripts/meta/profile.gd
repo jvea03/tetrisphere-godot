@@ -147,6 +147,12 @@ static var is_payer: bool = false
 ## instead of pressing Next Level: Home's PLAY shows that ad first.
 static var interstitial_owed: bool = false
 static var interstitial_win_count: int = 0
+## A watched double-coins ad whose win had no interstitial due buys off the
+## next one that comes due (game.gd _take_interstitial_skip).
+static var interstitial_skip: bool = false
+## True from the moment an interstitial goes on screen until it closes (ads.gd),
+## so an app killed mid-ad is noticed at the next launch: the ad is then owed.
+static var interstitial_open: bool = false
 
 
 static func no_ads_coin_bonus_percent() -> int:
@@ -2920,6 +2926,9 @@ static func ensure_loaded() -> void:
 	is_payer = bool(g.call("is_payer", false)) or no_ads
 	interstitial_owed = bool(g.call("interstitial_owed", false))
 	interstitial_win_count = int(g.call("interstitial_win_count", 0))
+	interstitial_skip = bool(g.call("interstitial_skip", false))
+	if bool(g.call("interstitial_open", false)):
+		interstitial_owed = interstitial_owed or not no_ads
 	bomb_count = int(g.call("bomb_count", 0))
 	bombs_unlocked = bool(g.call("bombs_unlocked", false))
 	swap_count = int(g.call("swap_count", 0))
@@ -3083,6 +3092,8 @@ static func save() -> void:
 	s.call("is_payer", is_payer)
 	s.call("interstitial_owed", interstitial_owed)
 	s.call("interstitial_win_count", interstitial_win_count)
+	s.call("interstitial_skip", interstitial_skip)
+	s.call("interstitial_open", interstitial_open)
 	s.call("bomb_count", bomb_count)
 	s.call("bombs_unlocked", bombs_unlocked)
 	s.call("swap_count", swap_count)

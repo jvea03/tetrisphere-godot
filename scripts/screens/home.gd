@@ -983,7 +983,8 @@ func _build_play() -> void:
 	content.add_child(TSUI.spacer(8))
 
 
-## A win card closed past the interstitial gate owes an ad before the next level.
+## A win card closed past the interstitial gate, or an app killed mid-ad, owes
+## an ad before the next level; No Ads owners never owe one.
 func _on_play_pressed() -> void:
 	if TSProfile.interstitial_owed and not TSProfile.no_ads and not Ads.is_busy():
 		play_btn.disabled = true
@@ -993,11 +994,17 @@ func _on_play_pressed() -> void:
 			TSProfile.save()
 			if is_inside_tree():
 				SceneFlow.go(SceneFlow.GAME), CONNECT_ONE_SHOT)
-		Ads.show_interstitial()
+		Ads.show_interstitial("Home")
 		return
 	if TSProfile.interstitial_owed:
-		TSProfile.interstitial_owed = false
-		TSProfile.save()
+		if TSProfile.no_ads:
+			TSProfile.interstitial_owed = false   # bought No Ads meanwhile
+			TSProfile.save()
+			TSAnalytics.event("ad_inter_owed_dropped", {"why": "no_ads"})
+		else:
+			# Ads is busy with something else: the ad stays owed for the next
+			# PLAY rather than being wiped.
+			TSAnalytics.event("ad_inter_owed_deferred", {"why": "busy"})
 	SceneFlow.go(SceneFlow.GAME)
 
 

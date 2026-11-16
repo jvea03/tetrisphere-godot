@@ -57,7 +57,25 @@ func _run() -> void:
 	_check("then the coins come again", TSProfile.coin_count == coins + _win_coins)
 	_check("the button says so", b.disabled and b.text == "Coins doubled!")
 	_check("and the next interstitial is spared", not _win_ad_due)
+	_check("(due, so no pass is kept)", not TSProfile.interstitial_skip)
 	_check("one of today's five used", TSProfile.ad_rewards_left("win_coins") == 4)
+	# A watched double with no interstitial due keeps a pass: the next due one is skipped.
+	_close_cards()
+	_start_level(level)
+	_debug_win()
+	await get_tree().create_timer(3.0).timeout
+	_win_ad_due = false
+	b = _double_button()
+	b.pressed.emit()
+	await get_tree().create_timer(Ads.SIMULATED_SECONDS + 1.0).timeout
+	_check("with none due, the double keeps a pass", TSProfile.interstitial_skip)
+	_check("the pass skips the next ad that comes due, and is used up", not _take_interstitial_skip(true) and not TSProfile.interstitial_skip)
+	_check("then the following one is shown", _take_interstitial_skip(true))
+	# An interstitial marks itself open while it is up, so a kill mid-ad is noticed.
+	Ads.show_interstitial("Home")
+	_check("an interstitial in progress is flagged open (%s)" % Ads.last_interstitial_source, TSProfile.interstitial_open and Ads.last_interstitial_source == "Home")
+	await get_tree().create_timer(Ads.SIMULATED_SECONDS + 0.5).timeout
+	_check("and closed again when it ends", not TSProfile.interstitial_open and not Ads.is_busy())
 	# With the day's five used, no button.
 	TSProfile.ad_rewards_used = {"win_coins": 5}
 	_close_cards()

@@ -35,8 +35,7 @@ cache), and remember it offline. Needs a build with this feature (1.3.3 on).
 |---|---|---|
 | `interstitial_from_level` | 30 | Players who haven't bought anything see an ad between levels from this level |
 | `interstitial_every_n_wins` | 3 | ...on every Nth win |
-| `interstitial_late_from_level` | 60 | From this level the late rhythm applies (payers' first interstitials start here) |
-| `interstitial_late_every_n_wins` | 2 | ...an ad every Nth win |
+| `interstitial_every_win_from_level` | 60 | From this level non-payers see an ad after every win; payers' first interstitials start here, every Nth win (same as Duckdoku) |
 | `ad_win_coins_per_day` | 5 | Double Coins ads a day (win card, level 5 on) |
 | `ad_chest_per_day` | 3 | "30 min off" ads a day for chests |
 | `ad_build_per_day` | 3 | "30 min off" ads a day for camp/ship builds |

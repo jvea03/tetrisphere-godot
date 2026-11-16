@@ -2309,7 +2309,9 @@ func _pay_win() -> void:
 	_win_materials = TSProfile.win_materials(is_daily)
 	TSProfile.add_materials(_win_materials)
 	_win_chest = "" if is_daily else TSChests.record_win()
-	_win_ad_due = false if is_daily or is_challenge else _roll_interstitial()
+	_win_ad_due = false if is_daily or is_challenge else _take_interstitial_skip(_roll_interstitial())
+	if _win_ad_due:
+		TSAnalytics.event("ad_inter_due", {"level": current_level})   # shown / owed / bought_off should follow
 	if is_daily:
 		TSProfile.mark_daily_completed()
 		TSProfile.record_quest_event("daily_puzzle")
@@ -2338,25 +2340,36 @@ func _pay_win() -> void:
 	TSProfile.save()
 
 
-## An ad every Nth win from a level on, and after every win later; payers see
-## fewer, and the No Ads pass none (Duckdoku's rhythm, via TSTunables).
+## Rolled once per win (in _pay_win), as in Duckdoku. A non-payer sees an ad
+## every Nth win from interstitial_from_level and after every win from
+## interstitial_every_win_from_level. A payer without the No Ads pass sees none
+## until that second level, then one every Nth win. The count persists so the
+## rhythm survives a restart.
 func _roll_interstitial() -> bool:
 	if TSProfile.no_ads:
 		return false
-	var late_from: int = TSTunables.get_int("interstitial_late_from_level")
-	var late := current_level >= late_from
+	var every_win_from: int = TSTunables.get_int("interstitial_every_win_from_level")
 	if TSProfile.is_payer:
-		if not late:
-			return false   # anyone who has bought something sees none until the late levels
+		if current_level < every_win_from:
+			return false
+	elif current_level >= every_win_from:
+		return true
 	elif current_level < TSTunables.get_int("interstitial_from_level"):
 		return false
 	TSProfile.interstitial_win_count += 1
 	TSProfile.save()
-	# Every Nth win; from the late levels, non-payers see them a little more often.
-	var every: int = TSTunables.get_int("interstitial_every_n_wins")
-	if late and not TSProfile.is_payer:
-		every = TSTunables.get_int("interstitial_late_every_n_wins")
-	return TSProfile.interstitial_win_count % maxi(every, 1) == 0
+	return TSProfile.interstitial_win_count % maxi(TSTunables.get_int("interstitial_every_n_wins"), 1) == 0
+
+
+## An ad that comes due while the player holds a pass from an earlier
+## double-coins ad is skipped, using the pass up.
+func _take_interstitial_skip(due: bool) -> bool:
+	if due and TSProfile.interstitial_skip:
+		TSProfile.interstitial_skip = false
+		TSProfile.save()
+		TSAnalytics.event("ad_inter_skip_pass", {"level": current_level})
+		return false
+	return due
 
 
 func _debug_win() -> void:
@@ -2419,7 +2432,7 @@ func _lose() -> void:
 		_shield(_lose_card["root"], LOSE_CARD_LOCK))
 
 
-## Blocks every tap on oot for seconds: a clear cover over it.
+## Blocks every tap on root for seconds: a clear cover over it.
 func _shield(root: Control, seconds: float) -> void:
 	var cover := Control.new()
 	cover.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -2612,7 +2625,8 @@ func _early_win() -> bool:
 
 
 ## The win card's rewarded ad: the win's coins again (ad_win_coins_per_day a
-## day). Having sat through it, the player is spared the next interstitial.
+## day). Having sat through it, the player is spared an interstitial: this
+## win's if one is due, otherwise the next one that comes due.
 func _double_win_coins(button: Button, coin_amount: Label) -> void:
 	if TSProfile.ad_rewards_left("win_coins") <= 0:
 		return
@@ -2622,7 +2636,13 @@ func _double_win_coins(button: Button, coin_amount: Label) -> void:
 		TSProfile.coin_count += coins
 		TSProfile.use_ad_reward("win_coins"),
 	func():
-		_win_ad_due = false
+		if not TSProfile.no_ads:   # a free double (No Ads) buys nothing off
+			if _win_ad_due:
+				_win_ad_due = false
+				TSAnalytics.event("ad_inter_bought_off", {"level": current_level})
+			else:
+				TSProfile.interstitial_skip = true
+				TSProfile.save()
 		if _win_count != null and _win_count.is_valid():
 			_win_count.kill()
 		button.disabled = true
@@ -2651,6 +2671,7 @@ func _on_win_close() -> void:
 	if not is_daily and _win_ad_due and not TSProfile.no_ads:
 		TSProfile.interstitial_owed = true
 		TSProfile.save()
+		TSAnalytics.event("ad_inter_owed", {"level": current_level})
 	SceneFlow.go(SceneFlow.HOME)
 
 

@@ -150,7 +150,7 @@ func _run() -> void:
 	TSProfile.interstitial_win_count = 0
 	_check("no interstitials before level 30 (%s)" % counts, counts["free 20"] == 0 and counts["payer 20"] == 0)
 	_check("from level 30, every 3rd win for non-payers; none yet for payers", counts["free 40"] == 4 and counts["payer 40"] == 0)
-	_check("from level 60, every 2nd win for non-payers and every 3rd for payers", counts["free 70"] == 6 and counts["payer 70"] == 4)
+	_check("from level 60, every win for non-payers and every 3rd for payers", counts["free 70"] == 12 and counts["payer 70"] == 4)
 
 	# losing, then the coin refill
 	lives = 0
