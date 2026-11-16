@@ -205,9 +205,14 @@ func _build_top_bar() -> void:
 	# The inbox, always just under Settings: a count on it while messages wait.
 	inbox_btn = TSUI.icon_button("mail", 76)
 	inbox_btn.pressed.connect(_open_inbox)
-	inbox_btn.position = Vector2(0, 86)
 	inbox_btn.size = Vector2(76, 76)
-	cog.add_child(inbox_btn)
+	inbox_btn.z_index = 2
+	add_child(inbox_btn)   # its own, not the cog's child: pressing one doesn't squash the other
+	var place := func() -> void:
+		if is_instance_valid(cog) and is_instance_valid(inbox_btn):
+			inbox_btn.global_position = cog.global_position + Vector2(0, 86)
+	cog.item_rect_changed.connect(place, CONNECT_DEFERRED)
+	place.call_deferred()
 	inbox_badge = TSUI.pill("0", TSUI.CORAL, 18)
 	inbox_badge.position = Vector2(50, -10)
 	inbox_btn.add_child(inbox_badge)
