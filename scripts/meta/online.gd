@@ -101,8 +101,8 @@ static func board_id(period: String, key: String) -> String:
 
 ## Writes the player's row on a board (name, avatar, stars), if any changed.
 func push(board: String, stars: int) -> void:
-	if fake():
-		return
+	if fake() or stars <= 0:
+		return   # no row until there's a star to show (none below level 7)
 	var sig := "%d|%s|%d" % [stars, TSProfile.player_name, TSProfile.avatar()]   # what the row says now
 	if not enabled() or str(_pushed.get(board, "")) == sig:
 		return
@@ -110,7 +110,10 @@ func push(board: String, stars: int) -> void:
 	var fields := {"name": TSProfile.player_name, "avatar": TSProfile.avatar(), "stars": stars, "t": int(Time.get_unix_time_from_system())}
 	_call("PATCH", "%s/boards/%s/entries/%s" % [DOCS, board, uid_placeholder()], {"fields": to_fields(fields)}, func(ok: bool, _data: Variant) -> void:
 		if not ok:
-			_pushed.erase(board))
+			_pushed.erase(board)
+		elif not TSProfile.boards_joined.has(board):
+			TSProfile.boards_joined.append(board)   # only boards played online can pay a prize
+			TSProfile.save())
 
 
 ## Fetches a board's top TOP_N (if it isn't fresh), then boards_changed.
@@ -146,6 +149,21 @@ func fetch(board: String, force := false) -> void:
 ## The rows of a board as last fetched (empty until one arrives).
 func entries(board: String) -> Array:
 	return (boards.get(board, {}) as Dictionary).get("entries", [])
+
+
+## How many players are on a board. done(n), or done(-1) if it couldn't ask.
+func board_size(board: String, done: Callable) -> void:
+	if not enabled() or fake():
+		done.call(-1 if not fake() else 20)
+		return
+	var query := {"structuredAggregationQuery": {"structuredQuery": {"from": [{"collectionId": "entries"}]}, "aggregations": [{"alias": "n", "count": {}}]}}
+	_call("POST", "%s/boards/%s:runAggregationQuery" % [DOCS, board], query, func(ok: bool, data: Variant) -> void:
+		if not ok or not data is Array or (data as Array).is_empty():
+			done.call(-1)
+			return
+		var res: Dictionary = (data as Array)[0].get("result", {})
+		var n: Dictionary = (res.get("aggregateFields", {}) as Dictionary).get("n", {})
+		done.call(int(n.get("integerValue", "0"))))
 
 
 ## A finished board's place for `stars`: 1 + how many rows have more. Calls

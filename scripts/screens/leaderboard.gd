@@ -71,7 +71,7 @@ func build() -> void:
 	_info = TSUI.dialog(self, 580)
 	var ibox: VBoxContainer = _info["box"]
 	ibox.add_child(TSUI.title("Climb the Leaderboards", 38))
-	for line in ["Win levels to earn stars.", "Climb the daily, weekly and season boards against players everywhere.", "Finish top 3 to win coins -- collect them on Home when the board resets.", "Tap a player to send them a sticker."]:
+	for line in ["Win levels to earn stars.", "Climb the daily, weekly and season boards against players everywhere.", "Finish top 3 on a board of 10 or more players to win coins -- collect them on Home when it resets.", "Tap a player to send them a sticker."]:
 		var row := TSUI.hbox(10)
 		row.add_child(TSIcon.make("star", 36))
 		row.add_child(TSUI.wrap(TSUI.label(line, 22), 440))

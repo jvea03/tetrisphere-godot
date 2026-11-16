@@ -66,6 +66,9 @@ func _run() -> void:
 	var above: Variant = await _ask(func(done: Callable) -> void: Online.place_on(BOARD, 50, done))
 	_check("10 stars would place 2nd (%s), 50 first (%s)" % [str(below), str(above)], below == 2 and above == 1)
 
+	var size: Variant = await _ask(func(done: Callable) -> void: Online.board_size(BOARD, done))
+	_check("counts the board's players (%s)" % str(size), size == 1)
+
 	# 4. A sticker, as the game sends it.
 	var sent: Variant = await _ask(func(done: Callable) -> void: Online.send_sticker(RECEIVER, "congrats", done))
 	_check("sent a sticker", sent == true)

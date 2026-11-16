@@ -1919,6 +1919,14 @@ static var sets_claimed: Array = []
 ## stars], so the leaderboard can animate a climb (or a slip) since then.
 static var board_seen: Dictionary = {}
 static var blocked_players: Array = []
+## Boards this player's row was written to online. Only these can pay a prize:
+## a board from before the online leaderboards (the simulated ones, or the
+## local day and week before the switch to UTC) has nobody on it online, and
+## would otherwise rank everyone first.
+static var boards_joined: Array = []
+## Prizes are paid only on a board with at least this many players, so a
+## near-empty board isn't a free top 3.
+const BOARD_MIN_FOR_PRIZES := 10
 
 
 static func _queue_board_prize(board: String, place: int, score: String, coins: int) -> void:
@@ -1963,19 +1971,38 @@ static func resolve_board_results(done := Callable()) -> void:
 	if pending_board_results.is_empty() or not Online.enabled():
 		return
 	for r: Dictionary in pending_board_results.duplicate():
+		if not boards_joined.has(str(r["board"])):
+			pending_board_results.erase(r)   # never played online: nothing to place
+			save()
+			continue
 		Online.place_on(str(r["board"]), int(r["stars"]), func(place: int) -> void:
 			if place <= 0 or not pending_board_results.has(r):
 				return
-			pending_board_results.erase(r)
-			var period := str(r["period"])
-			var table: Array = LEADERBOARD_DAILY_COIN_REWARDS if period == "daily" else (LEADERBOARD_WEEKLY_COIN_REWARDS if period == "weekly" else LEADERBOARD_SEASON_COIN_REWARDS)
-			if place <= table.size():
-				var coins: int = boost_earned_coins(table[place - 1])
-				_queue_board_prize("%s Leaderboard" % period.capitalize(), place, "%d stars" % int(r["stars"]), coins)
-				_append_leaderboard_message("%s leaderboard: #%d place (%d stars)! Collect +%s coins on Home." % [period.capitalize(), place, int(r["stars"]), fmt_coins(coins)])
-			save()
+			if place <= 3:
+				# A top-3 place pays only on a board with enough players.
+				Online.board_size(str(r["board"]), func(n: int) -> void:
+					if n < 0 or not pending_board_results.has(r):
+						return
+					_settle_board_result(r, place if n >= BOARD_MIN_FOR_PRIZES else 0)
+					if done.is_valid():
+						done.call())
+				return
+			_settle_board_result(r, place)
 			if done.is_valid():
 				done.call())
+
+
+## A finished board placed: its prize queued if `place` is in the top 3.
+static func _settle_board_result(r: Dictionary, place: int) -> void:
+	pending_board_results.erase(r)
+	boards_joined.erase(str(r["board"]))
+	var period := str(r["period"])
+	var table: Array = LEADERBOARD_DAILY_COIN_REWARDS if period == "daily" else (LEADERBOARD_WEEKLY_COIN_REWARDS if period == "weekly" else LEADERBOARD_SEASON_COIN_REWARDS)
+	if place > 0 and place <= table.size():
+		var coins: int = boost_earned_coins(table[place - 1])
+		_queue_board_prize("%s Leaderboard" % period.capitalize(), place, "%d stars" % int(r["stars"]), coins)
+		_append_leaderboard_message("%s leaderboard: #%d place (%d stars)! Collect +%s coins on Home." % [period.capitalize(), place, int(r["stars"]), fmt_coins(coins)])
+	save()
 
 
 ## Coins per star on a win. Live-tunable.
@@ -3012,6 +3039,7 @@ static func ensure_loaded() -> void:
 	tier_skips = maxi(0, int(g.call("tier_skips", 0)))
 	pass_tickets = maxi(0, int(g.call("pass_tickets", 0)))
 	present_paid_at = int(g.call("present_paid_at", 0))
+	boards_joined = (g.call("boards_joined", []) as Array).duplicate()
 	board_seen = {}
 	var seen: Variant = g.call("board_seen", {})
 	if seen is Dictionary:
@@ -3138,6 +3166,7 @@ static func save() -> void:
 	s.call("stickers_owned", stickers_owned)
 	s.call("sets_claimed", sets_claimed)
 	s.call("board_seen", board_seen)
+	s.call("boards_joined", boards_joined)
 	s.call("present_paid_at", present_paid_at)
 	s.call("tier_skips", tier_skips)
 	s.call("pass_tickets", pass_tickets)

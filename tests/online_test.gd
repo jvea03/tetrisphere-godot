@@ -64,6 +64,16 @@ func _ready() -> void:
 	TSProfile._resolve_period("weekly", "W100", 30)
 	_check("a finished board waits to be placed online", TSProfile.pending_board_results.size() == 1 and TSProfile.pending_board_results[0]["board"] == "weekly_W100")
 
+	# Prizes only on boards this player was on online, with enough players.
+	Online.force_fake = true
+	TSProfile.pending_board_prizes = []
+	TSProfile.boards_joined = ["weekly_W8888"]
+	TSProfile.pending_board_results = [{"period": "weekly", "board": "weekly_W7777", "stars": 999}, {"period": "weekly", "board": "weekly_W8888", "stars": 9999}]
+	TSProfile.resolve_board_results()
+	await get_tree().process_frame
+	_check("a board never played online pays nothing", TSProfile.pending_board_results.is_empty() and TSProfile.pending_board_prizes.size() == 1)
+	_check("a board played online pays its place (1st)", TSProfile.pending_board_prizes.size() == 1 and int(TSProfile.pending_board_prizes[0]["place"]) == 1)
+	Online.force_fake = false
 	print("")
 	print("ALL PASSED" if _failures == 0 else "%d FAILED" % _failures)
 	get_tree().quit(0 if _failures == 0 else 1)
