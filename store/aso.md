@@ -17,9 +17,9 @@ works, but "block puzzle" is the bigger search.
 
 ## Short description (80 max)
 
-    Spin the egg, match blocks & free cute critters! A relaxing block puzzle game.
+    Spin the egg, match blocks & rescue cute critters! A relaxing block puzzle game.
 
-(78 characters.)
+(80 characters. "Free" was swapped for "rescue": Play flags words that read as a price.)
 
 ## Full description (4000 max)
 
