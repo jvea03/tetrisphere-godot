@@ -1233,6 +1233,25 @@ static func clear_new_critters(indices: Array = []) -> void:
 		save()
 
 
+## The presents on a Christmas planet's ground: each tap has a small chance
+## (PRESENT_CHANCE) of coins or materials, and once one pays, none does for
+## PRESENT_COOLDOWN seconds. Returns {} for nothing, else {coins} or {materials}.
+const PRESENT_CHANCE := 0.15
+const PRESENT_COOLDOWN := 300
+static var present_paid_at: int = 0
+
+static func open_present() -> Dictionary:
+	var now := int(TSClock.now())
+	if now - present_paid_at < PRESENT_COOLDOWN or randf() >= PRESENT_CHANCE:
+		return {}
+	present_paid_at = now
+	var gift := {"coins": randi_range(2, 6) * 50} if randf() < 0.6 else {"materials": randi_range(2, 6) * 10}
+	coin_count += boost_earned_coins(int(gift.get("coins", 0)))
+	add_materials(int(gift.get("materials", 0)))
+	save()
+	return gift
+
+
 ## Makes an owned critter the avatar (Home, the Profile, the leaderboards).
 static func set_avatar_critter(i: int) -> void:
 	if not is_critter_unlocked(i) or avatar_critter == i:
@@ -2992,6 +3011,7 @@ static func ensure_loaded() -> void:
 	battle_pass_auto_claimed = (auto as Dictionary).duplicate(true) if auto is Dictionary else {}
 	tier_skips = maxi(0, int(g.call("tier_skips", 0)))
 	pass_tickets = maxi(0, int(g.call("pass_tickets", 0)))
+	present_paid_at = int(g.call("present_paid_at", 0))
 	board_seen = {}
 	var seen: Variant = g.call("board_seen", {})
 	if seen is Dictionary:
@@ -3118,6 +3138,7 @@ static func save() -> void:
 	s.call("stickers_owned", stickers_owned)
 	s.call("sets_claimed", sets_claimed)
 	s.call("board_seen", board_seen)
+	s.call("present_paid_at", present_paid_at)
 	s.call("tier_skips", tier_skips)
 	s.call("pass_tickets", pass_tickets)
 	s.call("battle_pass_auto_claimed", battle_pass_auto_claimed)

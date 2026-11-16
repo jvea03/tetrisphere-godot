@@ -22,6 +22,8 @@ func _ready() -> void:
 	for i in TSProfile.CRITTER_COUNT:
 		TSProfile.critter_unlocked[i] = true
 		TSProfile.critter_level[i] = 1
+	if OS.get_cmdline_user_args().has("christmas"):
+		TSProfile.planet_theme = "christmas"   # `christmas`: the planet dressed for it
 	for i in TSProfile.PART_COUNT:
 		TSProfile.part_level[i] = _level if TSProfile.PARTS[i]["group"] == "camp" else 0
 	# `ship`: just the crash site round the ship, closer up.

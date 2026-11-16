@@ -6,6 +6,9 @@ signal launched
 ## A camp spot's or ship part's build node was tapped (TSProfile.PARTS index).
 signal part_tapped(part: int)
 signal mine_tapped
+## A present on a Christmas planet was tapped (`at` on screen): Home decides
+## whether there's something in it (TSProfile.open_present).
+signal present_tapped(at: Vector2)
 
 ## Home's backdrop: a little planet, seen in three-quarter view, where a
 ## cartoon spaceship has crash-landed nose-first in a heap of dirt (its
@@ -147,6 +150,59 @@ const THEMES := {
 	"valentine": {"ground": Color(1.0, 0.8, 0.86), "tint": 0.6, "leaves": [Color(1.0, 0.72, 0.82), Color(1.0, 0.86, 0.9), Color(0.98, 0.56, 0.7), Color(1.0, 0.95, 0.96)],
 		"fall": "leaf", "scatter": ["crater", "pebble", "heart", "leaves", "heart", "pebble"]},
 }
+
+
+## Worksites dressed for a season: [part, half-width of its roof]. At
+## Christmas, a cap of snow on top (once built) and a string of coloured
+## lights hung under it.
+const SEASON_DRESS := {"christmas": {1: [50.0, 78.0, false], 2: [62.0, 0.0, true], 4: [62.0, 0.0, true], 5: [56.0, 34.0, true],
+	18: [24.0, 34.0, true], 23: [74.0, 0.0, true], 24: [72.0, 0.0, true], 27: [44.0, 44.0, true]}}   # part: [half-width, how far under its top, snow?]
+const LIGHTS := [Color(1.0, 0.36, 0.42), Color(1.0, 0.84, 0.36), Color(0.42, 0.78, 1.0), Color(0.5, 0.88, 0.56)]
+
+
+## One worksite's seasonal dressing, sitting on what stands there now.
+func _draw_dress(ci: CanvasItem, part: int) -> void:
+	if _lv(part) < 1:
+		return   # a heap of rubble gets no decorations
+	var at: Vector2 = GROUND_NODES[part]
+	var cfg: Array = SEASON_DRESS["christmas"][part]
+	var top := at - Vector2(0.0, float((SPOT_TOPS[part] as Array)[clampi(_lv(part), 0, 4)]) - float(cfg[1]))
+	var w: float = cfg[0]
+	if not cfg[2]:
+		top.y -= 22.0   # lights only: hung where the snow would have been
+	if cfg[2]:
+		_draw_snow_cap(ci, top, w)
+	_draw_string_lights(ci, top, w, part)
+
+
+func _draw_snow_cap(ci: CanvasItem, top: Vector2, w: float) -> void:
+	# Snow on the top: a soft cap with a lumpy edge and a drip or two.
+	var cap := PackedVector2Array()
+	for k in 13:
+		var a := PI + PI * float(k) / 12.0
+		cap.append(top + Vector2(cos(a) * w, sin(a) * 10.0 + 6.0))
+	for k in 9:
+		var x := w - 2.0 * w * float(k) / 8.0
+		cap.append(top + Vector2(x, 10.0 + (5.0 if k % 2 == 1 else 0.0)))
+	ci.draw_colored_polygon(cap, Color(0.99, 0.99, 1.0))
+	var rim := cap.duplicate()
+	rim.append(cap[0])
+	ci.draw_polyline(rim, Color(INK, 0.55), 2.5, true)
+	_ellipse(ci, top + Vector2(-w * 0.55, 18.0), 4.0, 6.0, Color(0.99, 0.99, 1.0))
+
+
+func _draw_string_lights(ci: CanvasItem, top: Vector2, w: float, part: int) -> void:
+	# Lights strung under the top, twinkling.
+	var y := top.y + 22.0
+	var prev := Vector2(top.x - w * 0.9, y)
+	for k in 7:
+		var x := top.x - w * 0.9 + w * 1.8 * float(k) / 6.0
+		var p := Vector2(x, y + sin(float(k) / 6.0 * PI) * 9.0)
+		ci.draw_line(prev, p, Color(INK, 0.6), 2.0, true)
+		prev = p
+		var on := 0.65 + 0.35 * sin(_t * 3.0 + float(k) * 1.7 + float(part))
+		var bulb: Color = LIGHTS[(k + part) % LIGHTS.size()]
+		ci.draw_circle(p + Vector2(0, 5), 5.0, Color(bulb, on), true, -1.0, true)
 
 
 ## The theme the critters' planet is dressed for (its THEMES entry's key).
@@ -368,6 +424,12 @@ func _ready() -> void:
 		var layer := _area_layer(Rect2(at - Vector2(SPOT_REACH, SPOT_REACH), Vector2(SPOT_REACH * 2.0, SPOT_REACH + 140.0)), spot[0], at.y)
 		layer.set_meta("at", at)
 		_painters.append(layer)
+	# The season's dressing on some worksites, over each one (snow and lights at Christmas).
+	if SEASON_DRESS.has(theme_name()):
+		for part: int in SEASON_DRESS[theme_name()]:
+			var spot_at: Vector2 = GROUND_NODES[part]
+			var dress := _area_layer(Rect2(spot_at - Vector2(SPOT_REACH, SPOT_REACH), Vector2(SPOT_REACH * 2.0, SPOT_REACH + 140.0)), func(ci: Control): _draw_dress(ci, part), spot_at.y + 0.5)
+			_painters.append(dress)
 	for tree in _trees:
 		var foot: Vector2 = tree[0]
 		_area_layer(Rect2(foot - Vector2(190, 300), Vector2(380, 340)), func(ci: Control): _draw_tree(ci, tree), foot.y)   # still: drawn once
@@ -648,6 +710,15 @@ func _poke(at: Vector2) -> void:
 		if (hit[0] as Rect2).has_point(at):
 			TSSfx.play("tap")
 			glide_to_part(int(hit[1]))
+			return
+	# A present on the ground: a little hop of sparkle, and Home sees what's in it.
+	for item in _scatter:
+		if item[0] != "present":
+			continue
+		var on_screen: Vector2 = _world.position + ((item[1] as Vector2) + Vector2(0, -14.0)) * _zoom
+		if on_screen.distance_to(at) < 34.0 * _zoom * float(item[2]) + 10.0:
+			TSSfx.play("tap")
+			present_tapped.emit(on_screen)
 			return
 	for c in _crew:
 		var icon: TSIcon = c["icon"]

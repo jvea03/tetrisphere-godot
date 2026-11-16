@@ -459,6 +459,7 @@ func _build_showcase() -> void:
 	_world.nodes_enabled = TSNav.collection_unlocked()
 	_world.part_tapped.connect(_open_part)
 	_world.mine_tapped.connect(_collect_mine)
+	_world.present_tapped.connect(_open_present)
 	gap.resized.connect(_update_node_area)
 	_update_node_area.call_deferred()
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1963,3 +1964,36 @@ func _settled() -> void:
 	await get_tree().process_frame
 	while SceneFlow.in_flight and is_inside_tree():
 		await get_tree().process_frame
+
+
+## A present tapped at the crash site: a puff of sparkle, and now and then
+## something inside -- coins fly to the wallet, or materials to theirs.
+func _open_present(at: Vector2) -> void:
+	TSFX.sparkle_burst_at(self, Rect2(at - Vector2(36, 36), Vector2(72, 72)))
+	TSHaptics.light()
+	var before := TSProfile.coin_count
+	var gift := TSProfile.open_present()
+	if gift.is_empty():
+		return
+	TSSfx.play("popper")
+	var r := Rect2(at - Vector2(30, 30), Vector2(60, 60))
+	if gift.has("coins"):
+		coin_pill.receive(r, before, TSProfile.coin_count)
+		_present_note(at, "+%s coins!" % TSProfile.fmt_coins(TSProfile.coin_count - before))
+	else:
+		_refresh_materials()
+		_present_note(at, "+%d materials!" % int(gift["materials"]))
+
+
+func _present_note(at: Vector2, text: String) -> void:
+	var lbl := TSUI.outlined(TSUI.label(text, 28, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER), TSUI.INK, 8)
+	lbl.top_level = true
+	lbl.z_index = 30
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lbl.size = Vector2(300, 40)
+	lbl.global_position = at - Vector2(150, 70)
+	add_child(lbl)
+	var t := lbl.create_tween()
+	t.tween_property(lbl, "global_position:y", lbl.global_position.y - 50.0, 1.0).set_ease(Tween.EASE_OUT)
+	t.parallel().tween_property(lbl, "modulate:a", 0.0, 1.0).set_delay(0.5)
+	t.tween_callback(lbl.queue_free)
