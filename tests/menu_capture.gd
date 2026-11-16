@@ -162,7 +162,14 @@ func _ready() -> void:
 		if args_has("sticker"):
 			var ts2 := get_tree()
 			ts2.create_timer(0.8).timeout.connect(func():
-				TSStickerCards.show_player(ts2.current_scene, Online.entries(TSProfile.current_board("daily"))[1], func(): pass))
+				# The sticker bubble over the third row; `send` then sends the first sticker.
+				var lb = ts2.current_scene
+				var card: Control = lb._list.get_child(2).get_child(0)
+				var entry: Dictionary = TSProfile.standings_for("daily")[2]
+				lb._open_sticker_picker(card, entry)
+				if args_has("send"):
+					ts2.create_timer(0.5).timeout.connect(func():
+						lb._send_sticker("congrats", card, card, entry)))
 	if args_has("profile"):
 		# `-- home profile`: the Profile card, with some lifetime stats.
 		TSProfile.lifetime = {"win": 42, "loss": 9, "flawless": 17, "stars": 186, "clear": 5230, "booster": 34, "daily_puzzle": 6, "chest": 12}

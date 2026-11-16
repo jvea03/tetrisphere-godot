@@ -20,8 +20,14 @@ and iOS work the same way, with no plugin.
   a new one replaces it, so nobody can be flooded. The receiver's game shows them
   when the player opens Ranks (never anywhere else) and deletes them. Only the sticker ids in `firestore.rules`
   can be sent, so there is no free text.
+- **Sending, as in Duckdoku:** tap a rival's row and a speech bubble opens
+  over it with the stickers you own; the one you tap arcs onto their row and
+  slaps down. One sticker per player every 10 minutes (`STICKER_COOLDOWN` in
+  `scripts/screens/leaderboard.gd`, kept on the phone); a failed send lifts it.
+  Received stickers pop up when Ranks opens, slapping on one by one.
 - **Block** hides a player's rows and stickers on that phone. **Report Name**
-  adds a document to `reports` (player id, name, who reported).
+  adds a document to `reports` (player id, name, who reported). Both sit at
+  the foot of the sticker bubble.
 - **Stickers owned:** the basic three (Grr!, Aww..., Congrats!) for everyone.
   The Christmas Battle Pass adds Brrr! and Cozy! (free, tiers 10 and 20) and
   Ho Ho Ho! and For You! (premium, tiers 5 and 15). They're in

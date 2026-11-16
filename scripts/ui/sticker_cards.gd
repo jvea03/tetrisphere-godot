@@ -16,10 +16,13 @@ static func show_received(parent: Control) -> Dictionary:
 		return {}
 	var d := TSUI.dialog(parent, 600)
 	var box: VBoxContainer = d["box"]
-	box.add_child(TSUI.ribbon("Stickers for You!", TSUI.PINK, 40, 470.0))
+	box.add_child(TSUI.ribbon("You got a sticker!" if got.size() == 1 else "You got stickers!", TSUI.PINK, 38, 470.0))
+	var faces: Array = []
 	for g: Dictionary in got.slice(0, 5):
 		var row := TSUI.hbox(12)
-		row.add_child(TSIcon.make("sticker", 84, 0, str(g["sticker"])))
+		var face := TSIcon.make("sticker", 84, 0, str(g["sticker"]))
+		row.add_child(face)
+		faces.append(face)
 		var v := TSUI.vbox(2)
 		v.add_child(TSUI.label(str(g["name"]), 26))
 		v.add_child(TSUI.label("sent you \"%s\"" % TSStickers.sticker_name(str(g["sticker"])), 20, TSUI.MUTED))
@@ -40,6 +43,20 @@ static func show_received(parent: Control) -> Dictionary:
 	box.add_child(ok)
 	TSSfx.play("popper")
 	TSUI.reveal(d["root"], d["panel"])
+	# Each sticker slaps on in turn.
+	for k in faces.size():
+		var f: Control = faces[k]
+		f.modulate.a = 0.0
+		var t := f.create_tween()
+		t.tween_interval(0.2 + 0.15 * k)
+		t.tween_callback(func() -> void:
+			f.pivot_offset = f.size * 0.5
+			f.scale = Vector2(2.2, 2.2)
+			f.rotation = -0.5)
+		t.tween_property(f, "modulate:a", 1.0, 0.05)
+		t.parallel().tween_property(f, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		t.parallel().tween_property(f, "rotation", 0.12 * (1 if k % 2 == 0 else -1), 0.18)
+		t.tween_callback(func() -> void: TSSfx.play("snap"))
 	return d
 
 

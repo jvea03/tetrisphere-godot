@@ -30,7 +30,7 @@ var _status: Label            # connecting, offline, or only you so far
 ## -> [rank, stars]} (the player's own also lasts across runs, in
 ## TSProfile.board_seen), so a refresh can show what changed since.
 static var _seen := {}
-const MOVE_SECONDS := 0.7
+const MOVE_SECONDS := 0.42
 
 
 func tab_id() -> String:
@@ -84,7 +84,7 @@ func build() -> void:
 	tick.autostart = true
 	tick.timeout.connect(_refresh_countdown)
 	add_child(tick)
-	Online.boards_changed.connect(_refresh)
+	Online.boards_changed.connect(_on_boards_changed)
 	TSProfile.push_boards()
 	TSProfile.resolve_board_results(_refresh)
 	_refresh()
@@ -94,12 +94,28 @@ func build() -> void:
 	TSStickerCards.show_received(self)
 
 
-## Asks Online for the open board (a minute fresh at most).
+## Asks Online for every board at once (a minute fresh at most), so switching
+## tabs shows its rows straight away.
 func _fetch() -> void:
-	Online.fetch(TSProfile.current_board(_tab))
+	for p in PERIODS:
+		Online.fetch(TSProfile.current_board(p))
+
+
+var _drawn := ""   # what the list shows now (tab and rows), so a fetch that changes nothing redraws nothing
+
+
+## A board arrived: redraw only if the open tab's rows are different.
+func _on_boards_changed() -> void:
+	if _signature() != _drawn:
+		_refresh()
+
+
+func _signature() -> String:
+	return _tab + JSON.stringify(TSProfile.standings_for(_tab).map(func(e: Dictionary) -> Array: return [e.get("uid", ""), e["stars"], e["name"], e.get("avatar", 0)]))
 
 
 func _refresh() -> void:
+	_drawn = _signature()
 	if TSProfile.leaderboard_reward_message != "":
 		(_banner.get_child(0) as Label).text = TSProfile.leaderboard_reward_message
 		_banner.visible = true
@@ -181,8 +197,8 @@ func _play_moves(moves: Array) -> void:
 		tw.tween_property(card, "position:y", 0.0, MOVE_SECONDS).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
 		if m[2]:
 			card.pivot_offset = card.size * 0.5
-			tw.tween_property(card, "scale", Vector2(1.04, 1.04), 0.12)
-			tw.tween_property(card, "scale", Vector2.ONE, 0.18)
+			tw.tween_property(card, "scale", Vector2(1.04, 1.04), 0.08)
+			tw.tween_property(card, "scale", Vector2.ONE, 0.12)
 			tw.tween_callback(func() -> void: TSSfx.play("ding" if int(m[1]) > 0 else "tick"))
 
 
@@ -297,16 +313,20 @@ func _row(rank: int, entry: Dictionary, was: Array = []) -> Control:
 		if new_stars > old_stars:
 			stars_lbl.text = str(old_stars)
 			var tw := stars_lbl.create_tween()
-			tw.tween_interval(0.3)
-			tw.tween_method(func(v: float) -> void: stars_lbl.text = str(roundi(v)), float(old_stars), float(new_stars), 0.8)
+			tw.tween_interval(0.1)
+			tw.tween_method(func(v: float) -> void: stars_lbl.text = str(roundi(v)), float(old_stars), float(new_stars), 0.45)
 	h.add_child(chip)
 	if not me:
 		# Another player: tap for their card (a sticker, block, report).
 		card.mouse_filter = Control.MOUSE_FILTER_STOP
 		card.gui_input.connect(func(e: InputEvent) -> void:
-			if (e is InputEventMouseButton and not e.pressed and e.button_index == MOUSE_BUTTON_LEFT) or (e is InputEventScreenTouch and not e.pressed):
-				if not _scroll_moved():
-					TSStickerCards.show_player(self, entry, _refresh))
+			var down: bool = (e is InputEventMouseButton and e.button_index == MOUSE_BUTTON_LEFT) or e is InputEventScreenTouch
+			if not down:
+				return
+			card.pivot_offset = card.size * 0.5
+			card.create_tween().tween_property(card, "scale", Vector2(0.97, 0.97) if e.pressed else Vector2.ONE, 0.06)
+			if not e.pressed and not _scroll_moved():
+				_open_sticker_picker(card, entry))
 	var holder := Control.new()
 	holder.mouse_filter = Control.MOUSE_FILTER_PASS
 	holder.custom_minimum_size = Vector2(0, card.get_combined_minimum_size().y)
@@ -350,3 +370,227 @@ func _input(e: InputEvent) -> void:
 func _on_stickers() -> void:
 	if is_inside_tree() and is_visible_in_tree():
 		TSStickerCards.show_received(self)
+
+
+# -- stickers ----------------------------------------------------------------------
+# As in Duckdoku: tap a rival's row and a speech bubble opens over it with the
+# stickers this player has; tap one and it arcs onto the row, slaps down,
+# wobbles and peels off, with a toast. One sticker per player every
+# STICKER_COOLDOWN seconds (the bubble says how long is left). Block and
+# Report sit at the bubble's foot.
+
+const STICKER_COOLDOWN := 600
+const STICKER_STATE := "user://stickers.cfg"
+static var _sent_at := {}   # player uid -> when this player last sent them one (also in STICKER_STATE)
+var _picker: Control = null
+
+
+static func _sticker_wait(uid: String) -> int:
+	if _sent_at.is_empty() and TSProfile.persist:
+		var cfg := ConfigFile.new()
+		if cfg.load(STICKER_STATE) == OK:
+			for k in cfg.get_section_keys("sent") if cfg.has_section("sent") else []:
+				_sent_at[k] = int(cfg.get_value("sent", k, 0))
+	return maxi(int(_sent_at.get(uid, 0)) + STICKER_COOLDOWN - int(Time.get_unix_time_from_system()), 0)
+
+
+static func _note_sent(uid: String, at: int) -> void:
+	if at > 0:
+		_sent_at[uid] = at
+	else:
+		_sent_at.erase(uid)
+	if TSProfile.persist:
+		var cfg := ConfigFile.new()
+		for k in _sent_at:
+			cfg.set_value("sent", k, _sent_at[k])
+		cfg.save(STICKER_STATE)
+
+
+func _close_sticker_picker() -> void:
+	if _picker != null and is_instance_valid(_picker):
+		var p := _picker
+		_picker = null
+		var t := p.create_tween()
+		t.tween_property(p, "modulate:a", 0.0, 0.1)
+		t.tween_callback(p.queue_free)
+
+
+## A speech bubble over the row: who it's for, the stickers (popping in one
+## by one), and Block / Report. A tap outside it closes it.
+func _open_sticker_picker(row: Control, entry: Dictionary) -> void:
+	_close_sticker_picker()
+	var shade := Control.new()
+	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shade.mouse_filter = Control.MOUSE_FILTER_STOP
+	shade.z_index = 40
+	shade.gui_input.connect(func(e: InputEvent) -> void:
+		if (e is InputEventMouseButton or e is InputEventScreenTouch) and e.pressed:
+			_close_sticker_picker())
+	add_child(shade)
+	_picker = shade
+	var bubble := PanelContainer.new()
+	var face := TSUI.sb(Color.WHITE, 24, 3, 3, 12)
+	face.shadow_color = Color(TSUI.INK, 0.25)
+	face.shadow_size = 10
+	face.shadow_offset = Vector2(0, 4)
+	bubble.add_theme_stylebox_override("panel", face)
+	bubble.mouse_filter = Control.MOUSE_FILTER_STOP
+	shade.add_child(bubble)
+	var v := TSUI.vbox(6)
+	bubble.add_child(v)
+	v.add_child(TSUI.label("Send %s a sticker" % str(entry["name"]), 20, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER))
+	var uid := str(entry.get("uid", ""))
+	var wait := _sticker_wait(uid)
+	var owned: Array = TSStickers.owned()
+	var cell := 96.0 if owned.size() <= 3 else 86.0
+	var grid := GridContainer.new()
+	grid.columns = mini(owned.size(), 4)   # four to a row, so each is big enough to tap
+	grid.add_theme_constant_override("h_separation", 6)
+	grid.add_theme_constant_override("v_separation", 4)
+	var faces: Array = []
+	for id: String in owned:
+		var b := Button.new()
+		b.flat = true
+		b.focus_mode = Control.FOCUS_NONE
+		b.custom_minimum_size = Vector2(cell, cell + 22.0)
+		var art := TSIcon.make("sticker", cell - 8.0, 0, id)
+		art.position = Vector2(4, 0)
+		art.size = Vector2(cell - 8.0, cell - 8.0)
+		art.pivot_offset = art.size * 0.5
+		b.add_child(art)
+		var cap := TSUI.label(TSStickers.sticker_name(id), 15, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+		cap.position = Vector2(-8, cell - 6.0)
+		cap.size = Vector2(cell + 16.0, 22)
+		b.add_child(cap)
+		b.disabled = wait > 0
+		if wait > 0:
+			art.modulate.a = 0.4
+		b.button_down.connect(func() -> void: art.create_tween().tween_property(art, "scale", Vector2(0.85, 0.85), 0.05))
+		b.pressed.connect(func() -> void: _send_sticker(id, art, row, entry))
+		grid.add_child(b)
+		faces.append(art)
+	var center := CenterContainer.new()
+	center.add_child(grid)
+	v.add_child(center)
+	if wait > 0:
+		@warning_ignore("integer_division")
+		v.add_child(TSUI.label("You can send another in %dm %02ds" % [wait / 60, wait % 60], 16, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	var links := TSUI.hbox(18)
+	links.alignment = BoxContainer.ALIGNMENT_CENTER
+	for pair in [["Block", func() -> void:
+			TSStickerCards._block(uid)
+			_close_sticker_picker()
+			_refresh()], ["Report Name", func() -> void:
+			Online.report(uid, str(entry["name"]))
+			_close_sticker_picker()
+			_sticker_toast("Thanks -- we'll take a look.")]]:
+		var link := Button.new()
+		link.flat = true
+		link.focus_mode = Control.FOCUS_NONE
+		link.text = pair[0]
+		link.add_theme_font_size_override("font_size", 15)
+		link.add_theme_color_override("font_color", TSUI.MUTED)
+		link.pressed.connect(pair[1])
+		links.add_child(link)
+	v.add_child(links)
+	# Over the row, or under it near the top of the screen.
+	bubble.reset_size()
+	var rr := row.get_global_rect()
+	var y := rr.position.y - bubble.size.y - 6.0
+	if y < 120.0:
+		y = rr.end.y + 6.0
+	bubble.global_position = Vector2((get_viewport_rect().size.x - bubble.size.x) * 0.5, y)
+	bubble.pivot_offset = Vector2(bubble.size.x * 0.5, bubble.size.y if y < rr.position.y else 0.0)
+	bubble.scale = Vector2(0.6, 0.6)
+	bubble.modulate.a = 0.0
+	var t := bubble.create_tween().set_parallel(true)
+	t.tween_property(bubble, "scale", Vector2.ONE, 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	t.tween_property(bubble, "modulate:a", 1.0, 0.08)
+	TSSfx.play("pop1")
+	for k in faces.size():
+		var f: Control = faces[k]
+		f.scale = Vector2(0.3, 0.3)
+		var ft := f.create_tween()
+		ft.tween_interval(0.04 + 0.035 * k)
+		ft.tween_property(f, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+## The sticker arcs from the bubble onto the rival's row with a spin, slaps
+## down (the row jolts, a sparkle, a buzz), wobbles, then peels off. It is
+## sent at once; a failed send lifts the cooldown and says so.
+func _send_sticker(id: String, from_face: Control, row: Control, entry: Dictionary) -> void:
+	var start := from_face.get_global_rect()
+	_close_sticker_picker()
+	var uid := str(entry.get("uid", ""))
+	var now := int(Time.get_unix_time_from_system())
+	_note_sent(uid, now)
+	var who := str(entry["name"])
+	Online.send_sticker(uid, id, func(ok: bool) -> void:
+		if ok:
+			TSProfile.record_quest_event("sticker")   # the sticker quests; the cooldown stops farming
+		else:
+			_note_sent(uid, 0)
+			if is_inside_tree():
+				_sticker_toast("Couldn't send that to %s. Try again in a bit." % who))
+	if not is_instance_valid(row):
+		return
+	var s := TSIcon.make("sticker", 76, 0, id)
+	s.size = Vector2(76, 76)
+	s.pivot_offset = s.size * 0.5
+	s.top_level = true
+	s.z_index = 60
+	add_child(s)
+	var rr := row.get_global_rect()
+	var land := Vector2(rr.position.x + rr.size.x * 0.6, rr.get_center().y)
+	var from := start.get_center()
+	var mid := (from + land) * 0.5 + Vector2(0, -90)
+	var path := func(p: float) -> void:
+		s.global_position = from.lerp(mid, p).lerp(mid.lerp(land, p), p) - s.size * 0.5
+		s.rotation = (1.0 - p) * -TAU * 0.75
+		s.scale = Vector2.ONE * lerpf(1.0, 1.4, sin(p * PI) * 0.6 + p * 0.4)
+	path.call(0.0)
+	TSSfx.play("whoosh")
+	var t := s.create_tween()
+	t.tween_method(path, 0.0, 1.0, 0.36).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	t.tween_callback(func() -> void:
+		if is_instance_valid(row):
+			row.pivot_offset = row.size * 0.5
+			var jolt := row.create_tween()
+			jolt.tween_property(row, "scale", Vector2(1.03, 0.94), 0.05)
+			jolt.tween_property(row, "scale", Vector2.ONE, 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		TSSfx.play("snap")
+		TSFX.sparkle_burst_at(self, Rect2(land - Vector2(40, 40), Vector2(80, 80)))
+		TSHaptics.light())
+	t.tween_property(s, "scale", Vector2(1.6, 1.1), 0.05)
+	t.tween_property(s, "scale", Vector2(1.15, 1.15), 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	t.parallel().tween_property(s, "rotation", 0.18, 0.16)
+	t.tween_property(s, "rotation", -0.1, 0.1)
+	t.tween_property(s, "rotation", 0.12, 0.1)
+	t.tween_interval(0.45)
+	t.tween_property(s, "global_position:y", land.y - s.size.y * 0.5 - 30.0, 0.25)
+	t.parallel().tween_property(s, "modulate:a", 0.0, 0.25)
+	t.tween_callback(s.queue_free)
+	_sticker_toast("%s sent to %s!" % [TSStickers.sticker_name(id), who])
+
+
+var _toast: Control = null
+
+
+func _sticker_toast(text: String) -> void:
+	if is_instance_valid(_toast):
+		_toast.queue_free()   # one toast at a time
+	var lbl := TSUI.outlined(TSUI.label(text, 24, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER), TSUI.INK, 8)
+	lbl.top_level = true
+	lbl.z_index = 70
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lbl.size = Vector2(get_viewport_rect().size.x, 36)
+	lbl.global_position = Vector2(0, _scroll.get_global_rect().end.y - 80.0)
+	lbl.modulate.a = 0.0
+	add_child(lbl)
+	_toast = lbl
+	var t := lbl.create_tween()
+	t.tween_property(lbl, "modulate:a", 1.0, 0.12)
+	t.parallel().tween_property(lbl, "global_position:y", lbl.global_position.y - 16.0, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	t.tween_interval(1.3)
+	t.tween_property(lbl, "modulate:a", 0.0, 0.25)
+	t.tween_callback(lbl.queue_free)
