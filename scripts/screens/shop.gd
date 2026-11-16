@@ -423,8 +423,8 @@ func _bundle_card(b: Dictionary) -> Control:
 	for l in lines:
 		var line := TSUI.hbox(4)
 		line.alignment = BoxContainer.ALIGNMENT_CENTER
-		line.add_child(TSIcon.make(l[0], 26))
-		line.add_child(TSUI.label(l[1], 20))
+		line.add_child(TSIcon.make(l[0], 30))
+		line.add_child(TSUI.label(l[1] if l[0] == "coin" or l[0] == "materials" else "x" + l[1], 22))
 		v.add_child(line)
 	v.add_child(TSUI.spacer(0, true))   # every bundle's button along the bottom
 	v.add_child(_buy_button(_price(b), func(): Billing.purchase(b["product_id"])))
@@ -444,7 +444,7 @@ func _booster_card(id: String) -> Control:
 	v.add_child(TSUI.label("%s x%d" % [TSProfile.BOOSTER_NAMES[id][0], TSProfile.BOMB_PACK_AMOUNT], 28))
 	v.add_child(TSUI.label("You have %d" % TSProfile.booster_count(id), 20, TSUI.MUTED))
 	var cost := TSProfile.booster_pack_cost(id)
-	var b := _buy_button("%s coins" % TSProfile.fmt_coins(cost), func():
+	var b := _buy_button(TSProfile.fmt_coins(cost), func():
 		if TSProfile.coin_count < cost:
 			return
 		TSProfile.coin_count -= cost
@@ -454,6 +454,16 @@ func _booster_card(id: String) -> Control:
 		_refresh())
 	b.custom_minimum_size.x = 200
 	b.disabled = TSProfile.coin_count < cost
+	# Paid in coins: butter with a coin on it, so it never reads as real money.
+	TSUI.restyle(b, TSUI.BUTTER, 4)
+	var coin := TSIcon.make("coin", 32)
+	coin.position = Vector2(16, 0)
+	coin.size = Vector2(32, 32)
+	b.add_child(coin)
+	b.resized.connect(func() -> void: coin.position.y = (b.size.y - 32.0) * 0.5 - 2.0)
+	b.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	b.add_theme_constant_override("h_separation", 0)
+	b.text = "     " + b.text
 	row.add_child(b)
 	return card
 
@@ -522,7 +532,12 @@ func _pack_card(p: Dictionary, kind: String, base: float) -> Control:
 	v.add_child(_pack_art("coin_pack" if kind == "coins" else "material_pack", at))
 	v.add_child(TSUI.label(TSProfile.fmt_coins(amount), 28, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER))
 	var more := roundi((_per_dollar(p, kind) / base - 1.0) * 100.0) if base > 0.0 else 0
-	v.add_child(TSUI.label("+%d%% more" % more if more >= 5 else kind, 17, TSFX.COL_GAIN if more >= 5 else TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	if more >= 5:
+		var bonus := TSUI.pill("+%d%% more" % more, TSUI.MINT.lerp(Color.WHITE, 0.3), 16)
+		bonus.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		v.add_child(bonus)
+	else:
+		v.add_child(TSUI.label(kind, 17, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	v.add_child(TSUI.spacer(0, true))
 	v.add_child(_buy_button(_price(p), func(): Billing.purchase(p["product_id"])))
 	return card
