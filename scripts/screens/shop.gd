@@ -298,9 +298,9 @@ func _pass_card() -> Control:
 	art.texture = load("res://icons/battle_pass_banner.png")
 	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	art.custom_minimum_size = Vector2(0, 150)
+	art.custom_minimum_size = Vector2(0, 92)
 	art.clip_contents = true
-	var title := TSUI.outlined(TSUI.label("Premium Pass  ·  Season %d" % TSProfile.battle_pass_season_number(), 32, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER), TSUI.INK, 9)
+	var title := TSUI.outlined(TSUI.label("Premium Pass  ·  Season %d" % TSProfile.battle_pass_season_number(), 26, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER), TSUI.INK, 9)
 	title.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	title.offset_top = 8.0
 	art.add_child(title)
@@ -322,46 +322,52 @@ func _pass_card() -> Control:
 		tickets += int(r.get("pass_tickets", 0))
 		if r.has("sticker"):
 			stickers.append(str(r["sticker"]))
-	v.add_child(TSUI.label("Unlock the premium track for a bigger reward on every tier:", 20, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	var grid := GridContainer.new()
-	grid.columns = 4
-	grid.add_theme_constant_override("h_separation", 10)
-	grid.add_theme_constant_override("v_separation", 8)
+	grid.columns = 5
+	grid.add_theme_constant_override("h_separation", 4)
+	grid.add_theme_constant_override("v_separation", 4)
 	var items := [["coin", TSProfile.fmt_coins(coins)], ["materials", TSProfile.fmt_coins(mats)], ["bomb", "x%d" % bombs], ["skip", "x%d" % skips]]
 	if tickets > 0:
 		items.append(["ticket", "x%d" % tickets])
 	for it in items:
-		grid.add_child(_pass_item(TSIcon.make(it[0], 52), it[1]))
+		grid.add_child(_pass_item(TSIcon.make(it[0], 40), it[1]))
 	for t in season["paid_critters"]:
 		var c := int(season["paid_critters"][t])
-		grid.add_child(_pass_item(TSIcon.make("critter", 52, c), TSProfile.critter_name(c)))
+		grid.add_child(_pass_item(TSIcon.make("critter", 40, c), TSProfile.critter_name(c)))
 	for t in season["paid_parts"]:
 		var p := int(season["paid_parts"][t])
-		grid.add_child(_pass_item(TSIcon.make("part", 52, p), TSProfile.part_name(p)))
+		grid.add_child(_pass_item(TSIcon.make("part", 40, p), TSProfile.part_name(p)))
 	for st in stickers:
-		grid.add_child(_pass_item(TSIcon.make("sticker", 52, 0, st), TSStickers.sticker_name(st)))
+		grid.add_child(_pass_item(TSIcon.make("sticker", 40, 0, st), TSStickers.sticker_name(st)))
 	var center := CenterContainer.new()
 	center.add_child(grid)
 	v.add_child(center)
-	var perks := ["Premium critters you can only get here", "A 4th chest slot, two chests unlocking at once", "Chests unlock %d%% faster" % TSChests.TIMER_DISCOUNT_PERCENT, "+%d%% on every coin you earn, all season" % TSProfile.BATTLE_PASS_COIN_BONUS_PERCENT]
+	# The perks, two to a line.
+	var perks := ["Pass-only critters", "A 4th chest slot", "Chests %d%% faster" % TSChests.TIMER_DISCOUNT_PERCENT, "+%d%% coins all season" % TSProfile.BATTLE_PASS_COIN_BONUS_PERCENT]
+	var pg := GridContainer.new()
+	pg.columns = 2
+	pg.add_theme_constant_override("h_separation", 16)
 	for perk in perks:
-		var line := TSUI.hbox(6)
-		line.add_child(TSIcon.make("check", 24))
-		line.add_child(TSUI.label(perk, 19))
-		v.add_child(line)
+		var line := TSUI.hbox(4)
+		line.add_child(TSIcon.make("check", 22))
+		line.add_child(TSUI.label(perk, 17))
+		pg.add_child(line)
+	var pc := CenterContainer.new()
+	pc.add_child(pg)
+	v.add_child(pc)
 	var tier := TSProfile.battle_pass_tier()
 	if tier > 0 and not TSProfile.battle_pass_purchased:
-		v.add_child(TSUI.wrap(TSUI.label("You're on tier %d: buy now and the premium rewards for %s unlock right away!" % [tier, "tier 1" if tier == 1 else "all %d tiers" % tier], 19, TSFX.COL_GAIN, HORIZONTAL_ALIGNMENT_CENTER), 560))
+		v.add_child(TSUI.wrap(TSUI.label("Unlocks tier 1's rewards right away!" if tier == 1 else "Unlocks your %d tiers' rewards right away!" % tier, 17, TSFX.COL_GAIN, HORIZONTAL_ALIGNMENT_CENTER), 560))
 	var row := TSUI.hbox(10)
 	v.add_child(row)
-	var see := TSUI.expand(TSUI.button("See the Pass", TSUI.CARD, 22, Vector2(0, 64), 4)) as Button
+	var see := TSUI.expand(TSUI.button("See the Pass", TSUI.CARD, 20, Vector2(0, 54), 4)) as Button
 	see.pressed.connect(func() -> void: SceneFlow.go("res://scenes/battle_pass.tscn"))
 	row.add_child(see)
 	if TSProfile.battle_pass_purchased:
 		row.add_child(TSUI.expand(TSUI.label("Premium active", 24, Color(0.3, 0.64, 0.3), HORIZONTAL_ALIGNMENT_CENTER)))
 	else:
 		var live := Billing.price_of("egg_battle_pass")
-		var buy := TSUI.expand(TSUI.button("Unlock  ·  %s" % (live if live != "" else TSProfile.BATTLE_PASS_PRICE_LABEL), RIM, 26, Vector2(0, 64), 4)) as Button
+		var buy := TSUI.expand(TSUI.button("Unlock  ·  %s" % (live if live != "" else TSProfile.BATTLE_PASS_PRICE_LABEL), RIM, 22, Vector2(0, 54), 4)) as Button
 		buy.pressed.connect(func() -> void:
 			_last_btn = buy
 			Billing.purchase("egg_battle_pass"))
@@ -371,10 +377,10 @@ func _pass_card() -> Control:
 
 func _pass_item(art: Control, caption: String) -> Control:
 	var c := TSUI.vbox(0)
-	c.custom_minimum_size = Vector2(118, 0)
+	c.custom_minimum_size = Vector2(100, 0)
 	art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	c.add_child(art)
-	c.add_child(TSUI.label(caption, 17, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER))
+	c.add_child(TSUI.label(caption, 15, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER))
 	return c
 
 
