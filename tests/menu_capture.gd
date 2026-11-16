@@ -26,6 +26,8 @@ func _ready() -> void:
 			t0.root.get_texture().get_image().save_png(OS.get_environment("OUT").path_join(OS.get_environment("SHOT") if OS.get_environment("SHOT") != "" else "shot.png"))
 			t0.quit())
 	TSProfile.use_test_profile(30)
+	if args_has("newbie"):
+		TSProfile.last_level = 3   # `newbie`: a level-3 player, before the level-7 features
 	TSProfile.home_tutorial_seen = true
 	TSProfile.daily_callout_seen = true
 	TSProfile.camp_callout_seen = not args_has("callout")   # `-- home broken callout`: the first-visit camp pointer
