@@ -12,12 +12,32 @@ const TRUST := 120.0     # a device clock within two minutes of the network's is
 const MONTHS := ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
 static var offset := 0.0     # network time minus device time, in seconds
+## Previewing a date in the editor (Project Settings > tetrisphere/preview_date,
+## e.g. "2026-12-08" for the Christmas season): the clock runs that far ahead,
+## and the profile saves to its own file so the real save is left alone. Only
+## in the editor with a window -- never in a release build or a headless test.
+static var preview_shift := 0.0
+static var _preview_checked := false
 static var synced := false   # the network's time has been read this run
 
 
 ## Seconds since 1970, UTC.
 static func now() -> float:
-	return Time.get_unix_time_from_system() + offset
+	apply_preview()
+	return Time.get_unix_time_from_system() + offset + preview_shift
+
+
+## Reads the preview date once (see preview_shift). True while previewing.
+static func apply_preview() -> bool:
+	if not _preview_checked:
+		_preview_checked = true
+		var date := str(ProjectSettings.get_setting("tetrisphere/preview_date", ""))
+		if date != "" and OS.has_feature("editor") and DisplayServer.get_name() != "headless":
+			var at := Time.get_unix_time_from_datetime_string(date + "T12:00:00")
+			if at > 0:
+				preview_shift = float(at) - Time.get_unix_time_from_system()
+				print("[TSClock] previewing ", date, " -- saves go to ", TSProfile.PREVIEW_SAVE_PATH)
+	return preview_shift != 0.0
 
 
 ## The local time now as unix seconds (for local dates and midnights).

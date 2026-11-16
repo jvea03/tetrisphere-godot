@@ -13,6 +13,13 @@ extends RefCounted
 ## the same deterministic way Duckdoku does it -- see those sections.
 
 const SAVE_PATH := "user://profile.cfg"
+## The save a date preview uses (TSClock.apply_preview): a copy of the real one
+## the first time, then its own, so jumping ahead never touches the real save.
+const PREVIEW_SAVE_PATH := "user://profile_preview.cfg"
+
+
+static func _save_file() -> String:
+	return PREVIEW_SAVE_PATH if TSClock.apply_preview() else SAVE_PATH
 const SAVE_VERSION := 1
 ## The save is written encrypted. Obfuscation, not security -- the key ships
 ## in the binary -- but it stops casual coin editing.
@@ -3135,29 +3142,34 @@ static func save() -> void:
 ## Never written over in place: the new save goes to SAVE_TMP first, then the
 ## old one steps aside to SAVE_BAK and the new one takes its place, so a
 ## phone killing the app mid-write always leaves one whole save on disk.
-const SAVE_TMP := SAVE_PATH + ".tmp"
-const SAVE_BAK := SAVE_PATH + ".bak"
-
 static func _write_save(cfg: ConfigFile) -> void:
-	if cfg.save_encrypted_pass(SAVE_TMP, SAVE_KEY) != OK:
+	var main := _save_file()
+	var tmp := main + ".tmp"
+	var bak := main + ".bak"
+	if cfg.save_encrypted_pass(tmp, SAVE_KEY) != OK:
 		return
-	var dir := DirAccess.open(SAVE_PATH.get_base_dir())
+	var dir := DirAccess.open(main.get_base_dir())
 	if dir == null:
 		return
-	if dir.file_exists(SAVE_PATH.get_file()):
-		if dir.file_exists(SAVE_BAK.get_file()):
-			dir.remove(SAVE_BAK.get_file())
-		dir.rename(SAVE_PATH.get_file(), SAVE_BAK.get_file())
-	dir.rename(SAVE_TMP.get_file(), SAVE_PATH.get_file())
+	if dir.file_exists(main.get_file()):
+		if dir.file_exists(bak.get_file()):
+			dir.remove(bak.get_file())
+		dir.rename(main.get_file(), bak.get_file())
+	dir.rename(tmp.get_file(), main.get_file())
 
 
 static func _read_save() -> ConfigFile:
-	for path in [SAVE_PATH, SAVE_TMP, SAVE_BAK]:
+	var main := _save_file()
+	# A preview's first run starts from the real save (read, never written).
+	var paths := [main, main + ".tmp", main + ".bak"]
+	if main != SAVE_PATH and not FileAccess.file_exists(main):
+		paths = [SAVE_PATH, SAVE_PATH + ".bak"]
+	for path in paths:
 		if not FileAccess.file_exists(path):
 			continue
 		var cfg := ConfigFile.new()
 		if cfg.load_encrypted_pass(path, SAVE_KEY) == OK and cfg.has_section("profile"):
-			if path != SAVE_PATH and FileAccess.file_exists(SAVE_PATH):
-				DirAccess.remove_absolute(SAVE_PATH)
+			if path.begins_with(main) and path != main and FileAccess.file_exists(main):
+				DirAccess.remove_absolute(main)
 			return cfg
 	return null
