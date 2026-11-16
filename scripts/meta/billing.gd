@@ -54,6 +54,7 @@ const CLIENT_SCRIPT := "res://addons/GodotGooglePlayBilling/BillingClient.gd"
 # addon's class at parse time (it may be absent from a desktop checkout).
 const RESPONSE_OK := 0
 const PRODUCT_TYPE_INAPP := 0
+const PRODUCTS_PER_QUERY := 4
 const PURCHASE_STATE_PURCHASED := 1
 
 var simulated: bool = true
@@ -190,7 +191,13 @@ func _finish(product_id: String, success: bool) -> void:
 
 func _on_connected() -> void:
 	_connected = true
-	_client.query_product_details(PackedStringArray(PRODUCTS.keys()), PRODUCT_TYPE_INAPP)
+	# A few products per query: the plugin hands back every product's details as
+	# one nested Dictionary, and on Android 7 turning all of them into Godot
+	# values at once overflows the JNI local reference table (512) and crashes
+	# (Play vitals, 1.3.2). _on_product_details merges the replies.
+	var ids: Array = PRODUCTS.keys()
+	for i in range(0, ids.size(), PRODUCTS_PER_QUERY):
+		_client.query_product_details(PackedStringArray(ids.slice(i, i + PRODUCTS_PER_QUERY)), PRODUCT_TYPE_INAPP)
 	_client.query_purchases(PRODUCT_TYPE_INAPP) # picks up an owned No Ads pass on reinstall
 
 
