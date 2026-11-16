@@ -149,6 +149,9 @@ func _refresh() -> void:
 	var compare := fetched and not before.is_empty()
 	var now := {}
 	var moves: Array = []   # [row card, places it rose (negative: fell)]
+	# The top three on their podium, over the list.
+	if entries.size() >= 3:
+		_list.add_child(_podium(entries))
 	for i in entries.size():
 		var e: Dictionary = entries[i]
 		var key := "me" if e.get("is_player", false) else str(e.get("uid", e["name"]))
@@ -161,8 +164,6 @@ func _refresh() -> void:
 		if e.get("is_player", false):
 			_player_row = holder
 			_pinned.add_child(_row(i + 1, e, []))
-	if entries.size() >= 3:
-		_list.add_child(_podium(entries))
 	if fetched:
 		_seen[board] = now
 		if now.has("me"):
@@ -180,11 +181,9 @@ func _play_moves(moves: Array) -> void:
 	await get_tree().process_frame
 	if not is_inside_tree():
 		return
-	var step := 0.0
-	for c in _list.get_children():
-		if c is Control and (c as Control).size.y > 0.0:
-			step = (c as Control).size.y + float(_list.get_theme_constant("separation"))
-			break
+	# One row's height (a row's holder, not the podium over the list).
+	var holder: Control = (moves[0][0] as Control).get_parent()
+	var step := holder.size.y + float(_list.get_theme_constant("separation"))
 	if step <= 0.0:
 		return
 	var span := float(_list.get_child_count()) * step
@@ -234,8 +233,8 @@ func _podium(entries: Array) -> Control:
 		row.add_child(col)
 	var box := TSUI.vbox(6)
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.add_child(TSUI.spacer(12))
 	box.add_child(row)
+	box.add_child(TSUI.spacer(6))   # a little room before the list under it
 	return box
 
 
