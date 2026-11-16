@@ -33,6 +33,7 @@ cache), and remember it offline. Needs a build with this feature (1.3.3 on).
 
 | Key | Shipped | What it does |
 |---|---|---|
+| `analytics_enabled` | true | Kill switch: false sends no analytics (GameAnalytics, and Firebase on Android) and hides Settings' Share usage data and the consent card (docs/analytics.md) |
 | `interstitial_from_level` | 30 | Players who haven't bought anything see an ad between levels from this level |
 | `interstitial_every_n_wins` | 3 | ...on every Nth win |
 | `interstitial_every_win_from_level` | 60 | From this level non-payers see an ad after every win; payers' first interstitials start here, every Nth win (same as Duckdoku) |

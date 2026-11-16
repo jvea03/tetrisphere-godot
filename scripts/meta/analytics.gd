@@ -4,7 +4,13 @@ extends RefCounted
 ## Firebase Analytics on Android (the EggAnalytics plugin): Firebase's own
 ## first_open, plus a few game events Google Ads imports as conversions, so
 ## the install campaign learns which installs turn into players. Elsewhere
-## (the editor, tests, iOS) it does nothing. The IDs are the Egg Escape
+## (the editor, tests, iOS) Firebase does nothing.
+##
+## Every event here also goes to GameAnalytics (the GA autoload,
+## scripts/meta/game_analytics.gd) on both Android and iOS, as levels,
+## first-run steps and design events. Both follow the same rules: the
+## Settings switch, the kill switch and, where the law asks first, the
+## player's yes (TSPrivacyRegion). The IDs are the Egg Escape
 ## Firebase project's Android app (Project settings > Your apps): client IDs
 ## every copy of the app carries, not secrets.
 
@@ -19,7 +25,7 @@ static var _load_began := -1    # Time.get_ticks_msec() as the cutscene handed o
 
 
 static func _ready_plugin() -> Object:
-	if _plugin == null and APP_ID != "" and Engine.has_singleton("EggAnalytics"):
+	if _plugin == null and APP_ID != "" and Engine.has_singleton("EggAnalytics") and _allowed():
 		_plugin = Engine.get_singleton("EggAnalytics")
 		_plugin.start(API_KEY, APP_ID, PROJECT_ID, SENDER_ID)
 	return _plugin
@@ -35,8 +41,65 @@ static func event(name: String, params := {}) -> void:
 	if recent.size() > 20:
 		recent.pop_front()
 	var p := _ready_plugin()
-	if p != null:
+	if p != null and _allowed():
 		p.logEvent(name, params)
+	_to_ga(name, params)
+
+
+## Firebase may run: the kill switch, the Settings switch and the consent.
+static func _allowed() -> bool:
+	return TSTunables.get_bool("analytics_enabled") and TSPrivacyRegion.analytics_allowed()
+
+
+## The GameAnalytics autoload, or null (looked up rather than named, so this
+## class still compiles where autoloads are not loaded).
+static func ga() -> Node:
+	var tree := Engine.get_main_loop() as SceneTree
+	return tree.root.get_node_or_null("GA") if tree != null else null
+
+
+## Firebase's event names, as GameAnalytics design ids ("ad_inter_owed" ->
+## "Ad:Interstitial:Owed"). Levels go as progression events instead.
+const GA_NAMES := {
+	"ad_inter_due": "Ad:Interstitial:Due",
+	"ad_inter_owed": "Ad:Interstitial:Owed",
+	"ad_inter_bought_off": "Ad:Interstitial:BoughtOff",
+	"ad_inter_skip_pass": "Ad:Interstitial:SkipPass",
+	"ad_inter_owed_dropped": "Ad:Interstitial:OwedDropped:NoAds",
+	"ad_inter_owed_deferred": "Ad:Interstitial:OwedDeferred:Busy",
+	"intro_start": "FirstRun:Intro:Start",
+	"tutorial_complete": "Tutorial:Level1:Done",
+}
+
+
+static func _to_ga(name: String, params: Dictionary) -> void:
+	var g := ga()
+	if g == null or not g.enabled:
+		return
+	match name:
+		"level_start":
+			g.progression("Start", _ga_kind(str(params.get("kind", ""))), "Level_%03d" % int(params.get("level", "0")))
+		"level_end":
+			var kind := _ga_kind(str(params.get("kind", "")))
+			g.progression("Complete" if str(params.get("success", "0")) == "1" else "Fail", kind, "Level_%03d" % int(params.get("level", "0")), int(params.get("hearts_left", 0)))
+			g.design("Level:Seconds:" + kind, int(params.get("seconds", 0)))
+			g.design("Level:Drops:" + kind, int(params.get("drops", 0)))
+		"intro_end":
+			g.design("FirstRun:Intro:" + str(params.get("how", "")).capitalize(), int(params.get("seconds", 0)))
+		"level_loaded":
+			g.design("FirstRun:Level1Loaded", float(params.get("seconds", 0.0)))
+		_:
+			if GA_NAMES.has(name):
+				g.design(GA_NAMES[name], params.get("level", null))
+			elif name.begins_with("level_") and name.ends_with("_won"):
+				pass # Firebase's Google Ads conversions; GameAnalytics has the progression event
+			else:
+				g.design("Event:" + name)
+
+
+## "level" -> "Level", "daily" -> "Daily", "challenge" -> "Challenge".
+static func _ga_kind(kind: String) -> String:
+	return kind.capitalize() if kind != "" else "Level"
 
 
 ## A user property: every report can be split by it.

@@ -153,6 +153,14 @@ static var interstitial_skip: bool = false
 ## True from the moment an interstitial goes on screen until it closes (ads.gd),
 ## so an app killed mid-ad is noticed at the next launch: the ad is then owed.
 static var interstitial_open: bool = false
+## The last run was killed with an interstitial on screen (noticed on load,
+## not saved): GameAnalytics reports it once (Ad:Interstitial:Abandoned).
+static var interstitial_abandoned: bool = false
+## Settings -> Share usage data (GameAnalytics, and Firebase on Android).
+static var analytics_enabled: bool = true
+## The answer on the consent card shown where the law asks first
+## (TSPrivacyRegion): "" never asked, "yes" or "no".
+static var analytics_consent: String = ""
 
 
 static func no_ads_coin_bonus_percent() -> int:
@@ -356,6 +364,7 @@ static func get_toggle(name: String) -> bool:
 		"sfx_enabled": return sfx_enabled
 		"haptics_enabled": return haptics_enabled
 		"notifications_enabled": return notifications_enabled
+		"analytics_enabled": return TSPrivacyRegion.switch_state()
 	return false
 
 
@@ -380,6 +389,12 @@ static func set_toggle(name: String, on: bool) -> void:
 		"sfx_enabled": sfx_enabled = on
 		"haptics_enabled": haptics_enabled = on
 		"notifications_enabled": notifications_enabled = on
+		"analytics_enabled":
+			# Settings -> Share usage data. On is a yes wherever the law asks
+			# first (and undoes an earlier no); off stops everything.
+			analytics_enabled = on
+			if on and (TSPrivacyRegion.is_regulated() or analytics_consent == "no"):
+				analytics_consent = "yes"
 	save()
 
 # -- critters (Collection) ---------------------------------------------------
@@ -2927,7 +2942,10 @@ static func ensure_loaded() -> void:
 	interstitial_owed = bool(g.call("interstitial_owed", false))
 	interstitial_win_count = int(g.call("interstitial_win_count", 0))
 	interstitial_skip = bool(g.call("interstitial_skip", false))
+	analytics_enabled = bool(g.call("analytics_enabled", true))
+	analytics_consent = str(g.call("analytics_consent", ""))
 	if bool(g.call("interstitial_open", false)):
+		interstitial_abandoned = true
 		interstitial_owed = interstitial_owed or not no_ads
 	bomb_count = int(g.call("bomb_count", 0))
 	bombs_unlocked = bool(g.call("bombs_unlocked", false))
@@ -3094,6 +3112,8 @@ static func save() -> void:
 	s.call("interstitial_win_count", interstitial_win_count)
 	s.call("interstitial_skip", interstitial_skip)
 	s.call("interstitial_open", interstitial_open)
+	s.call("analytics_enabled", analytics_enabled)
+	s.call("analytics_consent", analytics_consent)
 	s.call("bomb_count", bomb_count)
 	s.call("bombs_unlocked", bombs_unlocked)
 	s.call("swap_count", swap_count)

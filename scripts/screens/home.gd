@@ -121,6 +121,8 @@ func build() -> void:
 		_open_board_results.call_deferred()
 	elif walkthrough or sale_up:
 		pass   # one pop-up at a time
+	elif TSPrivacyRegion.needs_prompt():
+		_open_analytics_consent.call_deferred()   # the UK and nearby: asked before any analytics
 	elif not TSProfile.notify_asked and features and Notify.available():
 		_open_notify_ask.call_deferred()
 	elif OS.get_name() == "Android" and TSProfile.review_due():
@@ -1279,6 +1281,47 @@ func _open_notify_ask() -> void:
 	TSUI.reveal(_review["root"], _review["panel"])
 
 
+## The question asked in the UK, the EEA and Switzerland before any analytics
+## is sent (TSPrivacyRegion). Two buttons of equal weight, because a consent
+## that is easier to give than to refuse is not freely given. Either answer is
+## saved and can be changed in Settings -> Share usage data.
+func _open_analytics_consent() -> void:
+	await _settled()
+	if not is_inside_tree() or not TSPrivacyRegion.needs_prompt():
+		return
+	var box: VBoxContainer = _review["box"]
+	for c in box.get_children():
+		c.queue_free()
+	box.add_child(TSUI.title("Help us improve the game?", 36))
+	box.add_child(TSUI.wrap(TSUI.label("May we send anonymous usage statistics (like which levels are too hard) to our analytics provider, GameAnalytics? They use a random ID stored on your phone, never your name or anything you type. The game plays the same either way, and you can change your mind any time in Settings.", 22, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER)))
+	var row := TSUI.hbox(12)
+	for choice in [["No thanks", false], ["Allow", true]]:
+		var allowed: bool = choice[1]
+		# The same look on both: neither is the nudged one.
+		var b := TSUI.expand(TSUI.button(choice[0], TSUI.SKY, 26, Vector2(0, 72))) as Button
+		b.pressed.connect(func():
+			TSProfile.analytics_consent = "yes" if allowed else "no"
+			TSProfile.analytics_enabled = allowed
+			TSProfile.save()
+			_apply_analytics(allowed)
+			TSUI.conceal(_review["root"]))
+		row.add_child(b)
+	box.add_child(row)
+	TSUI.juice(box)
+	TSUI.reveal(_review["root"], _review["panel"])
+
+
+## Starts or stops GameAnalytics (and Firebase on Android) to match a new answer.
+func _apply_analytics(on: bool) -> void:
+	var ga := TSAnalytics.ga()
+	if ga == null:
+		return
+	if on:
+		ga.enable_after_consent()
+	else:
+		ga.set_opt_out(true)
+
+
 func _refresh_sale_icon() -> void:
 	var running := not TSSales.current().is_empty()
 	sale_btn.visible = running
@@ -1668,6 +1711,8 @@ func _build_settings() -> void:
 	var rows := [["vibrate", "Haptics", "haptics_enabled"]]
 	if Notify.available():
 		rows.append(["clock", "Reminders", "notifications_enabled"])
+	if TSTunables.get_bool("analytics_enabled"):
+		rows.append(["help", "Share usage data", "analytics_enabled"])
 	for row in rows:
 		box.add_child(_toggle_row(row[0], row[1], row[2]))
 	var restore := TSUI.expand(TSUI.button("Restore Purchases", TSUI.LILAC, 22, Vector2(0, 64))) as Button
@@ -1718,7 +1763,9 @@ func _toggle_row(icon: String, text: String, prop: String) -> Control:
 		if prop == "haptics_enabled" and now:
 			TSHaptics.light()
 		if prop == "notifications_enabled" and now:
-			Notify.request_permission())
+			Notify.request_permission()
+		if prop == "analytics_enabled":
+			_apply_analytics(now))
 	row.add_child(b)
 	return row
 

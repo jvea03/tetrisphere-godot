@@ -30,6 +30,7 @@ Ads="*res://scripts/meta/ads.gd"
 Billing="*res://scripts/meta/billing.gd"
 Notify="*res://scripts/meta/notify.gd"
 Online="*res://scripts/meta/online.gd"
+GA="*res://scripts/meta/game_analytics.gd"
 
 [display]
 
