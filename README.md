@@ -751,7 +751,7 @@ stepped through frame by frame.
 | `tests/rules_test.gd` | Hand-built positions pinning down slides, spreading matches (lines, the O and the plus), gravity, chain reactions and the aim preview; plus generated balls for Beginner (pattern) and Intermediate and Expert (search) checked for ready-made matches, grey share, gaps and match spots. |
 | `tests/tap_test.tscn` | Taps projected cells on the real rendered ball and checks the piece lands over them; then plays the gestures (swipe, tap, double-tap, hold and drag) through the touch handler, and checks the egg mapping and the bomb button. |
 | `tests/demo.tscn` | Visual QA — boots the real game and plays a greedy opening. |
-| `tests/meta_test.gd` | The menus' systems on a throwaway profile: stars and coins, chests, the Battle Pass, quests, streaks, the collection, clubs, the Eggsperience, purchases, sales, level progression. |
+| `tests/meta_test.tscn` | The menus' systems on a throwaway profile: stars and coins, chests, the Battle Pass, quests, streaks, the collection, clubs, the Eggsperience, purchases, sales, level progression. |
 | `tests/flow_test.tscn` | The game screen's side of them: level start, parking and resuming a ball, the Any Piece and Rocks, booster buys, the lose card's refill, a win's payout, the Daily Egg. |
 | `tests/home_test.tscn` | Home's camp and ship build nodes: the first wave's only, builds started from a node's card (coins, materials, a critter, a timer) and collected from the node, Finish Now, the Camp level through the waves, the ship's nodes at Camp Lv 5, and why a build can't start. |
 | `tests/menu_capture.tscn`, `tests/card_capture.tscn` | Visual QA -- open any menu screen, or the pause / win / lose / out-of-booster card, on a throwaway profile with everything unlocked. |
@@ -778,12 +778,12 @@ projects cells through the rendered camera:
 Godot.exe --path . res://tests/tap_test.tscn
 ```
 
-The menus' systems (114 checks), the game screen's flow through them (34
+The menus' systems (161 checks), the game screen's flow through them (34
 checks) and Home's camp and ship build nodes (19 checks), all passing. None
 touches the real save:
 
 ```
-Godot.exe --headless --path . --script res://tests/meta_test.gd
+Godot.exe --headless --path . res://tests/meta_test.tscn
 Godot.exe --path . res://tests/flow_test.tscn
 Godot.exe --path . res://tests/home_test.tscn
 ```

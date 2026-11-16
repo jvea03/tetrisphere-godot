@@ -1,13 +1,14 @@
 # Headless checks for the menus' systems -- coins, chests, the Battle Pass,
 # quests, streaks, the Eggsperience, the collection, clubs, sales and purchases --
-# on a throwaway profile that never touches the real save. Run with:
-#   Godot.exe --headless --path . --script res://tests/meta_test.gd
-extends SceneTree
+# on a throwaway profile that never touches the real save. A scene (not a
+# --script SceneTree) so the autoloads, Online among them, are loaded. Run with:
+#   Godot.exe --headless --path . res://tests/meta_test.tscn
+extends Node
 
 var _failures := 0
 
 
-func _initialize() -> void:
+func _ready() -> void:
 	TSProfile.use_test_profile(1)
 	_test_wins_and_stars()
 	_test_chests()
@@ -30,7 +31,7 @@ func _initialize() -> void:
 	_test_ad_rewards()
 	print("")
 	print("ALL PASSED" if _failures == 0 else "%d FAILED" % _failures)
-	quit(0 if _failures == 0 else 1)
+	get_tree().quit(0 if _failures == 0 else 1)
 
 
 ## The rewarded ads around the game: their daily caps, and what each pays.
@@ -352,7 +353,8 @@ func _test_collection() -> void:
 	var paid := TSProfile.take_voyage()
 	_check("the voyage pays %s (more for the ship's upgrades)" % TSProfile.fmt_coins(reward), paid >= reward and reward > TSProfile.LAUNCH_REWARD_BASE and TSProfile.last_voyage_reward == paid)
 	_check("and lands the critters on a new planet, dressed for Christmas, with a fresh camp and ship", TSProfile.planet_number == planet + 1 and TSProfile.planet_theme == "christmas" and TSShipScene.theme_name() == "christmas" and TSProfile.parts_fixed() == 0 and not TSProfile.is_ship_open())
-	_check("without the collection level dropping", TSProfile.collection_points() == points)
+	# (The season turning collects the old pass's unclaimed rewards, which can add a critter.)
+	_check("without the collection level dropping", TSProfile.collection_points() >= points)
 	_check("once a season", not TSProfile.voyage_due() and TSProfile.take_voyage() == 0)
 	TSClock.offset = Time.get_unix_time_from_datetime_string("2027-01-03T10:00:00") - Time.get_unix_time_from_system()
 	_check("the next season, the next planet: New Year's", TSProfile.take_voyage() > 0 and TSProfile.planet_theme == "newyear" and TSProfile.planet_number == planet + 2)
@@ -411,7 +413,7 @@ func _test_hunt() -> void:
 
 func _test_purchases() -> void:
 	var billing := preload("res://scripts/meta/billing.gd").new()
-	get_root().add_child(billing)
+	add_child(billing)   # under this node: the root is still setting up its children
 	var before := TSProfile.coin_count
 	var bombs := TSProfile.bomb_count
 	billing.purchase("egg_bundle_value")
