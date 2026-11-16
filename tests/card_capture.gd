@@ -11,7 +11,7 @@ var _card := ""
 func _ready() -> void:
 	var args := OS.get_cmdline_user_args()
 	_card = args[0] if args.size() > 0 else "pause"
-	TSProfile.use_test_profile(1 if _card == "firstwin" else 12)   # firstwin: level 1's first win
+	TSProfile.use_test_profile(12)
 	TSProfile.coin_count = 3200
 	if OS.get_environment("OUT") != "":
 		# OUT=folder: saves <card>.png there a few seconds in, and quits.
@@ -33,9 +33,11 @@ func _process(delta: float) -> void:
 			_open_pause()
 		"win":
 			lives = 2
+			is_first_attempt = false   # the ordinary card
 			_debug_win()
-		"firstwin":
+		"firstwin":   # a first-try win
 			lives = 3
+			is_first_attempt = true
 			_debug_win()
 		"challengewin":
 			is_challenge = true

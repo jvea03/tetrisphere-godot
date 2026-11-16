@@ -93,9 +93,12 @@ var _win_materials := 0       # building materials the win paid
 var _win_chest := ""
 var _win_features := false  # stars and chests were open as this win was paid (level 6's win opens them: its card shows neither)
 var _win_bonus := ""
-var _win_first := false   # the player's very first rescue (level 1's first win): its own card
+var _win_first := false   # a level won on the first try (no loss, no restart): its own card
 var _win_prize := 0       # a challenge's bonus coins, shown on the challenge card's trophy plate
 var _win_time_left := 0   # a challenge: whole seconds still on the clock at the win
+var _prize_label: Label   # the challenge card's bonus amount (Double Coins doubles it too)
+var _prize_count: Tween   # its count-up, which a doubling takes over from
+var _prize_doubled := false
 const FIRST_ATTEMPT_STAR_BONUS := 2
 const LIVES_REFILL_COST := 2500
 const FIRST_CONTINUE_COST := 1000   # the first refill on a ball, at 60% off, to make the first buy an easy yes
@@ -2305,7 +2308,7 @@ func _win() -> void:
 func _pay_win() -> void:
 	TSProfile.settle_boards()
 	_win_features = TSNav.features_unlocked()
-	_win_first = not is_daily and not is_challenge and current_level == 1 and TSProfile.last_level <= 1
+	_win_first = not is_daily and not is_challenge and is_first_attempt
 	_win_prize = 0
 	_win_time_left = ceili(maxf(challenge_left, 0.0)) if is_challenge else 0
 	var before := TSProfile.coin_count
@@ -2557,7 +2560,7 @@ func _show_win_card() -> void:
 	var banner_text := "Rescued!"
 	var banner_color := TSUI.PINK
 	if _win_first:
-		banner_text = "First Rescue!"
+		banner_text = "First Try!"
 		banner_color = TSUI.GOLD
 	elif is_challenge:
 		banner_text = "Challenge Beaten!"
@@ -2605,20 +2608,18 @@ func _show_win_card() -> void:
 		row.add_child(v)
 	box.add_child(rewards)
 	if is_first_attempt and _win_features:
-		box.add_child(TSUI.label("First try! +%d bonus stars" % FIRST_ATTEMPT_STAR_BONUS, 22, TSFX.COL_GAIN, HORIZONTAL_ALIGNMENT_CENTER))
+		box.add_child(TSUI.label(("+%d first-try bonus stars" if _win_first else "First try! +%d bonus stars") % FIRST_ATTEMPT_STAR_BONUS, 22, TSFX.COL_GAIN, HORIZONTAL_ALIGNMENT_CENTER))
 	if _win_bonus != "":
 		box.add_child(TSUI.label(_win_bonus, 22, TSFX.COL_GAIN, HORIZONTAL_ALIGNMENT_CENTER))
 	if _streak_level() and TSProfile.win_streak > 0:
 		box.add_child(_streak_line())
-	if _win_coins > 0 and not early and TSProfile.ad_rewards_left("win_coins") > 0:
-		var double := TSUI.button(TSAdReward.text("Double Coins (+%s)" % TSProfile.fmt_coins(_win_coins)), TSUI.SKY, 28, Vector2(0, 76))
+	if _win_coins + _win_prize > 0 and not early and TSProfile.ad_rewards_left("win_coins") > 0:
+		var double := TSUI.button(TSAdReward.text("Double Coins (+%s)" % TSProfile.fmt_coins(_win_coins + _win_prize)), TSUI.SKY, 28, Vector2(0, 76))
 		double.pressed.connect(func(): _double_win_coins(double, coin_amount))
 		box.add_child(double)
 	var next_text := "Next Level"
 	if is_daily:
 		next_text = "Back to Home"
-	elif _win_first:
-		next_text = "Keep Rescuing!"
 	elif is_challenge:
 		next_text = "Continue"
 	var next := TSUI.button(next_text, TSUI.GREEN, 34, Vector2(0, 90))
@@ -2650,21 +2651,20 @@ func _show_win_card() -> void:
 			count.tween_callback(func(): TSSfx.play("ding")))
 
 
-## The player's very first rescue: the critter bigger, in a gold halo with a
-## "1st" medal pinned on and stars twinkling round it, and a line about the
-## many still waiting.
+## A level won on the first try: the critter bigger, in a gold halo with a
+## "1st try" medal pinned on and stars twinkling round it.
 func _fill_first_win_top(box: VBoxContainer) -> void:
 	var hero := _hero_stage(Vector2(440, 320))
 	_stage_center(hero, TSUI.halo(TSIcon.make("milky", 230, _creature.kind + 1, "rescued"), 320.0, TSUI.GOLD))
 	for s in [[Vector2(58, 70), 34.0, 0.0], [Vector2(352, 230), 28.0, 0.6], [Vector2(78, 236), 24.0, 1.1]]:
 		_twinkle_star(hero, s[0], s[1], s[2])
-	var medal := _medal(108.0, "1st")
+	var medal := _medal(108.0, "1st\nTRY")
 	medal.position = Vector2(318, 18)
 	hero.add_child(medal)
 	_pop_in(medal, 0.55)
 	box.add_child(hero)
-	box.add_child(TSUI.label("You saved your very first critter!", 30, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER))
-	box.add_child(TSUI.wrap(TSUI.label("Lots more are still stuck in their eggs.\nLet's get them all out!", 22, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER), 500.0))
+	box.add_child(TSUI.label("Rescued on your first try!", 30, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER))
+	box.add_child(TSUI.wrap(TSUI.label("No retries needed. Great job!", 22, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER), 500.0))
 
 
 ## A challenge beaten: the trophy with the rescued critter beside it, the time
@@ -2703,14 +2703,17 @@ func _fill_challenge_win_top(box: VBoxContainer) -> void:
 	col.add_child(row)
 	plate.add_child(col)
 	box.add_child(plate)
+	_prize_label = amount
+	_prize_doubled = false
 	# After the win's own coins have counted, the bonus counts up too.
 	var prize := _win_prize
 	get_tree().create_timer(1.1).timeout.connect(func():
-		if not is_instance_valid(amount):
+		if not is_instance_valid(amount) or _prize_doubled:   # doubled first: that count shows it
 			return
 		TSSfx.play("coin")
 		TSFX.sparkle_burst(_hud, amount)
 		var count := amount.create_tween()
+		_prize_count = count
 		count.tween_method(func(v: float): amount.text = "+%s" % TSProfile.fmt_coins(int(v)), 0.0, float(prize), 0.7)
 		for k in COUNT_TICKS:
 			get_tree().create_timer(0.7 * float(k) / float(COUNT_TICKS)).timeout.connect(func():
@@ -2804,7 +2807,7 @@ func _medal(px: float, text: String) -> Control:
 		m.draw_circle(c, r * 0.7, TSUI.GOLD.lerp(Color.WHITE, 0.45), true, -1.0, true)
 		m.draw_circle(c, r * 0.7, TSUI.GOLD_DARK, false, 3.0, true)
 		m.draw_arc(c, r * 0.58, PI * 1.1, PI * 1.6, 12, Color(1, 1, 1, 0.8), 4.0, true))
-	var l := TSUI.outlined(TSUI.label(text, int(px * 0.3), TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER), Color(1.0, 0.98, 0.9), 6)
+	var l := TSUI.outlined(TSUI.label(text, int(px * (0.3 if text.find("\n") < 0 else 0.22)), TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER), Color(1.0, 0.98, 0.9), 6)
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	l.position = Vector2(0, px * 0.48 - px * 0.25)
 	l.size = Vector2(px, px * 0.5)
@@ -2825,9 +2828,10 @@ func _double_win_coins(button: Button, coin_amount: Label) -> void:
 	if TSProfile.ad_rewards_left("win_coins") <= 0:
 		return
 	var coins := _win_coins
+	var prize := _win_prize   # a challenge's bonus doubles too
 	# The grant mustn't touch the game: it is paid even if the card has gone.
 	TSAdReward.watch(_hud, button, func():
-		TSProfile.coin_count += coins
+		TSProfile.coin_count += coins + prize
 		TSProfile.use_ad_reward("win_coins"),
 	func():
 		if not TSProfile.no_ads:   # a free double (No Ads) buys nothing off
@@ -2846,6 +2850,13 @@ func _double_win_coins(button: Button, coin_amount: Label) -> void:
 		var count := coin_amount.create_tween()
 		count.tween_method(func(v: float): coin_amount.text = "+%s" % TSProfile.fmt_coins(int(v)), float(coins), float(coins * 2), 0.5)
 		count.tween_callback(func(): TSSfx.play("ding"))
+		if prize > 0 and is_instance_valid(_prize_label):
+			_prize_doubled = true
+			if _prize_count != null and _prize_count.is_valid():
+				_prize_count.kill()
+			TSFX.sparkle_burst(_hud, _prize_label)
+			var plate_count := _prize_label.create_tween()
+			plate_count.tween_method(func(v: float): _prize_label.text = "+%s" % TSProfile.fmt_coins(int(v)), float(prize), float(prize * 2), 0.5)
 		_refresh_hud())
 
 

@@ -99,6 +99,20 @@ func _run() -> void:
 	_check("and pays at once", TSProfile.coin_count == coins + _win_coins and not Ads.is_busy() and b.text == "Coins doubled!")
 	await get_tree().create_timer(1.5).timeout
 	_check("doubled mid-count, the count ends on the doubled coins (+%s)" % TSProfile.fmt_coins(_win_coins * 2), _shows("+" + TSProfile.fmt_coins(_win_coins * 2)))
+	# A challenge: the bonus doubles too, even pressed before it has counted up.
+	_close_cards()
+	TSProfile.challenge_done_through = 0
+	_start_challenge(level)
+	_debug_win()
+	while _double_button() == null:
+		await get_tree().process_frame
+	b = _double_button()
+	coins = TSProfile.coin_count
+	_check("a challenge's double offers its bonus too (+%s)" % TSProfile.fmt_coins(_win_coins + _win_prize), _win_prize > 0 and b.text.contains(TSProfile.fmt_coins(_win_coins + _win_prize)))
+	b.pressed.emit()
+	_check("and pays it", TSProfile.coin_count == coins + _win_coins + _win_prize)
+	await get_tree().create_timer(2.0).timeout
+	_check("the bonus plate ends on the doubled bonus (+%s)" % TSProfile.fmt_coins(_win_prize * 2), _shows("+" + TSProfile.fmt_coins(_win_prize * 2)))
 	TSProfile.no_ads = false
 	print("")
 	print("ALL PASSED" if _failures == 0 else "%d FAILED" % _failures)
