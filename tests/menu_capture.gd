@@ -212,6 +212,18 @@ func _ready() -> void:
 		# `-- battle_pass collected`: everything collected, so the button is Buy Tier.
 		TSProfile.claim_all_quests()
 		TSProfile.claim_all_battle_pass()
+	if args_has("shake"):
+		# `-- home shake`: the planet dressed for Christmas, a present shaking.
+		TSProfile.planet_theme = "christmas"
+		var tk := get_tree()
+		tk.create_timer(2.7).timeout.connect(func():
+			var w = tk.current_scene._world
+			for n in w._presents:
+				var b: Control = w._presents[n]
+				if b.get_global_rect().intersects(Rect2(140, 300, 500, 600)):
+					w._shake(b)
+					b.modulate = Color(1, 0.5, 0.5)   # marked for the capture
+					break)
 	if args_has("bottom"):
 		# `-- shop bottom`: the screen's list scrolled to its end.
 		var t := get_tree()

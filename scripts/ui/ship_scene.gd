@@ -205,6 +205,29 @@ func _draw_string_lights(ci: CanvasItem, top: Vector2, w: float, part: int) -> v
 		ci.draw_circle(p + Vector2(0, 5), 5.0, Color(bulb, on), true, -1.0, true)
 
 
+## A present on the ground, its foot at `p`.
+func _draw_present(ci: CanvasItem, p: Vector2, k: float) -> void:
+	_ellipse(ci, p + Vector2(0, 3.0 * k), 22.0 * k, 5.0 * k, SHADOW, false)
+	var wrap: Color = [Color(1.0, 0.4, 0.46), Color(0.42, 0.72, 1.0), Color(0.5, 0.82, 0.56)][int(p.x) % 3]
+	_box(ci, Rect2(p + Vector2(-16.0, -28.0) * k, Vector2(32.0, 28.0) * k), wrap)
+	ci.draw_line(p + Vector2(0, -28.0) * k, p, BUTTER, 5.0 * k, true)
+	ci.draw_line(p + Vector2(-16.0, -15.0) * k, p + Vector2(16.0, -15.0) * k, BUTTER, 5.0 * k, true)
+	for side in [-1.0, 1.0]:
+		_ellipse(ci, p + Vector2(side * 7.0, -32.0) * k, 7.0 * k, 4.5 * k, BUTTER)
+
+
+## A tapped present rattles side to side on its foot, with a little hop.
+func _shake(box: Control) -> void:
+	if box.has_meta("shaking"):
+		return
+	box.set_meta("shaking", true)
+	var t := box.create_tween()
+	for a in [0.28, -0.24, 0.18, -0.12, 0.06, 0.0]:
+		t.tween_property(box, "rotation", a, 0.06)
+	t.parallel().tween_property(box, "position:y", box.position.y, 0.36).from(box.position.y - 6.0)
+	t.tween_callback(func() -> void: box.remove_meta("shaking"))
+
+
 ## The theme the critters' planet is dressed for (its THEMES entry's key).
 static func theme_name() -> String:
 	return TSProfile.planet_theme if THEMES.has(TSProfile.planet_theme) else "autumn"
@@ -289,6 +312,7 @@ var _pose := Transform2D()      # _xf before any lift-off
 var _launch_start := -1.0       # when lift-off began (see launch), or -1
 var _pad_layer: Control         # behind the ship: scaffolding, launch pad, gantry
 var _scatter: Array = []        # ground decoration: [kind, position, size]
+var _presents := {}             # scatter index -> its own layer, so a tapped present can shake
 var _trees: Array = []          # autumn trees in the meadow: [position, size, colour index]
 var _falling: Array = []        # drifting leaves: [x, y, fall speed, sway phase, colour index, size]
 
@@ -397,6 +421,17 @@ func _ready() -> void:
 		for ty in GROUND_TILES.y:
 			var tile := Rect2(W * tx / GROUND_TILES.x, H * ty / GROUND_TILES.y, W / GROUND_TILES.x, H / GROUND_TILES.y)
 			_area_layer(tile.grow(170.0), func(ci: Control): _draw_ground_tile(ci, tile), -1.4)   # still: drawn once
+	# Presents each on a layer of their own (still, drawn once), pivoting at
+	# their foot, so a tap can shake one.
+	for n in _scatter.size():
+		var item: Array = _scatter[n]
+		if item[0] != "present":
+			continue
+		var foot: Vector2 = item[1]
+		var k: float = float(item[2]) * _depth_scale(foot.y)
+		var box := _area_layer(Rect2(foot - Vector2(40, 50) * k, Vector2(80, 60) * k), func(ci: Control): _draw_present(ci, foot, k), foot.y)
+		box.pivot_offset = Vector2(40, 50) * k
+		_presents[n] = box
 	_ground = _layer(_draw_ground, -1.0)
 	_pad_layer = _spot_layer(_draw_pad, _ship_depth - 2.0)
 	_ship_layer = _layer(_draw_ship, _ship_depth)
@@ -712,12 +747,12 @@ func _poke(at: Vector2) -> void:
 			glide_to_part(int(hit[1]))
 			return
 	# A present on the ground: a little hop of sparkle, and Home sees what's in it.
-	for item in _scatter:
-		if item[0] != "present":
-			continue
+	for n in _presents:
+		var item: Array = _scatter[n]
 		var on_screen: Vector2 = _world.position + ((item[1] as Vector2) + Vector2(0, -14.0)) * _zoom
 		if on_screen.distance_to(at) < 34.0 * _zoom * float(item[2]) + 10.0:
 			TSSfx.play("tap")
+			_shake(_presents[n])
 			present_tapped.emit(on_screen)
 			return
 	for c in _crew:
@@ -1591,13 +1626,7 @@ func _draw_ground_tile(ci: Control, tile: Rect2) -> void:
 				_ellipse(ci, p + Vector2(18.0, -6.0) * k, 20.0 * k, 9.0 * k, Color(0.99, 0.99, 1.0))
 				ci.draw_arc(p + Vector2(-8.0, 2.0) * k, 26.0 * k, PI * 1.15, PI * 1.6, 8, Color(0.78, 0.84, 0.96), 3.0, true)
 			"present":
-				_ellipse(ci, p + Vector2(0, 3.0 * k), 22.0 * k, 5.0 * k, SHADOW, false)
-				var wrap: Color = [Color(1.0, 0.4, 0.46), Color(0.42, 0.72, 1.0), Color(0.5, 0.82, 0.56)][int(p.x) % 3]
-				_box(ci, Rect2(p + Vector2(-16.0, -28.0) * k, Vector2(32.0, 28.0) * k), wrap)
-				ci.draw_line(p + Vector2(0, -28.0) * k, p, BUTTER, 5.0 * k, true)
-				ci.draw_line(p + Vector2(-16.0, -15.0) * k, p + Vector2(16.0, -15.0) * k, BUTTER, 5.0 * k, true)
-				for side in [-1.0, 1.0]:
-					_ellipse(ci, p + Vector2(side * 7.0, -32.0) * k, 7.0 * k, 4.5 * k, BUTTER)
+				pass   # on a layer of its own (_presents), to shake when tapped
 			"star":
 				var spts := PackedVector2Array()
 				for n in 10:

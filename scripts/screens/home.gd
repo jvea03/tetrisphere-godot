@@ -1966,10 +1966,9 @@ func _settled() -> void:
 		await get_tree().process_frame
 
 
-## A present tapped at the crash site: a puff of sparkle, and now and then
-## something inside -- coins fly to the wallet, or materials to theirs.
+## A present tapped at the crash site (it shakes: TSShipScene), and now and
+## then something inside -- coins fly to the wallet, or materials to theirs.
 func _open_present(at: Vector2) -> void:
-	TSFX.sparkle_burst_at(self, Rect2(at - Vector2(36, 36), Vector2(72, 72)))
 	TSHaptics.light()
 	var before := TSProfile.coin_count
 	var gift := TSProfile.open_present()
