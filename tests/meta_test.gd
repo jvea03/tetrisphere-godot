@@ -650,8 +650,8 @@ func _test_clock() -> void:
 func _test_soon() -> void:
 	_check("leaderboards stay shut the day before November 11 and open on it",
 		not TSNav.leaderboards_open_on("2026-11-10") and TSNav.leaderboards_open_on("2026-11-11") and TSNav.leaderboards_open_on("2027-01-02"))
-	_check("teams stay shut the day before December 9 and open on it",
-		not TSNav.clubs_open_on("2026-12-08") and TSNav.clubs_open_on("2026-12-09"))
+	_check("teams stay shut, with no opening date",
+		not TSNav.clubs_open_on("2026-12-09") and not TSNav.clubs_open_on("2027-06-01"))
 	_check("the win streak stays off the day before November 4 and starts on it",
 		not TSNav.win_streak_open_on("2026-11-03") and TSNav.win_streak_open_on("2026-11-04") and TSNav.win_streak_open_on("2027-01-02"))
 	var released := TSNav.as_released

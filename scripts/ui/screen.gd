@@ -136,7 +136,7 @@ func _build_nav() -> void:
 			"leaderboard":
 				TSNav.gate_soon(b, TSNav.leaderboards_open(), TSNav.features_unlocked(), TSNav.FEATURES_UNLOCK_LEVEL, TSNav.LEADERBOARDS_SOON, "NOV 11", self, go)   # from level 7, when stars start
 			"clubs":
-				TSNav.gate_soon(b, TSNav.clubs_open(), TSNav.clubs_unlocked(), TSNav.CLUBS_UNLOCK_LEVEL, TSNav.CLUBS_SOON, "DEC 9", self, go)
+				TSNav.gate_soon(b, TSNav.clubs_open(), TSNav.clubs_unlocked(), TSNav.CLUBS_UNLOCK_LEVEL, TSNav.CLUBS_SOON, "SOON", self, go)
 			_:
 				b.pressed.connect(go)
 

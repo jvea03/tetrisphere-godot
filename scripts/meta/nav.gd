@@ -41,8 +41,10 @@ static func social_enabled() -> bool:
 ## then their tabs say so.
 const LEADERBOARDS_OPEN_DATE := "2026-11-11"
 const LEADERBOARDS_SOON := "Leaderboards open November 11!"
-const CLUBS_OPEN_DATE := "2026-12-09"
-const CLUBS_SOON := "Teams open December 9!"
+## No date for Clubs: they stay "Coming soon" until they have a real backend
+## (their teams are simulated on the phone). Set a "YYYY-MM-DD" to open them.
+const CLUBS_OPEN_DATE := ""
+const CLUBS_SOON := "Teams are coming soon!"
 
 
 static func leaderboards_open() -> bool:
@@ -59,7 +61,7 @@ static func clubs_open() -> bool:
 
 
 static func clubs_open_on(date: String) -> bool:
-	return date >= CLUBS_OPEN_DATE
+	return CLUBS_OPEN_DATE != "" and date >= CLUBS_OPEN_DATE
 
 
 ## The win streak starts on its own local date (from level 7 on): before it,
