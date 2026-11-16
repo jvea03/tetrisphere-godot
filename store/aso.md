@@ -171,6 +171,21 @@ Release name: `1.3.2 (10) – Faster start`
     Thanks for playing!
     </en-US>
 
+## Release notes for version code 13 (1.3.5)
+
+What's new since 1.3.4.
+
+Release name: `1.3.5 (13) – Privacy choices and fixes`
+
+    <en-US>
+    New in Egg Escape!
+
+    • A new “Share usage data” switch in Settings: help us make levels more fun, or turn it off any time
+    • Bug fixes and improvements
+
+    Thanks for playing!
+    </en-US>
+
 ## Release notes for version code 12 (1.3.4)
 
 What's new since 1.3.3 (422 characters).

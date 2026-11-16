@@ -87,6 +87,13 @@ func _ready() -> void:
 	if args.has("analytics-test"):
 		_forced_platform = "android"
 	log_events = args.has("analytics-log")
+	# Wait a frame before touching the profile: the first scene's _ready runs
+	# after the autoloads', and a test switches to its throwaway profile there.
+	# Loading the save here first would hand every test the real one.
+	_begin.call_deferred()
+
+
+func _begin() -> void:
 	TSProfile.ensure_loaded()
 	_load_state()
 	enabled = _allowed()
