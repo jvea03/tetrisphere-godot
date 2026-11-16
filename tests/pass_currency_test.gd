@@ -77,6 +77,23 @@ func _ready() -> void:
 		for q in day:
 			hunt_stats.append(q["stat"])
 	_check("the 7-day event has sticker and challenge quests", hunt_stats.count("sticker") == 2 and hunt_stats.has("challenge_played"))
+	# A pass ship part: a free step, or its top upgrade's price when it can't take one.
+	var cockpit := TSProfile.PART_COCKPIT
+	var price: int = int(TSProfile.PARTS[cockpit]["fix"]) * TSProfile.PART_MAX_LEVEL
+	TSProfile.part_builds = {}
+	TSProfile.part_level[cockpit] = 1
+	var c0 := TSProfile.coin_count
+	TSProfile._apply_reward({"part": cockpit})
+	_check("a ship part reward upgrades the part", TSProfile.part_level_of(cockpit) == 2 and TSProfile.coin_count == c0)
+	TSProfile.part_builds = {cockpit: {"end": int(Time.get_unix_time_from_system()) + 600, "critter": 0}}
+	c0 = TSProfile.coin_count
+	TSProfile._apply_reward({"part": cockpit})
+	_check("mid-build, it pays %d coins instead" % price, TSProfile.part_level_of(cockpit) == 2 and TSProfile.coin_count == c0 + price)
+	TSProfile.part_builds = {}
+	TSProfile.part_level[cockpit] = TSProfile.PART_MAX_LEVEL
+	c0 = TSProfile.coin_count
+	TSProfile._apply_reward({"part": cockpit})
+	_check("fully upgraded, it pays the coins too", TSProfile.coin_count == c0 + price)
 	print("")
 	print("ALL PASSED" if _failures == 0 else "%d FAILED" % _failures)
 	get_tree().quit(0 if _failures == 0 else 1)

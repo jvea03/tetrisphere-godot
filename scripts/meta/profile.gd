@@ -2563,7 +2563,8 @@ static func _apply_reward(reward: Dictionary) -> void:
 	if reward.has("critter"):
 		grant_critter(int(reward["critter"]))
 	if reward.has("part"):
-		# A part already at its best pays out its top upgrade's price instead.
+		# A part that can't take the step -- already at its best, or mid-build --
+		# pays out its top upgrade's price instead.
 		var p := int(reward["part"])
 		if not grant_part_level(p):
 			coin_count += int(PARTS[p]["fix"]) * PART_MAX_LEVEL
