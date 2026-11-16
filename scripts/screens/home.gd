@@ -841,6 +841,7 @@ func _build_chest_tray() -> void:
 	tray = TSUI.card(Color(1.0, 0.9, 0.78), 28, 12, 5)
 	tray.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	content.add_child(tray)
+	_dress_for_season(tray, true)
 	var row := TSUI.hbox(10)
 	tray.add_child(row)
 	for i in TSChests.SLOT_COUNT:
@@ -975,6 +976,7 @@ func _build_play() -> void:
 		TSUI.restyle(play_btn, EXTREME_RED, 10)
 		_play_tag("EXTREME")
 	TSUI.breathe(play_btn)
+	_dress_for_season(play_btn, false)
 	content.add_child(TSUI.spacer(8))
 
 
@@ -1996,3 +1998,54 @@ func _present_note(at: Vector2, text: String) -> void:
 	t.tween_property(lbl, "global_position:y", lbl.global_position.y - 50.0, 1.0).set_ease(Tween.EASE_OUT)
 	t.parallel().tween_property(lbl, "modulate:a", 0.0, 1.0).set_delay(0.5)
 	t.tween_callback(lbl.queue_free)
+
+
+## On a Christmas planet Home's big pieces dress for it: a lumpy cap of snow
+## along `c`'s top edge, and (with `lights`) a string of twinkling coloured
+## bulbs hanging under it. Drawn over `c`, never taking its taps.
+func _dress_for_season(c: Control, lights: bool) -> void:
+	if TSShipScene.theme_name() != "christmas":
+		return
+	var snow := Control.new()
+	snow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	snow.z_index = 1
+	c.add_child(snow)
+	var t0 := Time.get_ticks_msec()
+	snow.draw.connect(func() -> void:
+		var w := c.size.x
+		# Rounded mounds of snow sitting on the top edge, a drip here and there.
+		var cap := PackedVector2Array()
+		var lumps := maxi(4, int(w / 70.0))
+		var span := (w - 24.0) / float(lumps)
+		for k in lumps:
+			var cx := 12.0 + span * (float(k) + 0.5)
+			var h := 13.0 if k % 2 == 0 else 9.0
+			for j in 9:
+				var a := PI + PI * float(j) / 8.0
+				cap.append(Vector2(cx + cos(a) * span * 0.56, 2.0 + sin(a) * h))
+		for k in lumps * 2 + 1:   # the underside, hugging the edge
+			var x := w - 12.0 - (w - 24.0) * float(k) / float(lumps * 2)
+			cap.append(Vector2(x, 6.0 + (7.0 if k % 4 == 1 else 0.0)))
+		snow.draw_colored_polygon(cap, Color(0.99, 0.99, 1.0))
+		var rim := cap.duplicate()
+		rim.append(cap[0])
+		snow.draw_polyline(rim, Color(TSUI.INK, 0.6), 2.5, true)
+		if lights:
+			var bulbs := [Color(1.0, 0.36, 0.42), Color(1.0, 0.84, 0.36), Color(0.42, 0.78, 1.0), Color(0.5, 0.88, 0.56)]
+			var n := maxi(6, int(w / 46.0))
+			var prev := Vector2(24, -4)
+			var t := float(Time.get_ticks_msec() - t0) / 1000.0
+			for k in n:
+				var x := 24.0 + (w - 48.0) * float(k) / float(n - 1)
+				var p := Vector2(x, -4.0 + absf(sin(float(k) * PI * 0.5)) * 5.0)   # draped over the snow
+				snow.draw_line(prev, p, Color(TSUI.INK, 0.6), 2.0, true)
+				prev = p
+				var on := 0.6 + 0.4 * sin(t * 3.0 + float(k) * 1.9)
+				snow.draw_circle(p + Vector2(0, 6), 6.0, Color(bulbs[k % bulbs.size()], on), true, -1.0, true))
+	c.resized.connect(snow.queue_redraw)
+	if lights:
+		var timer := Timer.new()   # the bulbs twinkle
+		timer.wait_time = 0.1
+		timer.autostart = true
+		timer.timeout.connect(snow.queue_redraw)
+		snow.add_child(timer)
