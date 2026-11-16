@@ -11,7 +11,7 @@ const DONE := Color(0.86, 0.97, 0.88)
 const TODAY := Color(1.0, 0.95, 0.76)
 const LOCKED := Color(0.9, 0.88, 0.9)
 const GRAND := Color(1.0, 0.86, 0.5)
-const QUEST_ICONS := {"level": "trophy", "clear": "star", "booster": "bomb", "flawless": "heart", "chest": "chest", "collection": "collection", "daily_puzzle": "calendar"}
+const QUEST_ICONS := {"level": "trophy", "clear": "star", "booster": "bomb", "flawless": "heart", "chest": "chest", "collection": "collection", "daily_puzzle": "calendar", "sticker": "sticker", "challenge_played": "clock"}
 
 var _days: HBoxContainer
 var _day_title: Label
@@ -99,8 +99,27 @@ func _day_panel() -> Control:
 	_quests = TSUI.vbox(8)
 	pv.add_child(_quests)
 	var play := TSUI.button("PLAY", TSUI.PINK, 34, Vector2(0, 80))
+	play.add_theme_color_override("font_color", Color.WHITE)
+	play.add_theme_color_override("font_hover_color", Color.WHITE)
+	play.add_theme_color_override("font_pressed_color", Color.WHITE)
+	play.add_theme_color_override("font_outline_color", TSUI.INK)
+	play.add_theme_constant_override("outline_size", 10)
 	play.pressed.connect(func(): SceneFlow.go(SceneFlow.GAME))
 	pv.add_child(play)
+	var shine := Panel.new()   # the gloss Home's PLAY has
+	var gloss := StyleBoxFlat.new()
+	gloss.bg_color = Color(1, 1, 1, 0.28)
+	gloss.set_corner_radius_all(30)
+	shine.add_theme_stylebox_override("panel", gloss)
+	shine.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	shine.anchor_right = 1.0
+	shine.offset_left = 18.0
+	shine.offset_right = -18.0
+	shine.offset_top = 9.0
+	shine.offset_bottom = 30.0
+	play.add_child(shine)
+	play.move_child(shine, 0)
+	TSUI.breathe(play)
 	return panel
 
 
@@ -207,7 +226,7 @@ func _quest_row(day: int, i: int) -> Control:
 	var disc := PanelContainer.new()
 	disc.add_theme_stylebox_override("panel", TSUI.sb(Color.WHITE, 99, 2, 0, 4))
 	disc.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	disc.add_child(TSIcon.make(QUEST_ICONS.get(str(q["stat"]), "star"), 48))
+	disc.add_child(TSIcon.make(QUEST_ICONS.get(str(q["stat"]), "star"), 48, 0, "congrats" if str(q["stat"]) == "sticker" else ""))
 	h.add_child(disc)
 	var v := TSUI.vbox(4)
 	TSUI.expand(v)
@@ -220,7 +239,8 @@ func _quest_row(day: int, i: int) -> Control:
 	bar.max_value = target
 	bar.value = have
 	bar_row.add_child(bar)
-	var count := "%d/%d" % [TSHunt.start_level + have, TSHunt.goal_level(day, i)] if str(q["stat"]) == "level" else "%d/%d" % [have, target]
+	# A level quest counts levels gained since the event began: say where from and to.
+	var count := "Lv %d → %d" % [TSHunt.start_level + have, TSHunt.goal_level(day, i)] if str(q["stat"]) == "level" else "%d/%d" % [have, target]
 	bar_row.add_child(TSUI.label(count, 18, TSUI.MUTED))
 	v.add_child(bar_row)
 	if done:
