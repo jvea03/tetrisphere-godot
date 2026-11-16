@@ -13,6 +13,8 @@ const COL_PREMIUM_RIM := Color(0.74, 0.56, 1.0)
 var _timer: Label
 var _progress_label: Label
 var _progress: ProgressBar
+var _tier_now: PanelContainer   # the tier reached, left of the bar
+var _tier_next: PanelContainer  # the one it's filling toward, right of it
 var _tier_buy: Button
 var _tabs: PanelContainer
 var _quest_tabs: PanelContainer
@@ -59,7 +61,13 @@ func build() -> void:
 	_progress_label = TSUI.label("", 24, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER)
 	content.add_child(_progress_label)
 	_progress = TSUI.bar(TSUI.GOLD, 30)
-	content.add_child(_progress)
+	var prow := TSUI.hbox(8)
+	_tier_now = _tier_badge("")
+	prow.add_child(_tier_now)
+	prow.add_child(TSUI.expand(_progress))
+	_tier_next = _tier_badge("")
+	prow.add_child(_tier_next)
+	content.add_child(prow)
 	_gifts = TSUI.hbox(10)
 	content.add_child(_gifts)
 	_tabs = TSUI.tabs(["Battle Pass", "Quests"], _on_main_tab)
@@ -83,8 +91,16 @@ func build() -> void:
 	TSUI.breathe(_collect_tiers, 1.6)
 	var heads := TSUI.hbox(8)
 	heads.add_child(TSUI.spacer(70))
-	heads.add_child(TSUI.expand(TSUI.label("FREE", 24, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER)))
-	heads.add_child(TSUI.expand(TSUI.label("PREMIUM", 24, COL_PREMIUM_RIM.darkened(0.2), HORIZONTAL_ALIGNMENT_CENTER)))
+	for pair in [["FREE", TSUI.CARD, ""], ["PREMIUM", COL_PREMIUM_RIM, "crown"]]:
+		var cell := CenterContainer.new()
+		TSUI.expand(cell)
+		var pill := TSUI.pill(pair[0], pair[1], 22, TSUI.INK if pair[0] == "FREE" else Color.WHITE)
+		var line := TSUI.hbox(4)
+		if pair[2] != "":
+			line.add_child(TSIcon.make(pair[2], 34))
+		line.add_child(pill)
+		cell.add_child(line)
+		heads.add_child(cell)
 	_pass_content.add_child(heads)
 	_tier_list = TSUI.vbox(10)
 	_tier_scroll = TSUI.scroll(_tier_list)
@@ -142,6 +158,9 @@ func _refresh() -> void:
 	var count := TSProfile.BATTLE_PASS_TIER_COUNT
 	var per_tier := TSProfile.battle_pass_tier_cost(mini(tier + 1, count))
 	_progress.max_value = maxi(per_tier, 1)
+	(_tier_now.get_meta("label") as Label).text = str(tier)
+	(_tier_next.get_meta("label") as Label).text = str(mini(tier + 1, count))
+	_tier_next.modulate.a = 1.0 if tier < count else 0.0
 	if tier >= count:
 		_progress.value = _progress.max_value
 		_progress_label.text = "Pass complete!"
@@ -207,6 +226,14 @@ func _gift_card(icon: String, text: String, action: String, enabled: bool) -> Bu
 	return b
 
 
+## A round tier number plate, gold, for the progress row.
+func _tier_badge(text: String) -> PanelContainer:
+	var p := TSUI.pill(text, TSUI.GOLD, 24)
+	p.custom_minimum_size = Vector2(54, 54)
+	p.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	return p
+
+
 func _refresh_timer() -> void:
 	_timer.text = "%s left" % TSUI.fmt_duration(TSProfile.battle_pass_seconds_remaining())
 
@@ -242,6 +269,11 @@ func _build_tiers() -> void:
 	for tier in range(1, TSProfile.BATTLE_PASS_TIER_COUNT + 1):
 		var row := TSUI.hbox(8)
 		var badge := TSUI.card(TSUI.GOLD if tier <= current else TSUI.CARD, 18, 4, 2)
+		if tier == current + 1:
+			# The tier being climbed now: a pink rim, so the eye finds it.
+			var here := TSUI.sb(TSUI.PINK.lerp(Color.WHITE, 0.55), 18, 5, 2, 4)
+			here.border_color = TSUI.PINK.darkened(0.25)
+			badge.add_theme_stylebox_override("panel", here)
 		badge.custom_minimum_size = Vector2(62, 96)
 		badge.add_child(TSUI.label(str(tier), 28, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER))
 		row.add_child(badge)
