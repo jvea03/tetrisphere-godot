@@ -94,7 +94,10 @@ func build() -> void:
 	if features:
 		TSHunt.roll()
 	_refresh_side()
-	TSInbox.fetch(self, _refresh_inbox)
+	TSInbox.fetch(self, func() -> void:
+		_refresh_inbox()
+		_check_update())
+	_check_update.call_deferred()
 	# The leaderboards: finished boards placed (prizes). Stickers wait for the
 	# player to open Ranks.
 	TSProfile.resolve_board_results()
@@ -1939,6 +1942,8 @@ func _start_camp_callout() -> void:
 
 ## Android back: close whatever is open; with nothing open, Home quits.
 func on_back_requested() -> bool:
+	if is_instance_valid(_update_card):
+		return true   # Update Required can't be closed
 	if _chest["root"].visible:
 		_close_chest()
 		return true
@@ -2049,3 +2054,29 @@ func _dress_for_season(c: Control, lights: bool) -> void:
 		timer.autostart = true
 		timer.timeout.connect(snow.queue_redraw)
 		snow.add_child(timer)
+
+
+var _update_card: Control = null
+
+## This build is older than the inbox file's min_version_android: a card over
+## everything that can't be closed, with a button to the store.
+func _check_update() -> void:
+	if is_instance_valid(_update_card) or not TSInbox.update_required():
+		return
+	_show_update_card()
+
+
+func _show_update_card() -> void:
+	var d := TSUI.dialog(self, 580)
+	d["root"].z_index = 200
+	_update_card = d["root"]
+	var box: VBoxContainer = d["box"]
+	box.add_child(TSUI.ribbon("Update Required", TSUI.PINK, 38, 460.0))
+	box.add_child(TSUI.halo(TSIcon.make("milky", 150, 0, "rescued"), 220.0))
+	box.add_child(TSUI.wrap(TSUI.label("A new version of Egg Escape is out! Please update to keep playing -- your progress is safe.", 24, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER), 520))
+	var go := TSUI.button("Update Now", TSUI.GREEN, 32, Vector2(0, 86))
+	go.pressed.connect(func() -> void:
+		if OS.shell_open("market://details?id=com.jvea.eggescape") != OK:
+			OS.shell_open("https://play.google.com/store/apps/details?id=com.jvea.eggescape"))
+	box.add_child(go)
+	TSUI.reveal(d["root"], d["panel"])

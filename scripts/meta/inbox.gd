@@ -109,6 +109,34 @@ static func fetch(host: Node, done: Callable) -> void:
 
 ## Uses a file's messages and its settings (TSTunables), if it is an inbox
 ## file at all.
+## The oldest Android version allowed to play ("1.3.4"), from the file's
+## "min_version_android"; empty for none. Older builds are asked to update
+## (Home's Update Required card). Builds before 1.3.4 can't read it.
+static var min_version_android := ""
+
+
+## Whether this build must be updated before playing: Android only, compared
+## with this build's version (application/config/version, bumped with the
+## export presets).
+static func update_required() -> bool:
+	load_cache()
+	if min_version_android == "" or OS.get_name() != "Android":
+		return false
+	return older(str(ProjectSettings.get_setting("application/config/version", "0")), min_version_android)
+
+
+## "1.3.3" is older than "1.3.4" (and "1.3" than "1.3.1").
+static func older(a: String, b: String) -> bool:
+	var pa := a.split(".")
+	var pb := b.split(".")
+	for i in maxi(pa.size(), pb.size()):
+		var x := int(pa[i]) if i < pa.size() else 0
+		var y := int(pb[i]) if i < pb.size() else 0
+		if x != y:
+			return x < y
+	return false
+
+
 static func take(text: String) -> bool:
 	var read: Variant = parse(text)
 	if read == null:
@@ -117,6 +145,7 @@ static func take(text: String) -> bool:
 	var data: Dictionary = JSON.parse_string(text)
 	var name: String = data["settings_name"] if data.get("settings_name") is String else ""
 	TSTunables.apply_remote(data.get("settings"), name)
+	min_version_android = str(data.get("min_version_android", "")) if data.get("min_version_android") is String else ""
 	TSAnalytics.user_property("remote_settings", name if name != "" else "default")
 	return true
 

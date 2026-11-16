@@ -226,6 +226,10 @@ func _ready() -> void:
 					w._shake(b)
 					b.modulate = Color(1, 0.5, 0.5)   # marked for the capture
 					break)
+	if args_has("update"):
+		# `-- home update`: the Update Required card.
+		var tu := get_tree()
+		tu.create_timer(0.8).timeout.connect(func(): tu.current_scene._show_update_card())
 	if args_has("bottom"):
 		# `-- shop bottom`: the screen's list scrolled to its end.
 		var t := get_tree()

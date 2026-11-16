@@ -135,6 +135,13 @@ func _run() -> void:
 	_check("a broken file changes nothing", not TSInbox.take("{oops") and TSTunables.get_int("interstitial_from_level") == 10)
 	TSInbox.take("{\"messages\": []}")
 	_check("a key taken out goes back to its default", TSTunables.get_int("interstitial_from_level") == 30 and not TSTunables.get_bool("social_enabled") and TSTunables.remote_name == "")
+	# The minimum version.
+	_check("version order", TSInbox.older("1.3.3", "1.3.4") and TSInbox.older("1.3", "1.3.1") and not TSInbox.older("1.3.4", "1.3.4") and not TSInbox.older("1.4", "1.3.9"))
+	TSInbox.take(JSON.stringify({"messages": [], "min_version_android": "9.9"}))
+	_check("the file's minimum is read", TSInbox.min_version_android == "9.9")
+	_check("only Android builds are held to it", not TSInbox.update_required())   # this runs on a PC
+	TSInbox.take("{\"messages\": []}")
+	_check("no minimum when the file has none", TSInbox.min_version_android == "")
 
 	TSProfile.inbox_done = {}
 	TSProfile.persist = false
