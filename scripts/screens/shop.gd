@@ -298,50 +298,49 @@ func _pass_card() -> Control:
 	art.texture = load("res://icons/battle_pass_banner.png")
 	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	art.custom_minimum_size = Vector2(0, 92)
+	# The whole picture, at its own shape, however wide the card is.
+	art.custom_minimum_size = Vector2(0, 150)
+	art.resized.connect(func() -> void:
+		var want := roundf(art.size.x * 390.0 / 1100.0)
+		if absf(art.custom_minimum_size.y - want) > 1.0:
+			art.custom_minimum_size.y = want)
 	art.clip_contents = true
 	var title := TSUI.outlined(TSUI.label("Premium Pass  ·  Season %d" % TSProfile.battle_pass_season_number(), 26, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER), TSUI.INK, 9)
 	title.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	title.offset_top = 8.0
 	art.add_child(title)
 	v.add_child(art)
-	# Everything premium gives this season, added up over its tiers.
+	# Only what's exclusive to premium this season: its critters, ship part and
+	# stickers, pictured. The rest is summed up in one line under them.
 	var season := TSProfile.season_rewards()
-	var coins := 0
-	var mats := 0
-	var bombs := 0
-	var skips := 0
-	var tickets := 0
 	var stickers: Array = []
 	for t in range(1, TSProfile.BATTLE_PASS_TIER_COUNT + 1):
 		var r := TSProfile.battle_pass_paid_reward(t)
-		coins += int(r.get("coins", 0))
-		mats += int(r.get("materials", 0))
-		bombs += int(r.get("bomb", 0))
-		skips += int(r.get("skips", 0))
-		tickets += int(r.get("pass_tickets", 0))
 		if r.has("sticker"):
 			stickers.append(str(r["sticker"]))
 	var grid := GridContainer.new()
-	grid.columns = 5
-	grid.add_theme_constant_override("h_separation", 4)
-	grid.add_theme_constant_override("v_separation", 4)
-	var items := [["coin", TSProfile.fmt_coins(coins)], ["materials", TSProfile.fmt_coins(mats)], ["bomb", "x%d" % bombs], ["skip", "x%d" % skips]]
-	if tickets > 0:
-		items.append(["ticket", "x%d" % tickets])
-	for it in items:
-		grid.add_child(_pass_item(TSIcon.make(it[0], 40), it[1]))
+	grid.columns = 4
+	grid.add_theme_constant_override("h_separation", 6)
+	grid.add_theme_constant_override("v_separation", 6)
 	for t in season["paid_critters"]:
 		var c := int(season["paid_critters"][t])
-		grid.add_child(_pass_item(TSIcon.make("critter", 40, c), TSProfile.critter_name(c)))
+		grid.add_child(_pass_item(TSIcon.make("critter", 64, c), TSProfile.critter_name(c)))
 	for t in season["paid_parts"]:
 		var p := int(season["paid_parts"][t])
-		grid.add_child(_pass_item(TSIcon.make("part", 40, p), TSProfile.part_name(p)))
+		grid.add_child(_pass_item(TSIcon.make("part", 64, p), TSProfile.part_name(p)))
 	for st in stickers:
-		grid.add_child(_pass_item(TSIcon.make("sticker", 40, 0, st), TSStickers.sticker_name(st)))
+		grid.add_child(_pass_item(TSIcon.make("sticker", 64, 0, st), TSStickers.sticker_name(st)))
 	var center := CenterContainer.new()
 	center.add_child(grid)
+	v.add_child(TSUI.label("Exclusive this season", 18, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	v.add_child(center)
+	# Everything else, in one line: coins, boosters and the rest on every tier.
+	var more := TSUI.hbox(6)
+	more.alignment = BoxContainer.ALIGNMENT_CENTER
+	for ic in ["coin", "bomb", "materials"]:
+		more.add_child(TSIcon.make(ic, 28))
+	more.add_child(TSUI.label("Plus coins, boosters, and more on every tier!", 18, TSUI.INK))
+	v.add_child(more)
 	# The perks, two to a line.
 	var perks := ["Pass-only critters", "A 4th chest slot", "Chests %d%% faster" % TSChests.TIMER_DISCOUNT_PERCENT, "+%d%% coins all season" % TSProfile.BATTLE_PASS_COIN_BONUS_PERCENT]
 	var pg := GridContainer.new()
