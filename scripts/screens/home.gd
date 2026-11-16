@@ -390,10 +390,12 @@ func _build_side_tiles() -> void:
 	var tag := TSUI.pill("SALE", TSUI.CORAL, 16)
 	tag.position = Vector2(10, -16)
 	sale_btn.add_child(tag)
-	sale_timer = TSUI.outlined(TSUI.label("", 16, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER), TSUI.PAPER, 6)
-	sale_timer.position = Vector2(-10, 88)
-	sale_timer.size = Vector2(116, 24)
-	sale_btn.add_child(sale_timer)
+	# The time left, on a little pill of its own so it reads over any ground.
+	var timer_pill := TSUI.pill("", TSUI.CARD, 15)
+	timer_pill.position = Vector2(4, 84)
+	timer_pill.custom_minimum_size = Vector2(88, 0)
+	sale_btn.add_child(timer_pill)
+	sale_timer = timer_pill.get_meta("label")
 
 
 ## The side column shrinks to fit above the chest tray: on a short (16:9)
@@ -941,6 +943,21 @@ func _build_play() -> void:
 	play_btn.add_theme_constant_override("outline_size", 14)
 	play_btn.pressed.connect(_on_play_pressed)
 	group.add_child(play_btn)
+	# A glossy shine across its top half, so it reads as the button to press.
+	var shine := Panel.new()
+	var gloss := StyleBoxFlat.new()
+	gloss.bg_color = Color(1, 1, 1, 0.28)
+	gloss.set_corner_radius_all(40)
+	shine.add_theme_stylebox_override("panel", gloss)
+	shine.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	shine.anchor_right = 1.0
+	shine.offset_left = 22.0
+	shine.offset_right = -22.0
+	shine.offset_top = 12.0
+	shine.offset_bottom = 40.0
+	shine.show_behind_parent = false
+	play_btn.add_child(shine)
+	play_btn.move_child(shine, 0)
 	var level := TSProfile.last_level
 	var resuming := TSSession.has_saved_game and not bool(TSSession.state.get("daily", false))
 	if resuming:
