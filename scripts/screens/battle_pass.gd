@@ -24,8 +24,7 @@ var _tier_list: VBoxContainer
 var _tier_scroll: ScrollContainer
 var _quest_list: VBoxContainer
 var _buy_btn: Button
-var _collect_tiers: Button     # Collect All, over the tiers
-var _collect_quests: Button    # and over the quests
+var _collecting := false       # the bottom button is Collect All (else Buy Tier)
 var _gifts: HBoxContainer       # Tier Skips and Pass Tickets, when the player has any
 var _purchased: Label
 var _buy: Dictionary
@@ -78,17 +77,6 @@ func build() -> void:
 	_pass_content = TSUI.vbox(10)
 	_pass_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	content.add_child(_pass_content)
-	_collect_tiers = TSUI.button("Collect All", TSUI.GREEN, 26, Vector2(0, 64))
-	_collect_tiers.pressed.connect(func() -> void:
-		var before := TSProfile.coin_count
-		if TSProfile.claim_all_battle_pass() > 0:
-			TSSfx.play("upgrade")
-			if TSProfile.coin_count > before:
-				wallet.receive(_collect_tiers.get_global_rect(), before, TSProfile.coin_count)
-			TSFX.confetti(self)
-			_refresh())
-	_pass_content.add_child(_collect_tiers)
-	TSUI.breathe(_collect_tiers, 1.6)
 	var heads := TSUI.hbox(8)
 	heads.add_child(TSUI.spacer(70))
 	for pair in [["FREE", TSUI.CARD, ""], ["PREMIUM", COL_PREMIUM_RIM, "crown"]]:
@@ -114,15 +102,6 @@ func build() -> void:
 	_quest_content.add_child(_quest_tabs)
 	for b in _quest_tabs.get_meta("buttons"):
 		_dots.append(TSUI.dot(b))
-	_collect_quests = TSUI.button("Collect All", TSUI.GREEN, 26, Vector2(0, 64))
-	_collect_quests.pressed.connect(func() -> void:
-		if TSProfile.claim_all_quests() > 0:
-			TSSfx.play("upgrade")
-			TSFX.sparkle_burst(self, _collect_quests)
-			_refresh()
-			_build_quests())
-	_quest_content.add_child(_collect_quests)
-	TSUI.breathe(_collect_quests, 1.6)
 	_quest_list = TSUI.vbox(10)
 	_quest_content.add_child(TSUI.scroll(_quest_list))
 
@@ -167,9 +146,18 @@ func _refresh() -> void:
 	else:
 		_progress.value = TSProfile.battle_pass_tier_progress()
 		_progress_label.text = "%d / %d stars to Tier %d" % [TSProfile.battle_pass_tier_progress(), per_tier, tier + 1]
-	if tier >= count or not TSProfile.battle_pass_open():
+	# One button along the bottom: Collect All while any tier reward or quest is
+	# waiting, and Buy Tier once there's nothing to collect.
+	_collecting = TSProfile.has_claimable_battle_pass_reward() or TSProfile.has_unclaimed_quests()
+	if _collecting:
+		_tier_buy.visible = true
+		_tier_buy.text = "Collect All"
+		_tier_buy.disabled = false
+		TSUI.restyle(_tier_buy, TSUI.GREEN)
+	elif tier >= count or not TSProfile.battle_pass_open():
 		_tier_buy.visible = false
 	else:
+		TSUI.restyle(_tier_buy, TSUI.BUTTER)
 		var cost := TSProfile.battle_pass_tier_buy_cost()
 		_tier_buy.visible = true
 		_tier_buy.text = "Buy Tier %d  ·  %s coins" % [tier + 1, TSProfile.fmt_coins(cost)]
@@ -177,8 +165,6 @@ func _refresh() -> void:
 	_buy_btn.visible = not TSProfile.battle_pass_purchased
 	_purchased.visible = TSProfile.battle_pass_purchased
 	_build_gifts()
-	_collect_tiers.visible = TSProfile.has_claimable_battle_pass_reward()
-	_collect_quests.visible = TSProfile.has_unclaimed_quests()
 	_build_tiers()
 	_refresh_dots()
 
@@ -362,6 +348,9 @@ func _claim(tier: int, premium: bool, anchor: Control) -> void:
 
 
 func _on_tier_buy() -> void:
+	if _collecting:
+		_collect_all()
+		return
 	var before := TSProfile.coin_count
 	if not TSProfile.purchase_battle_pass_tier():
 		return
@@ -369,6 +358,23 @@ func _on_tier_buy() -> void:
 	TSSfx.play("upgrade")
 	TSFX.sparkle_burst(self, _tier_buy)
 	_refresh()
+
+
+## Collect All: the finished quests first (their stars may reach new tiers),
+## then every reached tier's reward on both tracks.
+func _collect_all() -> void:
+	var before := TSProfile.coin_count
+	var got := TSProfile.claim_all_quests()
+	got += TSProfile.claim_all_battle_pass()
+	if got <= 0:
+		_refresh()
+		return
+	TSSfx.play("upgrade")
+	if TSProfile.coin_count > before:
+		wallet.receive(_tier_buy.get_global_rect(), before, TSProfile.coin_count)
+	TSFX.confetti(self)
+	_refresh()
+	_build_quests()
 
 
 # -- quests ------------------------------------------------------------------------

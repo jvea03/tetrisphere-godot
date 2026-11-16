@@ -208,6 +208,10 @@ func _ready() -> void:
 		TSProfile.tier_skips = 3
 		TSProfile.pass_tickets = 10
 		TSProfile.battle_pass_xp = TSProfile.battle_pass_stars_for_tier(4)   # a few tiers to collect
+	if args_has("collected"):
+		# `-- battle_pass collected`: everything collected, so the button is Buy Tier.
+		TSProfile.claim_all_quests()
+		TSProfile.claim_all_battle_pass()
 	if args_has("bottom"):
 		# `-- shop bottom`: the screen's list scrolled to its end.
 		var t := get_tree()
