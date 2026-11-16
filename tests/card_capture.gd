@@ -1,6 +1,6 @@
 # Visual QA for the in-game cards: plays a level with a throwaway profile and
 # opens the card named on the command line (pause, win, lose, or an empty
-# booster: bomb, swap, rocks; or `any` to hold the Any Piece). Run with:
+# booster: bomb, swap, rocks; firstwin or challengewin for those win cards; or `any` to hold the Any Piece). Run with:
 #   Godot.exe --path . res://tests/card_capture.tscn -- win
 extends "res://scripts/game.gd"
 
@@ -9,10 +9,10 @@ var _card := ""
 
 
 func _ready() -> void:
-	TSProfile.use_test_profile(12)
-	TSProfile.coin_count = 3200
 	var args := OS.get_cmdline_user_args()
 	_card = args[0] if args.size() > 0 else "pause"
+	TSProfile.use_test_profile(1 if _card == "firstwin" else 12)   # firstwin: level 1's first win
+	TSProfile.coin_count = 3200
 	if OS.get_environment("OUT") != "":
 		# OUT=folder: saves <card>.png there a few seconds in, and quits.
 		var t0 := get_tree()
@@ -32,6 +32,14 @@ func _process(delta: float) -> void:
 		"pause":
 			_open_pause()
 		"win":
+			lives = 2
+			_debug_win()
+		"firstwin":
+			lives = 3
+			_debug_win()
+		"challengewin":
+			is_challenge = true
+			challenge_left = 47.0
 			lives = 2
 			_debug_win()
 		"lose":

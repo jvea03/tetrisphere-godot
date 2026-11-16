@@ -93,6 +93,9 @@ var _win_materials := 0       # building materials the win paid
 var _win_chest := ""
 var _win_features := false  # stars and chests were open as this win was paid (level 6's win opens them: its card shows neither)
 var _win_bonus := ""
+var _win_first := false   # the player's very first rescue (level 1's first win): its own card
+var _win_prize := 0       # a challenge's bonus coins, shown on the challenge card's trophy plate
+var _win_time_left := 0   # a challenge: whole seconds still on the clock at the win
 const FIRST_ATTEMPT_STAR_BONUS := 2
 const LIVES_REFILL_COST := 2500
 const FIRST_CONTINUE_COST := 1000   # the first refill on a ball, at 60% off, to make the first buy an easy yes
@@ -2302,6 +2305,9 @@ func _win() -> void:
 func _pay_win() -> void:
 	TSProfile.settle_boards()
 	_win_features = TSNav.features_unlocked()
+	_win_first = not is_daily and not is_challenge and current_level == 1 and TSProfile.last_level <= 1
+	_win_prize = 0
+	_win_time_left = ceili(maxf(challenge_left, 0.0)) if is_challenge else 0
 	var before := TSProfile.coin_count
 	var bonus := FIRST_ATTEMPT_STAR_BONUS if is_first_attempt else 0
 	_win_stars = TSProfile.add_stars(lives, bonus, difficulty)
@@ -2323,7 +2329,7 @@ func _pay_win() -> void:
 		TSProfile.won_since_home = true
 		var prize := TSProfile.boost_earned_coins(TSLevels.CHALLENGE_BONUS_COINS)
 		TSProfile.coin_count += prize
-		TSProfile.coin_notices.append({"label": "Challenge bonus", "coins": prize})
+		_win_prize = prize   # the challenge card shows it on its own trophy plate
 	else:
 		TSProfile.record_quest_event("win")
 		TSProfile.won_since_home = true
@@ -2548,7 +2554,15 @@ func _show_win_card() -> void:
 	var top := TSUI.hbox(8)
 	box.add_child(top)
 	top.add_child(TSUI.spacer(60))
-	var banner := TSUI.ribbon("Challenge won!" if is_challenge else "Rescued!", TSUI.PINK, 48, 400.0)
+	var banner_text := "Rescued!"
+	var banner_color := TSUI.PINK
+	if _win_first:
+		banner_text = "First Rescue!"
+		banner_color = TSUI.GOLD
+	elif is_challenge:
+		banner_text = "Challenge Beaten!"
+		banner_color = TSUI.CORAL
+	var banner := TSUI.ribbon(banner_text, banner_color, 40 if is_challenge else (44 if _win_first else 48), 420.0)
 	banner.size_flags_horizontal = Control.SIZE_EXPAND | Control.SIZE_SHRINK_CENTER
 	top.add_child(banner)
 	var close := TSUI.close_button()
@@ -2561,8 +2575,13 @@ func _show_win_card() -> void:
 	close.modulate.a = 0.0 if early else 1.0
 	close.disabled = early
 	# The creature that was sealed in the egg: a Milky, safe and sound.
-	box.add_child(TSUI.halo(TSIcon.make("milky", 200, _creature.kind + 1, "rescued"), 280.0))
-	box.add_child(TSUI.label("You saved a Milky!", 30, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER))
+	if _win_first:
+		_fill_first_win_top(box)
+	elif is_challenge:
+		_fill_challenge_win_top(box)
+	else:
+		box.add_child(TSUI.halo(TSIcon.make("milky", 200, _creature.kind + 1, "rescued"), 280.0))
+		box.add_child(TSUI.label("You saved a Milky!", 30, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER))
 	var rewards := TSUI.card(Color(1.0, 0.95, 0.84), 24, 16, 2)
 	var row := TSUI.hbox(28)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -2595,13 +2614,26 @@ func _show_win_card() -> void:
 		var double := TSUI.button(TSAdReward.text("Double Coins (+%s)" % TSProfile.fmt_coins(_win_coins)), TSUI.SKY, 28, Vector2(0, 76))
 		double.pressed.connect(func(): _double_win_coins(double, coin_amount))
 		box.add_child(double)
-	var next :=TSUI.button("Back to Home" if is_daily else "Next Level", TSUI.GREEN, 34, Vector2(0, 90))
+	var next_text := "Next Level"
+	if is_daily:
+		next_text = "Back to Home"
+	elif _win_first:
+		next_text = "Keep Rescuing!"
+	elif is_challenge:
+		next_text = "Continue"
+	var next := TSUI.button(next_text, TSUI.GREEN, 34, Vector2(0, 90))
 	next.pressed.connect(_on_next_pressed)
 	box.add_child(next)
 	TSUI.juice(box)
 	TSUI.reveal(_win_card["root"], _win_card["panel"])
 	TSFX.confetti(_hud)
 	TSSfx.play("popper")
+	if _win_first or is_challenge:
+		# A bigger moment: a second burst of confetti as the card settles.
+		get_tree().create_timer(0.45).timeout.connect(func():
+			if is_inside_tree() and _win_card["root"].visible:
+				TSFX.confetti(_hud)
+				TSSfx.play("popper"))
 	# The coins count up once the card has settled, ticking as they go -- each
 	# tick a little higher -- and landing on a ding.
 	get_tree().create_timer(0.35).timeout.connect(func():
@@ -2616,6 +2648,40 @@ func _show_win_card() -> void:
 					if is_instance_valid(coin_amount):
 						TSSfx.play("tick", pow(2.0, float(POP_SCALE[k]) / 12.0)))
 			count.tween_callback(func(): TSSfx.play("ding")))
+
+
+## The player's very first rescue: the critter bigger, in a gold halo, and a
+## line about the many still waiting.
+func _fill_first_win_top(box: VBoxContainer) -> void:
+	box.add_child(TSUI.halo(TSIcon.make("milky", 230, _creature.kind + 1, "rescued"), 320.0, TSUI.GOLD))
+	box.add_child(TSUI.label("You saved your very first critter!", 30, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER))
+	var more := TSUI.wrap(TSUI.label("Lots more are still stuck in their eggs.\nLet's get them all out!", 22, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER), 500.0)
+	box.add_child(more)
+
+
+## A challenge beaten: a trophy for the hero, the time left on the clock, and
+## the challenge's bonus on a plate of its own.
+func _fill_challenge_win_top(box: VBoxContainer) -> void:
+	box.add_child(TSUI.halo(TSIcon.make("trophy", 170), 250.0, TSUI.GOLD))
+	box.add_child(TSUI.label("You beat the clock!", 30, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER))
+	var clock := TSUI.card(Color(1.0, 0.93, 0.93), 22, 10, 2)
+	clock.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	var clock_row := TSUI.hbox(10)
+	clock_row.add_child(TSIcon.make("clock", 40))
+	clock_row.add_child(TSUI.label("%d:%02d to spare" % [_win_time_left / 60, _win_time_left % 60], 24, TSUI.CORAL))
+	clock.add_child(clock_row)
+	box.add_child(clock)
+	if _win_prize > 0:
+		var plate := TSUI.card(Color(1.0, 0.89, 0.55), 24, 14, 4)
+		var row := TSUI.hbox(14)
+		row.alignment = BoxContainer.ALIGNMENT_CENTER
+		row.add_child(TSIcon.make("coin", 56))
+		var text := TSUI.vbox(0)
+		text.add_child(TSUI.label("Challenge Bonus", 22, TSUI.MUTED))
+		text.add_child(TSUI.label("+%s coins" % TSProfile.fmt_coins(_win_prize), 34, TSUI.INK))
+		row.add_child(text)
+		plate.add_child(row)
+		box.add_child(plate)
 
 
 ## A level before the Collection opens (1-4): its win card only goes on. In
