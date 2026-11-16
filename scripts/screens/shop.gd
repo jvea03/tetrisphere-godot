@@ -72,13 +72,14 @@ func build() -> void:
 ## The sections, top to bottom: [id, title, colour, icon].
 const SECTIONS := [
 	["deals", "Featured Sale", Color(1.0, 0.54, 0.58), "tag"],
+	["pass", "Battle Pass", Color(0.74, 0.56, 1.0), "pass"],
 	["noads", "Remove Ads", Color(0.74, 0.62, 0.98), "noads"],
 	["bundles", "Bundles", Color(0.56, 0.74, 1.0), "chest"],
 	["coins", "Coins", Color(1.0, 0.76, 0.3), "coin"],
 	["materials", "Materials", Color(0.86, 0.64, 0.44), "materials"],
 	["boosters", "Boosters", Color(1.0, 0.6, 0.72), "bomb"],
 ]
-const CHIPS := [["deals", "Deals"], ["coins", "Coins"], ["materials", "Materials"], ["boosters", "Boosters"]]
+const CHIPS := [["deals", "Deals"], ["pass", "Pass"], ["coins", "Coins"], ["materials", "Materials"], ["boosters", "Boosters"]]
 
 
 func _refresh() -> void:
@@ -96,7 +97,11 @@ func _refresh() -> void:
 	_sections.clear()
 	for sec in SECTIONS:
 		var id: String = sec[0]
+		if id == "pass" and not TSProfile.battle_pass_open():
+			continue   # the pass opens with the level-7 features
 		var trailing := ""
+		if id == "pass":
+			trailing = "%s left" % TSUI.fmt_duration(TSProfile.battle_pass_seconds_remaining())
 		if id == "deals":
 			trailing = "%s left" % TSUI.fmt_duration(TSProfile.seconds_until_weekly_reset())
 		_sections[id] = _header(sec[1], sec[2], sec[3], trailing, id)
@@ -105,6 +110,8 @@ func _refresh() -> void:
 			"deals":
 				var sale: Dictionary = FEATURED_SALES[(int(TSClock.now() + 3 * 86400) / (7 * 86400)) % FEATURED_SALES.size()]
 				_list.add_child(_featured_card(sale))
+			"pass":
+				_list.add_child(_pass_card())
 			"noads":
 				_list.add_child(_no_ads_card())
 			"bundles":
@@ -129,6 +136,8 @@ func _build_chips() -> void:
 		c.queue_free()
 	for chip in CHIPS:
 		var id: String = chip[0]
+		if not _sections.has(id):
+			continue   # a section not shown (the pass before level 7)
 		var b := Button.new()
 		b.text = chip[1]
 		b.focus_mode = Control.FOCUS_NONE
@@ -271,6 +280,102 @@ func _featured_card(item: Dictionary) -> Control:
 	buy_row.add_child(TSUI.expand(_buy_button(_price(item), func(): Billing.purchase(item["product_id"]))))
 	v.add_child(buy_row)
 	return card
+
+
+## The Battle Pass banner: this season's art, then everything premium gives
+## over the season's 30 tiers -- its totals, its critters, ship part,
+## stickers and tickets, and its perks -- with Buy (or Active) and a way to the pass.
+func _pass_card() -> Control:
+	const RIM := Color(0.74, 0.56, 1.0)
+	var card := PanelContainer.new()
+	var face := TSUI.sb(Color(1.0, 0.95, 0.84), 26, 4, 4, 14)
+	face.border_color = RIM.darkened(0.2)
+	card.add_theme_stylebox_override("panel", face)
+	var v := TSUI.vbox(10)
+	card.add_child(v)
+	# The season's banner, its title over it.
+	var art := TextureRect.new()
+	art.texture = load("res://icons/battle_pass_banner.png")
+	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	art.custom_minimum_size = Vector2(0, 150)
+	art.clip_contents = true
+	var title := TSUI.outlined(TSUI.label("Premium Pass  ·  Season %d" % TSProfile.battle_pass_season_number(), 32, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER), TSUI.INK, 9)
+	title.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	title.offset_top = 8.0
+	art.add_child(title)
+	v.add_child(art)
+	# Everything premium gives this season, added up over its tiers.
+	var season := TSProfile.season_rewards()
+	var coins := 0
+	var mats := 0
+	var bombs := 0
+	var skips := 0
+	var tickets := 0
+	var stickers: Array = []
+	for t in range(1, TSProfile.BATTLE_PASS_TIER_COUNT + 1):
+		var r := TSProfile.battle_pass_paid_reward(t)
+		coins += int(r.get("coins", 0))
+		mats += int(r.get("materials", 0))
+		bombs += int(r.get("bomb", 0))
+		skips += int(r.get("skips", 0))
+		tickets += int(r.get("pass_tickets", 0))
+		if r.has("sticker"):
+			stickers.append(str(r["sticker"]))
+	v.add_child(TSUI.label("Unlock the premium track for a bigger reward on every tier:", 20, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	var grid := GridContainer.new()
+	grid.columns = 4
+	grid.add_theme_constant_override("h_separation", 10)
+	grid.add_theme_constant_override("v_separation", 8)
+	var items := [["coin", TSProfile.fmt_coins(coins)], ["materials", TSProfile.fmt_coins(mats)], ["bomb", "x%d" % bombs], ["skip", "x%d" % skips]]
+	if tickets > 0:
+		items.append(["ticket", "x%d" % tickets])
+	for it in items:
+		grid.add_child(_pass_item(TSIcon.make(it[0], 52), it[1]))
+	for t in season["paid_critters"]:
+		var c := int(season["paid_critters"][t])
+		grid.add_child(_pass_item(TSIcon.make("critter", 52, c), TSProfile.critter_name(c)))
+	for t in season["paid_parts"]:
+		var p := int(season["paid_parts"][t])
+		grid.add_child(_pass_item(TSIcon.make("part", 52, p), TSProfile.part_name(p)))
+	for st in stickers:
+		grid.add_child(_pass_item(TSIcon.make("sticker", 52, 0, st), TSStickers.sticker_name(st)))
+	var center := CenterContainer.new()
+	center.add_child(grid)
+	v.add_child(center)
+	var perks := ["Premium critters you can only get here", "A 4th chest slot, two chests unlocking at once", "Chests unlock %d%% faster" % TSChests.TIMER_DISCOUNT_PERCENT, "+%d%% on every coin you earn, all season" % TSProfile.BATTLE_PASS_COIN_BONUS_PERCENT]
+	for perk in perks:
+		var line := TSUI.hbox(6)
+		line.add_child(TSIcon.make("check", 24))
+		line.add_child(TSUI.label(perk, 19))
+		v.add_child(line)
+	var tier := TSProfile.battle_pass_tier()
+	if tier > 0 and not TSProfile.battle_pass_purchased:
+		v.add_child(TSUI.wrap(TSUI.label("You're on tier %d: buy now and the premium rewards for %s unlock right away!" % [tier, "tier 1" if tier == 1 else "all %d tiers" % tier], 19, TSFX.COL_GAIN, HORIZONTAL_ALIGNMENT_CENTER), 560))
+	var row := TSUI.hbox(10)
+	v.add_child(row)
+	var see := TSUI.expand(TSUI.button("See the Pass", TSUI.CARD, 22, Vector2(0, 64), 4)) as Button
+	see.pressed.connect(func() -> void: SceneFlow.go("res://scenes/battle_pass.tscn"))
+	row.add_child(see)
+	if TSProfile.battle_pass_purchased:
+		row.add_child(TSUI.expand(TSUI.label("Premium active", 24, Color(0.3, 0.64, 0.3), HORIZONTAL_ALIGNMENT_CENTER)))
+	else:
+		var live := Billing.price_of("egg_battle_pass")
+		var buy := TSUI.expand(TSUI.button("Unlock  ·  %s" % (live if live != "" else TSProfile.BATTLE_PASS_PRICE_LABEL), RIM, 26, Vector2(0, 64), 4)) as Button
+		buy.pressed.connect(func() -> void:
+			_last_btn = buy
+			Billing.purchase("egg_battle_pass"))
+		row.add_child(buy)
+	return card
+
+
+func _pass_item(art: Control, caption: String) -> Control:
+	var c := TSUI.vbox(0)
+	c.custom_minimum_size = Vector2(118, 0)
+	art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	c.add_child(art)
+	c.add_child(TSUI.label(caption, 17, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER))
+	return c
 
 
 func _no_ads_card() -> Control:
