@@ -97,3 +97,9 @@ and do declare tracking. The ATT alert itself comes from the AdMob **IDFA explai
    change availability), and it must be done **before** pressing Release.
 10. After approval: link the AdMob iOS app to the store listing, switch
     `tetrisphere/test_ads` off for the public Android release (iOS is already live), press Release.
+
+**AdMob verification (16 Nov 2026):** the iOS AdMob app is linked to the App Store
+listing (6819941762) and awaiting AdMob's review. Marketing URL set to
+`https://jvea03.github.io` on version 1.3.4 (saved while Waiting for Review), so
+AdMob can find app-ads.txt there. Once 1.3.4 is live, press Verify app in
+AdMob (Apps > Egg Escape: Puzzle Break > App settings).
