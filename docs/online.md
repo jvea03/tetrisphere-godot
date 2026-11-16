@@ -77,6 +77,6 @@ Run the game from the Godot editor (with your normal save) and the boards fill
 with 20 made-up players; nothing is read from or written to Firebase. Tap one
 to send a sticker: it "arrives", and about half the time they send one back a
 few seconds later. A sticker from one of them also arrives once per run as you
-open Ranks, to try the received card. Every sticker is unlocked there,
-the Christmas ones too. Release builds, the test suite (throwaway profiles) and
+open Ranks, to try the received card. Only the three basic stickers are there,
+unless you earn more. Release builds, the test suite (throwaway profiles) and
 `tools/online_check` never use it. Screenshots: `menu_capture -- leaderboard fake`.

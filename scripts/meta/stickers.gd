@@ -2,9 +2,10 @@ class_name TSStickers
 extends RefCounted
 
 ## Stickers: little faces players send each other from the leaderboards
-## (Online.send_sticker). Everyone has the three basic ones; more come from
-## the Battle Pass, starting with the Christmas season (TSProfile's
-## BATTLE_PASS_SEASON_REWARDS "free_stickers" / "paid_stickers"). Each is
+## (Online.send_sticker). Everyone has the three basic ones (Grr!, Aww...,
+## Congrats!); every other one must be earned -- from the Battle Pass,
+## starting with the Christmas season (TSProfile's BATTLE_PASS_SEASON_REWARDS
+## "free_stickers" / "paid_stickers"), or another event. Each is
 ## drawn by TSIcon ("sticker", variant = its id). Only these ids are ever
 ## sent, so there is nothing for anyone to type.
 
@@ -21,8 +22,6 @@ const BASE := ["angry", "sad", "congrats"]
 
 
 static func owns(id: String) -> bool:
-	if Online.fake() and ALL.has(id):
-		return true   # the editor's fake leaderboard: every sticker, to try them all
 	return BASE.has(id) or TSProfile.stickers_owned.has(id)
 
 
