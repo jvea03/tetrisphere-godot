@@ -2650,38 +2650,166 @@ func _show_win_card() -> void:
 			count.tween_callback(func(): TSSfx.play("ding")))
 
 
-## The player's very first rescue: the critter bigger, in a gold halo, and a
-## line about the many still waiting.
+## The player's very first rescue: the critter bigger, in a gold halo with a
+## "1st" medal pinned on and stars twinkling round it, and a line about the
+## many still waiting.
 func _fill_first_win_top(box: VBoxContainer) -> void:
-	box.add_child(TSUI.halo(TSIcon.make("milky", 230, _creature.kind + 1, "rescued"), 320.0, TSUI.GOLD))
+	var hero := _hero_stage(Vector2(440, 320))
+	_stage_center(hero, TSUI.halo(TSIcon.make("milky", 230, _creature.kind + 1, "rescued"), 320.0, TSUI.GOLD))
+	for s in [[Vector2(58, 70), 34.0, 0.0], [Vector2(352, 230), 28.0, 0.6], [Vector2(78, 236), 24.0, 1.1]]:
+		_twinkle_star(hero, s[0], s[1], s[2])
+	var medal := _medal(108.0, "1st")
+	medal.position = Vector2(318, 18)
+	hero.add_child(medal)
+	_pop_in(medal, 0.55)
+	box.add_child(hero)
 	box.add_child(TSUI.label("You saved your very first critter!", 30, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER))
-	var more := TSUI.wrap(TSUI.label("Lots more are still stuck in their eggs.\nLet's get them all out!", 22, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER), 500.0)
-	box.add_child(more)
+	box.add_child(TSUI.wrap(TSUI.label("Lots more are still stuck in their eggs.\nLet's get them all out!", 22, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER), 500.0))
 
 
-## A challenge beaten: a trophy for the hero, the time left on the clock, and
-## the challenge's bonus on a plate of its own.
+## A challenge beaten: the trophy with the rescued critter beside it, the time
+## left on the clock, and the challenge's bonus on a gold plate of its own,
+## counting up.
 func _fill_challenge_win_top(box: VBoxContainer) -> void:
-	box.add_child(TSUI.halo(TSIcon.make("trophy", 170), 250.0, TSUI.GOLD))
+	var hero := _hero_stage(Vector2(440, 250))
+	_stage_center(hero, TSUI.halo(TSIcon.make("trophy", 170), 250.0, TSUI.GOLD))
+	var critter := TSIcon.make("milky", 128, _creature.kind + 1, "rescued")
+	critter.position = Vector2(290, 118)
+	hero.add_child(critter)
+	_pop_in(critter, 0.5)
+	for s in [[Vector2(70, 60), 30.0, 0.0], [Vector2(96, 190), 22.0, 0.8], [Vector2(356, 40), 24.0, 0.4]]:
+		_twinkle_star(hero, s[0], s[1], s[2])
+	box.add_child(hero)
 	box.add_child(TSUI.label("You beat the clock!", 30, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER))
-	var clock := TSUI.card(Color(1.0, 0.93, 0.93), 22, 10, 2)
+	var clock := TSUI.card(Color(1.0, 0.88, 0.86), 22, 10, 3)
 	clock.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	var clock_row := TSUI.hbox(10)
-	clock_row.add_child(TSIcon.make("clock", 40))
-	clock_row.add_child(TSUI.label("%d:%02d to spare" % [_win_time_left / 60, _win_time_left % 60], 24, TSUI.CORAL))
+	var clock_row := TSUI.hbox(8)
+	clock_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	clock_row.add_child(TSIcon.make("clock", 42))
+	clock_row.add_child(TSUI.label("%d:%02d" % [_win_time_left / 60, _win_time_left % 60], 28, TSUI.CORAL.darkened(0.25)))
+	clock_row.add_child(TSUI.label("to spare", 24, TSUI.INK))
 	clock.add_child(clock_row)
 	box.add_child(clock)
-	if _win_prize > 0:
-		var plate := TSUI.card(Color(1.0, 0.89, 0.55), 24, 14, 4)
-		var row := TSUI.hbox(14)
-		row.alignment = BoxContainer.ALIGNMENT_CENTER
-		row.add_child(TSIcon.make("coin", 56))
-		var text := TSUI.vbox(0)
-		text.add_child(TSUI.label("Challenge Bonus", 22, TSUI.MUTED))
-		text.add_child(TSUI.label("+%s coins" % TSProfile.fmt_coins(_win_prize), 34, TSUI.INK))
-		row.add_child(text)
-		plate.add_child(row)
-		box.add_child(plate)
+	if _win_prize <= 0:
+		return
+	var plate := TSUI.card(Color(1.0, 0.88, 0.5), 24, 12, 4)
+	var col := TSUI.vbox(0)
+	col.add_child(TSUI.label("CHALLENGE BONUS", 20, TSUI.GOLD_DARK.darkened(0.35), HORIZONTAL_ALIGNMENT_CENTER))
+	var row := TSUI.hbox(12)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_child(TSIcon.make("coin", 58))
+	var amount := TSUI.outlined(TSUI.label("+0", 42, TSUI.INK), Color(1.0, 0.97, 0.86), 6)
+	row.add_child(amount)
+	col.add_child(row)
+	plate.add_child(col)
+	box.add_child(plate)
+	# After the win's own coins have counted, the bonus counts up too.
+	var prize := _win_prize
+	get_tree().create_timer(1.1).timeout.connect(func():
+		if not is_instance_valid(amount):
+			return
+		TSSfx.play("coin")
+		TSFX.sparkle_burst(_hud, amount)
+		var count := amount.create_tween()
+		count.tween_method(func(v: float): amount.text = "+%s" % TSProfile.fmt_coins(int(v)), 0.0, float(prize), 0.7)
+		for k in COUNT_TICKS:
+			get_tree().create_timer(0.7 * float(k) / float(COUNT_TICKS)).timeout.connect(func():
+				if is_instance_valid(amount):
+					TSSfx.play("tick", pow(2.0, float(POP_SCALE[k]) / 12.0)))
+		count.tween_callback(func():
+			TSSfx.play("ding")
+			amount.pivot_offset = amount.size / 2.0
+			var pop := amount.create_tween()
+			pop.tween_property(amount, "scale", Vector2(1.18, 1.18), 0.12).set_trans(Tween.TRANS_BACK)
+			pop.tween_property(amount, "scale", Vector2.ONE, 0.18)))
+
+
+## A fixed-size stage for a win card's hero art, things placed on it by hand.
+func _hero_stage(size: Vector2) -> Control:
+	var stage := Control.new()
+	stage.custom_minimum_size = size
+	stage.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return stage
+
+
+func _stage_center(stage: Control, child: Control) -> void:
+	var c := CenterContainer.new()
+	c.set_anchors_preset(Control.PRESET_FULL_RECT)
+	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	c.add_child(child)
+	stage.add_child(c)
+
+
+## A small gold star that twinkles: grows and fades in and out, offset in time.
+func _twinkle_star(stage: Control, at: Vector2, px: float, delay: float) -> void:
+	var star := TSIcon.make("star", px)
+	star.position = at - Vector2(px, px) * 0.5
+	star.pivot_offset = Vector2(px, px) * 0.5
+	star.scale = Vector2(0.6, 0.6)
+	star.modulate.a = 0.0
+	stage.add_child(star)
+	var tw := star.create_tween().set_loops()
+	tw.tween_interval(delay)
+	tw.tween_property(star, "modulate:a", 1.0, 0.35)
+	tw.parallel().tween_property(star, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(star, "rotation", 0.35, 0.35)
+	tw.tween_interval(0.9)
+	tw.tween_property(star, "modulate:a", 0.0, 0.5)
+	tw.parallel().tween_property(star, "scale", Vector2(0.6, 0.6), 0.5)
+	tw.parallel().tween_property(star, "rotation", 0.0, 0.5)
+	tw.tween_interval(1.4 - delay)
+
+
+## Scales a piece of hero art in from nothing, with a bounce and a sparkle.
+func _pop_in(c: Control, delay: float) -> void:
+	c.pivot_offset = c.custom_minimum_size * 0.5
+	c.scale = Vector2.ZERO
+	var tw := c.create_tween()
+	tw.tween_interval(delay)
+	tw.tween_property(c, "scale", Vector2.ONE, 0.42).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_callback(func():
+		TSSfx.play("ding")
+		TSFX.sparkle_burst(_hud, c))
+
+
+## A gold rosette medal: scalloped edge, two coral tails, `text` in the middle.
+func _medal(px: float, text: String) -> Control:
+	var m := Control.new()
+	m.custom_minimum_size = Vector2(px, px * 1.25)
+	m.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	m.draw.connect(func():
+		var c := Vector2(px * 0.5, px * 0.48)
+		var r := px * 0.46
+		# The tails, behind the rosette.
+		for side: float in [-1.0, 1.0]:
+			var x := c.x + side * r * 0.34
+			var tail := PackedVector2Array([
+				Vector2(x - r * 0.24, c.y + r * 0.3), Vector2(x + r * 0.24, c.y + r * 0.3),
+				Vector2(x + r * 0.24 + side * r * 0.12, px * 1.22), Vector2(x + side * r * 0.12, px * 1.1),
+				Vector2(x - r * 0.24 + side * r * 0.12, px * 1.22)])
+			m.draw_colored_polygon(tail, TSUI.CORAL)
+			tail.append(tail[0])
+			m.draw_polyline(tail, TSUI.INK, 3.0, true)
+		# The scalloped rim.
+		var rim := PackedVector2Array()
+		var n := 48
+		for k in n:
+			var a := TAU * float(k) / float(n)
+			var rr := r * (1.0 if k % 2 == 0 else 0.9)
+			rim.append(c + Vector2.from_angle(a) * rr)
+		m.draw_colored_polygon(rim, TSUI.GOLD)
+		rim.append(rim[0])
+		m.draw_polyline(rim, TSUI.INK, 3.0, true)
+		m.draw_circle(c, r * 0.7, TSUI.GOLD.lerp(Color.WHITE, 0.45), true, -1.0, true)
+		m.draw_circle(c, r * 0.7, TSUI.GOLD_DARK, false, 3.0, true)
+		m.draw_arc(c, r * 0.58, PI * 1.1, PI * 1.6, 12, Color(1, 1, 1, 0.8), 4.0, true))
+	var l := TSUI.outlined(TSUI.label(text, int(px * 0.3), TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER), Color(1.0, 0.98, 0.9), 6)
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.position = Vector2(0, px * 0.48 - px * 0.25)
+	l.size = Vector2(px, px * 0.5)
+	m.add_child(l)
+	return m
 
 
 ## A level before the Collection opens (1-4): its win card only goes on. In

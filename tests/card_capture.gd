@@ -16,7 +16,7 @@ func _ready() -> void:
 	if OS.get_environment("OUT") != "":
 		# OUT=folder: saves <card>.png there a few seconds in, and quits.
 		var t0 := get_tree()
-		t0.create_timer(3.0).timeout.connect(func():
+		t0.create_timer(float(OS.get_environment("WAIT")) if OS.get_environment("WAIT") != "" else 3.0).timeout.connect(func():
 			await RenderingServer.frame_post_draw
 			t0.root.get_texture().get_image().save_png(OS.get_environment("OUT").path_join(_card + ".png"))
 			t0.quit())

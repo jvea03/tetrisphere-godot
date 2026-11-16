@@ -106,7 +106,7 @@ func _run() -> void:
 	var coins := TSProfile.coin_count
 	_debug_win()
 	await get_tree().create_timer(3.0).timeout
-	_check("a win pays the challenge bonus", _says(_win_card, "Challenge Beaten!") and _says(_win_card, "Challenge Bonus") and _says(_win_card, "to spare") and TSProfile.coin_count >= coins + TSLevels.CHALLENGE_BONUS_COINS)
+	_check("a win pays the challenge bonus", _says(_win_card, "Challenge Beaten!") and _says(_win_card, "CHALLENGE BONUS") and _says(_win_card, "to spare") and TSProfile.coin_count >= coins + TSLevels.CHALLENGE_BONUS_COINS)
 	_check("but moves neither the level nor the streak", TSProfile.last_level == 41 and TSProfile.win_streak == 2)
 	_on_next_pressed()
 	_check("Next goes on to level 41", not is_challenge and current_level == 41)
