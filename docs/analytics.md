@@ -13,12 +13,20 @@ Two things, both following the same rules (below):
 
 ## Turn GameAnalytics on for real
 
-A GameAnalytics game is one platform with one key pair, so Egg Escape needs two
-games (iOS and Android) under the studio The Little Guy Games. Until a platform has
-its pair, its events go to GameAnalytics' public **sandbox**, which throws them away.
+Done 16 Nov 2026. A GameAnalytics game is one platform with one key pair, so Egg
+Escape is two games under the studio The Little Guy Games, both Collection API:
 
-1. gameanalytics.com: create the game ("Egg Escape: Puzzle Break", App Store) and
-   ("Egg Escape (Android)", Google Play).
+| Platform | Game | Constants |
+|---|---|---|
+| iOS | "Egg Escape: Puzzle Break", 361868, App Store | `GAME_KEY_IOS` / `SECRET_KEY_IOS` |
+| Android | "Egg Escape (Android)", 361869, Google Play | `GAME_KEY_ANDROID` / `SECRET_KEY_ANDROID` |
+
+Empty a pair and that platform reports to GameAnalytics' public **sandbox**, which
+throws events away. A new game shows "Waiting for first event" until a phone running
+a build with its keys plays (iOS 1.3.4 build 11 on; Android 1.3.4 build 12 does not
+have them). The recipe, for another platform:
+
+1. gameanalytics.com: New -> Game, the platform, SDK "Collection API", the store.
 2. Each game's Settings -> General: copy the Game Key and Secret Key into
    `GAME_KEY_IOS` / `SECRET_KEY_IOS` and `GAME_KEY_ANDROID` / `SECRET_KEY_ANDROID`
    in `game_analytics.gd`. (The secret ships in the app; every GameAnalytics SDK

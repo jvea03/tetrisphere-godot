@@ -20,12 +20,14 @@ extends Node
 ## reports through one place: see scripts/meta/analytics.gd.
 
 ## One key pair per platform: a GameAnalytics game is one platform with one
-## pair. A platform whose pair is empty reports to the public sandbox below,
-## where events are thrown away and never reach a dashboard.
-const GAME_KEY_IOS := ""
-const SECRET_KEY_IOS := ""
-const GAME_KEY_ANDROID := ""
-const SECRET_KEY_ANDROID := ""
+## pair, under the studio The Little Guy Games: iOS is "Egg Escape: Puzzle
+## Break" (game 361868), Android "Egg Escape (Android)" (game 361869), both
+## made 16 Nov 2026 as Collection API games. A platform whose pair is empty
+## reports to the public sandbox below, where events are thrown away.
+const GAME_KEY_IOS := "f61d06cb40d99cadbdad2554463e777a"
+const SECRET_KEY_IOS := "4ae0a2ac57c450dcc3d9d49e651c8efb9456fad0"
+const GAME_KEY_ANDROID := "9d1e552d58aac7606cc72aaca5eedbdd"
+const SECRET_KEY_ANDROID := "0a6e50c61a3550985fc14aa6728fc038068676e6"
 const USE_SANDBOX := false
 
 ## GameAnalytics' public sandbox pair, used by any platform without its own.
