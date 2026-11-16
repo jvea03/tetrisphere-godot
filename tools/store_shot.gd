@@ -26,6 +26,7 @@
 # --challenge    a challenge level waiting (one sits behind --level, e.g. 41)
 # --look=<x,y>  Home centred on that point of the camp (world units), as far as its edges allow
 # --bare        Home with its buttons and bars hidden: the camp alone
+# --fake        the leaderboard filled with the editor's made-up players (no Firebase)
 # Over Home: camp (its info card), mine (a haul, and the ad to double it),
 # chest_skip (an unlocking chest's card), build (a build under way). And
 # streak_double: Daily Streaks with today's login coins claimed.
@@ -89,6 +90,8 @@ func _ready() -> void:
 		TSProfile.challenge_done_through = 0
 	if OS.get_cmdline_user_args().has("--release"):   # the tabs and features as players see them, not the editor
 		TSNav.as_released = true
+	if OS.get_cmdline_user_args().has("--fake"):   # leaderboard: the editor's fake board of made-up players, never Firebase
+		Online.force_fake = true
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--streak="):   # on a win streak of n
 			TSProfile.win_streak = int(a.substr(9))
