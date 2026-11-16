@@ -19,7 +19,7 @@ const DEFAULTS := {
 	"swap_pack_cost": 3000, # the Shop's x5 Swap price
 	"rocks_buy_count": 2, # rock shots per mid-game coin buy
 	"rocks_pack_cost": 6000, # the Shop's x5 Rocks price
-	"ad_win_coins_per_day": 5, # rewarded ads: double a win's coins
+	"ad_win_coins_per_day": 1000000, # rewarded ads: double a win's coins (no daily limit since 1.3.5)
 	"ad_chest_per_day": 3, # 30 minutes off an unlocking chest
 	"ad_build_per_day": 3, # 30 minutes off a camp or ship build
 	"analytics_enabled": true, # kill switch for GameAnalytics (and Firebase on Android): false sends nothing

@@ -1,4 +1,8 @@
 {
+  "settings_name": "no-double-coins-cap",
+  "settings": {
+    "ad_win_coins_per_day": 1000000
+  },
   "messages": [
     {
       "id": "welcome-2026-11",

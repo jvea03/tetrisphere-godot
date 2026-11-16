@@ -58,7 +58,7 @@ func _run() -> void:
 	_check("the button says so", b.disabled and b.text == "Coins doubled!")
 	_check("and the next interstitial is spared", not _win_ad_due)
 	_check("(due, so no pass is kept)", not TSProfile.interstitial_skip)
-	_check("one of today's five used", TSProfile.ad_rewards_left("win_coins") == 4)
+	_check("and there is no daily limit", TSProfile.ad_rewards_left("win_coins") > 1000)
 	# A watched double with no interstitial due keeps a pass: the next due one is skipped.
 	_close_cards()
 	_start_level(level)
@@ -76,13 +76,15 @@ func _run() -> void:
 	_check("an interstitial in progress is flagged open (%s)" % Ads.last_interstitial_source, TSProfile.interstitial_open and Ads.last_interstitial_source == "Home")
 	await get_tree().create_timer(Ads.SIMULATED_SECONDS + 0.5).timeout
 	_check("and closed again when it ends", not TSProfile.interstitial_open and not Ads.is_busy())
-	# With the day's five used, no button.
+	# Should a remote file set a daily limit again (5 here), with them used there is no button.
+	TSTunables.apply({"ad_win_coins_per_day": 5})
 	TSProfile.ad_rewards_used = {"win_coins": 5}
 	_close_cards()
 	_start_level(level)
 	_debug_win()
 	await get_tree().create_timer(3.0).timeout
 	_check("after five a day the card has no double button", _win_card["root"].visible and _double_button() == null)
+	TSTunables.apply({"ad_win_coins_per_day": 1000000})
 	# Remove Ads: no video, at once.
 	TSProfile.ad_rewards_used = {}
 	TSProfile.no_ads = true

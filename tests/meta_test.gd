@@ -37,7 +37,7 @@ func _initialize() -> void:
 func _test_ad_rewards() -> void:
 	var was := TSClock.offset
 	TSProfile.ad_rewards_used = {}
-	_check("ads a day: 5 double a win's coins, 3 speed a chest, 3 speed a build", TSProfile.ad_rewards_left("win_coins") == 5 and TSProfile.ad_rewards_left("chest") == 3 and TSProfile.ad_rewards_left("build") == 3)
+	_check("ads a day: Double Coins without a limit, 3 speed a chest, 3 speed a build", TSProfile.ad_rewards_left("win_coins") >= 1000000 and TSProfile.ad_rewards_left("chest") == 3 and TSProfile.ad_rewards_left("build") == 3)
 	for k in 3:
 		TSProfile.use_ad_reward("chest")
 	_check("the chest's are used up after 3, the others untouched", TSProfile.ad_rewards_left("chest") == 0 and TSProfile.ad_rewards_left("build") == 3)
