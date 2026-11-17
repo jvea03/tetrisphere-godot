@@ -214,6 +214,21 @@ func _set_card(st: Dictionary) -> Control:
 	top.add_child(TSUI.expand(Control.new()))
 	if ready_now:
 		top.add_child(TSUI.pill("Complete!", TSUI.GOLD, 18))
+	var featured := TSSets.is_featured(st) and not claimed
+	if featured:
+		# The season's featured set: a festive border, snow on its top edge,
+		# and the bonus called out.
+		if not ready_now:
+			face.border_color = Color(0.86, 0.24, 0.3)
+			face.border_width_left = 5
+			face.border_width_right = 5
+			face.border_width_top = 5
+			face.border_width_bottom = 5
+		var why := TSUI.hbox(8)
+		v.add_child(why)
+		why.add_child(TSUI.pill("%s Special" % SEASON_NAMES.get(str(st["season"]), "Season"), Color(0.86, 0.24, 0.3), 18))
+		why.add_child(TSUI.expand(TSUI.wrap(TSUI.label("This season's set: %dx coins!" % TSSets.FEATURED_BONUS, 18, Color(0.6, 0.14, 0.2)))))
+		_snow_cap(card)
 	var members: Array = st["critters"]
 	var icons := TSUI.hbox(6)
 	v.add_child(icons)
@@ -252,6 +267,10 @@ func _set_card(st: Dictionary) -> Control:
 	ph.add_child(TSIcon.make("coin", 30))
 	ph.add_child(TSUI.label("+%s" % TSProfile.fmt_coins(TSSets.reward(st)), 24))
 	bottom.add_child(prize)
+	if featured:
+		var twice := TSUI.pill("%dx" % TSSets.FEATURED_BONUS, Color(0.86, 0.24, 0.3), 20)
+		twice.rotation = -0.1
+		bottom.add_child(twice)
 	bottom.add_child(TSUI.expand(Control.new()))
 	if claimed:
 		var got := TSUI.pill("CLAIMED", TSUI.MINT, 20)
@@ -271,6 +290,37 @@ func _set_card(st: Dictionary) -> Control:
 		bottom.add_child(claim)
 		TSUI.breathe(claim, 1.6)
 	return card
+
+
+## What a featured set's season is called on its card.
+const SEASON_NAMES := {"autumn": "Autumn", "christmas": "Christmas", "newyear": "New Year", "valentine": "Valentine's"}
+
+
+## A lumpy cap of snow along a card's top edge, drawn over it.
+func _snow_cap(c: Control) -> void:
+	var snow := Control.new()
+	snow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	snow.z_index = 1
+	c.add_child(snow)
+	snow.draw.connect(func() -> void:
+		var w := c.size.x
+		var cap := PackedVector2Array()
+		var lumps := maxi(4, int(w / 70.0))
+		var span := (w - 40.0) / float(lumps)
+		for k in lumps:
+			var cx := 20.0 + span * (float(k) + 0.5)
+			var h := 12.0 if k % 2 == 0 else 8.0
+			for j in 9:
+				var a := PI + PI * float(j) / 8.0
+				cap.append(Vector2(cx + cos(a) * span * 0.56, 3.0 + sin(a) * h))
+		for k in lumps * 2 + 1:
+			var x := w - 20.0 - (w - 40.0) * float(k) / float(lumps * 2)
+			cap.append(Vector2(x, 7.0 + (6.0 if k % 4 == 1 else 0.0)))
+		snow.draw_colored_polygon(cap, Color(0.99, 0.99, 1.0))
+		var rim := cap.duplicate()
+		rim.append(cap[0])
+		snow.draw_polyline(rim, Color(TSUI.INK, 0.6), 2.5, true))
+	c.resized.connect(snow.queue_redraw)
 
 
 # -- the feature card -------------------------------------------------------------------

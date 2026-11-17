@@ -37,6 +37,14 @@ func _ready() -> void:
 	_check("claiming pays its coins (+%d)" % got, got >= TSSets.reward(snacks) and TSProfile.coin_count == coins + got)
 	_check("and only once", TSSets.claim(snacks) == 0 and TSSets.is_claimed(snacks) and TSProfile.coin_count == coins + got)
 	_check("Snack Time pays 12,500 (a quarter of its critters' price)", TSSets.reward(snacks) == 12500)
+	# Snow Day is the Christmas season's featured set: first, and double coins.
+	var snow: Dictionary = TSSets.SETS.filter(func(s: Dictionary) -> bool: return s["id"] == "snow")[0]
+	var before := TSClock.offset
+	TSClock.offset = Time.get_unix_time_from_datetime_string("2026-12-03T10:00:00") - Time.get_unix_time_from_system()
+	_check("at Christmas Snow Day is featured, first on the tab, at double coins", TSSets.is_featured(snow) and TSSets.ordered()[0]["id"] == "snow" and TSSets.reward(snow) == TSSets.base_reward(snow) * 2 and not TSSets.is_featured(snacks))
+	TSClock.offset = Time.get_unix_time_from_datetime_string("2027-01-05T10:00:00") - Time.get_unix_time_from_system()
+	_check("after Christmas it is an ordinary set again", not TSSets.is_featured(snow) and TSSets.reward(snow) == TSSets.base_reward(snow))
+	TSClock.offset = before
 	print("")
 	print("ALL PASSED" if _failures == 0 else "%d FAILED" % _failures)
 	get_tree().quit(0 if _failures == 0 else 1)

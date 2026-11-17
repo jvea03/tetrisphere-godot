@@ -115,6 +115,9 @@ var _creature: TSCreature # core + face: the character you are digging out
 var _env: Environment
 var _key_light: DirectionalLight3D
 var _sky_mat: ShaderMaterial   # the background: a sky for the time of day (TSToon.SKIES)
+var _sleigh: TSSleigh          # at Christmas: Santa's sleigh, now and then, across the sky behind the egg
+var _sleigh_quad: MeshInstance3D
+const SLEIGH_DEPTH := 80.0     # in front of the paper (90), well behind the egg
 const LOSE_CARD_DELAY := 0.9   # the loss sinks in before its card shows...
 const LOSE_CARD_LOCK := 0.6    # ...and the card's buttons wait a moment more
 var _lose_seq := 0          # each loss; a card due from an earlier one stays away
@@ -257,6 +260,8 @@ func _build_environment() -> void:
 	paper.position = Vector3(0.0, 0.0, -90.0)
 	paper.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_camera.add_child(paper)
+	if TSSleigh.in_season():
+		_make_sleigh()
 
 	# The prize buried under the shell: a wide-eyed creature sealed inside, with
 	# moods of its own (TSCreature); each size has its own colour and look.
@@ -1895,6 +1900,7 @@ static func _heart_shape(s: float) -> PackedVector2Array:
 
 func _process(delta: float) -> void:
 	_animate_boosters(delta)
+	_fly_sleigh()
 	_tick_challenge(delta)
 	_track_pointer()
 	if state == State.PLAYING and not _any_card_open():
@@ -3709,6 +3715,55 @@ func _note_ties() -> void:
 ## The sky for this level's time of day -- every ten levels the day moves on,
 ## morning to day to sunset to night to dawn (TSToon.sky_for_level) -- and the
 ## light on the egg tinted to match.
+## The sleigh is drawn (TSSleigh) into a small transparent texture, worn by a
+## quad that rides with the camera between the paper and the egg -- so the
+## egg hides it as it passes behind.
+func _make_sleigh() -> void:
+	var vp := SubViewport.new()
+	vp.size = Vector2i(TSSleigh.SIZE)
+	vp.transparent_bg = true
+	vp.disable_3d = true
+	vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	add_child(vp)
+	_sleigh = TSSleigh.new()
+	_sleigh.steer = false
+	vp.add_child(_sleigh)
+	_sleigh_quad = MeshInstance3D.new()
+	_sleigh_quad.mesh = QuadMesh.new()
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.albedo_texture = vp.get_texture()
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	_sleigh_quad.material_override = mat
+	_sleigh_quad.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_sleigh_quad.visible = false
+	_camera.add_child(_sleigh_quad)
+
+
+## Places the sleigh on its pass across the top of the sky, the texture
+## redrawn only while it is up.
+func _fly_sleigh() -> void:
+	if _sleigh == null:
+		return
+	var vp := _sleigh.get_parent() as SubViewport
+	_sleigh_quad.visible = _sleigh.flying
+	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS if _sleigh.flying else SubViewport.UPDATE_DISABLED
+	if not _sleigh.flying:
+		return
+	# The camera keeps its width: at SLEIGH_DEPTH the view is this wide and tall.
+	var view := get_viewport().get_visible_rect().size
+	var half_w := SLEIGH_DEPTH * tan(deg_to_rad(_camera.fov * 0.5))
+	var half_h := half_w * view.y / view.x
+	var w := half_w * 2.0 * 0.42
+	var h := w * TSSleigh.SIZE.y / TSSleigh.SIZE.x
+	var u := 1.0 - _sleigh.progress if _sleigh.flip else _sleigh.progress
+	var x := lerpf(-half_w - w * 0.6, half_w + w * 0.6, u)
+	var y := half_h * (0.62 + 0.12 * _sleigh.progress) + sin(_sleigh.progress * TAU * 1.5) * h * 0.08
+	_sleigh_quad.position = Vector3(x, y, -SLEIGH_DEPTH)
+	_sleigh_quad.scale = Vector3(-w if _sleigh.flip else w, h, 1.0)
+
+
 func _apply_sky() -> void:
 	var sky := TSToon.sky_for_level(current_level)
 	TSToon.apply_sky(_sky_mat, sky)

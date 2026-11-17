@@ -412,6 +412,16 @@ func _ready() -> void:
 	_sky_bodies = _layer(_draw_sky_bodies, -1.98)
 	_painters.erase(_sky_layer)
 	_painters.erase(_sky_bodies)
+	# At Christmas, now and then, Santa's sleigh across the sky in view.
+	if TSSleigh.in_season():
+		var sleigh := TSSleigh.new()
+		sleigh.set_meta("depth", -1.97)
+		sleigh.area = func() -> Rect2:
+			var v := _visible_world()
+			var low := minf(_horizon(v.get_center().x) + 30.0, v.end.y)   # down to the treetops (they stand in front)
+			var high := maxf(v.position.y + 40.0, 20.0)
+			return Rect2(v.position.x, high, v.size.x, low - high) if low - high > 120.0 else Rect2()
+		_world.add_child(sleigh)
 	# The ground itself -- its colours, horizon, trees on it and everything
 	# strewn about -- never changes, so it is drawn once; the pond's shimmer and
 	# the moving shadows go on the layer above it, redrawn every frame.

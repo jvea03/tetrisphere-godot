@@ -6,7 +6,11 @@ extends RefCounted
 ## critters anyone can buy are in sets (none held back for a later release,
 ## none only in the Battle Pass), and each critter is in one set at most.
 ## Each has its own colour for its card. The reward is a quarter of what
-## the set's critters cost to buy, rounded to 500.
+## the set's critters cost to buy, rounded to 500. A set with a "season" is
+## featured while that Battle Pass season runs (Snow Day at Christmas): first
+## on the tab, dressed for it, and worth FEATURED_BONUS times its coins.
+
+const FEATURED_BONUS := 2
 
 const SETS := [
 	{"id": "snacks", "color": Color(1.0, 0.72, 0.5), "name": "Snack Time", "critters": [18, 27, 36, 37, 38, 68]},     # Popcorn, Donut, Choco, Cocoa, Cinnamon, S'more
@@ -17,14 +21,24 @@ const SETS := [
 	{"id": "clinic", "color": Color(0.62, 0.86, 0.9), "name": "Doctor's Office", "critters": [19, 24, 62, 63, 92]},     # Nurse, Doc, Dentist, Medic, Labby
 	{"id": "outdoors", "color": Color(0.66, 0.84, 0.98), "name": "Out & About", "critters": [47, 89, 81, 74, 75]},        # Biker, Jogger, Tourist, Sunny, Shades
 	{"id": "splash", "color": Color(0.52, 0.76, 1.0), "name": "Splash Zone", "critters": [64, 65, 93, 90, 84, 83]},     # Sharky, Pearl, Diver, Sailor, Puddles, Drizzle
-	{"id": "snow", "color": Color(0.78, 0.88, 1.0), "name": "Snow Day", "critters": [66, 69, 56, 88]},                   # Skier, Boarder, Flurry, Rudy
+	{"id": "snow", "color": Color(0.78, 0.88, 1.0), "name": "Snow Day", "critters": [66, 69, 56, 88], "season": "christmas"},                   # Skier, Boarder, Flurry, Rudy
 	{"id": "show", "color": Color(0.88, 0.7, 1.0), "name": "Showtime", "critters": [23, 44, 49, 98, 9]},               # Director, Artist, Party, Groovy, Skater
 	{"id": "royal", "color": Color(1.0, 0.82, 0.32), "name": "Royal Court", "critters": [10, 12, 43, 60, 61]},          # King, Knight, Gent, Mayor, Boss
 	{"id": "magic", "color": Color(0.76, 0.64, 1.0), "name": "Magic & Myth", "critters": [28, 30, 57, 17, 22, 103]},    # Dragon, Fairy, Witch, Rawr, Dino, Rainbow
 ]
 
 
+## What finishing it pays now: its base_reward, times FEATURED_BONUS while featured.
 static func reward(s: Dictionary) -> int:
+	return base_reward(s) * (FEATURED_BONUS if is_featured(s) else 1)
+
+
+## Whether this is the season's featured set (its "season" is the one running).
+static func is_featured(s: Dictionary) -> bool:
+	return s.has("season") and str(s["season"]) == TSProfile.season_theme()
+
+
+static func base_reward(s: Dictionary) -> int:
 	var cost := 0
 	for i: int in s["critters"]:
 		cost += TSProfile.critter_unlock_cost(i)
@@ -69,12 +83,18 @@ static func claim(s: Dictionary) -> int:
 	return coins
 
 
-## The sets in the order the tab shows them: ready to claim, then by how
-## near they are, then the ones already claimed.
+## The sets in the order the tab shows them: the season's featured set (till
+## it is claimed), ready to claim, then by how near they are, then the ones
+## already claimed.
 static func ordered() -> Array:
 	var out: Array = SETS.duplicate()
 	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
-		var ka := [0 if can_claim(a) else (2 if is_claimed(a) else 1), -float(owned_in(a)) / float((a["critters"] as Array).size())]
-		var kb := [0 if can_claim(b) else (2 if is_claimed(b) else 1), -float(owned_in(b)) / float((b["critters"] as Array).size())]
-		return ka < kb)
+		return _order_key(a) < _order_key(b))
 	return out
+
+
+static func _order_key(s: Dictionary) -> Array:
+	var rank := 0 if can_claim(s) else (2 if is_claimed(s) else 1)
+	if rank < 2 and is_featured(s):
+		rank = -1
+	return [rank, -float(owned_in(s)) / float((s["critters"] as Array).size())]
