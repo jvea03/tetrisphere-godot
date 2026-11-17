@@ -1,8 +1,9 @@
 # Hand-built positions that pin down the rules the sim bots never exercise
 # directly: sliding, matches spreading through connected pieces, gravity, and
-# chain reactions. Run with:
-#   Godot.exe --headless --path . --script res://tests/rules_test.gd
-extends SceneTree
+# chain reactions. A scene (not a --script SceneTree) so the autoloads, Online
+# among them, are loaded. Run with:
+#   Godot.exe --headless --path . res://tests/rules_test.tscn
+extends Node
 
 const FLAT := TSBoard.I_FLAT
 const UP := TSBoard.I_UPRIGHT
@@ -10,7 +11,7 @@ const UP := TSBoard.I_UPRIGHT
 var _failures := 0
 
 
-func _initialize() -> void:
+func _ready() -> void:
 	_test_slide()
 	_test_slide_match_and_gravity()
 	_test_slide_from_surface()
@@ -35,7 +36,7 @@ func _initialize() -> void:
 	_test_pieces_stay_whole()
 	print("")
 	print("ALL PASSED" if _failures == 0 else "%d FAILED" % _failures)
-	quit(0 if _failures == 0 else 1)
+	get_tree().quit(0 if _failures == 0 else 1)
 
 
 func _empty_board() -> TSBoard:
@@ -691,7 +692,8 @@ func _test_geodes() -> void:
 	_check("none before level %d, and none on even levels" % lvl, not TSLevels.rules_for_level(lvl - 2).has("geodes") and not TSLevels.rules_for_level(lvl + 1).has("geodes") and TSLevels.rules_for_level(lvl + 2).has("geodes"))
 
 
-# Creeping vines: a wrapped piece never matches or slides; a pop beside it, or
+# Creeping vines: a wrapped piece can't slide but still counts in a match (and
+# pops with it); a pop beside it, or
 # a bomb, cuts the vine and leaves the piece; left alone, vines spread.
 func _test_vines() -> void:
 	var shape: Array = TSBoard.SHAPES[FLAT]["offsets"]
@@ -700,7 +702,15 @@ func _test_vines() -> void:
 	var wrapped := _flat(b, 4, 5)
 	b.vined[wrapped] = true
 	var res := b.place_and_resolve(shape, Vector2i(2, 5), FLAT)
-	_check("a wrapped piece never joins a match", int(res["chain"]) == 0 and b.plate_kind.has(wrapped) and b.vined.has(wrapped))
+	var vine_fx := false
+	for e in res["fx"]:
+		if (e as Array).size() > 5 and str(e[5]) == "vine":
+			vine_fx = true
+	_check("a wrapped piece counts in a match, and pops with it, vine and all", int(res["chain"]) == 1 and int(res["pieces"]) == 3 and not b.plate_kind.has(wrapped) and not b.vined.has(wrapped) and vine_fx)
+	var aim := _empty_board()
+	_flat(aim, 0, 5)
+	aim.vined[_flat(aim, 4, 5)] = true
+	_check("and the aim cue counts it too", aim.combo_preview(shape, Vector2i(2, 5), FLAT, 0) == 3)
 
 	var c := _empty_board()
 	_flat(c, 0, 5)

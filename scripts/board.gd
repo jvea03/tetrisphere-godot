@@ -128,6 +128,7 @@ var fog := {}             # Vector2i cell -> its cloud's number
 var _matching := false    # breaking pieces by a match just now (only that breaks a prism)
 var _blast := false       # breaking pieces by a bomb or rock just now (it clears whole clouds)
 var _wild_id := HOLE      # the Any Piece just dropped, which counts as every colour
+var _vine_pops := {}      # wrapped pieces in a match just now: they pop, vine and all
 var _geode_breaks: Array = []   # where geodes cracked open this resolve: each fires a rock
 var initial_blocks := 0
 var cleared_blocks := 0
@@ -808,7 +809,7 @@ func _component(id: int, limit: int = 1 << 20) -> Array:
 		if out.size() >= limit:
 			return out
 		for n in _neighbors(p):
-			if not seen.has(n) and int(plate_kind[n]) == kind and not vined.has(n):
+			if not seen.has(n) and int(plate_kind[n]) == kind:
 				seen[n] = true
 				pending.append(n)
 	return out
@@ -821,7 +822,7 @@ func _contacts(kind: int, cols: Array, d: int) -> Array:
 	for col in cols:
 		var v: Vector2i = col
 		for p in [_occupant(v.x, v.y, d - 1), _occupant(v.x, v.y, d + 1)]:
-			if p != HOLE and int(plate_kind[p]) == kind and not vined.has(p):
+			if p != HOLE and int(plate_kind[p]) == kind:
 				found[p] = true
 		for dir in DIRS:
 			var dv: Vector2i = dir
@@ -829,7 +830,7 @@ func _contacts(kind: int, cols: Array, d: int) -> Array:
 			if not in_rows(n.y) or cols.has(n):
 				continue
 			var p := _occupant(n.x, n.y, d)
-			if p != HOLE and int(plate_kind[p]) == kind and not vined.has(p):
+			if p != HOLE and int(plate_kind[p]) == kind:
 				found[p] = true
 	return found.keys()
 
@@ -875,7 +876,7 @@ func _matches(seeds: Array) -> Dictionary:
 	var checked := {}
 	for s in seeds:
 		var id: int = s
-		if checked.has(id) or not plate_kind.has(id) or is_obstacle(int(plate_kind[id])) or vined.has(id):
+		if checked.has(id) or not plate_kind.has(id) or is_obstacle(int(plate_kind[id])):
 			continue
 		var group := _component(id)
 		for g in group:
@@ -884,6 +885,8 @@ func _matches(seeds: Array) -> Dictionary:
 			continue
 		for p in group:
 			doomed[p] = true
+			if vined.has(p):
+				_vine_pops[p] = true
 			for n in _neighbors(p):
 				if _hit_by_pop(n):
 					doomed[n] = true
@@ -897,11 +900,13 @@ func _matches(seeds: Array) -> Dictionary:
 func _destroy(doomed: Dictionary, step: int, fx: Array) -> int:
 	var removed := 0
 	# A vine takes the hit first, whatever it wraps: it is cut ("vine" in the
-	# fx, in the colour of what it held) and the piece stays.
+	# fx, in the colour of what it held) and the piece stays -- unless the
+	# piece is part of the match itself, when it pops with the rest.
 	for p in doomed.keys():
 		if vined.has(p):
 			vined.erase(p)
-			doomed.erase(p)
+			if not _vine_pops.has(p):
+				doomed.erase(p)
 			_vine_cut = true
 			vine_clock = 0
 			for col in plate_cols[p]:
@@ -1006,11 +1011,12 @@ func _chain(seeds: Array, fx: Array, step: int) -> Dictionary:
 			break
 		chain += 1
 		for p in doomed:
-			if not is_obstacle(int(plate_kind[p])) and not vined.has(p):
+			if not is_obstacle(int(plate_kind[p])) and (not vined.has(p) or _vine_pops.has(p)):
 				pieces += 1
 		_matching = true
 		removed += _destroy(doomed, step + chain - 1, fx)
 		_matching = false
+		_vine_pops.clear()
 		seeds = _settle()
 	return {"chain": chain, "removed": removed, "pieces": pieces}
 
@@ -1439,6 +1445,8 @@ func rock_strike(groups: Array) -> Dictionary:
 				continue
 			doomed[id] = true
 			pieces += 1
+			if vined.has(id):
+				_vine_pops[id] = true
 			for n in _neighbors(id):
 				if _hit_by_pop(n):
 					doomed[n] = true
@@ -1446,6 +1454,7 @@ func rock_strike(groups: Array) -> Dictionary:
 	_blast = true
 	var hit := _destroy(doomed, 1, fx)
 	_blast = false
+	_vine_pops.clear()
 	var res := _chain(_settle(), fx, 2)
 	res["removed"] = int(res["removed"]) + hit
 	res["pieces"] = int(res["pieces"]) + pieces

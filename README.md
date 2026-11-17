@@ -768,7 +768,7 @@ And the rules test, which exits non-zero on any failure (89 checks, all
 passing):
 
 ```
-Godot.exe --headless --path . --script res://tests/rules_test.gd
+Godot.exe --headless --path . res://tests/rules_test.tscn
 ```
 
 And the tap and gesture test (30 checks, all passing). It needs a real window because it

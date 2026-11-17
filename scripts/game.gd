@@ -3415,7 +3415,7 @@ func _start_vine_tutorial() -> void:
 		TSProfile.save(), CONNECT_ONE_SHOT)
 	_tutorial.start([
 		{"rect": func() -> Rect2: return _piece_rect(id),
-			"text": "Creeping vines! A wrapped piece won't match or slide. Pop a piece right next to it to cut the vine -- but leave it for %d drops and it spreads to the next piece!" % TSBoard.VINE_GROW_EVERY},
+			"text": "Creeping vines! A wrapped piece can't slide, but it still counts in a match of its colour, and pops with it. Pop a piece right next to it to cut the vine -- but leave it for %d drops and it spreads to the next piece!" % TSBoard.VINE_GROW_EVERY},
 	])
 
 
