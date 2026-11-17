@@ -55,11 +55,13 @@ cache), and remember it offline. Needs a build with this feature (1.3.3 on).
    as a custom dimension in GA4.
 3. If retention drops, remove the setting. Phones go back on their next Home visit.
 
-## Requiring an update (Android, 1.3.4 on)
+## Requiring an update
 
-Add `"min_version_android": "1.3.4"` at the top level of `store/inbox.json`
-(next to `"messages"`, not inside `"settings"`). Any Android build older than
-that version shows an Update Required card on Home that can't be closed, with
-a button to the Play Store. Builds before 1.3.4 can't read it, so they're not
-held. Only raise it once the new version is live on Play, or players will be
-sent to a store page with nothing newer. Take it out (or empty it) to lift it.
+Add `"min_version_android": "1.3.4"` (Android) and/or `"min_version_ios": "1.3.5"`
+(iOS) at the top level of `store/inbox.json` (next to `"messages"`, not inside
+`"settings"`). Any build on that platform older than its version shows an
+Update Required card on Home that can't be closed, with a button to the Play
+Store or the App Store. Android builds before 1.3.4 can't read it, nor iOS
+builds up to 1.3.4, so they're not held. Set each platform on its own, and only
+once the new version is live in that store, or players will be sent to a store
+page with nothing newer. Take a line out (or empty it) to lift it.

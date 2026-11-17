@@ -2119,7 +2119,8 @@ func _dress_for_season(c: Control, lights: bool) -> void:
 
 var _update_card: Control = null
 
-## This build is older than the inbox file's min_version_android: a card over
+## This build is older than the inbox file's minimum for its platform
+## (min_version_android, min_version_ios): a card over
 ## everything that can't be closed, with a button to the store.
 func _check_update() -> void:
 	if is_instance_valid(_update_card) or not TSInbox.update_required():
@@ -2137,7 +2138,9 @@ func _show_update_card() -> void:
 	box.add_child(TSUI.wrap(TSUI.label("A new version of Egg Escape is out! Please update to keep playing -- your progress is safe.", 24, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER), 520))
 	var go := TSUI.button("Update Now", TSUI.GREEN, 32, Vector2(0, 86))
 	go.pressed.connect(func() -> void:
-		if OS.shell_open("market://details?id=com.jvea.eggescape") != OK:
+		if OS.get_name() == "iOS":
+			OS.shell_open("itms-apps://apps.apple.com/app/id6819941762")
+		elif OS.shell_open("market://details?id=com.jvea.eggescape") != OK:
 			OS.shell_open("https://play.google.com/store/apps/details?id=com.jvea.eggescape"))
 	box.add_child(go)
 	TSUI.reveal(d["root"], d["panel"])

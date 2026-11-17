@@ -109,20 +109,23 @@ static func fetch(host: Node, done: Callable) -> void:
 
 ## Uses a file's messages and its settings (TSTunables), if it is an inbox
 ## file at all.
-## The oldest Android version allowed to play ("1.3.4"), from the file's
-## "min_version_android"; empty for none. Older builds are asked to update
-## (Home's Update Required card). Builds before 1.3.4 can't read it.
+## The oldest version allowed to play ("1.3.4"), from the file's
+## "min_version_android" and "min_version_ios"; empty for none. Older builds
+## are asked to update (Home's Update Required card). Android builds before
+## 1.3.4 can't read it, nor iOS builds up to 1.3.4.
 static var min_version_android := ""
+static var min_version_ios := ""
 
 
-## Whether this build must be updated before playing: Android only, compared
-## with this build's version (application/config/version, bumped with the
+## Whether this build must be updated before playing: on Android or iOS,
+## against that platform's minimum, compared with this build's version (application/config/version, bumped with the
 ## export presets).
 static func update_required() -> bool:
 	load_cache()
-	if min_version_android == "" or OS.get_name() != "Android":
+	var least := min_version_android if OS.get_name() == "Android" else (min_version_ios if OS.get_name() == "iOS" else "")
+	if least == "":
 		return false
-	return older(str(ProjectSettings.get_setting("application/config/version", "0")), min_version_android)
+	return older(str(ProjectSettings.get_setting("application/config/version", "0")), least)
 
 
 ## "1.3.3" is older than "1.3.4" (and "1.3" than "1.3.1").
@@ -146,6 +149,7 @@ static func take(text: String) -> bool:
 	var name: String = data["settings_name"] if data.get("settings_name") is String else ""
 	TSTunables.apply_remote(data.get("settings"), name)
 	min_version_android = str(data.get("min_version_android", "")) if data.get("min_version_android") is String else ""
+	min_version_ios = str(data.get("min_version_ios", "")) if data.get("min_version_ios") is String else ""
 	TSAnalytics.user_property("remote_settings", name if name != "" else "default")
 	return true
 
