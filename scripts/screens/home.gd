@@ -26,6 +26,8 @@ var pass_btn: Button
 var pass_dot: Panel
 var hunt_btn: Button
 var hunt_dot: Panel
+var snowball_btn: Button
+var snowball_dot: Panel
 var inbox_btn: Button
 var inbox_badge: Control
 var sale_btn: Button
@@ -391,6 +393,8 @@ func _build_side_tiles() -> void:
 	pass_dot = TSUI.dot(pass_btn)
 	hunt_btn = _side_tile("hunt", func(): SceneFlow.go("res://scenes/hunt.tscn"))
 	hunt_dot = TSUI.dot(hunt_btn)
+	snowball_btn = _side_tile("snowball", func(): SceneFlow.go("res://scenes/snowball.tscn"))
+	snowball_dot = TSUI.dot(snowball_btn)
 	sale_btn = _side_tile("tag", _open_sale)
 	var tag := TSUI.pill("SALE", TSUI.CORAL, 16)
 	tag.position = Vector2(10, -16)
@@ -431,6 +435,9 @@ func _refresh_side() -> void:
 	daily_dot.visible = daily_btn.visible and TSProfile.daily_streak_last_date != TSClock.date_string()
 	pass_dot.visible = TSProfile.has_claimable_battle_pass_reward() or TSProfile.has_unclaimed_quests()
 	hunt_dot.visible = TSHunt.has_alert()
+	TSSnowball.roll()
+	snowball_btn.visible = TSSnowball.show_tile()
+	snowball_dot.visible = TSSnowball.has_alert()
 	_refresh_inbox()
 
 

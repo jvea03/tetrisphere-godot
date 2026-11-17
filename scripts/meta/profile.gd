@@ -2805,6 +2805,8 @@ static func record_quest_event(stat: String, amount: int = 1) -> Array:
 		week["progress"][stat] = int(week["progress"].get(stat, 0)) + amount
 		completed += _complete_quests(WEEKLY_QUESTS, week["progress"], week["done"])
 	TSHunt.record_event(stat, amount)
+	if stat == "clear":
+		TSSnowball.note_pieces(amount)
 	save()
 	return completed
 
@@ -3091,6 +3093,7 @@ static func ensure_loaded() -> void:
 	quest_weekly = g.call("quest_weekly", {})
 	TSChests.from_save(g.call("chests", {}))
 	TSHunt.from_save(g.call("hunt", {}))
+	TSSnowball.from_save(g.call("snowball", {}))
 	TSSales.from_save(g.call("sales", {}))
 	TSSession.restore()   # a ball left in play last time
 
@@ -3221,6 +3224,7 @@ static func save() -> void:
 	s.call("quest_weekly", quest_weekly)
 	s.call("chests", TSChests.to_save())
 	s.call("hunt", TSHunt.to_save())
+	s.call("snowball", TSSnowball.to_save())
 	s.call("sales", TSSales.to_save())
 	s.call("save_version", SAVE_VERSION)
 	_write_save(cfg)

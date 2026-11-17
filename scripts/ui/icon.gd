@@ -176,6 +176,7 @@ func _draw() -> void:
 		"calendar": _draw_calendar()
 		"pass": _draw_pass()
 		"hunt": _draw_hunt()
+		"snowball": _draw_snowball()
 		"materials": _draw_materials()
 		"coin_pack": _draw_coin_pack(index)
 		"material_pack": _draw_material_pack(index)
@@ -862,6 +863,16 @@ func _draw_hunt() -> void:
 	_line([Vector2(0.16, 0.62), Vector2(0.84, 0.62)], INK, 0.7)
 	_line([Vector2(0.2, 0.75), Vector2(0.8, 0.75)], INK, 0.7)
 	draw_arc(_u(Vector2(0.5, 0.48)), 0.34 * _s, PI, TAU, 20, INK, _w(), true)
+
+
+# The Snowball Fight: a packed snowball, a blue shade on its underside, a
+# glint, and a couple of flakes flying off it.
+func _draw_snowball() -> void:
+	_circle(Vector2(0.48, 0.54), 0.34, _col(Color(0.97, 0.99, 1.0)))
+	draw_arc(_u(Vector2(0.48, 0.54)), 0.25 * _s, 0.2, PI - 0.2, 16, Color(0.66, 0.8, 0.98), _w() * 1.4, true)
+	_circle(Vector2(0.37, 0.43), 0.06, WHITE, false)
+	for p in [Vector2(0.86, 0.22), Vector2(0.78, 0.1), Vector2(0.92, 0.38)]:
+		_circle(p, 0.04, Color(0.8, 0.9, 1.0))
 
 
 func _draw_tag() -> void:

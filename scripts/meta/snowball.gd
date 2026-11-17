@@ -1,0 +1,226 @@
+class_name TSSnowball
+extends RefCounted
+
+## The Snowball Fight: a weekend team event in the Christmas season. Every
+## weekend (Friday to Sunday, local time) while the Christmas Battle Pass
+## season runs, the player joins Team Red or Team Green; every piece they pop
+## in a level throws a snowball for their team. The two teams' totals race on
+## a tug-of-war bar. The player's own throws pay milestone prizes along the
+## way, and when the weekend ends everyone who threw at least MIN_TO_PLACE
+## gets the team prize -- more for the winning side.
+##
+## The other players' throws are simulated for now (a steady, seeded climb
+## per weekend, each team surging at its own moments, so the lead changes
+## hands); the player's own throws are added to their team's.
+
+const LENGTH_DAYS := 3                   # Friday, Saturday, Sunday
+const FRIDAY := 4                        # Monday is 0
+const TEAMS := ["red", "green"]
+const TEAM_NAMES := {"red": "Team Red", "green": "Team Green"}
+const TEAM_COLORS := {"red": Color(1.0, 0.46, 0.48), "green": Color(0.42, 0.8, 0.5)}
+const CROWD := 1_200_000                 # roughly what each team throws in a weekend, without the player
+## The player's own milestones: {at, coins} or {at, bombs}.
+const MILESTONES := [
+	{"at": 150, "coins": 500},
+	{"at": 400, "bombs": 1},
+	{"at": 800, "coins": 1000},
+	{"at": 1500, "bombs": 2},
+	{"at": 2500, "coins": 2500},
+]
+const MIN_TO_PLACE := 100                # throws to share in the team prize
+const WIN_COINS := 3000
+const LOSE_COINS := 1000
+
+static var week := -1                    # the weekend joined (TSProfile's week index); -1 none
+static var team := ""
+static var thrown := 0
+static var claimed: Array = []           # milestone indexes claimed
+## A finished weekend's result, waiting to be shown and paid:
+## {"team", "won", "coins", "bombs", "mine", "theirs"}; empty when none.
+static var result := {}
+## Set to force the event on (captures, tests), whatever the date.
+static var force_live := false
+
+
+static func to_save() -> Dictionary:
+	return {"week": week, "team": team, "thrown": thrown, "claimed": claimed.duplicate(), "result": result.duplicate()}
+
+
+static func from_save(data: Dictionary) -> void:
+	week = int(data.get("week", -1))
+	team = str(data.get("team", ""))
+	thrown = int(data.get("thrown", 0))
+	claimed = (data.get("claimed", []) as Array).duplicate()
+	result = (data.get("result", {}) as Dictionary).duplicate()
+
+
+# -- the calendar ------------------------------------------------------------------
+
+static func _day() -> int:
+	@warning_ignore("integer_division")
+	return TSClock.local_unix() / 86400
+
+
+static func _weekday() -> int:
+	return (_day() + 3) % 7
+
+
+static func _week_now() -> int:
+	@warning_ignore("integer_division")
+	return (_day() + 3) / 7
+
+
+## Whether a fight is on now: a weekend in the Christmas season.
+static func is_live() -> bool:
+	if force_live:
+		return true
+	return TSNav.features_unlocked() and TSProfile.season_theme() == "christmas" and _weekday() >= FRIDAY
+
+
+## Seconds into this weekend's fight (from Friday's local midnight).
+static func elapsed() -> int:
+	return TSClock.local_unix() - (_day() - (_weekday() - FRIDAY)) * 86400 if _weekday() >= FRIDAY else 0
+
+
+static func seconds_left() -> int:
+	return maxi(LENGTH_DAYS * 86400 - elapsed(), 0)
+
+
+## How far through the weekend, 0..1.
+static func fraction() -> float:
+	return clampf(float(elapsed()) / float(LENGTH_DAYS * 86400), 0.0, 1.0)
+
+
+# -- joining and throwing ------------------------------------------------------------
+
+## Settles a finished weekend (its result waits to be shown) and joins this
+## one -- on a team picked at random, kept all weekend.
+static func roll() -> void:
+	var now_week := _week_now()
+	if week >= 0 and week != now_week:
+		_settle()
+	if is_live() and week != now_week:
+		week = now_week
+		team = TEAMS[randi() % 2]
+		thrown = 0
+		claimed = []
+		TSProfile.save()
+
+
+## Each piece popped in a level throws a snowball.
+static func note_pieces(n: int) -> void:
+	if n <= 0 or not is_live():
+		return
+	roll()
+	thrown += n
+
+
+## What a team has thrown so far (the crowd's, plus the player's for theirs).
+static func team_total(t: String, at := -1.0) -> int:
+	var f := fraction() if at < 0.0 else at
+	var seed_v := hash("%d:%s" % [week, t])
+	var size := CROWD * (0.92 + 0.16 * float(seed_v % 1000) / 1000.0)
+	@warning_ignore("integer_division")
+	var phase := float((seed_v / 1000) % 628) / 100.0
+	# A steady climb with a surge or two of its own; never goes backwards.
+	var curve := f + 0.03 * (sin(f * TAU * 2.0 + phase) - sin(phase))
+	return int(size * maxf(curve, 0.0)) + (thrown if t == team else 0)
+
+
+static func rival() -> String:
+	return "green" if team == "red" else "red"
+
+
+static func winning() -> bool:
+	return team_total(team) >= team_total(rival())
+
+
+## A team's share of all the snowballs thrown, 0..1 (0.5 before any).
+static func share(t: String) -> float:
+	var a := team_total(t)
+	var b := team_total("green" if t == "red" else "red")
+	return 0.5 if a + b == 0 else float(a) / float(a + b)
+
+
+# -- milestones --------------------------------------------------------------------
+
+static func milestone_reached(i: int) -> bool:
+	return thrown >= int(MILESTONES[i]["at"])
+
+
+static func milestone_claimed(i: int) -> bool:
+	return claimed.has(i)
+
+
+static func claimable_count() -> int:
+	var n := 0
+	for i in MILESTONES.size():
+		n += int(milestone_reached(i) and not milestone_claimed(i))
+	return n
+
+
+## Pays a reached milestone, once. Returns what it paid ("+500 coins").
+static func claim(i: int) -> String:
+	if not milestone_reached(i) or milestone_claimed(i):
+		return ""
+	claimed.append(i)
+	var got := _pay(MILESTONES[i])
+	TSProfile.save()
+	return got
+
+
+static func _pay(m: Dictionary) -> String:
+	if m.has("bombs"):
+		TSProfile.add_boosters("bomb", int(m["bombs"]))
+		return "+%d bomb%s" % [int(m["bombs"]), "" if int(m["bombs"]) == 1 else "s"]
+	var coins := TSProfile.boost_earned_coins(int(m["coins"]))
+	TSProfile.coin_count += coins
+	TSProfile.note_coins("Snowball Fight", coins)
+	return "+%s coins" % TSProfile.fmt_coins(coins)
+
+
+## The weekend just over: who won, and what the player gets -- the team prize
+## if they threw enough, and any milestones they left unclaimed. Paid now;
+## `result` keeps it to show.
+static func _settle() -> void:
+	var mine := team_total(team, 1.0)
+	var theirs := team_total(rival(), 1.0)
+	var won := mine >= theirs
+	var coins := 0
+	var bombs := 0
+	if thrown >= MIN_TO_PLACE:
+		coins += WIN_COINS if won else LOSE_COINS
+	for i in MILESTONES.size():
+		if milestone_reached(i) and not milestone_claimed(i):
+			coins += int(MILESTONES[i].get("coins", 0))
+			bombs += int(MILESTONES[i].get("bombs", 0))
+	if coins > 0:
+		coins = TSProfile.boost_earned_coins(coins)
+		TSProfile.coin_count += coins
+		TSProfile.note_coins("Snowball Fight", coins)
+	if bombs > 0:
+		TSProfile.add_boosters("bomb", bombs)
+	result = {"team": team, "won": won, "coins": coins, "bombs": bombs, "mine": mine, "theirs": theirs, "thrown": thrown}
+	week = -1
+	team = ""
+	thrown = 0
+	claimed = []
+	TSProfile.save()
+
+
+## Shown (and cleared) by the screen.
+static func take_result() -> Dictionary:
+	var r := result
+	if not r.is_empty():
+		result = {}
+		TSProfile.save()
+	return r
+
+
+## Home shows the tile while a fight is on, or a result waits.
+static func show_tile() -> bool:
+	return is_live() or not result.is_empty()
+
+
+static func has_alert() -> bool:
+	return claimable_count() > 0 or not result.is_empty() or (is_live() and week != _week_now())
