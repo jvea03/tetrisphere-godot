@@ -2931,6 +2931,13 @@ static func ensure_loaded() -> void:
 	if OS.has_feature("editor") and OS.get_cmdline_user_args().has("fresh"):
 		persist = false
 		print("[TSProfile] fresh start: nothing is loaded or saved")
+		# `-- fresh level=13`: start on that level, its lessons still to see.
+		for a: String in OS.get_cmdline_user_args():
+			if a.begins_with("level="):
+				last_level = maxi(int(a.trim_prefix("level=")), 1)
+				tutorial_seen = last_level > 1
+				intro_seen = last_level > 1
+				slide_tutorial_seen = last_level > 2
 	var cfg := _read_save() if persist else null
 	if cfg == null:
 		return

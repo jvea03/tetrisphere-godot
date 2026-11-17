@@ -798,6 +798,19 @@ func _move(dc: int, dr: int) -> void:
 
 
 # The layer your piece lands in if dropped here.
+## Editor runs only: a line in the log for each move, with the board after it
+## (each piece standing out past the shell named), to replay a bug report.
+func _trace(what: String) -> void:
+	if not OS.has_feature("editor"):
+		return
+	var high: Array = []
+	for c in TSBoard.COLS:
+		for r in TSBoard.ROWS:
+			if board.height(c, r) > board.shell_depth:
+				high.append("%d,%d:%d" % [c, r, board.height(c, r)])
+	print("[move] L%d %s | past the shell: %s" % [current_level, what, ", ".join(high) if not high.is_empty() else "none"])
+
+
 func _current_depth() -> int:
 	return board.landing_depth(current_offsets(), cursor)
 
@@ -820,7 +833,9 @@ func _has_selection() -> bool:
 func _slide(dir: Vector2i) -> void:
 	if not _has_selection():
 		return
+	var slid := selected
 	var res := board.slide(selected, dir)
+	_trace("slide %d by %s: %s" % [slid, dir, "moved" if bool(res["moved"]) else "blocked"])
 	if not bool(res["moved"]):
 		return
 	if int(res["smashed"]) > 0:
@@ -988,6 +1003,7 @@ func _rocks_land(targets: Array) -> void:
 	if state != State.PLAYING or not is_inside_tree():
 		return
 	var res := board.rock_strike(targets)
+	_trace("rocks land on %s: chain %d, pieces %d, geodes cracked %s" % [str(targets), int(res["chain"]), int(res["pieces"]), str(res.get("geode_shots", []))])
 	TSSfx.play("chain" if int(res["chain"]) >= 2 else "match")
 	TSHaptics.heavy()
 	if int(res["pieces"]) > 0:
@@ -1067,7 +1083,9 @@ func _drop() -> void:
 			_hearts_note("Too high here: try where the arrow points!" if _point_to_match() else "Too high here: drop it somewhere else!")
 			return
 		var wild := cur_type == TSBoard.WILD
+		var was_depth := _current_depth()
 		res = board.place_and_resolve(offsets, landing, cur_type, _current_depth())
+		_trace("drop kind %d at %s depth %d: chain %d, pieces %d, geodes cracked %s" % [cur_type, landing, was_depth, int(res["chain"]), int(res["pieces"]), str(res.get("geode_shots", []))])
 		drops += 1
 		if _has_piece_limit():
 			pieces_left -= 1   # a booster's bomb or rocks cost no piece
