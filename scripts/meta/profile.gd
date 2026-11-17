@@ -2925,6 +2925,12 @@ static func ensure_loaded() -> void:
 	if _loaded:
 		return
 	_loaded = true
+	# `Godot --path . -- fresh` (the editor's build only): play as a brand-new
+	# player -- the intro and every lesson from level 1 -- with nothing read
+	# from or written to the save.
+	if OS.has_feature("editor") and OS.get_cmdline_user_args().has("fresh"):
+		persist = false
+		print("[TSProfile] fresh start: nothing is loaded or saved")
 	var cfg := _read_save() if persist else null
 	if cfg == null:
 		return
