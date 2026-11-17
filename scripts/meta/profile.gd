@@ -1220,12 +1220,18 @@ static func voyage_due() -> bool:
 ## The voyage: pays the reward, moves the critters to the next planet --
 ## dressed for this season -- with a fresh camp and ship. Returns the coins
 ## paid (also kept in last_voyage_reward), or 0 if no voyage is due.
+## Whether the ship was fully fixed when the last voyage set off: a gleaming
+## launch (hit by an asteroid on the way), or a patched-up one that falls apart.
+static var last_voyage_ship_ready := false
+
+
 static func take_voyage() -> int:
 	if not voyage_due():
 		return 0
 	# Builds still running were paid for: they finish on the way, so they count.
 	for i in part_builds.keys():
 		_complete_build(int(i))
+	last_voyage_ship_ready = is_ship_ready()
 	var reward := boost_earned_coins(launch_reward())
 	coin_count += reward
 	part_builds.clear()   # a new planet: every builder is free

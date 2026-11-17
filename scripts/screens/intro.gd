@@ -450,7 +450,7 @@ func _draw_ship(at: Vector2, angle: float, zoom: float) -> void:
 	_stage.draw_set_transform(at, angle, Vector2.ONE * zoom)
 	var crashed := _t >= IMPACT
 	if not crashed:
-		var sputter := 1.0 if _t < CRUISE_END else (0.35 + 0.65 * absf(sin(_t * 17.0)))
+		var sputter := 1.0 if not _failing() else (0.35 + 0.65 * absf(sin(_t * 17.0)))
 		var reach := (70.0 + 18.0 * sin(_t * 31.0)) * sputter
 		_blob([Vector2(-118, -18), Vector2(-118 - reach, 0), Vector2(-118, 18)], Color(1.0, 0.6, 0.3, 0.95))
 		_blob([Vector2(-118, -9), Vector2(-118 - reach * 0.55, 0), Vector2(-118, 9)], BUTTER)
@@ -482,12 +482,18 @@ func _draw_ship(at: Vector2, angle: float, zoom: float) -> void:
 		_stage.draw_set_transform(at, angle, Vector2.ONE * zoom)
 		_stage.draw_arc(p, 18.0, 0.0, TAU, 32, INK, 4.0, true)
 	# The alarm light on top: red and blinking once things go wrong.
-	var alarm := _t >= CRUISE_END and not crashed and fposmod(_t, 0.4) < 0.2
+	var alarm := _failing() and not crashed and fposmod(_t, 0.4) < 0.2
 	_stage.draw_circle(Vector2(20, -52), 11.0, Color(1.0, 0.3, 0.3) if alarm else Color(0.7, 0.55, 0.6), true, -1.0, true)
 	_stage.draw_arc(Vector2(20, -52), 11.0, PI, TAU, 16, INK, 4.0, true)
 	if alarm:
 		_stage.draw_circle(Vector2(20, -52), 26.0, Color(1.0, 0.3, 0.3, 0.3), true, -1.0, true)
 	_stage.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
+## Whether the engine is failing: it sputters and the alarm blinks (from the
+## end of the cruise; the voyage's patched-up ship fails all the way).
+func _failing() -> bool:
+	return _t >= CRUISE_END
 
 
 # -- drawing helpers ---------------------------------------------------------------
