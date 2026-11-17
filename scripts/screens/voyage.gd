@@ -77,7 +77,7 @@ func _ready() -> void:
 	if OS.get_environment("VOYAGE_THEME") != "":   # (captures)
 		_to_theme = OS.get_environment("VOYAGE_THEME")
 	super()
-	_caption_label.text = "A new season! The ship is fully fixed -- blast off!" if _grand else "A new season! The patched-up ship will have to do..."
+	_caption_label.text = "Yay, we did it! The ship is fully fixed -- blast off!" if _grand else "Time to go! The patched-up ship will have to do..."
 	_caption.create_tween().tween_property(_caption, "modulate:a", 1.0, 0.3)
 	_tap_hint.text = "Tap to explore!"
 	TSSfx.play("windup", 0.7)
