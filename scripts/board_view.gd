@@ -97,9 +97,16 @@ const KEY_GLINT := Color(1.0, 0.93, 0.62)
 const PRISM_GLASS := 0.55
 const FOG_GREY := Color(0.9, 0.91, 0.95)
 const FOG_PUFF := Color(0.98, 0.98, 1.0)
-## The cable from a tie-down to the critter: rope tan.
-const WIRE_COLOR := Color(0.93, 0.76, 0.5)
-const WIRE_RADIUS := 0.05
+## Tie-down chains (see _build_tie_wires): steel links, each a torus
+## stretched along the chain, every other one turned a quarter round.
+const CHAIN_COLOR := Color(0.68, 0.72, 0.8)
+const CHAIN_LINK_INNER := 0.055
+const CHAIN_LINK_OUTER := 0.15
+const CHAIN_LINK_STRETCH := 1.45
+const CHAIN_SPACING := 0.3      # link to link, so they overlap like a chain's
+const CHAIN_STRAP_AT := 0.31     # the two straps on a tie-down: this far either side of its pips (cells)
+const CHAIN_LOOP_GAP := 1.04     # the loops round the critter sit just off its skin
+const CHAIN_BELT_DROP := 0.42    # the belt round its tummy: this far down (of its radius)
 
 var board: TSBoard
 var max_radius := CORE_RADIUS   # outermost occupied layer, used to frame the camera
@@ -109,8 +116,8 @@ var _studs: MultiMeshInstance3D   # the mini squares on armoured blockers
 var _pips: MultiMeshInstance3D    # the layer pips on tie-downs
 var _fx_root: Node3D
 var _fx_rng := RandomNumberGenerator.new()
-var _wires: Node3D         # a cable from each tie-down in to the critter
-var _wire_mat: StandardMaterial3D
+var _wires: MultiMeshInstance3D   # every tie-down chain link: straps, chains in, loops round the critter
+var critter_scale := 1.0   # the critter's size (the game sets it), for the loops round it
 var _caps: Array = []      # the cap meshes, rebuilt for a ball of another depth
 var _caps_depth := -1
 
@@ -248,35 +255,92 @@ static func make_material(c: Color, alpha := 1.0, glow := 0.0, outline := true, 
 	return TSToon.material(c, alpha, glow, false, outline, bent)
 
 
-## Each tie-down's cable, taut from the stake straight in to the critter at
-## the core. It runs behind the blocks, hidden by them like anything else
-## inside the egg: it shows where the shell is dug away, down to the critter,
-## and goes the moment its tie-down breaks.
+## Tie-downs are chained, so they read at a glance: two steel chain straps
+## across each tie-down (above and below its pips), a chain from it straight
+## in to the critter, and a loop of chain wrapped round the critter for every
+## tie-down still standing, through the point its chain comes in. All of it
+## sits inside the egg like anything else, so the straps show on the shell and
+## the rest shows where the shell is dug away; each tie-down's share goes the
+## moment it breaks.
 func _build_tie_wires() -> void:
 	if _wires == null:
-		_wires = Node3D.new()
+		_wires = MultiMeshInstance3D.new()
+		_wires.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var link := TorusMesh.new()
+		link.inner_radius = CHAIN_LINK_INNER
+		link.outer_radius = CHAIN_LINK_OUTER
+		link.rings = 12
+		link.ring_segments = 6
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.mesh = link
+		_wires.multimesh = mm
+		_wires.material_override = TSToon.material(CHAIN_COLOR, 1.0, 0.05)
 		add_child(_wires)
-		_wire_mat = StandardMaterial3D.new()
-		_wire_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		_wire_mat.albedo_color = WIRE_COLOR
-	for child in _wires.get_children():
-		child.queue_free()
+	var links: Array[Transform3D] = []
+	var critter_r := CORE_RADIUS * 0.99 * critter_scale
 	for id in board.ties:
 		var cell: Vector2i = board.plate_cols[id][0]
-		var from := cell_transform(cell.x, cell.y, float(board.depth_of(id))).origin   # the stake's middle
-		var to := Vector3.ZERO
-		var mesh := CylinderMesh.new()
-		mesh.top_radius = WIRE_RADIUS
-		mesh.bottom_radius = WIRE_RADIUS
-		mesh.height = from.distance_to(to)
-		mesh.radial_segments = 8
-		mesh.rings = 1
-		var wire := MeshInstance3D.new()
-		wire.mesh = mesh
-		wire.material_override = _wire_mat
-		wire.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		wire.transform = Transform3D(Basis(Quaternion(Vector3.UP, (from - to).normalized())), (from + to) * 0.5)
-		_wires.add_child(wire)
+		var t := cell_transform(cell.x, cell.y, float(board.depth_of(id)))
+		var out := t.basis.y.normalized()
+		var east := t.basis.x.normalized()
+		var south := t.basis.z.normalized()
+		# The straps: across the stake's top, a little proud of it.
+		var top := t.origin + t.basis.y * 0.5 + out * CHAIN_LINK_OUTER * 0.4
+		var half_w := t.basis.x.length() * 0.5
+		for v: float in [-CHAIN_STRAP_AT, CHAIN_STRAP_AT]:
+			var mid := top + t.basis.z * v
+			_chain_links(links, mid - east * half_w, mid + east * half_w, out)
+		# The chain in to the critter, and the loop round it.
+		var dir := t.origin.normalized()
+		_chain_links(links, t.origin, dir * critter_r * CHAIN_LOOP_GAP, south)
+		var axis := dir.cross(Vector3.UP)
+		if axis.length() < 0.2:
+			axis = dir.cross(Vector3.RIGHT)
+		axis = axis.normalized()
+		_chain_loop(links, dir, dir.cross(axis), critter_r * CHAIN_LOOP_GAP)
+	# While any tie-down stands, a belt of chain round the critter's tummy too
+	# (below its face, which sits about its middle).
+	if not board.ties.is_empty():
+		var br := critter_r * CHAIN_LOOP_GAP * 1.01
+		_chain_loop(links, Vector3.RIGHT, Vector3.BACK, br * sqrt(1.0 - CHAIN_BELT_DROP * CHAIN_BELT_DROP), Vector3.DOWN * br * CHAIN_BELT_DROP)
+	var mm: MultiMesh = _wires.multimesh
+	mm.instance_count = links.size()
+	for i in links.size():
+		mm.set_instance_transform(i, links[i])
+
+
+## A loop of chain of radius `r` round `centre`, in the plane of unit
+## vectors `u` and `v` (at right angles).
+func _chain_loop(links: Array[Transform3D], u: Vector3, v: Vector3, r: float, centre := Vector3.ZERO) -> void:
+	var axis := u.cross(v)
+	var n := maxi(int(TAU * r / CHAIN_SPACING), 12)
+	for k in n:
+		var a := TAU * float(k) / float(n)
+		var p := (u * cos(a) + v * sin(a)) * r
+		var along := (-u * sin(a) + v * cos(a)).normalized()
+		_place_link(links, centre + p, along, axis if k % 2 == 0 else p.normalized())
+
+
+## Links of chain from `a` to `b`, every other one turned a quarter round,
+## the first lying flat against `flat`.
+func _chain_links(links: Array[Transform3D], a: Vector3, b: Vector3, flat: Vector3) -> void:
+	var d := b - a
+	var n := maxi(int(d.length() / CHAIN_SPACING), 1)
+	var along := d.normalized()
+	var flat_n := (flat - along * flat.dot(along)).normalized()
+	var other := along.cross(flat_n)
+	for k in n:
+		var p := a + d * ((float(k) + 0.5) / float(n))
+		_place_link(links, p, along, flat_n if k % 2 == 0 else other)
+
+
+## One link at `p`, stretched along `along`, its hole facing `normal`.
+func _place_link(links: Array[Transform3D], p: Vector3, along: Vector3, normal: Vector3) -> void:
+	var n := (normal - along * normal.dot(along)).normalized()
+	var x := along * CHAIN_LINK_STRETCH
+	var z := along.cross(n)
+	links.append(Transform3D(Basis(x, n, z), p))
 
 
 # Places a unit-sized mesh at (col, row, depth): local +Y points out of the

@@ -2239,6 +2239,9 @@ func _restyle_creature() -> void:
 	var s := _creature_scale()
 	_creature.scale = Vector3.ONE * s
 	_creature.set_kind(TSCreature.kind_for_scale(s))
+	if view != null and view.board != null:
+		view.critter_scale = s   # the tie-down chains loop round it
+		view.rebuild()
 
 
 ## After every drop: how near the most-dug way out is to open and which way
