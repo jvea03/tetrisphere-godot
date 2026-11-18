@@ -22,7 +22,7 @@ const SIZES := {"landscape": Vector2i(1200, 628), "square": Vector2i(1200, 1200)
 const IDEAS := [
 	{"name": "01_crack", "headline": "Crack the egg.\nFree the critter!", "hero": "phone", "shot": "game.png", "critters": [8, 1]},
 	{"name": "02_rescue", "headline": "Can you save\nthem all?", "hero": "phone", "shot": "win.png", "critters": [4, 15]},
-	{"name": "03_collect", "headline": "Collect 84\ncute critters!", "hero": "crowd", "critters": [1, 2, 4, 8, 11, 15, 0, 20, 33]},
+	{"name": "03_collect", "headline": "Collect 100+\ncute critters!", "hero": "crowd", "critters": [1, 2, 4, 8, 11, 15, 0, 20, 33]},
 	{"name": "04_adventure", "headline": "A cozy puzzle\nadventure", "hero": "ship", "critters": []},
 	{"name": "05_spin", "headline": "Spin. Match.\nEscape!", "hero": "phone", "shot": "game_prism.png", "critters": [11, 2]},
 ]
