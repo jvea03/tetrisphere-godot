@@ -105,3 +105,14 @@ AdMob can find app-ads.txt there. Once 1.3.4 is live, press Verify app in
 AdMob (Apps > Egg Escape: Puzzle Break > App settings).
 **Verified 18 Nov 2026** (1.3.4 live 17 Nov; Apple's sellerUrl is https://jvea03.github.io):
 AdMob's review is in progress, with limited ad serving until it is approved (2-3 days).
+
+## Firebase Analytics (18 Nov 2026)
+
+iOS now sends Firebase first_open and the game's events, like Android, so Google Ads
+can run an iOS install campaign. See docs/analytics.md, "Firebase on iOS". On the Mac:
+`./tools/ios-setup.sh` (step 3b builds `ios/plugins/egganalytics.*`; the export adds
+the Firebase Swift package `egg_spm/`), then `tools/ios-upload.sh` as usual. On the
+first run on a phone the Xcode console should show Firebase starting, and no
+`[EggAnalytics] Firebase is not linked` line. App Privacy in App Store Connect
+already declares analytics (Product Interaction, Device ID); add **Coarse
+Location** (Firebase derives it from the IP) if it is not there.

@@ -1,21 +1,25 @@
 class_name TSAnalytics
 extends RefCounted
 
-## Firebase Analytics on Android (the EggAnalytics plugin): Firebase's own
-## first_open, plus a few game events Google Ads imports as conversions, so
-## the install campaign learns which installs turn into players. Elsewhere
-## (the editor, tests, iOS) Firebase does nothing.
+## Firebase Analytics on Android and iOS (the EggAnalytics plugin, one per
+## platform with the same methods): Firebase's own first_open, plus a few game
+## events Google Ads imports as conversions, so the install campaigns learn
+## which installs turn into players. Elsewhere (the editor, tests, desktop)
+## Firebase does nothing.
 ##
 ## Every event here also goes to GameAnalytics (the GA autoload,
 ## scripts/meta/game_analytics.gd) on both Android and iOS, as levels,
 ## first-run steps and design events. Both follow the same rules: the
 ## Settings switch, the kill switch and, where the law asks first, the
 ## player's yes (TSPrivacyRegion). The IDs are the Egg Escape
-## Firebase project's Android app (Project settings > Your apps): client IDs
-## every copy of the app carries, not secrets.
+## Firebase project's Android and iOS apps (Project settings > Your apps; the
+## iOS key is Cloud console > Credentials > "iOS key"): client IDs every copy
+## of the app carries, not secrets.
 
 const API_KEY := "AIzaSyDQl6mbpdOcKRZ18pWDE7SzssjGYpxW_-k"
 const APP_ID := "1:261470909369:android:38d287eea0687404e43c68"
+const IOS_API_KEY := "AIzaSyDXKbGVxg4lnmRyfxeellVWpwdqykfSlMI"
+const IOS_APP_ID := "1:261470909369:ios:365fbf047205bf41e43c68"
 const PROJECT_ID := "egg-escape-196b6"
 const SENDER_ID := "261470909369"
 
@@ -27,7 +31,10 @@ static var _load_began := -1    # Time.get_ticks_msec() as the cutscene handed o
 static func _ready_plugin() -> Object:
 	if _plugin == null and APP_ID != "" and Engine.has_singleton("EggAnalytics") and _allowed():
 		_plugin = Engine.get_singleton("EggAnalytics")
-		_plugin.start(API_KEY, APP_ID, PROJECT_ID, SENDER_ID)
+		if OS.get_name() == "iOS":
+			_plugin.start(IOS_API_KEY, IOS_APP_ID, PROJECT_ID, SENDER_ID)
+		else:
+			_plugin.start(API_KEY, APP_ID, PROJECT_ID, SENDER_ID)
 	return _plugin
 
 

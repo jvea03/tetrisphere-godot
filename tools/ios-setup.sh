@@ -158,6 +158,52 @@ else
 	ok "plugin copied to ios/plugins/"
 fi
 
+# --------------------------------------------- 3b. EggAnalytics plugin
+step "3b. EggAnalytics plugin (Firebase Analytics, built for 4.x)"
+
+# Our own plugin (ios_plugins/egganalytics), built with godot-ios-plugins' scons
+# setup like InAppStore. Firebase itself is not in it: the EggAnalytics export
+# plugin adds it to the Xcode project as a Swift package. Rebuilt whenever the
+# sources are newer than the built plugin.
+EA_SRC="$REPO/ios_plugins/egganalytics"
+EA_BUILT="$PLUG_OUT/egganalytics.release.xcframework"
+if [ -f "$PLUG_OUT/egganalytics.gdip" ] && [ -d "$EA_BUILT" ] && [ -z "$(find "$EA_SRC" -newer "$PLUG_OUT/egganalytics.gdip" -type f | head -1)" ]; then
+	ok "plugin already in ios/plugins/"
+elif [ "$MODE" = "check" ]; then
+	warn "ios/plugins/egganalytics.* missing or older than ios_plugins/egganalytics (no Firebase on iOS)"
+else
+	command -v scons >/dev/null 2>&1 || brew install scons
+	if [ ! -d "$PLUGINS_SRC/.git" ]; then
+		mkdir -p "$(dirname "$PLUGINS_SRC")"
+		git clone --recursive https://github.com/godot-sdk-integrations/godot-ios-plugins.git "$PLUGINS_SRC"
+	fi
+	( cd "$PLUGINS_SRC/godot" && git fetch --tags -q origin && git checkout -q "$GODOT_TAG" )
+	cd "$PLUGINS_SRC"
+	if [ ! -f godot/core/version_generated.gen.h ]; then
+		echo "  generating Godot ${GODOT_TAG} headers (~90 s)..."
+		( cd godot && ../scripts/timeout scons platform=ios target=template_release arch=arm64 >/dev/null 2>&1 ) || true
+		[ -f godot/core/version_generated.gen.h ] || die "header generation failed; run scons in $PLUGINS_SRC/godot by hand"
+	fi
+	# SConstruct only builds the plugins it lists; add ours to that list once.
+	if ! grep -q "'egganalytics'" SConstruct; then
+		perl -0pi -e "s/('photo_picker')/\$1, 'egganalytics'/" SConstruct
+		grep -q "'egganalytics'" SConstruct || die "could not add egganalytics to $PLUGINS_SRC/SConstruct's plugin list; add it by hand"
+	fi
+	rm -rf plugins/egganalytics
+	cp -R "$EA_SRC" plugins/egganalytics
+	mkdir -p bin
+	echo "  building egganalytics xcframeworks (device + simulator slices)..."
+	./scripts/generate_xcframework.sh egganalytics release 4.0
+	./scripts/generate_xcframework.sh egganalytics release_debug 4.0
+	mkdir -p "$PLUG_OUT"
+	rm -rf "$PLUG_OUT"/egganalytics.*
+	cp -R bin/egganalytics.release.xcframework "$PLUG_OUT/"
+	cp -R bin/egganalytics.release_debug.xcframework "$PLUG_OUT/egganalytics.debug.xcframework"
+	cp "$EA_SRC/egganalytics.gdip" "$PLUG_OUT/"
+	cd "$REPO"
+	ok "plugin copied to ios/plugins/"
+fi
+
 # ----------------------------------------------------------------- 4. export
 step "4. Export Xcode project"
 

@@ -6,10 +6,39 @@ Two things, both following the same rules (below):
   gameplay analytics over GameAnalytics' REST API, ported from Duckdoku. No native
   plugin, so Android and iOS behave the same. Runs only on a phone: the editor,
   desktop builds and the test suite's throwaway profiles report nothing.
-- **Firebase Analytics, Android only** (`scripts/meta/analytics.gd`, `TSAnalytics`,
+- **Firebase Analytics, Android and iOS** (`scripts/meta/analytics.gd`, `TSAnalytics`,
   the EggAnalytics plugin): first_open plus the events Google Ads imports as
   conversions. `TSAnalytics.event()` also forwards every event to GameAnalytics,
   so game code reports through `TSAnalytics` only.
+
+## Firebase on iOS
+
+Added 18 Nov 2026, so Google Ads can count iOS installs (an iOS App campaign needs a
+download conversion action, and Ads can only take one from Firebase or an attribution
+partner; GameAnalytics is neither).
+
+- **Firebase app**: "Egg Escape iOS" in project egg-escape-196b6 (bundle
+  `com.jvea.eggescape`, App Store id 6819941762). Its ids are `IOS_APP_ID` /
+  `IOS_API_KEY` in `analytics.gd` (the key: Cloud console -> Credentials -> "iOS key
+  (auto created by Firebase)"). No GoogleService-Info.plist: the plugin configures
+  Firebase with these, as on Android.
+- **The plugin**: `ios_plugins/egganalytics/` (Objective-C++), the same `EggAnalytics`
+  singleton and methods as the Android AAR. It calls Firebase through the Objective-C
+  runtime, so it builds against Godot's headers alone; `tools/ios-setup.sh` step 3b
+  builds it into `ios/plugins/egganalytics.*` with godot-ios-plugins' scons setup
+  (like InAppStore), and the iOS preset ticks it (`plugins/EggAnalytics=true`). If
+  Firebase is missing from a build, the Output says `[EggAnalytics] Firebase is not
+  linked into this build` and nothing is sent.
+- **Firebase itself**: a Swift package, `firebase-ios-sdk` 11.15.0, product
+  `FirebaseAnalytics` (no advertising-ID support: no IDFA, so ATT is unaffected). The
+  EggAnalytics export plugin (`addons/EggAnalytics/export_plugin.gd`) writes it as a
+  local package `build/ios/egg_spm/` and patches `project.pbxproj`, beside the AdMob
+  addon's `admob_spm/`. `tools/ios-upload.sh` already fetches every package's binary
+  targets (GoogleAppMeasurement's included).
+- **Then, once a build with it is live**: GA Admin -> Events should show iOS first_open
+  (the stream is "Egg Escape iOS"); import it into Google Ads (Goals -> New conversion
+  -> App -> Firebase -> egg-escape-196b6 -> the iOS first_open, and tutorial_complete)
+  and the iOS campaign can be made.
 
 ## Turn GameAnalytics on for real
 
@@ -65,7 +94,7 @@ A no stands wherever the player goes.
 Settings -> **Share usage data** shows whether analytics is really running. Off stops
 it and deletes the random ID and anything queued; on counts as a yes. Remote kill
 switch: the Tunables key `analytics_enabled` = `false` (also hides the Settings row
-and the consent card). Firebase on Android starts only when allowed; switched off
+and the consent card). Firebase starts only when allowed; switched off
 mid-run it stops logging the game's events, and from the next launch it does not
 start at all (the plugin has no way to stop Firebase's own automatic events in the
 same run).
