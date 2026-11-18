@@ -103,3 +103,5 @@ listing (6819941762) and awaiting AdMob's review. Marketing URL set to
 `https://jvea03.github.io` on version 1.3.4 (saved while Waiting for Review), so
 AdMob can find app-ads.txt there. Once 1.3.4 is live, press Verify app in
 AdMob (Apps > Egg Escape: Puzzle Break > App settings).
+**Verified 18 Nov 2026** (1.3.4 live 17 Nov; Apple's sellerUrl is https://jvea03.github.io):
+AdMob's review is in progress, with limited ad serving until it is approved (2-3 days).
