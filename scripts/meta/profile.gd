@@ -3246,6 +3246,32 @@ static func save() -> void:
 ## Never written over in place: the new save goes to SAVE_TMP first, then the
 ## old one steps aside to SAVE_BAK and the new one takes its place, so a
 ## phone killing the app mid-write always leaves one whole save on disk.
+## Debug builds' Settings > Restart Progress: the save (and its spare copies)
+## moved aside to "<save>.reset-<time>" -- kept, not deleted -- the parked
+## ball forgotten, and nothing saved again this run, so the game starts over
+## as a new player when it is next opened.
+static func debug_reset_progress() -> void:
+	var main := _save_file()
+	var stamp := Time.get_datetime_string_from_system().replace(":", "-")
+	for path in [main, main + ".bak", main + ".tmp"]:
+		if FileAccess.file_exists(path):
+			DirAccess.rename_absolute(ProjectSettings.globalize_path(path), ProjectSettings.globalize_path(path + ".reset-" + stamp))
+	TSSession.clear()
+	persist = false
+
+
+## Debug builds' Settings > Level Warp: straight to level `n`, the lessons of
+## the first levels counted as seen.
+static func debug_warp(n: int) -> void:
+	last_level = maxi(n, 1)
+	intro_seen = intro_seen or last_level > 1
+	tutorial_seen = tutorial_seen or last_level > 1
+	slide_tutorial_seen = slide_tutorial_seen or last_level > 2
+	TSSession.clear()
+	TSSession.forget()
+	save()
+
+
 static func _write_save(cfg: ConfigFile) -> void:
 	var main := _save_file()
 	var tmp := main + ".tmp"

@@ -1745,6 +1745,8 @@ func _build_settings() -> void:
 		var choices := TSUI.button("Ad Privacy Choices", TSUI.CARD, 22, Vector2(0, 64))
 		choices.pressed.connect(Ads.show_privacy_options)
 		box.add_child(choices)
+	if OS.is_debug_build():
+		box.add_child(_debug_card())
 	var close := TSUI.button("Close", TSUI.PINK, 28)
 	close.pressed.connect(func(): TSUI.conceal(_settings["root"]))
 	box.add_child(close)
@@ -1752,6 +1754,56 @@ func _build_settings() -> void:
 	box.add_child(TSUI.label(version, 18, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 
 
+
+
+## Debug builds only (Settings): Level Warp -- pick a level and Home reopens
+## on it -- and Restart Progress, which (on a second tap) moves the save
+## aside and starts the game over as a new player.
+func _debug_card() -> Control:
+	var card := TSUI.card(Color(0.9, 0.9, 0.96), 20, 14, 0)
+	var v := TSUI.vbox(10)
+	card.add_child(v)
+	v.add_child(TSUI.label("Debug", 26, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	var row := TSUI.hbox(8)
+	v.add_child(row)
+	row.add_child(TSUI.label("Lv", 22))
+	var level := LineEdit.new()
+	level.text = str(TSProfile.last_level)
+	level.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	level.virtual_keyboard_type = LineEdit.KEYBOARD_TYPE_NUMBER
+	level.custom_minimum_size = Vector2(110, 60)
+	level.add_theme_font_size_override("font_size", 26)
+	var step := func(by: int) -> void:
+		level.text = str(maxi(int(level.text) + by, 1))
+	for b in [["-10", -10], ["-1", -1]]:
+		var btn := TSUI.button(b[0], TSUI.CARD, 20, Vector2(58, 60), 4)
+		btn.pressed.connect(step.bind(int(b[1])))
+		row.add_child(btn)
+	row.add_child(level)
+	for b in [["+1", 1], ["+10", 10]]:
+		var btn := TSUI.button(b[0], TSUI.CARD, 20, Vector2(58, 60), 4)
+		btn.pressed.connect(step.bind(int(b[1])))
+		row.add_child(btn)
+	var warp := TSUI.expand(TSUI.button("Warp", TSUI.GREEN, 24, Vector2(0, 60), 4)) as Button
+	warp.pressed.connect(func():
+		TSProfile.debug_warp(maxi(int(level.text), 1))
+		SceneFlow.go(SceneFlow.HOME))
+	row.add_child(warp)
+	var reset := TSUI.button("Restart Progress", TSUI.CORAL, 24, Vector2(0, 64), 4)
+	var armed := [false]
+	reset.pressed.connect(func():
+		if not armed[0]:
+			armed[0] = true
+			reset.text = "Tap again: erase all progress"
+			return
+		TSProfile.debug_reset_progress()
+		reset.disabled = true
+		reset.text = "Progress cleared -- restarting..."
+		if OS.has_feature("pc"):
+			OS.set_restart_on_exit(true, OS.get_cmdline_args())
+		get_tree().create_timer(0.8).timeout.connect(func(): get_tree().quit()))
+	v.add_child(reset)
+	return card
 
 
 func _toggle_row(icon: String, text: String, prop: String) -> Control:
