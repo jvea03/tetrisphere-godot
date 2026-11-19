@@ -2300,6 +2300,14 @@ static var battle_pass_xp: int = 0 # stars banked this season
 static var battle_pass_purchased: bool = false
 static var battle_pass_free_claimed: Array = []
 static var battle_pass_paid_claimed: Array = []
+## Past the last tier the pass keeps going: every BONUS_CHEST_STARS more stars
+## fills a Bonus Chest of coins and materials (more with the premium track),
+## as many as the player earns. How many this season's pass has paid out:
+static var battle_pass_bonus_claimed: int = 0
+const BONUS_CHEST_STARS := 50
+const BONUS_CHEST_COINS := 1000
+const BONUS_CHEST_MATERIALS := 150
+const BONUS_CHEST_PREMIUM_TIMES := 2   # the premium track doubles each chest
 
 
 static func battle_pass_tier_cost(tier: int) -> int:
@@ -2365,13 +2373,17 @@ static func _roll_battle_pass() -> void:
 	var old_bought := battle_pass_purchased
 	var old_free: Array = battle_pass_free_claimed.duplicate()
 	var old_paid: Array = battle_pass_paid_claimed.duplicate()
+	var old_bonus := battle_pass_bonus_claimed
 	battle_pass_key = key   # first, so anything below that reads the pass sees the new season
 	battle_pass_xp = 0
 	battle_pass_purchased = false
 	battle_pass_free_claimed.fill(false)
 	battle_pass_paid_claimed.fill(false)
+	battle_pass_bonus_claimed = 0
 	if old_key != "":
 		_collect_left_behind(_season_of_key(old_key), old_xp, old_bought, old_free, old_paid)
+		for _i in maxi(_bonus_chests_for(old_xp) - old_bonus, 0):
+			_collect_reward(battle_pass_bonus_reward(old_bought))
 	save()
 
 
@@ -2658,6 +2670,8 @@ static func _apply_reward(reward: Dictionary) -> void:
 
 static func has_claimable_battle_pass_reward() -> bool:
 	_roll_battle_pass()
+	if battle_pass_bonus_ready() > 0:
+		return true
 	var reached := battle_pass_tier()
 	for i in range(reached):
 		if not bool(battle_pass_free_claimed[i]):
@@ -2679,6 +2693,43 @@ static func can_claim_battle_pass_paid(tier: int) -> bool:
 	if not battle_pass_purchased or tier < 1 or tier > BATTLE_PASS_TIER_COUNT:
 		return false
 	return battle_pass_tier() >= tier and not bool(battle_pass_paid_claimed[tier - 1])
+
+
+## Bonus Chests (past the last tier): how many `xp` stars fill, the stars into
+## the next one, how many wait to be opened, what one holds, and opening one.
+static func _bonus_chests_for(xp: int) -> int:
+	var over := xp - battle_pass_stars_for_tier(BATTLE_PASS_TIER_COUNT)
+	("integer_division")
+	return maxi(over, 0) / BONUS_CHEST_STARS
+
+
+static func battle_pass_bonus_earned() -> int:
+	_roll_battle_pass()
+	return _bonus_chests_for(battle_pass_xp)
+
+
+static func battle_pass_bonus_progress() -> int:
+	_roll_battle_pass()
+	return maxi(battle_pass_xp - battle_pass_stars_for_tier(BATTLE_PASS_TIER_COUNT), 0) % BONUS_CHEST_STARS
+
+
+static func battle_pass_bonus_ready() -> int:
+	return maxi(battle_pass_bonus_earned() - battle_pass_bonus_claimed, 0)
+
+
+static func battle_pass_bonus_reward(premium := false) -> Dictionary:
+	var times := BONUS_CHEST_PREMIUM_TIMES if premium else 1
+	return {"coins": BONUS_CHEST_COINS * times, "materials": BONUS_CHEST_MATERIALS * times}
+
+
+static func claim_battle_pass_bonus() -> Dictionary:
+	if battle_pass_bonus_ready() <= 0:
+		return {}
+	var reward := battle_pass_bonus_reward(battle_pass_purchased)
+	_apply_reward(reward)
+	battle_pass_bonus_claimed += 1
+	save()
+	return reward
 
 
 static func claim_battle_pass_free(tier: int) -> Dictionary:
@@ -2842,6 +2893,8 @@ static func claim_quest(week_key: String, index: int) -> int:
 ## Returns how many were collected.
 static func claim_all_battle_pass() -> int:
 	var n := 0
+	while battle_pass_bonus_ready() > 0 and not claim_battle_pass_bonus().is_empty():
+		n += 1
 	for t in range(1, BATTLE_PASS_TIER_COUNT + 1):
 		if can_claim_battle_pass_free(t) and not claim_battle_pass_free(t).is_empty():
 			n += 1
@@ -3099,6 +3152,7 @@ static func ensure_loaded() -> void:
 	battle_pass_purchased = bool(g.call("battle_pass_purchased", false))
 	battle_pass_free_claimed = g.call("battle_pass_free_claimed", [])
 	battle_pass_paid_claimed = g.call("battle_pass_paid_claimed", [])
+	battle_pass_bonus_claimed = int(g.call("battle_pass_bonus_claimed", 0))
 	quest_daily_date = str(g.call("quest_daily_date", ""))
 	quest_daily_progress = g.call("quest_daily_progress", {})
 	quest_daily_done = g.call("quest_daily_done", [])
@@ -3230,6 +3284,7 @@ static func save() -> void:
 	s.call("battle_pass_purchased", battle_pass_purchased)
 	s.call("battle_pass_free_claimed", battle_pass_free_claimed)
 	s.call("battle_pass_paid_claimed", battle_pass_paid_claimed)
+	s.call("battle_pass_bonus_claimed", battle_pass_bonus_claimed)
 	s.call("quest_daily_date", quest_daily_date)
 	s.call("quest_daily_progress", quest_daily_progress)
 	s.call("quest_daily_done", quest_daily_done)

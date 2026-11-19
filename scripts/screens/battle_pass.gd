@@ -141,8 +141,10 @@ func _refresh() -> void:
 	(_tier_next.get_meta("label") as Label).text = str(mini(tier + 1, count))
 	_tier_next.modulate.a = 1.0 if tier < count else 0.0
 	if tier >= count:
-		_progress.value = _progress.max_value
-		_progress_label.text = "Pass complete!"
+		# Pass complete: the bar fills toward the next Bonus Chest instead.
+		_progress.max_value = TSProfile.BONUS_CHEST_STARS
+		_progress.value = TSProfile.battle_pass_bonus_progress()
+		_progress_label.text = "%d / %d stars to a Bonus Chest" % [TSProfile.battle_pass_bonus_progress(), TSProfile.BONUS_CHEST_STARS]
 	else:
 		_progress.value = TSProfile.battle_pass_tier_progress()
 		_progress_label.text = "%d / %d stars to Tier %d" % [TSProfile.battle_pass_tier_progress(), per_tier, tier + 1]
@@ -266,7 +268,63 @@ func _build_tiers() -> void:
 		row.add_child(_reward_card(tier, current, TSProfile.battle_pass_free_reward(tier), false))
 		row.add_child(_reward_card(tier, current, TSProfile.battle_pass_paid_reward(tier), true))
 		_tier_list.add_child(row)
+	_tier_list.add_child(_bonus_row(current))
 	TSUI.juice(_tier_list)
+
+
+## Under the last tier: the Bonus Chest, earned again every BONUS_CHEST_STARS
+## stars once the pass is complete -- coins and materials, doubled with the
+## premium track. Open while any wait; else the stars to the next; locked
+## until the last tier.
+func _bonus_row(current: int) -> Control:
+	var count := TSProfile.BATTLE_PASS_TIER_COUNT
+	var done := current >= count
+	var ready := TSProfile.battle_pass_bonus_ready()
+	var row := TSUI.hbox(8)
+	var badge := TSUI.card(TSUI.GOLD if done else TSUI.CARD, 18, 4, 2)
+	badge.custom_minimum_size = Vector2(62, 96)
+	badge.add_child(TSUI.label("+", 34, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER))
+	row.add_child(badge)
+	var card := PanelContainer.new()
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var face := TSUI.sb(COL_PREMIUM if TSProfile.battle_pass_purchased else TSUI.CARD, 22, 5 if ready > 0 else 3, 2, 8)
+	face.border_color = TSUI.GOLD_DARK if ready > 0 else TSUI.INK
+	card.add_theme_stylebox_override("panel", face)
+	var h := TSUI.hbox(12)
+	h.alignment = BoxContainer.ALIGNMENT_CENTER
+	card.add_child(h)
+	h.add_child(TSIcon.make("chest", 64, 0, "legendary" if TSProfile.battle_pass_purchased else "rare"))
+	var words := TSUI.vbox(2)
+	words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	words.add_child(TSUI.label("Bonus Chest" if ready <= 1 else "Bonus Chest x%d" % ready, 26))
+	var note := "Every %d stars after Tier %d" % [TSProfile.BONUS_CHEST_STARS, count] if not done else "Every %d stars" % TSProfile.BONUS_CHEST_STARS
+	if done and ready <= 0:
+		note = "%d / %d stars" % [TSProfile.battle_pass_bonus_progress(), TSProfile.BONUS_CHEST_STARS]
+	words.add_child(TSUI.label(note, 19, TSUI.INK.lightened(0.25)))
+	h.add_child(words)
+	var reward := TSProfile.battle_pass_bonus_reward(TSProfile.battle_pass_purchased)
+	h.add_child(_item("coin", 0, "x%s" % TSProfile.fmt_coins(int(reward["coins"]))))
+	h.add_child(_item("materials", 0, "x%s" % TSProfile.fmt_coins(int(reward["materials"]))))
+	if ready > 0:
+		var open := TSUI.button("Open", TSUI.GREEN, 22, Vector2(88, 60), 4)
+		open.pressed.connect(func() -> void: _open_bonus(open))
+		h.add_child(open)
+	elif not done:
+		h.add_child(TSIcon.make("lock", 34))
+	row.add_child(card)
+	return row
+
+
+## Opens one waiting Bonus Chest.
+func _open_bonus(anchor: Control) -> void:
+	var before := TSProfile.coin_count
+	var from := anchor.get_global_rect()
+	if TSProfile.claim_battle_pass_bonus().is_empty():
+		return
+	TSSfx.play("upgrade")
+	wallet.receive(from, before, TSProfile.coin_count)
+	TSFX.sparkle_burst_at(self, from)
+	_refresh()
 
 
 func _reward_card(tier: int, current: int, reward: Dictionary, premium: bool) -> Control:

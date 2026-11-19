@@ -182,6 +182,29 @@ func _test_battle_pass() -> void:
 	TSProfile.coin_count = 1000000
 	var tier := TSProfile.battle_pass_tier()
 	_check("a tier can be bought for coins", TSProfile.purchase_battle_pass_tier() and TSProfile.battle_pass_tier() == tier + 1)
+	# Past the last tier: a Bonus Chest every BONUS_CHEST_STARS stars, for good.
+	var top := TSProfile.battle_pass_stars_for_tier(TSProfile.BATTLE_PASS_TIER_COUNT)
+	TSProfile.battle_pass_bonus_claimed = 0
+	TSProfile.battle_pass_free_claimed.fill(true)   # the tiers' own rewards (a ship part...) stay out of it
+	TSProfile.battle_pass_paid_claimed.fill(true)
+	TSProfile.battle_pass_xp = top + TSProfile.BONUS_CHEST_STARS - 1
+	_check("no Bonus Chest a star short of the first (%d/%d)" % [TSProfile.battle_pass_bonus_progress(), TSProfile.BONUS_CHEST_STARS], TSProfile.battle_pass_bonus_ready() == 0 and TSProfile.battle_pass_bonus_progress() == TSProfile.BONUS_CHEST_STARS - 1)
+	TSProfile.add_battle_pass_xp(1 + TSProfile.BONUS_CHEST_STARS * 2)
+	_check("stars past the last tier keep filling chests (3 ready)", TSProfile.battle_pass_bonus_ready() == 3 and TSProfile.has_claimable_battle_pass_reward())
+	var coins_b := TSProfile.coin_count
+	var mats_b := TSProfile.materials
+	var got_b := TSProfile.claim_battle_pass_bonus()
+	_check("a Bonus Chest pays coins and materials, doubled with premium (%s)" % str(got_b), int(got_b.get("coins", 0)) == TSProfile.BONUS_CHEST_COINS * 2 and TSProfile.coin_count > coins_b and TSProfile.materials > mats_b and TSProfile.battle_pass_bonus_ready() == 2)
+	TSProfile.claim_all_battle_pass()
+	_check("Collect All opens the rest", TSProfile.battle_pass_bonus_ready() == 0 and TSProfile.claim_battle_pass_bonus().is_empty())
+	TSProfile.add_battle_pass_xp(TSProfile.BONUS_CHEST_STARS)
+	var key_b := TSProfile.battle_pass_key
+	var mats_left := TSProfile.materials
+	TSProfile.battle_pass_key = "S0"   # pretend the season just ended with one chest unopened
+	TSProfile.battle_pass_auto_claimed = {}
+	TSProfile._roll_battle_pass()
+	_check("an unopened Bonus Chest is collected when the season ends (+%d materials)" % (TSProfile.materials - mats_left), TSProfile.materials > mats_left and TSProfile.battle_pass_bonus_claimed == 0)
+	TSProfile.battle_pass_key = key_b
 
 
 func _test_quests() -> void:
