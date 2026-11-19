@@ -1,0 +1,155 @@
+EGG ESCAPE: UGC CREATOR SCRIPT
+==============================
+
+Android:        Egg Escape: Block Puzzle Match (Google Play)
+iPhone and iPad: Egg Escape: Puzzle Break (App Store)
+Price:          Free, with optional purchases and ads
+Format:         Vertical 9:16, 15 s, 30 s or 45-60 s
+
+
+THE CLIPS
+---------
+Download them here:
+https://drive.google.com/drive/folders/1VQ7LH-g5cr5J1fQDf7aVXNxye__fJ5Gv?usp=sharing
+
+Vertical 720 x 1280 MP4s, 30 fps, with the game's own music and sound, and
+no captions, so you can add your own text and talk over them.
+
+  01  Rescue (10 s)          The egg spins, blocks drop and pop, the critter
+                             escapes, and the "Rescued!" card shows.
+  02  Chains (26 s)          Matches set off chain reactions.
+  07  Camp build (22 s)      The bare crash site, then the camp going up one
+                             piece at a time, and a glide past the finished
+                             camp and the rocket.
+  08  Critters (14 s)        The full Collection scrolling slowly.
+  09  Critter parade (17 s)  Every critter hops across the camp, then they
+                             all pop in to fill the screen.
+
+You're welcome to record your own phone too: the first few levels, the
+Collection and the camp, plus a face-cam reaction.
+
+
+KEY MESSAGES
+------------
+Lead with the gameplay. The critters and the camp are why people keep playing.
+
+  1. The gameplay: spin the egg, drop blocks, match them to pop, and dig a
+     path out for the critter trapped inside.
+  2. Critters: 100+ cute critters to collect and level up, each with a name
+     and its own look.
+  3. The camp: every win earns coins and materials to rebuild the crash
+     site and fix the rocket, one spot at a time.
+  4. The feel: cozy, relaxing, no pressure, free to play.
+
+Please avoid: "no ads", "offline", "win money", and any level count beyond
+"hundreds".
+
+
+SCRIPT A: THE HOOK (15 seconds)
+-------------------------------
+For TikTok and Reels: fast, gameplay first, one big reaction.
+
+  0-2 s    Clip 01, the egg spinning
+           TEXT: "there's a critter stuck in this egg"
+           VO:   "Okay, there's a little critter stuck inside this egg..."
+
+  2-6 s    Clip 01, blocks dropping and popping
+           VO:   "...and I have to spin it and match blocks to dig it out."
+
+  6-9 s    Clip 01, the critter escaping
+           VO:   "AND HE'S FREE." (a real reaction)
+
+  9-12 s   Clip 08, critters scrolling
+           VO:   "And now I have to collect all of them."
+
+  12-15 s  Clip 09, the finale
+           TEXT: "Egg Escape, free on iPhone and Android"
+
+
+SCRIPT B: WHY I CAN'T STOP PLAYING THIS (30 seconds)
+----------------------------------------------------
+Covers all three: gameplay, critters and camp.
+
+  0-3 s    Face-cam, or clip 02's chain reaction
+           VO: "I found the coziest puzzle game and I'm obsessed."
+
+  3-10 s   Clip 01
+           VO: "Every level, a critter's trapped inside an egg. You spin the
+               egg, drop blocks, and match colours to break your way in."
+
+  10-17 s  Clip 02, the chain
+           VO: "And chain reactions are SO satisfying. One match sets off
+               the next, and the next..."
+
+  17-22 s  Clip 08
+           VO: "Every critter you save joins your collection. There are over
+               a hundred and they're all adorable."
+
+  22-27 s  Clip 07, the camp going up
+           VO: "And your wins rebuild this little crash-site camp, piece by
+               piece, so you can fix the rocket."
+
+  27-30 s  Clip 09, the finale
+           VO: "It's called Egg Escape, and it's free. Go save them all!"
+
+
+SCRIPT C: COZY GAME CHECK-IN (45-60 seconds)
+--------------------------------------------
+For cozy-gaming and wind-down audiences: slower and more personal.
+
+  0-5 s    Face-cam, clip 01 behind
+           VO: "This is my new wind-down game, and it's genuinely so
+               relaxing."
+
+  5-18 s   Clip 01
+           VO: "So, every egg has a critter trapped inside. I spin it
+               around, drop these block pieces, and when colours match they
+               pop. Dig deep enough and the critter escapes."
+
+  18-30 s  Clip 02, the chain reaction
+           VO: "And the best feeling is setting up a chain reaction. Watch
+               this... one pop, then another, then another. I could watch
+               that all day."
+
+  30-40 s  Clip 08, paused on a critter you pick
+           VO: "The best part is the critters. You collect them, level them
+               up, and they all have little names. This one's my favourite."
+
+  40-52 s  Clip 07
+           VO: "And all the coins you win rebuild your camp. It starts as a
+               crash site, and you build the campfire, the tent, the
+               garden... and eventually you fix the rocket."
+
+  52-60 s  Clip 09
+           VO: "It's Egg Escape. It's free, so try it, and tell me which
+               critter you got first."
+
+
+HOOKS TO TEST
+-------------
+Use one as the first line or the on-screen text over the first two seconds.
+
+  "POV: you find a critter trapped inside an egg"            (clip 01)
+  "The most satisfying puzzle game I've played this year"    (clip 02)
+  "Wait for the chain reaction..."                           (clip 02)
+  "I said one level. It's been an hour."                     (clip 01 or 02)
+  "This game is so cozy it should be illegal"                (clip 01)
+  "Rate my camp"                                             (clip 07)
+  "I need ALL of these critters"                             (clip 08 or 09)
+
+
+NOTES FOR CREATORS
+------------------
+- Show the game in the first second. The spinning egg or a pop is the hook;
+  a face-cam works best in a corner or a split screen.
+- React honestly. The critter's escape and a chain reaction are the moments
+  to react to.
+- Keep text short and in the safe zone: away from the top 15% and bottom
+  25% of the frame, where the app's buttons sit.
+- Keep the game's sound, or keep it low under your voice: the pops and the
+  escape sound help.
+- Disclose the ad with #ad or the platform's paid-partnership label, as the
+  platform and local law require.
+- Finish on the name: close on "Egg Escape" and "free". The store name is
+  "Egg Escape: Block Puzzle Match" on Android and "Egg Escape: Puzzle Break"
+  on iPhone.
