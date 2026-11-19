@@ -315,6 +315,7 @@ static var slide_tutorial_seen: bool = false # the sliding walkthrough, once, at
 static var club_intro_seen: bool = false
 static var collection_tutorial_seen: bool = false
 static var daily_callout_seen: bool = false
+static var name_callout_seen: bool = false   # Home's nudge to pick a name for the leaderboards, once
 static var ship_story_seen: bool = false   # the first Home visit's "we have to rebuild the camp and ship", once
 static var camp_callout_seen: bool = false   # Home's one-time pointer to the camp's build nodes
 
@@ -1728,6 +1729,7 @@ static func replay_tips() -> void:
 	ship_story_seen = false
 	home_tutorial_seen = false
 	daily_callout_seen = false
+	name_callout_seen = false
 	camp_callout_seen = false
 	collection_tutorial_seen = false
 	club_intro_seen = false
@@ -3043,6 +3045,7 @@ static func ensure_loaded() -> void:
 	club_intro_seen = bool(g.call("club_intro_seen", false))
 	collection_tutorial_seen = bool(g.call("collection_tutorial_seen", false))
 	daily_callout_seen = bool(g.call("daily_callout_seen", false))
+	name_callout_seen = bool(g.call("name_callout_seen", false))
 	camp_callout_seen = bool(g.call("camp_callout_seen", false))
 	# A save from before the story existed: anyone past level 1 has started without it.
 	ship_story_seen = bool(g.call("ship_story_seen", last_level > 1))
@@ -3212,6 +3215,7 @@ static func save() -> void:
 	s.call("club_intro_seen", club_intro_seen)
 	s.call("collection_tutorial_seen", collection_tutorial_seen)
 	s.call("daily_callout_seen", daily_callout_seen)
+	s.call("name_callout_seen", name_callout_seen)
 	s.call("camp_callout_seen", camp_callout_seen)
 	s.call("ship_story_seen", ship_story_seen)
 	s.call("review_next_level", review_next_level)

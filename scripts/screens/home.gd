@@ -1926,6 +1926,8 @@ func _fill_stats() -> void:
 
 
 func _open_profile() -> void:
+	if tutorial.on_step("profile"):
+		tutorial.gate_passed()   # the name nudge: done once the profile opens
 	_fill_stats()
 	_name_edit.text = TSProfile.player_name
 	_avatar_choice = TSProfile.avatar_index
@@ -2000,9 +2002,32 @@ func _start_walkthrough() -> bool:
 		_start_daily_callout()
 	elif _world.nodes_enabled and not TSProfile.camp_callout_seen:
 		_start_camp_callout()
+	elif _wants_name_callout():
+		_start_name_callout()
 	else:
 		return false
 	return true
+
+
+## The name nudge: the player is on the leaderboards (a star earned while
+## they're open) still under the default name, and hasn't been shown it.
+func _wants_name_callout() -> bool:
+	return not TSProfile.name_callout_seen and TSNav.leaderboards_open() and TSProfile.stars_open() \
+		and TSProfile.lifetime_of("stars") > 0 and TSProfile.player_name == TSProfile.DEFAULT_NAME \
+		and avatar_btn.is_visible_in_tree()
+
+
+## Spotlights the profile picture: a tap on it opens the profile (name and
+## critter), and that ends the walkthrough (_open_profile).
+func _start_name_callout() -> void:
+	await _settled()
+	if not is_inside_tree():
+		return
+	tutorial.finished.connect(func():
+		TSProfile.name_callout_seen = true
+		TSProfile.save(), CONNECT_ONE_SHOT)
+	tutorial.start([{"rect": func() -> Rect2: return avatar_btn.get_global_rect(), "id": "profile", "gate": true,
+		"text": "You're on the leaderboards as \"%s\"! Tap your picture to choose a name and a critter, so everyone can spot you." % TSProfile.DEFAULT_NAME}])
 
 
 func _start_ship_story() -> void:
