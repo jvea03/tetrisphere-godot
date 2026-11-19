@@ -214,7 +214,7 @@ const TERRAIN_MAX_LOW := 0.2   # the most of the egg a landscape may lower
 
 ## Lifts the surface pieces that lie at least half inside `terrain`'s pattern.
 ## Returns how many went. Same `seed_value`, same landscape.
-func shape_terrain(terrain: String, seed_value: int) -> int:
+func shape_terrain(terrain: String, seed_value: int, max_low := TERRAIN_MAX_LOW) -> int:
 	if terrain == "" or shell_depth < 3:
 		return 0
 	var rng := RandomNumberGenerator.new()
@@ -238,10 +238,10 @@ func shape_terrain(terrain: String, seed_value: int) -> int:
 				inside += 1
 		if ok and depth_of(id) == top and inside * 2 >= cols.size():
 			lifted.append([float(inside) / float(cols.size()), id])
-	# The pieces most squarely in the pattern first, up to TERRAIN_MAX_LOW of the
+	# The pieces most squarely in the pattern first, up to max_low of the
 	# egg, so no landscape takes too big a bite out of the shell.
 	lifted.sort_custom(func(a, b): return a[0] > b[0] or (a[0] == b[0] and a[1] < b[1]))
-	var budget := int(TERRAIN_MAX_LOW * COLS * ROWS)
+	var budget := int(max_low * COLS * ROWS)
 	var gone := 0
 	for pair in lifted:
 		var id: int = pair[1]

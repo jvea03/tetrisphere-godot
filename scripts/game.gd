@@ -645,7 +645,7 @@ func _start(seed_value: int, baked: Dictionary = {}) -> void:
 		board.generate(seed_value, level)
 	else:
 		board.load_dict(baked)
-	board.shape_terrain(str(level.get("terrain", "")), seed_value)   # the egg's landscape, baked or not
+	board.shape_terrain(str(level.get("terrain", "")), seed_value, float(level.get("terrain_low", TSBoard.TERRAIN_MAX_LOW)))   # the egg's landscape, baked or not
 	_set_level_text()
 	_ties_seen = -1
 	_apply_sky()

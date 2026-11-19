@@ -338,8 +338,7 @@ static func beginner_pair(level: int) -> Array:
 
 
 ## The egg's landscape (TSBoard.shape_terrain), for the big eggs only: every
-## other Extreme level before the ramp (levels 37 and 90; from LEVEL_LOOP_START +
-## RAMP_EVERY on the ramp keeps them smooth) and every other challenge
+## other Extreme level (37, 90, 130, 190...) and every other challenge
 ## (after levels 40, 80, 120...; never the one that teaches them), so about
 ## half of each keep the smooth shell. Lifting surface pieces breaks the pairs
 ## a fresh shell is built around and opens the grey-heavy layer below, which
@@ -349,15 +348,23 @@ static func beginner_pair(level: int) -> Array:
 ## more often (TERRAIN_BIAS); with TSBoard.TERRAIN_MAX_LOW at 20% the casual
 ## bot then wins level 37 about 10-20% (smooth 27%), 90 37% (37%), and the
 ## challenges after 40 and 80 10% and 13% (10%, 17%; the careful bot 97%
-## both). Level 130, deep in the ramp, was a wall at 3% (smooth 20%), so ramped
-## Extremes and challenges keep the smooth shell. "" for a smooth shell.
+## both). On the ramp (from LEVEL_LOOP_START + RAMP_EVERY, with its extra grey
+## and armour) a full landscape made a wall (level 130: 3%, smooth 20%), so
+## ramped eggs get a gentler one, half the bite (TERRAIN_GENTLE_LOW): the casual
+## bot then wins 130, 190, 230, 310 30%, 23%, 3%, 23% (smooth 20, 0, 7, 7) and
+## the challenges after 120, 160, 200, 240 63%, 3%, 23%, 27% (smooth 10, 7, 10,
+## 7). "" for a smooth shell.
 const TERRAIN_BIAS := 0.05
 const TERRAIN_HOLE_SMALLER := 1   # the escape hole a terrain egg needs, this much narrower
+## A ramped egg's gentler landscape: at most this much of it lowered (a static
+## var so tests/sim.gd's `-- terrain` can try others).
+static var TERRAIN_GENTLE_LOW := 0.1
+
+## tests/sim.gd's `-- terrain`: the same eggs with the smooth shell, to compare.
+static var smooth_only := false
 
 static func terrain_for_level(level: int) -> String:
-	# Past the loop's start the ramp adds grey and armour, and a landscape on top
-	# made a wall of it (level 130: 3%, smooth 20%), so ramped Extremes stay smooth.
-	if difficulty_for_level(level) != DIFF_EXTREME or is_debut(level) or ramp_step(level) > 0:
+	if smooth_only or difficulty_for_level(level) != DIFF_EXTREME or is_debut(level):
 		return ""
 	var nth := 0   # which Extreme level this is, from 0
 	for l in range(1, level):
@@ -370,8 +377,7 @@ static func terrain_for_level(level: int) -> String:
 
 
 static func challenge_terrain(after: int) -> String:
-	# Ramped challenges stay smooth too, for the same reason as Extremes.
-	if after == CHALLENGE_TUTORIAL_AFTER or after < CHALLENGE_FIRST_AFTER or ramp_step(after) > 0:
+	if smooth_only or after == CHALLENGE_TUTORIAL_AFTER or after < CHALLENGE_FIRST_AFTER:
 		return ""
 	@warning_ignore("integer_division")
 	var nth := (after - CHALLENGE_FIRST_AFTER) / CHALLENGE_EVERY
@@ -444,13 +450,15 @@ static func rules_for_level(level: int) -> Dictionary:
 	if step > 0:
 		rules["blocker_share"] = float(rules["blocker_share"]) + RAMP_GREY * step
 		rules["armor_share"] = minf(float(rules["armor_share"]) + RAMP_ARMOR * step, 0.9)
-	return _with_terrain(rules, terrain_for_level(level), difficulty_for_level(level))
+	return _with_terrain(rules, terrain_for_level(level), difficulty_for_level(level), step)
 
 
 ## A terrain egg's rules: the landscape, and the kinder deal that pays for it.
-static func _with_terrain(rules: Dictionary, terrain: String, tier: int) -> Dictionary:
+static func _with_terrain(rules: Dictionary, terrain: String, tier: int, step := 0) -> Dictionary:
 	if terrain != "":
 		rules["terrain"] = terrain
+		if step > 0:
+			rules["terrain_low"] = TERRAIN_GENTLE_LOW
 		rules["common_bias"] = minf(float(rules["common_bias"]) + TERRAIN_BIAS, 0.95)
 		rules["escape_size"] = maxi(int(rules.get("escape_size", DIFFICULTIES[tier]["escape_size"])) - TERRAIN_HOLE_SMALLER, 2)
 	return rules
@@ -576,7 +584,7 @@ static func challenge_rules(after: int) -> Dictionary:
 	if step > 0:
 		rules["blocker_share"] = float(rules["blocker_share"]) + RAMP_GREY * step
 		rules["armor_share"] = minf(float(rules["armor_share"]) + RAMP_ARMOR * step, 0.9)
-	return _with_terrain(rules, challenge_terrain(after), DIFF_EXTREME)
+	return _with_terrain(rules, challenge_terrain(after), DIFF_EXTREME, step)
 
 
 static func challenge_seed(after: int) -> int:

@@ -65,7 +65,7 @@ func _initialize() -> void:
 						board.generate(TSLevels.seed_for_level(lvl), TSLevels.rules_for_level(lvl))
 					else:
 						board.load_dict(baked)
-					board.shape_terrain(str(TSLevels.rules_for_level(lvl).get("terrain", "")), TSLevels.seed_for_level(lvl))
+					board.shape_terrain(str(TSLevels.rules_for_level(lvl).get("terrain", "")), TSLevels.seed_for_level(lvl), float(TSLevels.rules_for_level(lvl).get("terrain_low", TSBoard.TERRAIN_MAX_LOW)))
 					var rng := RandomNumberGenerator.new()
 					rng.seed = lvl * 7919 + i
 					var r := _play(board, TSLevels.difficulty_for_level(lvl), TSLevels.rules_for_level(lvl), rng, bot)
@@ -94,7 +94,7 @@ func _initialize() -> void:
 					board.generate(TSLevels.seed_for_level(lvl), TSLevels.rules_for_level(lvl))
 				else:
 					board.load_dict(baked)
-				board.shape_terrain(str(TSLevels.rules_for_level(lvl).get("terrain", "")), TSLevels.seed_for_level(lvl))
+				board.shape_terrain(str(TSLevels.rules_for_level(lvl).get("terrain", "")), TSLevels.seed_for_level(lvl), float(TSLevels.rules_for_level(lvl).get("terrain_low", TSBoard.TERRAIN_MAX_LOW)))
 				var rng := RandomNumberGenerator.new()
 				rng.seed = lvl * 7919 + i
 				var r := _play(board, TSLevels.difficulty_for_level(lvl), TSLevels.rules_for_level(lvl), rng, CASUAL)
@@ -138,7 +138,7 @@ func _initialize() -> void:
 						board.generate(TSLevels.seed_for_level(lvl), TSLevels.rules_for_level(lvl))
 					else:
 						board.load_dict(baked)
-					board.shape_terrain(str(TSLevels.rules_for_level(lvl).get("terrain", "")), TSLevels.seed_for_level(lvl))
+					board.shape_terrain(str(TSLevels.rules_for_level(lvl).get("terrain", "")), TSLevels.seed_for_level(lvl), float(TSLevels.rules_for_level(lvl).get("terrain_low", TSBoard.TERRAIN_MAX_LOW)))
 					var rng := RandomNumberGenerator.new()
 					rng.seed = lvl * 7919 + i
 					var r := _play(board, TSLevels.difficulty_for_level(lvl), TSLevels.rules_for_level(lvl), rng, CASUAL,
@@ -171,7 +171,7 @@ func _initialize() -> void:
 							board.generate(TSLevels.seed_for_level(lvl), TSLevels.rules_for_level(lvl))
 						else:
 							board.load_dict(baked)
-						board.shape_terrain(str(TSLevels.rules_for_level(lvl).get("terrain", "")), TSLevels.seed_for_level(lvl))
+						board.shape_terrain(str(TSLevels.rules_for_level(lvl).get("terrain", "")), TSLevels.seed_for_level(lvl), float(TSLevels.rules_for_level(lvl).get("terrain_low", TSBoard.TERRAIN_MAX_LOW)))
 						var rng := RandomNumberGenerator.new()
 						rng.seed = lvl * 7919 + i * 31 + attempt
 						var r := _play(board, TSLevels.difficulty_for_level(lvl), TSLevels.rules_for_level(lvl), rng, bot, TSLevels.piece_budget(lvl))
@@ -201,7 +201,7 @@ func _initialize() -> void:
 				var n := int(args[2]) if args.size() > 2 else 40
 				var egg := TSBoard.new()
 				egg.generate(TSLevels.challenge_seed(after), rules)
-				egg.shape_terrain(str(rules.get("terrain", "")), TSLevels.challenge_seed(after))
+				egg.shape_terrain(str(rules.get("terrain", "")), TSLevels.challenge_seed(after), float(rules.get("terrain_low", TSBoard.TERRAIN_MAX_LOW)))
 				for i in n:
 					var rng := RandomNumberGenerator.new()
 					rng.seed = after * 7919 + i
@@ -226,7 +226,7 @@ func _initialize() -> void:
 			var rules := TSLevels.challenge_rules(after)
 			var egg := TSBoard.new()
 			egg.generate(TSLevels.challenge_seed(after), rules)
-			egg.shape_terrain(str(rules.get("terrain", "")), TSLevels.challenge_seed(after))
+			egg.shape_terrain(str(rules.get("terrain", "")), TSLevels.challenge_seed(after), float(rules.get("terrain_low", TSBoard.TERRAIN_MAX_LOW)))
 			var plays: Array = []
 			var win_drops: Array = []
 			for i in n:
@@ -251,6 +251,40 @@ func _initialize() -> void:
 			var med := int(win_drops[win_drops.size() / 2]) if base > 0 else 0
 			var p90 := int(win_drops[mini(int(0.9 * base), base - 1)]) if base > 0 else 0
 			print("CBUDGET %4d  base %3d%%  budget %3d  drops med %3d p90 %3d  pieces %s" % [after, roundi(100.0 * base / n), budget, med, p90, rules["pieces"]])
+		quit()
+		return
+	# `-- terrain 130,190 120,200 30 0.1`: the casual bot's win rate on these
+	# levels and the challenges after these, smooth and with their landscape
+	# (TSLevels.terrain_for_level / challenge_terrain), over 30 plays; the last
+	# sets TSLevels.TERRAIN_GENTLE_LOW, the ramped ones' cap.
+	if args.size() >= 3 and args[0] == "terrain":
+		var n := int(args[3]) if args.size() > 3 else 30
+		if args.size() > 4:
+			TSLevels.TERRAIN_GENTLE_LOW = float(args[4])
+		for lvl in _ints(args[1]):
+			var rates: Array = []
+			for smooth in [true, false]:
+				TSLevels.smooth_only = smooth
+				rates.append(_level(lvl, CASUAL, n))
+			TSLevels.smooth_only = false
+			print("TERRAIN level %3d %-9s smooth %3d%%  terrain %3d%%" % [lvl, TSLevels.terrain_for_level(lvl), roundi(100.0 * rates[0]), roundi(100.0 * rates[1])])
+		for after in _ints(args[2]):
+			var rates: Array = []
+			for smooth in [true, false]:
+				TSLevels.smooth_only = smooth
+				var rules := TSLevels.challenge_rules(after)
+				var egg := TSBoard.new()
+				egg.generate(TSLevels.challenge_seed(after), rules)
+				egg.shape_terrain(str(rules.get("terrain", "")), TSLevels.challenge_seed(after), float(rules.get("terrain_low", TSBoard.TERRAIN_MAX_LOW)))
+				var wins := 0
+				for i in n:
+					var rng := RandomNumberGenerator.new()
+					rng.seed = after * 7919 + i
+					if bool(_play(egg.clone(), TSLevels.challenge_tier(after), rules, rng, CASUAL)["win"]):
+						wins += 1
+				rates.append(float(wins) / n)
+			TSLevels.smooth_only = false
+			print("TERRAIN challenge after %3d %-9s smooth %3d%%  terrain %3d%%" % [after, TSLevels.challenge_terrain(after), roundi(100.0 * rates[0]), roundi(100.0 * rates[1])])
 		quit()
 		return
 	# `-- ramp 8`: the slow ramp past level 50 (TSLevels.ramp_step) -- for every
@@ -295,6 +329,13 @@ func _initialize() -> void:
 	quit()
 
 
+func _ints(csv: String) -> Array:
+	var out: Array = []
+	for x in csv.split(",", false):
+		out.append(int(x))
+	return out
+
+
 func _probe(levels: Array, shifts: int, trials: int) -> void:
 	for lvl in levels:
 		var rules := TSLevels.rules_for_level(lvl)
@@ -329,7 +370,7 @@ func _level(lvl: int, candidates: int, trials: int) -> float:
 			board.generate(TSLevels.seed_for_level(lvl), TSLevels.rules_for_level(lvl))
 		else:
 			board.load_dict(baked)
-		board.shape_terrain(str(TSLevels.rules_for_level(lvl).get("terrain", "")), TSLevels.seed_for_level(lvl))
+		board.shape_terrain(str(TSLevels.rules_for_level(lvl).get("terrain", "")), TSLevels.seed_for_level(lvl), float(TSLevels.rules_for_level(lvl).get("terrain_low", TSBoard.TERRAIN_MAX_LOW)))
 		var rng := RandomNumberGenerator.new()
 		rng.seed = lvl * 7919 + i
 		if bool(_play(board, TSLevels.difficulty_for_level(lvl), TSLevels.rules_for_level(lvl), rng, candidates)["win"]):
