@@ -196,6 +196,104 @@ func generate(seed_value: int, level: Dictionary) -> void:
 	cleared_blocks = 0
 
 
+# --- terrain -------------------------------------------------------------------
+#
+# A fresh shell is the same depth everywhere. Terrain (TSLevels.terrain_for_level)
+# gives an egg a landscape instead: plain pieces of the surface layer are
+# lifted out along a pattern -- grooves round the meridians, a belt round the
+# middle, a spiral, scattered pits, a zigzag -- so the egg looks different and
+# drops find new places to sink. Runs after the egg is built, baked or
+# generated, so the fifty baked eggs get it too. Only whole plain pieces go
+# (never a blocker, tie-down, geode, prism, padlock, key, vine or fog), and only
+# from the surface of a shell at least three deep, so every cell keeps two
+# layers; taking pieces away can't make a match (a match needs a dropped piece).
+
+const TERRAINS := ["meridians", "belt", "spiral", "pits", "zigzag"]
+const TERRAIN_MAX_LOW := 0.2   # the most of the egg a landscape may lower
+
+
+## Lifts the surface pieces that lie at least half inside `terrain`'s pattern.
+## Returns how many went. Same `seed_value`, same landscape.
+func shape_terrain(terrain: String, seed_value: int) -> int:
+	if terrain == "" or shell_depth < 3:
+		return 0
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash("terrain_%s_%d" % [terrain, seed_value])
+	var spot := _terrain_cells(terrain, rng)
+	var top := shell_depth - 1
+	var lifted: Array = []
+	for id in plate_kind:
+		var kind := int(plate_kind[id])
+		if kind == BLOCKER or kind == TIE or kind == GEODE or kind == WILD or id == key_piece or vined.has(id):
+			continue
+		var cols: Array = plate_cols[id]
+		var inside := 0
+		var ok := true
+		for v in cols:
+			var cell: Vector2i = v
+			if (cells[cell.x][cell.y] as Array).size() != shell_depth or top_piece(cell.x, cell.y) != id or fog.has(cell):
+				ok = false   # not a surface piece (or under fog)
+				break
+			if spot.has(cell):
+				inside += 1
+		if ok and depth_of(id) == top and inside * 2 >= cols.size():
+			lifted.append([float(inside) / float(cols.size()), id])
+	# The pieces most squarely in the pattern first, up to TERRAIN_MAX_LOW of the
+	# egg, so no landscape takes too big a bite out of the shell.
+	lifted.sort_custom(func(a, b): return a[0] > b[0] or (a[0] == b[0] and a[1] < b[1]))
+	var budget := int(TERRAIN_MAX_LOW * COLS * ROWS)
+	var gone := 0
+	for pair in lifted:
+		var id: int = pair[1]
+		var size := (plate_cols[id] as Array).size()
+		if size > budget:
+			continue
+		budget -= size
+		_remove_plate(id)
+		gone += 1
+	initial_blocks = count_blocks()
+	return gone
+
+
+## The cells a terrain lowers (Vector2i -> true), on the COLS x ROWS band; the
+## pattern is turned round the egg by a random step, so eggs that share one
+## still differ.
+func _terrain_cells(terrain: String, rng: RandomNumberGenerator) -> Dictionary:
+	var out := {}
+	var turn := rng.randi_range(0, COLS - 1)
+	match terrain:
+		"meridians":   # three grooves from cap to cap
+			for c in COLS:
+				if c % 7 < 2 and c < 19:
+					for r in ROWS:
+						out[Vector2i((c + turn) % COLS, r)] = true
+		"belt":        # a band round the middle, broken in two places
+			for c in COLS:
+				if (c + 3) % 10 >= 2:
+					for r in [3, 4]:
+						out[Vector2i((c + turn) % COLS, r)] = true
+		"spiral":      # a groove winding round the egg as it climbs
+			for c in COLS:
+				for r in ROWS:
+					if (c + 3 * r) % 10 < 3:
+						out[Vector2i((c + turn) % COLS, r)] = true
+		"pits":        # five 3x3 hollows, spread round the egg
+			for k in 5:
+				var c0 := (turn + k * 4 + rng.randi_range(0, 1)) % COLS
+				var r0 := rng.randi_range(1, ROWS - 4)
+				for dc in 3:
+					for dr in 3:
+						out[Vector2i((c0 + dc) % COLS, r0 + dr)] = true
+		"zigzag":      # a band that rises and falls round the egg
+			for c in COLS:
+				var phase := c % 8
+				var r0 := 2 + (phase if phase < 4 else 7 - phase)
+				for r in [r0, r0 + 1]:
+					if r < ROWS:
+						out[Vector2i((c + turn) % COLS, r)] = true
+	return out
+
+
 # --- pattern generator -------------------------------------------------------
 #
 # For the two-line levels (flat and upright lines), a hand-built layout that

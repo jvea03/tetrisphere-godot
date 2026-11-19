@@ -337,6 +337,46 @@ static func beginner_pair(level: int) -> Array:
 	return BEGINNER_PAIRS[before % BEGINNER_PAIRS.size()]
 
 
+## The egg's landscape (TSBoard.shape_terrain), for the big eggs only: every
+## other Extreme level (the 1st, 3rd, 5th... of them) and every other challenge
+## (after levels 40, 80, 120...; never the one that teaches them), so about
+## half of each keep the smooth shell. Lifting surface pieces breaks the pairs
+## a fresh shell is built around and opens the grey-heavy layer below, which
+## makes an egg a good deal harder (tests/sim.gd: an Intermediate egg went
+## from about 50% to under 15%). So a terrain egg needs a hole one cell
+## narrower (TERRAIN_HOLE_SMALLER) and deals its most useful piece a little
+## more often (TERRAIN_BIAS); with TSBoard.TERRAIN_MAX_LOW at 20% the casual
+## bot then wins level 37 about 10-20% (smooth 27%), 90 37% (37%), and the
+## challenges after 40 and 80 10% and 13% (10%, 17%; the careful bot 97%
+## both). Level 130, deep in the ramp, stays a wall at 3% (smooth 20%): watch
+## it, or give the ramped Extremes a smooth shell. "" for a smooth shell.
+const TERRAIN_BIAS := 0.05
+const TERRAIN_HOLE_SMALLER := 1   # the escape hole a terrain egg needs, this much narrower
+
+static func terrain_for_level(level: int) -> String:
+	if difficulty_for_level(level) != DIFF_EXTREME or is_debut(level):
+		return ""
+	var nth := 0   # which Extreme level this is, from 0
+	for l in range(1, level):
+		if difficulty_for_level(l) == DIFF_EXTREME:
+			nth += 1
+	if nth % 2 == 1:
+		return ""
+	@warning_ignore("integer_division")
+	return TSBoard.TERRAINS[(nth / 2) % TSBoard.TERRAINS.size()]
+
+
+static func challenge_terrain(after: int) -> String:
+	if after == CHALLENGE_TUTORIAL_AFTER or after < CHALLENGE_FIRST_AFTER:
+		return ""
+	@warning_ignore("integer_division")
+	var nth := (after - CHALLENGE_FIRST_AFTER) / CHALLENGE_EVERY
+	if nth % 2 == 1:
+		return ""
+	@warning_ignore("integer_division")
+	return TSBoard.TERRAINS[(nth / 2 + 2) % TSBoard.TERRAINS.size()]
+
+
 ## A level's full rules: its tier's, except where noted. Level 1's egg is
 ## only two layers deep (every other egg is three), so the critter is never
 ## far below -- a gentle first ball; levels 3, 4 and 6 have their own pieces
@@ -400,6 +440,15 @@ static func rules_for_level(level: int) -> Dictionary:
 	if step > 0:
 		rules["blocker_share"] = float(rules["blocker_share"]) + RAMP_GREY * step
 		rules["armor_share"] = minf(float(rules["armor_share"]) + RAMP_ARMOR * step, 0.9)
+	return _with_terrain(rules, terrain_for_level(level), difficulty_for_level(level))
+
+
+## A terrain egg's rules: the landscape, and the kinder deal that pays for it.
+static func _with_terrain(rules: Dictionary, terrain: String, tier: int) -> Dictionary:
+	if terrain != "":
+		rules["terrain"] = terrain
+		rules["common_bias"] = minf(float(rules["common_bias"]) + TERRAIN_BIAS, 0.95)
+		rules["escape_size"] = maxi(int(rules.get("escape_size", DIFFICULTIES[tier]["escape_size"])) - TERRAIN_HOLE_SMALLER, 2)
 	return rules
 
 
@@ -523,7 +572,7 @@ static func challenge_rules(after: int) -> Dictionary:
 	if step > 0:
 		rules["blocker_share"] = float(rules["blocker_share"]) + RAMP_GREY * step
 		rules["armor_share"] = minf(float(rules["armor_share"]) + RAMP_ARMOR * step, 0.9)
-	return rules
+	return _with_terrain(rules, challenge_terrain(after), DIFF_EXTREME)
 
 
 static func challenge_seed(after: int) -> int:
