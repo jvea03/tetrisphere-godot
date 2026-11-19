@@ -132,6 +132,7 @@ static func ad_skip_build(i: int) -> bool:
 	if not is_part_building(i) or is_part_build_done(i):
 		return false
 	part_builds[i]["end"] = maxi(int(part_builds[i]["end"]) - AD_SKIP_SECONDS, _now_unix())
+	TSAnalytics.design("Camp:Speedup:Ad:" + part_name(i).replace(" ", ""))
 	save()
 	return true
 
@@ -178,6 +179,7 @@ static func buy_no_ads_pass() -> void:
 	no_ads = true
 	is_payer = true
 	coin_count += NO_ADS_PASS_COINS
+	TSAnalytics.earned("Shop", "NoAdsPass", NO_ADS_PASS_COINS)
 	save()
 
 
@@ -730,6 +732,8 @@ static func critter_level_up_cost(i: int) -> int:
 static func unlock_critter(i: int) -> bool:
 	if is_critter_unlocked(i) or is_critter_hidden(i) or is_critter_pass_exclusive(i) or coin_count < critter_unlock_cost(i):
 		return false
+	TSAnalytics.spent("Critter", "Unlock", critter_unlock_cost(i))
+	TSAnalytics.design("Critter:Unlock:" + RARITY_NAMES[critter_rarity(i)], critter_unlock_cost(i))
 	coin_count -= critter_unlock_cost(i)
 	var level_before := collection_level()
 	critter_unlocked[i] = true
@@ -760,6 +764,8 @@ static func level_up_critter(i: int) -> bool:
 	if coin_count < cost:
 		return false
 	coin_count -= cost
+	TSAnalytics.spent("Critter", "LevelUp", cost)
+	TSAnalytics.design("Critter:LevelUp:" + RARITY_NAMES[critter_rarity(i)], critter_level_of(i) + 1)
 	var level_before := collection_level()
 	critter_level[i] += 1
 	save()
@@ -982,6 +988,7 @@ static func collect_mine() -> int:
 	if n <= 0:
 		return 0
 	add_materials(n)
+	TSAnalytics.earned("Mine", "Collect", 0, n)
 	mine_since = _now_unix()
 	mine_last_haul = n
 	save()
@@ -997,6 +1004,7 @@ static func double_mine_haul() -> int:
 	if n <= 0:
 		return 0
 	add_materials(n)
+	TSAnalytics.earned("Mine", "Double", 0, n)
 	mine_last_haul = 0
 	save()
 	return n
@@ -1065,6 +1073,8 @@ static func part_build_block(i: int) -> String:
 static func start_part_build(i: int) -> bool:
 	if part_build_block(i) != "":
 		return false
+	TSAnalytics.spent("Camp", part_name(i).replace(" ", ""), part_next_cost(i), part_next_materials(i))
+	TSAnalytics.design("Camp:Build:" + part_name(i).replace(" ", ""), part_level[i] + 1)
 	coin_count -= part_next_cost(i)
 	materials -= part_next_materials(i)
 	part_builds[i] = {"end": _now_unix() + part_build_seconds(i), "critter": int(free_builders()[0])}
@@ -1085,6 +1095,7 @@ static func _complete_build(i: int) -> void:
 	part_builds.erase(i)
 	_fill_parts()
 	part_level[i] = mini(part_level[i] + 1, PART_MAX_LEVEL)
+	TSAnalytics.design("Camp:Built:" + part_name(i).replace(" ", ""), part_level[i])
 
 
 ## Coins to finish a build now: BUILD_SKIP_COINS_PER_MINUTE a minute left.
@@ -1107,6 +1118,7 @@ static func use_time_skips(i: int, n: int) -> int:
 	if used <= 0:
 		return 0
 	time_skips -= used
+	TSAnalytics.design("Camp:Speedup:TimeSkips", used)
 	part_builds[i]["end"] = int(part_builds[i]["end"]) - used * TIME_SKIP_SECONDS
 	save()
 	return used
@@ -1119,6 +1131,9 @@ static func skip_part_build(i: int) -> bool:
 	if coin_count < cost:
 		return false
 	coin_count -= cost
+	TSAnalytics.spent("Camp", "Speedup", cost)
+	if cost > 0:
+		TSAnalytics.design("Camp:Speedup:Coins", cost)
 	_complete_build(i)
 	save()
 	return true
@@ -1235,6 +1250,7 @@ static func take_voyage() -> int:
 	last_voyage_ship_ready = is_ship_ready()
 	var reward := boost_earned_coins(launch_reward())
 	coin_count += reward
+	TSAnalytics.earned("Voyage", "Return", reward)
 	part_builds.clear()   # a new planet: every builder is free
 	for i in PART_COUNT:
 		part_level[i] = 0
@@ -1276,6 +1292,7 @@ static func open_present() -> Dictionary:
 	var gift := {"coins": randi_range(2, 6) * 50} if randf() < 0.6 else {"materials": randi_range(2, 6) * 10}
 	coin_count += boost_earned_coins(int(gift.get("coins", 0)))
 	add_materials(int(gift.get("materials", 0)))
+	TSAnalytics.earned("Present", "Open", int(gift.get("coins", 0)), int(gift.get("materials", 0)))
 	save()
 	return gift
 
@@ -1315,6 +1332,7 @@ static func claim_collection_gift() -> int:
 		return 0
 	collection_gift_claimed = true
 	coin_count += COLLECTION_GIFT_COINS
+	TSAnalytics.earned("Collection", "Gift", COLLECTION_GIFT_COINS)
 	save()
 	return COLLECTION_GIFT_COINS
 
@@ -1535,6 +1553,7 @@ static func create_club(new_name: String, icon: int = 0) -> bool:
 	if has_club or not is_valid_club_name(trimmed) or coin_count < CLUB_CREATE_COST:
 		return false
 	coin_count -= CLUB_CREATE_COST
+	TSAnalytics.spent("Club", "Create", CLUB_CREATE_COST)
 	has_club = true
 	club_name = trimmed
 	club_is_owner = true
@@ -1856,6 +1875,7 @@ static func claim_login_reward() -> int:
 		return 0
 	var reward := login_reward_amount()
 	coin_count += reward
+	TSAnalytics.earned("Daily", "Login", reward)
 	login_reward_claimed_date = login_streak_last_date
 	login_reward_claimed_amount = reward
 	save()
@@ -1876,6 +1896,7 @@ static func double_login_reward() -> int:
 	if not can_double_login_reward():
 		return 0
 	coin_count += login_reward_claimed_amount
+	TSAnalytics.earned("Daily", "LoginDouble", login_reward_claimed_amount)
 	login_reward_doubled_date = TSClock.date_string()
 	save()
 	return login_reward_claimed_amount
@@ -1895,6 +1916,7 @@ static func claim_daily_reward() -> int:
 		return 0
 	var reward := daily_reward_amount()
 	coin_count += reward
+	TSAnalytics.earned("Daily", "Reward", reward)
 	daily_reward_claimed_date = daily_streak_last_date
 	save()
 	return reward
@@ -1968,6 +1990,7 @@ static func claim_board_prizes() -> int:
 		total += int(p["coins"])
 	pending_board_prizes = []
 	coin_count += total
+	TSAnalytics.earned("Leaderboard", "Prize", total)
 	if total > 0:
 		save()
 	return total
@@ -2113,6 +2136,7 @@ static var coin_notices: Array[Dictionary] = []
 static func note_coins(label: String, coins: int) -> void:
 	if coins > 0:
 		coin_notices.append({"label": label, "coins": coins})
+		TSAnalytics.earned("Event", label.get_slice(" Day", 0).replace(" ", ""), coins)   # "Eggsperience Day 3" -> Eggsperience
 
 
 ## Settles every board whose day, week or season has rolled over.
@@ -2131,7 +2155,9 @@ static func settle_boards() -> void:
 ## stars awarded (0 before the pass opens -- the coins are still paid).
 static func add_stars(lives_remaining: int, bonus: int = 0, difficulty: int = 0) -> int:
 	var earned: int = maxi(lives_remaining, 0) + maxi(bonus, 0)
-	coin_count += win_coin_payout(earned, difficulty)
+	var win_coins := win_coin_payout(earned, difficulty)
+	coin_count += win_coins
+	TSAnalytics.earned("Level", "Win", win_coins)
 	if not stars_open():
 		save()
 		return 0
@@ -2409,6 +2435,7 @@ static func _collect_reward(reward: Dictionary) -> void:
 	var s := battle_pass_auto_claimed
 	var before := {"coins": coin_count, "materials": materials, "skips": time_skips, "bomb": bomb_count, "pass_tickets": pass_tickets}
 	_apply_reward(reward)
+	TSAnalytics.earned("BattlePass", "SeasonEnd", coin_count - int(before["coins"]), materials - int(before["materials"]))
 	s["coins"] = int(s.get("coins", 0)) + coin_count - int(before["coins"])
 	s["materials"] = int(s.get("materials", 0)) + materials - int(before["materials"])
 	s["skips"] = int(s.get("skips", 0)) + time_skips - int(before["skips"])
@@ -2524,6 +2551,7 @@ static func purchase_battle_pass_tier() -> bool:
 		return false
 	var tier := battle_pass_tier()
 	coin_count -= cost
+	TSAnalytics.spent("BattlePass", "Tier", cost)
 	battle_pass_xp = battle_pass_stars_for_tier(tier + 1)
 	save()
 	return true
@@ -2732,6 +2760,7 @@ static func claim_battle_pass_bonus() -> Dictionary:
 	_apply_reward(battle_pass_bonus_reward(battle_pass_purchased))
 	battle_pass_bonus_claimed += 1
 	save()
+	TSAnalytics.earned("BattlePass", "BonusChest", coin_count - coins_was, materials - mats_was)
 	return {"coins": coin_count - coins_was, "materials": materials - mats_was}   # as paid, coin boosts and all
 
 
@@ -2740,6 +2769,7 @@ static func claim_battle_pass_free(tier: int) -> Dictionary:
 		return {}
 	var reward := battle_pass_free_reward(tier)
 	_apply_reward(reward)
+	TSAnalytics.earned("BattlePass", "Free", int(reward.get("coins", 0)), int(reward.get("materials", 0)))
 	battle_pass_free_claimed[tier - 1] = true
 	save()
 	return reward
@@ -2750,6 +2780,7 @@ static func claim_battle_pass_paid(tier: int) -> Dictionary:
 		return {}
 	var reward := battle_pass_paid_reward(tier)
 	_apply_reward(reward)
+	TSAnalytics.earned("BattlePass", "Premium", int(reward.get("coins", 0)), int(reward.get("materials", 0)))
 	battle_pass_paid_claimed[tier - 1] = true
 	save()
 	return reward

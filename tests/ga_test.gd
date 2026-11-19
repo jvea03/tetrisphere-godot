@@ -71,6 +71,34 @@ func _run() -> void:
 	_check("a failed purchase is not", _events("business").size() == 1)
 	_check("every event carries the platform and who sees ads", GA._queue.all(func(e: Dictionary) -> bool: return e["platform"] == "android" and e["custom_01"] in ["free", "payer", "noads"]))
 
+	# The economy: coins and materials in and out, as resource events.
+	TSProfile.coin_count = 10000000
+	TSProfile.materials = 1000000
+	var critter := -1
+	for i in TSProfile.CRITTER_COUNT:
+		if not TSProfile.is_critter_unlocked(i) and not TSProfile.is_critter_hidden(i) and not TSProfile.is_critter_pass_exclusive(i):
+			critter = i
+			break
+	var price := TSProfile.critter_unlock_cost(critter)
+	TSProfile.unlock_critter(critter)
+	var spend := _last("resource")
+	_check("buying a critter is a coin sink (%s)" % spend, str(spend.get("event_id", "")) == "Sink:Coins:Critter:Unlock" and int(spend.get("amount", 0)) == price)
+	_check("and a design event by its rarity", _events("design").any(func(e: Dictionary) -> bool: return str(e["event_id"]).begins_with("Critter:Unlock:")))
+	var part := -1
+	for i in TSProfile.PART_COUNT:
+		if TSProfile.part_build_block(i) == "":
+			part = i
+			break
+	var part_id := TSProfile.part_name(part).replace(" ", "")
+	TSProfile.start_part_build(part)
+	_check("a build spends coins and materials on its part (%s)" % part_id, _has("resource", "Sink:Coins:Camp:" + part_id) and _has("resource", "Sink:Materials:Camp:" + part_id))
+	_check("and says which part and level", _has("design", "Camp:Build:" + part_id))
+	TSProfile.skip_part_build(part)
+	_check("finishing it says so", _has("design", "Camp:Built:" + part_id))
+	var before := _events("resource").size()
+	TSProfile.add_stars(2)
+	_check("a win's coins are a source", _events("resource").size() > before and _has("resource", "Source:Coins:Level:Win"))
+
 	# The UK and nearby: nothing until a yes.
 	GA.set_opt_out(true)
 	_check("opting out stops it and drops what waited", not GA.enabled and GA._queue.is_empty())

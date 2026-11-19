@@ -453,6 +453,7 @@ func _booster_card(id: String) -> Control:
 		if TSProfile.coin_count < cost:
 			return
 		TSProfile.coin_count -= cost
+		TSAnalytics.spent("Booster", str(id).capitalize(), cost)
 		TSProfile.add_boosters(id, TSProfile.BOMB_PACK_AMOUNT)
 		TSProfile.save()
 		_celebrate()
@@ -583,9 +584,11 @@ func _grant_starter(p: Dictionary) -> void:
 	if p.has("materials"):
 		TSProfile.starter_material_claims += 1
 		TSProfile.add_materials(int(p["materials"]))
+		TSAnalytics.earned("Shop", "DailyFree", 0, int(p["materials"]))
 	else:
 		TSProfile.starter_coin_claims += 1
 		TSProfile.coin_count += int(p["coins"])
+		TSAnalytics.earned("Shop", "DailyFree", int(p["coins"]))
 	TSProfile.save()
 
 

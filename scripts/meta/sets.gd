@@ -78,6 +78,7 @@ static func claim(s: Dictionary) -> int:
 		return 0
 	var coins := TSProfile.boost_earned_coins(reward(s))
 	TSProfile.coin_count += coins
+	TSAnalytics.earned("Collection", "Set", coins)
 	TSProfile.sets_claimed.append(s["id"])
 	TSProfile.save()
 	return coins

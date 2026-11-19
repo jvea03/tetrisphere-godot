@@ -155,6 +155,7 @@ static func open(i: int) -> Dictionary:
 	TSProfile.coin_count += coins
 	var mats := randi_range(int(MATERIAL_PAYOUT[rarity][0]), int(MATERIAL_PAYOUT[rarity][1]))
 	TSProfile.add_materials(mats)
+	TSAnalytics.earned("Chest", DISPLAY_NAMES[rarity], coins, mats)
 	slots[i] = {}
 	TSProfile.record_quest_event("chest")
 	TSProfile.save()
@@ -237,6 +238,7 @@ static func skip_unlock(i: int) -> bool:
 	if TSProfile.coin_count < cost:
 		return false
 	TSProfile.coin_count -= cost
+	TSAnalytics.spent("Chest", "Speedup", cost)
 	slots[i]["unlock_end"] = _now()
 	TSProfile.save()
 	return true
@@ -248,6 +250,7 @@ static func ad_skip(i: int) -> bool:
 	if not is_unlocking(i):
 		return false
 	slots[i]["unlock_end"] = maxi(int(slots[i]["unlock_end"]) - TSProfile.AD_SKIP_SECONDS, _now())
+	TSAnalytics.design("Chest:Speedup:Ad")
 	TSProfile.save()
 	return true
 

@@ -2411,6 +2411,7 @@ func _pay_win() -> void:
 	_win_materials = TSProfile.win_materials(is_daily)
 	TSProfile.add_materials(_win_materials)
 	_win_chest = "" if is_daily else TSChests.record_win()
+	TSAnalytics.earned("Level", "Win", 0, _win_materials)
 	_win_ad_due = false if is_daily or is_challenge else _take_interstitial_skip(_roll_interstitial())
 	if _win_ad_due:
 		TSAnalytics.event("ad_inter_due", {"level": current_level})   # shown / owed / bought_off should follow
@@ -2426,6 +2427,7 @@ func _pay_win() -> void:
 		var prize := TSProfile.boost_earned_coins(TSLevels.CHALLENGE_BONUS_COINS)
 		TSProfile.coin_count += prize
 		_win_prize = prize   # the challenge card shows it on its own trophy plate
+		TSAnalytics.earned("Challenge", "Bonus", prize)
 	else:
 		TSProfile.record_quest_event("win")
 		TSProfile.won_since_home = true
@@ -2926,6 +2928,7 @@ func _double_win_coins(button: Button, coin_amount: Label) -> void:
 	TSAdReward.watch(_hud, button, func():
 		TSProfile.coin_count += coins + prize
 		TSProfile.use_ad_reward("win_coins"),
+		TSAnalytics.earned("Ad", "DoubleWin", coins + prize)
 	func():
 		if not TSProfile.no_ads:   # a free double (No Ads) buys nothing off
 			if _win_ad_due:
@@ -3205,6 +3208,7 @@ func _buy_continue() -> void:
 		return
 	TSProfile.coin_count -= cost
 	continues_bought += 1
+	TSAnalytics.spent("Level", "Continue", cost)
 	TSProfile.save()
 	_revive(LIVES)
 
@@ -3247,6 +3251,7 @@ func _buy_challenge_time() -> void:
 		return
 	TSProfile.coin_count -= TSLevels.CHALLENGE_BUYOUT_COINS
 	TSProfile.save()
+	TSAnalytics.spent("Level", "ChallengeTime", TSLevels.CHALLENGE_BUYOUT_COINS)
 	challenge_left = float(TSLevels.CHALLENGE_BUYOUT_SECONDS)
 	_revive(mini(lives + 1, LIVES))
 
@@ -3391,6 +3396,7 @@ func _on_ad_buy() -> void:
 		return
 	TSProfile.coin_count -= cost
 	TSProfile.add_boosters(_ad_reward, TSProfile.booster_buy_count(_ad_reward))
+	TSAnalytics.spent("Booster", str(_ad_reward).capitalize(), cost)
 	TSProfile.save()
 	TSSfx.play("upgrade")
 	_close_ad()

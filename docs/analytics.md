@@ -78,6 +78,24 @@ have them). The recipe, for another platform:
 Every event carries `custom_01` = `free` / `payer` / `noads`, to split any chart by
 who sees ads. Keep `PRICE_CENTS` in step with the store prices.
 
+## The economy (resource events)
+
+Added 19 Nov 2026, via `TSAnalytics.spent()` / `earned()` (GameAnalytics only).
+GameAnalytics -> Resources shows coins and materials (currencies `Coins`, `Materials`)
+flowing in (Source) and out (Sink), by type and item:
+
+| Sink (spent on) | Source (earned from) |
+|---|---|
+| `Camp:<part>` (a build or upgrade: coins and materials), `Camp:Speedup` | `Level:Win` (coins and materials), `Challenge:Bonus`, `Ad:DoubleWin` |
+| `Critter:Unlock`, `Critter:LevelUp` | `Chest:<rarity>`, `BattlePass:Free/Premium/BonusChest/SeasonEnd` |
+| `Chest:Speedup`, `BattlePass:Tier`, `Club:Create` | `Daily:Login/LoginDouble/Reward`, `Mine:Collect/Double`, `Voyage:Return`, `Present:Open` |
+| `Booster:<kind>` (shop or in-level), `Level:Continue`, `Level:ChallengeTime` | `Collection:Gift/Set`, `Leaderboard:Prize`, `Inbox:Gift`, `Event:<name>`, `Shop:Purchase/DailyFree/NoAdsPass` |
+
+Design events alongside: `Camp:Build:<part>` (value: the level it is going to),
+`Camp:Built:<part>` (value: the level reached), `Camp:Speedup:Coins|TimeSkips|Ad:<part>`,
+`Chest:Speedup:Ad`, `Critter:Unlock:<rarity>` (value: price), `Critter:LevelUp:<rarity>`
+(value: the new level). Pass and present amounts are before coin boosts; the rest as paid.
+
 ## What it never sends
 The advertising ID, the leaderboard name, anything typed, location, contacts,
 payment details. The random user id lives in `user://analytics_state.cfg`.

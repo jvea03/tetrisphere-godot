@@ -174,6 +174,7 @@ func _grant(product_id: String) -> void:
 		return
 	TSProfile.coin_count += int(p.get("coins", 0))
 	TSProfile.add_materials(int(p.get("materials", 0)))
+	TSAnalytics.earned("Shop", "Purchase", int(p.get("coins", 0)), int(p.get("materials", 0)))
 	TSProfile.time_skips += int(p.get("skips", 0))
 	if int(p.get("bomb", 0)) > 0:
 		TSProfile.bomb_count += int(p["bomb"])

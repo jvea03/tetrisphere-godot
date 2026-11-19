@@ -71,6 +71,7 @@ static func claim(m: Dictionary) -> void:
 	var rewards: Dictionary = m["rewards"]
 	TSProfile.coin_count += int(rewards.get("coins", 0))
 	TSProfile.add_materials(int(rewards.get("materials", 0)))
+	TSAnalytics.earned("Inbox", "Gift", int(rewards.get("coins", 0)), int(rewards.get("materials", 0)))
 	TSProfile.time_skips += int(rewards.get("skips", 0))
 	TSProfile.tier_skips += int(rewards.get("tier_skips", 0))
 	TSProfile.pass_tickets += int(rewards.get("pass_tickets", 0))

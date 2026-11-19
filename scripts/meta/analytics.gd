@@ -65,6 +65,33 @@ static func ga() -> Node:
 	return tree.root.get_node_or_null("GA") if tree != null else null
 
 
+## The economy, as GameAnalytics resource events (its Resources dashboard):
+## coins and materials spent on `item_type`/`item_id` ("Camp"/"Engine",
+## "Critter"/"Unlock") and earned from `source_type`/`source_id` ("Level"/"Win",
+## "Chest"/"Rare"). GameAnalytics only, under the same rules as the rest.
+static func spent(item_type: String, item_id: String, coins: int, materials := 0) -> void:
+	var g := ga()
+	if g == null or not g.enabled:
+		return
+	g.resource("Sink", item_type, item_id, coins, "Coins")
+	g.resource("Sink", item_type, item_id, materials, "Materials")
+
+
+static func earned(source_type: String, source_id: String, coins: int, materials := 0) -> void:
+	var g := ga()
+	if g == null or not g.enabled:
+		return
+	g.resource("Source", source_type, source_id, coins, "Coins")
+	g.resource("Source", source_type, source_id, materials, "Materials")
+
+
+## A GameAnalytics design event ("Camp:Build:Engine", "Critter:Unlock:Rare").
+static func design(event_id: String, value = null) -> void:
+	var g := ga()
+	if g != null and g.enabled:
+		g.design(event_id, value)
+
+
 ## Firebase's event names, as GameAnalytics design ids ("ad_inter_owed" ->
 ## "Ad:Interstitial:Owed"). Levels go as progression events instead.
 const GA_NAMES := {
