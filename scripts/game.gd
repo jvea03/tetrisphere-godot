@@ -956,15 +956,20 @@ func _throw_rocks(from: Vector2, targets: Array) -> void:
 	_rocks_shot += 1
 	var shot := _rocks_shot
 	var flights: Array = []
+	var spots: Array = []    # where each lands on the egg (unit, from its middle), for the wobble
 	for group in targets:
 		var aim := from
+		var spot := _camera.position.normalized()
 		for id in group:
 			var cols: Array = board.plate_cols[id]
 			var v: Vector2i = cols[cols.size() / 2]
 			if board.top_piece(v.x, v.y) == int(id):
-				aim = _camera.unproject_position(TSBoardView.cell_transform(v.x, v.y, float(board.cells[v.x][v.y].size())).origin)
+				var top := TSBoardView.cell_transform(v.x, v.y, float(board.cells[v.x][v.y].size())).origin
+				aim = _camera.unproject_position(top)
+				spot = top.normalized()
 				break
 		flights.append(aim)
+		spots.append(spot)
 	var landed := [0]
 	for i in flights.size():
 		var rock := TSIcon.make("rocks", 64.0)
@@ -986,6 +991,7 @@ func _throw_rocks(from: Vector2, targets: Array) -> void:
 		tw.tween_method(trail, 0.0, 1.0, 0.38)
 		tw.set_parallel(false)
 		var hit: Vector2 = flights[i]
+		var hit_dir: Vector3 = spots[i]
 		tw.tween_callback(func() -> void:
 			# It lands: a dusty impact, chips flying, and a small jolt.
 			TSSfx.play("rock_hit", randf_range(0.9, 1.08))
@@ -993,6 +999,7 @@ func _throw_rocks(from: Vector2, targets: Array) -> void:
 				_fx.puff(hit + Vector2(randf_range(-24.0, 24.0), randf_range(-16.0, 16.0)), ROCK_DUST, 18.0, 0.55, Vector2(randf_range(-70.0, 70.0), -40.0))
 			_fx.burst(hit, [Color(0.6, 0.58, 0.64), Color(0.74, 0.7, 0.78)], 10, 420.0, 0.5, 5.0, 900.0)
 			_shake_screen(0.16)
+			_wobble_egg(hit_dir, 0.8, true)
 			rock.queue_free()
 			landed[0] += 1
 			if landed[0] == flights.size():
@@ -1274,6 +1281,7 @@ func _bomb_lands(cell: Vector2i, at: Vector2) -> void:
 		return
 	var res := board.detonate(cell, 2)
 	_bomb_blast(at)
+	_wobble_egg(TSBoardView.cell_transform(cell.x, cell.y, 0.0).origin.normalized(), 1.7, true)
 	_creature.react(TSCreature.Mood.SCARED, 1.0)   # startled
 	TSSfx.play("bomb")
 	TSHaptics.heavy()
@@ -1875,25 +1883,37 @@ func _on_creature_bumped(dir: Vector3) -> void:
 	if view == null or not _creature.visible:
 		return
 	TSSfx.play("knock", randf_range(0.7, 0.82))
-	var axis := Vector3.UP.cross(dir)
-	axis = axis.normalized() if axis.length() > 0.1 else Vector3.RIGHT
-	if _egg_wobble and _egg_wobble.is_valid():
-		_egg_wobble.kill()
-	_egg_wobble = create_tween()
-	# Tips away from the knock and rocks back and forth, bulging toward the
-	# spot for an instant, as if something inside shoved it.
-	_egg_wobble.tween_method(func(t: float) -> void:
-		var tip := Basis(axis, 0.13 * sin(t * 26.0) * exp(-t * 5.0))
-		var bulge := 0.05 * exp(-t * 14.0)
-		var k := 1.0 - bulge * 0.4   # a little thinner across, longer toward the knock
-		var stretch := Basis(Vector3(k, 0, 0) + dir * dir.x * bulge, Vector3(0, k, 0) + dir * dir.y * bulge, Vector3(0, 0, k) + dir * dir.z * bulge)
-		view.basis = tip * stretch, 0.0, 0.8, 0.8)
+	_wobble_egg(dir)
 	# A puff of dust and a few stars where it hit, if that side is in view.
 	var spot := dir * view.max_radius
 	if dir.dot(_camera.position.normalized()) > -0.2 and not _camera.is_position_behind(spot):
 		var at := _camera.unproject_position(spot)
 		_fx.burst(at, [Color(0.95, 0.9, 0.8), Color(0.85, 0.78, 0.66)], 11, 190.0, 0.5, 9.0, 120.0)
 		_fx.burst(at, [TSUI.GOLD, Color(1.0, 1.0, 0.85)], 5, 130.0, 0.65, 12.0, 0.0, true)
+
+
+## The egg rocks on the spot from a knock toward `dir` (unit, from its middle):
+## it tips and rocks back and forth, dying away, and for an instant bulges
+## toward the spot (a shove from inside: the critter) or, with `dent`, flattens
+## there (a hit from outside: a bomb, a rock). `strength` 1 is the critter's
+## bonk. A new knock takes over from one still rocking.
+func _wobble_egg(dir: Vector3, strength := 1.0, dent := false) -> void:
+	if view == null:
+		return
+	var axis := Vector3.UP.cross(dir)
+	axis = axis.normalized() if axis.length() > 0.1 else Vector3.RIGHT
+	if dent:
+		axis = -axis   # pushed from outside: tips the other way
+	if _egg_wobble and _egg_wobble.is_valid():
+		_egg_wobble.kill()
+	_egg_wobble = create_tween()
+	var push := (-1.0 if dent else 1.0) * 0.05 * strength
+	_egg_wobble.tween_method(func(t: float) -> void:
+		var tip := Basis(axis, 0.13 * strength * sin(t * 26.0) * exp(-t * 5.0))
+		var bulge := push * exp(-t * 14.0)
+		var k := 1.0 - bulge * 0.4   # a little thinner across, longer toward the knock
+		var stretch := Basis(Vector3(k, 0, 0) + dir * dir.x * bulge, Vector3(0, k, 0) + dir * dir.y * bulge, Vector3(0, 0, k) + dir * dir.z * bulge)
+		view.basis = tip * stretch, 0.0, 0.8, 0.8)
 	_egg_wobble.tween_callback(func() -> void: view.basis = Basis.IDENTITY)
 
 
