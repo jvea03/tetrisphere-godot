@@ -183,6 +183,7 @@ const SHIMMER_CLEAR := 12   # blocks in one clear for the sparkle on top of the 
 const COUNT_TICKS := 8    # coin ticks while the win card's coins count up
 var _shake := 0.0           # how hard the camera shakes, in world units, fading out
 var _egg_wobble: Tween      # the egg rocking after the critter bonks into its shell
+var _wobble_step := 0       # the chain wave that last rocked the egg (one rock per wave)
 var _sparkle_clock := 0.0   # paces the armed bomb's fuse sparks and the Any Piece's shimmer
 var _swap_flyer: Control    # the Any Piece's icon while it flies to the tray
 var _pause_btn: Button
@@ -3857,7 +3858,8 @@ func _apply_sky() -> void:
 ## A block cracking on the ball (TSBoardView.tile_popped): sparks in its
 ## colour -- for stone, a pale puff of dust and a few chips -- with a pop that
 ## climbs in pitch with each wave of a chain, a little shockwave and a nudge of
-## the camera once per beat. A clear shares one budget of sparks between its
+## the camera once per beat (and, in a chain, the egg rocking: _wobble_egg).
+## A clear shares one budget of sparks between its
 ## blocks, so a big one sparkles instead of turning to fog. Blocks round the
 ## back of the egg pop unseen, so they throw nothing over the front.
 func _on_tile_popped(at: Vector3, outward: Vector3, kind: int, step: int, total: int, event: String) -> void:
@@ -3939,6 +3941,13 @@ func _on_tile_popped(at: Vector3, outward: Vector3, kind: int, step: int, total:
 			_shimmer_clock = now
 			TSSfx.play("shimmer", pitch)
 		_shake_screen(0.05 + 0.02 * float(mini(step, 4)))
+		# A chain: from its second wave on, each wave bounces the egg out where
+		# it pops, a little harder each time.
+		if step <= 1:
+			_wobble_step = 0
+		elif step != _wobble_step:
+			_wobble_step = step
+			_wobble_egg(outward, 0.45 + 0.15 * float(mini(step, 5)))
 		if seen:
 			_fx.ring(p, Color(colour.lightened(0.5), 0.9), 10.0, 70.0 + 10.0 * float(mini(step, 4)), 0.3)
 	if not seen:
