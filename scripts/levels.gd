@@ -338,7 +338,8 @@ static func beginner_pair(level: int) -> Array:
 
 
 ## The egg's landscape (TSBoard.shape_terrain), for the big eggs only: every
-## other Extreme level (the 1st, 3rd, 5th... of them) and every other challenge
+## other Extreme level before the ramp (levels 37 and 90; from LEVEL_LOOP_START +
+## RAMP_EVERY on the ramp keeps them smooth) and every other challenge
 ## (after levels 40, 80, 120...; never the one that teaches them), so about
 ## half of each keep the smooth shell. Lifting surface pieces breaks the pairs
 ## a fresh shell is built around and opens the grey-heavy layer below, which
@@ -348,13 +349,15 @@ static func beginner_pair(level: int) -> Array:
 ## more often (TERRAIN_BIAS); with TSBoard.TERRAIN_MAX_LOW at 20% the casual
 ## bot then wins level 37 about 10-20% (smooth 27%), 90 37% (37%), and the
 ## challenges after 40 and 80 10% and 13% (10%, 17%; the careful bot 97%
-## both). Level 130, deep in the ramp, stays a wall at 3% (smooth 20%): watch
-## it, or give the ramped Extremes a smooth shell. "" for a smooth shell.
+## both). Level 130, deep in the ramp, was a wall at 3% (smooth 20%), so ramped
+## Extremes keep the smooth shell. "" for a smooth shell.
 const TERRAIN_BIAS := 0.05
 const TERRAIN_HOLE_SMALLER := 1   # the escape hole a terrain egg needs, this much narrower
 
 static func terrain_for_level(level: int) -> String:
-	if difficulty_for_level(level) != DIFF_EXTREME or is_debut(level):
+	# Past the loop's start the ramp adds grey and armour, and a landscape on top
+	# made a wall of it (level 130: 3%, smooth 20%), so ramped Extremes stay smooth.
+	if difficulty_for_level(level) != DIFF_EXTREME or is_debut(level) or ramp_step(level) > 0:
 		return ""
 	var nth := 0   # which Extreme level this is, from 0
 	for l in range(1, level):
