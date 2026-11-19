@@ -13,7 +13,7 @@ These are in `store/ugc/clips/`. Each is vertical 720 x 1280 at 30 fps, with the
 music and sound effects. None has captions or an end card, so creators can add their own text
 and talk over them.
 
-| File | What happens | Use it for |
+| File (`.mp4` and `.avi`) | What happens | Use it for |
 |---|---|---|
 | `egg_escape_ugc_01_gameplay_rescue.avi` | Level 8: the egg spins, blocks drop and pop, the critter escapes, and the "Rescued!" card shows | The core loop, the hook |
 | `egg_escape_ugc_02_gameplay_chains.avi` | Level 33: matches set off chain reactions | "So satisfying" moments |
@@ -25,10 +25,10 @@ and talk over them.
 | `egg_escape_ugc_08_critters.avi` | The Collection, full, scrolling slowly from top to bottom | Critters, collecting |
 | `egg_escape_ugc_09_critter_parade.avi` | Every critter hops across the camp, then they all pop in to fill the screen | Critters, the ending shot |
 
-The gameplay clips run about 10 to 25 seconds, the camp clip about 20 and the Collection about
-14. A bot plays the levels, so each recording comes out a little different. AVI opens in
-CapCut, Premiere, DaVinci Resolve and Clipchamp. To send smaller files, convert them to MP4
-(HandBrake, for example).
+Each clip comes as the raw AVI (35-80 MB) and an H.264/AAC MP4 (7-20 MB). Send creators the
+MP4s. The gameplay clips run 10-26 seconds, the camp 22, the Collection 14 and the parade 17. A
+bot plays the levels, so each recording comes out a little different. The script makes the MP4s
+when FFmpeg is installed (`winget install Gyan.FFmpeg`).
 
 To rebuild them, or just one, use `-Only 07`:
 
@@ -60,10 +60,10 @@ For TikTok and Reels. Fast and gameplay first.
 | Time | On screen | Voiceover / text |
 |---|---|---|
 | 0-2 s | Clip 01, the egg spinning | **Text:** "there's a critter stuck in this egg" / **VO:** "Okay, there's a little critter stuck inside this egg..." |
-| 2-8 s | Clip 01, blocks dropping and popping | "...and I have to spin it and match blocks to dig it out." |
-| 8-11 s | Clip 01, the critter escaping | "AND HE'S FREE." (a genuine reaction) |
-| 11-13 s | Clip 08, critters scrolling | "And now I have to collect all of them." |
-| 13-15 s | Clip 09's finale | **Text:** "Egg Escape, free on iPhone and Android" |
+| 2-6 s | Clip 01, blocks dropping and popping | "...and I have to spin it and match blocks to dig it out." |
+| 6-9 s | Clip 01, the critter escaping | "AND HE'S FREE." (a genuine reaction) |
+| 9-12 s | Clip 08, critters scrolling | "And now I have to collect all of them." |
+| 12-15 s | Clip 09's finale | **Text:** "Egg Escape, free on iPhone and Android" |
 
 ## Script B: "Why I can't stop playing this" (30 seconds)
 

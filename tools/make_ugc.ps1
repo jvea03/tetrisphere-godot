@@ -24,6 +24,11 @@ $clips = @(
 	@("08_critters",        @("--clip=critters")),
 	@("09_critter_parade",  @("--parade"))
 )
+# FFmpeg (winget install Gyan.FFmpeg), if installed, makes the MP4s.
+$ffmpeg = (Get-Command ffmpeg -ErrorAction SilentlyContinue).Source
+if (-not $ffmpeg) {
+	$ffmpeg = (Get-ChildItem "$env:LOCALAPPDATA\Microsoft\WinGet\Packages" -Recurse -Filter ffmpeg.exe -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
+}
 $override = Join-Path $root "override.cfg"
 try {
 	@"
@@ -44,6 +49,11 @@ movie_writer/mjpeg_quality=0.92
 		if ($Snaps -ne "") { $a += "--snaps=$Snaps/$name"; New-Item -ItemType Directory -Force "$Snaps/$name" | Out-Null }
 		& $Godot @a 2>&1 | Out-Null
 		Write-Output "CLIP $file $((Get-Item $file).Length) bytes"
+		if ($ffmpeg) {   # an H.264 MP4 beside it, the copy creators get
+			$mp4 = [IO.Path]::ChangeExtension($file, ".mp4")
+			& $ffmpeg -y -loglevel error -i $file -c:v libx264 -preset slow -crf 18 -pix_fmt yuv420p -c:a aac -b:a 192k -movflags +faststart $mp4
+			Write-Output "MP4  $mp4 $((Get-Item $mp4).Length) bytes"
+		}
 	}
 } finally {
 	Remove-Item -Force -ErrorAction SilentlyContinue $override
