@@ -11,6 +11,9 @@
 # --parade records the critter parade instead (portrait; no level);
 # --cap1= and --cap2= replace the two captions and --end= the end card's
 # headline, with "|" for a line break.
+# UGC B-roll (tools/make_ugc.ps1): --clean drops the captions and the end card,
+# so a creator can talk over the clip; --clip=camp records the camp being built
+# up, --clip=critters the Collection scrolling by (portrait; no level).
 extends Control
 
 const ADS := preload("res://tools/make_ads.gd")
@@ -33,6 +36,8 @@ var _caption: Label
 var _snap_n := 0
 var _sub: SubViewport   # what the phone / full screen shows: the game, then Home's camp and the Collection
 var _parade := false    # --parade: no game -- the critters hop across the camp (portrait only)
+var _clean := false     # --clean: no captions, no end card
+var _clip := ""         # --clip=camp / critters: that scene alone (portrait)
 
 
 func _ready() -> void:
@@ -51,6 +56,10 @@ func _ready() -> void:
 			END_HEADLINE = a.substr(6).replace("|", "\n")
 		elif a == "--parade":
 			_parade = true
+		elif a == "--clean":
+			_clean = true
+		elif a.begins_with("--clip="):
+			_clip = a.substr(7)
 	_art = ADS.new()
 	_art.setup()
 	var win := Vector2(get_viewport().get_visible_rect().size)
@@ -75,6 +84,14 @@ func _ready() -> void:
 		_caption.position = Vector2(20, 120)   # over the sky: the critters hop along the bottom
 		TSSfx.music("menu")
 		_run_parade()
+		return
+	if _clip == "camp" or _clip == "critters":
+		_full_screen(sub.get_texture(), design)
+		TSSfx.music("menu")
+		if _clip == "camp":
+			_run_camp()
+		else:
+			_run_critters()
 		return
 	_game = Node3D.new()
 	_game.set_script(GAME)
@@ -177,6 +194,8 @@ func _label(font_size: int, rect: Rect2) -> Label:
 
 ## A caption pops in (or out, with "").
 func _say(text: String) -> void:
+	if _clean:
+		return
 	var t := _caption.create_tween()
 	if _caption.modulate.a > 0.0:
 		t.tween_property(_caption, "modulate:a", 0.0, 0.15)
@@ -226,6 +245,12 @@ func _run() -> void:
 	# The critter shoots out of the egg -- cut before the win card lands
 	# (it shows some 2.1 s after the win).
 	_say("Critter saved!")
+	if _clean:   # B-roll: the escape, the Rescued! card, and a beat on it
+		await _wait(2.6)
+		await _snap("win")
+		await _wait(2.4)
+		get_tree().quit()
+		return
 	await _wait(1.8)
 	await _snap("win")
 	await _showcase()
@@ -351,7 +376,8 @@ func _run_parade() -> void:
 			break
 	layer.queue_free()
 	await _parade_finale(ids)
-	await _end_card()
+	if not _clean:
+		await _end_card()
 	get_tree().quit()
 
 
@@ -404,6 +430,7 @@ func _parade_finale(ids: Array) -> void:
 ## A player well into the game: the camp and ship fully upgraded,
 ## a crowd of critters to show off -- and no pop-ups or walkthroughs.
 func _showcase_profile() -> void:
+	TSProfile.use_test_profile(60)   # a throwaway profile: never the save on this computer
 	TSProfile.home_tutorial_seen = true
 	TSProfile.daily_callout_seen = true
 	TSProfile.camp_callout_seen = true
@@ -456,3 +483,59 @@ func _end_card() -> void:
 	await _wait(1.4)
 	_snap("end")
 	await _wait(2.6)
+
+
+## --clip=camp: the crash site with nothing built, its first five spots going
+## up one by one (the game's own upgrade fanfare and sparkles, then the Camp
+## level banner), then the finished camp and the ship gliding past.
+func _run_camp() -> void:
+	_showcase_profile()
+	for i in TSProfile.PART_COUNT:
+		TSProfile.part_level[i] = 0
+	var home: Control = (load("res://scenes/home.tscn") as PackedScene).instantiate()
+	_sub.add_child(home)
+	var world = home._world
+	await _bare_home(home)
+	world.glide_to_part(TSProfile.CAMP_TENT)
+	await _wait(1.6)
+	await _snap("bare")
+	for part in TSProfile.CAMP_WAVES[0]:
+		world.glide_to_part(part)
+		await _wait(1.0)
+		var before := TSProfile.camp_level()
+		TSProfile.part_level[part] = TSProfile.PART_MAX_LEVEL
+		home._built(part, before)
+		await _wait(1.3)
+	await _snap("built")
+	await _wait(1.6)
+	# Then the whole camp, finished, and the ship.
+	for i in TSProfile.PART_COUNT:
+		TSProfile.part_level[i] = TSProfile.PART_MAX_LEVEL
+	world.refresh_parts()
+	for part in [TSProfile.CAMP_WINDMILL, TSProfile.CAMP_TREEHOUSE, TSProfile.CAMP_OBSERVATORY, TSProfile.PART_ENGINE]:
+		world.glide_to_part(part)
+		await _wait(1.6)
+	await _snap("camp")
+	await _wait(1.0)
+	get_tree().quit()
+
+
+## --clip=critters: the Collection, scrolled slowly from the top to the bottom.
+func _run_critters() -> void:
+	_showcase_profile()
+	for i in TSProfile.CRITTER_COUNT:   # a full collection to show off
+		if not TSProfile.is_critter_hidden(i):
+			TSProfile.critter_unlocked[i] = true
+			TSProfile.critter_level[i] = 1 + i % 7
+	var coll: Control = (load("res://scenes/collection.tscn") as PackedScene).instantiate()
+	_sub.add_child(coll)
+	await _wait(1.2)
+	await _snap("top")
+	var sc: ScrollContainer = coll._critter_scroll
+	var bottom := int(sc.get_v_scroll_bar().max_value - sc.size.y)
+	var t := sc.create_tween()
+	t.tween_property(sc, "scroll_vertical", bottom, 12.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	await _wait(6.0)
+	await _snap("middle")
+	await _wait(7.0)
+	get_tree().quit()
