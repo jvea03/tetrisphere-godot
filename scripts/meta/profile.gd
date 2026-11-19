@@ -2725,11 +2725,12 @@ static func battle_pass_bonus_reward(premium := false) -> Dictionary:
 static func claim_battle_pass_bonus() -> Dictionary:
 	if battle_pass_bonus_ready() <= 0:
 		return {}
-	var reward := battle_pass_bonus_reward(battle_pass_purchased)
-	_apply_reward(reward)
+	var coins_was := coin_count
+	var mats_was := materials
+	_apply_reward(battle_pass_bonus_reward(battle_pass_purchased))
 	battle_pass_bonus_claimed += 1
 	save()
-	return reward
+	return {"coins": coin_count - coins_was, "materials": materials - mats_was}   # as paid, coin boosts and all
 
 
 static func claim_battle_pass_free(tier: int) -> Dictionary:
@@ -2891,9 +2892,9 @@ static func claim_quest(week_key: String, index: int) -> int:
 
 ## Collect All on the pass: every reached, unclaimed reward on both tracks.
 ## Returns how many were collected.
-static func claim_all_battle_pass() -> int:
+static func claim_all_battle_pass(with_bonus := true) -> int:
 	var n := 0
-	while battle_pass_bonus_ready() > 0 and not claim_battle_pass_bonus().is_empty():
+	while with_bonus and battle_pass_bonus_ready() > 0 and not claim_battle_pass_bonus().is_empty():
 		n += 1
 	for t in range(1, BATTLE_PASS_TIER_COUNT + 1):
 		if can_claim_battle_pass_free(t) and not claim_battle_pass_free(t).is_empty():

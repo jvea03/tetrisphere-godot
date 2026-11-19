@@ -194,7 +194,7 @@ func _test_battle_pass() -> void:
 	var coins_b := TSProfile.coin_count
 	var mats_b := TSProfile.materials
 	var got_b := TSProfile.claim_battle_pass_bonus()
-	_check("a Bonus Chest pays coins and materials, doubled with premium (%s)" % str(got_b), int(got_b.get("coins", 0)) == TSProfile.BONUS_CHEST_COINS * 2 and TSProfile.coin_count > coins_b and TSProfile.materials > mats_b and TSProfile.battle_pass_bonus_ready() == 2)
+	_check("a Bonus Chest pays coins and materials, doubled with premium (%s)" % str(got_b), int(got_b.get("coins", 0)) >= TSProfile.BONUS_CHEST_COINS * 2 and int(got_b.get("materials", 0)) == TSProfile.BONUS_CHEST_MATERIALS * 2 and TSProfile.coin_count > coins_b and TSProfile.materials > mats_b and TSProfile.battle_pass_bonus_ready() == 2)
 	TSProfile.claim_all_battle_pass()
 	_check("Collect All opens the rest", TSProfile.battle_pass_bonus_ready() == 0 and TSProfile.claim_battle_pass_bonus().is_empty())
 	TSProfile.add_battle_pass_xp(TSProfile.BONUS_CHEST_STARS)

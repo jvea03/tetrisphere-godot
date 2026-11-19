@@ -329,9 +329,16 @@ func _open_bonus(_anchor: Control) -> void:
 	var reward := TSProfile.claim_battle_pass_bonus()
 	if reward.is_empty():
 		return
+	_bonus_show(reward, 1, before)
+
+
+## The opening dialog for `chests` Bonus Chests (one, or Collect All's lot),
+## paying `reward` in all; `before` is the wallet's count to fly the coins from.
+func _bonus_show(reward: Dictionary, chests: int, before: int) -> void:
 	_bonus_reward = reward
 	_bonus_coins_before = before
 	wallet.label.text = TSProfile.fmt_coins(before)   # the coins fly in on Collect
+	(_bonus["title"] as Label).text = "Bonus Chest" if chests <= 1 else "%d Bonus Chests" % chests
 	var ready := TSProfile.battle_pass_bonus_ready()
 	(_bonus["left"] as Label).text = ("%d more to open" % ready) if ready > 0 else ""
 	(_bonus["mats"] as Label).text = "+%s" % TSProfile.fmt_coins(int(reward.get("materials", 0)))
@@ -415,7 +422,9 @@ func _close_bonus() -> void:
 func _build_bonus_dialog() -> void:
 	_bonus = TSUI.dialog(self, 520, COL_PREMIUM)
 	var box: VBoxContainer = _bonus["box"]
-	box.add_child(TSUI.title("Bonus Chest", 40))
+	var title := TSUI.title("Bonus Chest", 40)
+	box.add_child(title)
+	_bonus["title"] = title
 	var art := TSIcon.make("chest", 220, 0, "rare")
 	art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	box.add_child(art)
@@ -535,11 +544,27 @@ func _on_tier_buy() -> void:
 
 
 ## Collect All: the finished quests first (their stars may reach new tiers),
-## then every reached tier's reward on both tracks.
+## then every reached tier's reward on both tracks, then any Bonus Chests --
+## opened together in the chest animation, whose Collect flies all the coins in.
 func _collect_all() -> void:
 	var before := TSProfile.coin_count
 	var got := TSProfile.claim_all_quests()
-	got += TSProfile.claim_all_battle_pass()
+	got += TSProfile.claim_all_battle_pass(false)
+	# Waiting Bonus Chests open together, in the chest animation.
+	if TSProfile.battle_pass_bonus_ready() > 0:
+		var chests := 0
+		var total := {"coins": 0, "materials": 0}
+		var coins_was := TSProfile.coin_count
+		var mats_was := TSProfile.materials
+		while TSProfile.battle_pass_bonus_ready() > 0 and not TSProfile.claim_battle_pass_bonus().is_empty():
+			chests += 1
+		total["coins"] = TSProfile.coin_count - coins_was   # as paid, coin boosts and all
+		total["materials"] = TSProfile.materials - mats_was
+		if got > 0:
+			TSFX.confetti(self)
+		_bonus_show(total, chests, before)   # Collect flies every coin in, the tiers' too
+		_build_quests()
+		return
 	if got <= 0:
 		_refresh()
 		return
