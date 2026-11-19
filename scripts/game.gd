@@ -1141,6 +1141,7 @@ func _missed() -> void:
 	TSSfx.play("heartbreak" if lives <= 0 else "miss")   # the last heart breaks
 	_creature.react(TSCreature.Mood.SCARED)
 	TSHaptics.medium()
+	_heart_wobble()
 	if lives <= 0:
 		lose_reason = "OUT OF LIVES"
 
@@ -1358,6 +1359,7 @@ func _buy_piece_with_heart() -> void:
 	TSSfx.play("heartbreak" if lives <= 0 else "miss")
 	_creature.react(TSCreature.Mood.SCARED)
 	TSHaptics.medium()
+	_heart_wobble()
 	if lives <= 0:
 		lose_reason = "OUT OF PIECES"
 		_lose()
@@ -1890,6 +1892,17 @@ func _on_creature_bumped(dir: Vector3) -> void:
 		var at := _camera.unproject_position(spot)
 		_fx.burst(at, [Color(0.95, 0.9, 0.8), Color(0.85, 0.78, 0.66)], 11, 190.0, 0.5, 9.0, 120.0)
 		_fx.burst(at, [TSUI.GOLD, Color(1.0, 1.0, 0.85)], 5, 130.0, 0.65, 12.0, 0.0, true)
+
+
+## A heart lost: the egg jolts, knocked from one side of the view or the
+## other (a heart has no spot on the egg to hit from).
+func _heart_wobble() -> void:
+	var to_cam := _camera.position.normalized()
+	var side := to_cam.cross(Vector3.UP)
+	side = side.normalized() if side.length() > 0.1 else Vector3.RIGHT
+	if randf() < 0.5:
+		side = -side
+	_wobble_egg((side + to_cam * 0.4).normalized(), 1.0, true)
 
 
 ## The egg rocks on the spot from a knock toward `dir` (unit, from its middle):
