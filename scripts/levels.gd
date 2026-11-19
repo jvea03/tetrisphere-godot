@@ -350,7 +350,7 @@ static func beginner_pair(level: int) -> Array:
 ## bot then wins level 37 about 10-20% (smooth 27%), 90 37% (37%), and the
 ## challenges after 40 and 80 10% and 13% (10%, 17%; the careful bot 97%
 ## both). Level 130, deep in the ramp, was a wall at 3% (smooth 20%), so ramped
-## Extremes keep the smooth shell. "" for a smooth shell.
+## Extremes and challenges keep the smooth shell. "" for a smooth shell.
 const TERRAIN_BIAS := 0.05
 const TERRAIN_HOLE_SMALLER := 1   # the escape hole a terrain egg needs, this much narrower
 
@@ -370,7 +370,8 @@ static func terrain_for_level(level: int) -> String:
 
 
 static func challenge_terrain(after: int) -> String:
-	if after == CHALLENGE_TUTORIAL_AFTER or after < CHALLENGE_FIRST_AFTER:
+	# Ramped challenges stay smooth too, for the same reason as Extremes.
+	if after == CHALLENGE_TUTORIAL_AFTER or after < CHALLENGE_FIRST_AFTER or ramp_step(after) > 0:
 		return ""
 	@warning_ignore("integer_division")
 	var nth := (after - CHALLENGE_FIRST_AFTER) / CHALLENGE_EVERY
