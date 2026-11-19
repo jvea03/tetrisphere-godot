@@ -136,13 +136,22 @@ func _run() -> void:
 	_start_level(2)
 	for _i in 3:
 		await get_tree().process_frame
+	for _i in 5:
+		_missed()
+	_check("every miss on level 2 is free", lives == LIVES and lose_reason == "")
+	_close_cards()
+	TSProfile.last_level = 6
+	_start_level(5)
+	for _i in 5:
+		_missed()
+	_check("and on level 5", lives == LIVES and lose_reason == "")
+	_close_cards()
+	_start_level(6)
 	_missed()
-	_check("a new try at level 2 has its free miss back", lives == LIVES)
-	_missed()
-	_check("the next miss costs a heart", lives == LIVES - 1)
+	_check("level 6's first miss costs a heart", lives == LIVES - 1)
 	_missed()
 	_missed()
-	_check("and two more use up the hearts", lives == 0 and lose_reason == "OUT OF LIVES")
+	_check("and three use up the hearts", lives == 0 and lose_reason == "OUT OF LIVES")
 	_close_cards()
 	_start_level(2)
 	is_daily = true

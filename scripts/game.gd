@@ -27,6 +27,7 @@ const FREE_BADGE := "∞"        # its button's badge there
 const STREAK_ROCK_DELAY := 1.2  # a level's start on a win streak: its banner, then the rocks
 # A drop that makes no combo costs a life. The reference HUD shows three slots.
 const LIVES := 3
+const UNLIMITED_LIVES_THROUGH := 5   # levels 1-5: a miss never costs a heart (_unlimited_lives)
 const HEART_ALIVE := Color(1.0, 0.42, 0.55)
 const HEART_LOST := Color(0.88, 0.84, 0.84)
 const TITLE_PINK := Color(1.0, 0.55, 0.70)
@@ -162,7 +163,6 @@ var _hearts_note_label: Label   # the note under the hearts showing now, if any
 var _pointer: Node2D   # levels 1 and 2: the arrow over the held piece's best match
 var _pointer_at := Vector2i(-1, -1)   # the aim it points at; it goes once the aim moves
 var _point_note := ""   # a miss on level 1 or 2: said as the arrow points the next piece
-var _free_miss_used := false   # level 2: this egg's free miss is gone
 var _tie_pill: PanelContainer   # tie-downs left, beside the hearts, on levels with them
 var _tie_label: Label
 var _ties_seen := -1            # tie-downs standing at the last HUD refresh (-1: a new ball)
@@ -670,7 +670,6 @@ func _start(seed_value: int, baked: Dictionary = {}) -> void:
 	lives = LIVES
 	lose_reason = ""
 	_point_note = ""
-	_free_miss_used = false
 	is_first_attempt = true
 	lose_ad_used = false
 	continues_bought = 0
@@ -1121,8 +1120,9 @@ func _drop() -> void:
 
 
 ## A drop that matched nothing costs a heart, and the last one loses the egg
-## (once the drop has finished) -- except on level 1 (_forgiving) and for the
-## first on level 2 (_second_egg), which also points the next piece at a match.
+## (once the drop has finished) -- except on levels 1 to UNLIMITED_LIVES_THROUGH
+## (_unlimited_lives), where misses are free. Levels 1 (_forgiving) and 2
+## (_second_egg) also point the next piece at a match.
 func _missed() -> void:
 	if _forgiving():
 		TSSfx.play("miss")
@@ -1130,15 +1130,13 @@ func _missed() -> void:
 		_hearts_note("No match! Drop it on 2 or more of the same piece.")
 		_point_note = "No match! Try where the arrow points."   # the note changes as the arrow points the next piece (_finish_drop)
 		return
-	if _second_egg():
-		_point_note = "No match! Try where the arrow points."
-		if not _free_miss_used:
-			_free_miss_used = true
-			TSSfx.play("miss")
-			TSHaptics.light()
-			_hearts_note("Free miss! Drop it on 2 or more of the same piece.")
+	if _unlimited_lives():
+		TSSfx.play("miss")
+		TSHaptics.light()
+		_hearts_note("Free miss! Drop it on 2 or more of the same piece.")
+		if _second_egg():
 			_point_note = "Free miss! Try where the arrow points."
-			return
+		return
 	lives -= 1
 	TSSfx.play("heartbreak" if lives <= 0 else "miss")   # the last heart breaks
 	_creature.react(TSCreature.Mood.SCARED)
@@ -1246,6 +1244,12 @@ func _forgiving() -> bool:
 ## 2 lost it at least once and only 18 won it. Not the Daily Egg or a challenge.
 func _second_egg() -> bool:
 	return current_level == 2 and not is_daily and not is_challenge
+
+
+## The first levels never take a heart: a miss is free, so a new player can't
+## run out of lives while learning. Not the Daily Egg or a challenge.
+func _unlimited_lives() -> bool:
+	return current_level <= UNLIMITED_LIVES_THROUGH and not is_daily and not is_challenge
 
 
 ## A bomb falls from the top of the screen onto `cell` (`at` on screen),
