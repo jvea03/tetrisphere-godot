@@ -32,6 +32,11 @@ var _info: Dictionary
 var _weekly := false
 var _dots: Array = []
 var _acc := 0.0
+var _bonus: Dictionary            # the Bonus Chest opening dialog
+var _bonus_opening := false
+var _bonus_tweens: Array = []
+var _bonus_reward: Dictionary = {}
+var _bonus_coins_before := -1
 
 
 func build() -> void:
@@ -315,16 +320,127 @@ func _bonus_row(current: int) -> Control:
 	return row
 
 
-## Opens one waiting Bonus Chest.
-func _open_bonus(anchor: Control) -> void:
+## Opens one waiting Bonus Chest, the way Home opens a chest: it wobbles
+## harder and harder, bursts open with a flash and sparkles, the coins count
+## up, the materials appear, and Collect sends the coins to the wallet. A tap
+## skips to the end.
+func _open_bonus(_anchor: Control) -> void:
 	var before := TSProfile.coin_count
-	var from := anchor.get_global_rect()
-	if TSProfile.claim_battle_pass_bonus().is_empty():
+	var reward := TSProfile.claim_battle_pass_bonus()
+	if reward.is_empty():
+		return
+	_bonus_reward = reward
+	_bonus_coins_before = before
+	wallet.label.text = TSProfile.fmt_coins(before)   # the coins fly in on Collect
+	var ready := TSProfile.battle_pass_bonus_ready()
+	(_bonus["left"] as Label).text = ("%d more to open" % ready) if ready > 0 else ""
+	(_bonus["mats"] as Label).text = "+%s" % TSProfile.fmt_coins(int(reward.get("materials", 0)))
+	(_bonus["mats_row"] as Control).modulate.a = 0.0
+	_refresh()
+	TSUI.reveal(_bonus["root"], _bonus["panel"])
+	_play_bonus_open()
+
+
+func _play_bonus_open() -> void:
+	_bonus_opening = true
+	_bonus_tweens.clear()
+	var face: TSIcon = _bonus["art"]
+	var amount: Label = _bonus["amount"]
+	var done: Button = _bonus["done"]
+	var look := "legendary" if TSProfile.battle_pass_purchased else "rare"
+	face.set_icon("chest", 0, look)
+	face.rotation = 0.0
+	face.scale = Vector2.ONE
+	face.pivot_offset = face.size / 2.0
+	amount.text = "+0 coins"
+	amount.modulate.a = 0.0
+	done.modulate.a = 0.0
+	done.disabled = true
+	var wob := face.create_tween()
+	_bonus_tweens.append(wob)
+	wob.tween_interval(0.2)
+	for k in 8:
+		var amp := lerpf(0.05, 0.17, float(k) / 7.0)
+		wob.tween_property(face, "rotation", amp * (1.0 if k % 2 == 0 else -1.0), 0.1).set_trans(Tween.TRANS_SINE)
+	wob.tween_property(face, "rotation", 0.0, 0.05)
+	await wob.finished
+	if not _bonus_opening:
 		return
 	TSSfx.play("upgrade")
-	wallet.receive(from, before, TSProfile.coin_count)
-	TSFX.sparkle_burst_at(self, from)
-	_refresh()
+	TSHaptics.medium()
+	face.set_icon("chest", 0, "open")
+	face.scale = Vector2(0.72, 0.72)
+	var pop := face.create_tween()
+	_bonus_tweens.append(pop)
+	pop.tween_property(face, "scale", Vector2.ONE, 0.32).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	TSFX.sparkle_burst(self, face)
+	amount.modulate.a = 1.0
+	var coins := int(_bonus_reward.get("coins", 0))
+	var count := amount.create_tween()
+	_bonus_tweens.append(count)
+	count.tween_method(func(v: float): amount.text = "+%s coins" % TSProfile.fmt_coins(int(round(v))), 0.0, float(coins), 0.6)
+	count.tween_callback(_finish_bonus_open)
+
+
+func _finish_bonus_open() -> void:
+	if not _bonus_opening:
+		return
+	_bonus_opening = false
+	for t in _bonus_tweens:
+		if t.is_valid():
+			t.kill()
+	_bonus_tweens.clear()
+	var face: TSIcon = _bonus["art"]
+	face.set_icon("chest", 0, "open")
+	face.rotation = 0.0
+	face.scale = Vector2.ONE
+	(_bonus["amount"] as Label).modulate.a = 1.0
+	(_bonus["amount"] as Label).text = "+%s coins" % TSProfile.fmt_coins(int(_bonus_reward.get("coins", 0)))
+	var mats := _bonus["mats_row"] as Control
+	mats.create_tween().tween_property(mats, "modulate:a", 1.0, 0.2)
+	var done: Button = _bonus["done"]
+	done.disabled = false
+	done.create_tween().tween_property(done, "modulate:a", 1.0, 0.2)
+
+
+func _close_bonus() -> void:
+	_finish_bonus_open()
+	var from := (_bonus["art"] as Control).get_global_rect()
+	TSUI.conceal(_bonus["root"])
+	if _bonus_coins_before >= 0:
+		wallet.receive(from, _bonus_coins_before, TSProfile.coin_count)
+		_bonus_coins_before = -1
+
+
+func _build_bonus_dialog() -> void:
+	_bonus = TSUI.dialog(self, 520, COL_PREMIUM)
+	var box: VBoxContainer = _bonus["box"]
+	box.add_child(TSUI.title("Bonus Chest", 40))
+	var art := TSIcon.make("chest", 220, 0, "rare")
+	art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	box.add_child(art)
+	_bonus["art"] = art
+	var amount := TSUI.outlined(TSUI.label("+0 coins", 40, TSUI.GOLD, HORIZONTAL_ALIGNMENT_CENTER), TSUI.INK, 10)
+	box.add_child(amount)
+	_bonus["amount"] = amount
+	var mats_row := TSUI.hbox(8)
+	mats_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	mats_row.add_child(TSIcon.make("materials", 44))
+	var mats := TSUI.label("", 28)
+	mats_row.add_child(mats)
+	box.add_child(mats_row)
+	_bonus["mats"] = mats
+	_bonus["mats_row"] = mats_row
+	var left := TSUI.label("", 20, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+	box.add_child(left)
+	_bonus["left"] = left
+	var done := TSUI.button("Collect", TSUI.GREEN, 30)
+	done.pressed.connect(_close_bonus)
+	box.add_child(done)
+	_bonus["done"] = done
+	(_bonus["panel"] as Control).gui_input.connect(func(e: InputEvent):
+		if ((e is InputEventMouseButton and e.pressed) or (e is InputEventScreenTouch and e.pressed)) and _bonus_opening:
+			_finish_bonus_open())
 
 
 func _reward_card(tier: int, current: int, reward: Dictionary, premium: bool) -> Control:
@@ -494,6 +610,7 @@ func _build_dialogs() -> void:
 	ok.pressed.connect(func(): TSUI.conceal(_info["root"]))
 	ibox.add_child(ok)
 	_buy = TSUI.dialog(self, 600)
+	_build_bonus_dialog()
 
 
 func _open_buy() -> void:
@@ -547,6 +664,9 @@ func _open_buy() -> void:
 
 
 func on_back_requested() -> bool:
+	if _bonus["root"].visible:
+		_close_bonus()
+		return true
 	for d in [_buy, _info]:
 		if d["root"].visible:
 			TSUI.conceal(d["root"])
