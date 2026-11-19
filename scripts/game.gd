@@ -182,6 +182,7 @@ const POP_SCALE := [0, 2, 4, 7, 9, 12, 14, 16]   # semitones up for chain waves 
 const SHIMMER_CLEAR := 12   # blocks in one clear for the sparkle on top of the pops
 const COUNT_TICKS := 8    # coin ticks while the win card's coins count up
 var _shake := 0.0           # how hard the camera shakes, in world units, fading out
+var _egg_wobble: Tween      # the egg rocking after the critter bonks into its shell
 var _sparkle_clock := 0.0   # paces the armed bomb's fuse sparks and the Any Piece's shimmer
 var _swap_flyer: Control    # the Any Piece's icon while it flies to the tray
 var _pause_btn: Button
@@ -267,6 +268,7 @@ func _build_environment() -> void:
 	# moods of its own (TSCreature); each size has its own colour and look.
 	_creature = TSCreature.new(TSCreature.KINDS[1]["body"])
 	add_child(_creature)
+	_creature.bumped.connect(_on_creature_bumped)
 
 
 # Portrait phone layout, in 720-wide logical pixels. The top block hangs from
@@ -1863,6 +1865,36 @@ func _kick_button(btn: Control) -> void:
 	var tw := btn.create_tween()
 	tw.tween_property(btn, "scale", Vector2(1.18, 0.82), 0.07)
 	tw.tween_property(btn, "scale", Vector2.ONE, 0.4).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+
+
+## The critter made a run at the shell and bonked into it (TSCreature's
+## Mood.BUMP): a hollow knock and the whole egg rocking on the spot, dying
+## away. Only the drawing rocks (taps are read off the cells themselves), and
+## it is over in a moment.
+func _on_creature_bumped(dir: Vector3) -> void:
+	if view == null or not _creature.visible:
+		return
+	TSSfx.play("knock", randf_range(0.7, 0.82))
+	var axis := Vector3.UP.cross(dir)
+	axis = axis.normalized() if axis.length() > 0.1 else Vector3.RIGHT
+	if _egg_wobble and _egg_wobble.is_valid():
+		_egg_wobble.kill()
+	_egg_wobble = create_tween()
+	# Tips away from the knock and rocks back and forth, bulging toward the
+	# spot for an instant, as if something inside shoved it.
+	_egg_wobble.tween_method(func(t: float) -> void:
+		var tip := Basis(axis, 0.13 * sin(t * 26.0) * exp(-t * 5.0))
+		var bulge := 0.05 * exp(-t * 14.0)
+		var k := 1.0 - bulge * 0.4   # a little thinner across, longer toward the knock
+		var stretch := Basis(Vector3(k, 0, 0) + dir * dir.x * bulge, Vector3(0, k, 0) + dir * dir.y * bulge, Vector3(0, 0, k) + dir * dir.z * bulge)
+		view.basis = tip * stretch, 0.0, 0.8, 0.8)
+	# A puff of dust and a few stars where it hit, if that side is in view.
+	var spot := dir * view.max_radius
+	if dir.dot(_camera.position.normalized()) > -0.2 and not _camera.is_position_behind(spot):
+		var at := _camera.unproject_position(spot)
+		_fx.burst(at, [Color(0.95, 0.9, 0.8), Color(0.85, 0.78, 0.66)], 11, 190.0, 0.5, 9.0, 120.0)
+		_fx.burst(at, [TSUI.GOLD, Color(1.0, 1.0, 0.85)], 5, 130.0, 0.65, 12.0, 0.0, true)
+	_egg_wobble.tween_callback(func() -> void: view.basis = Basis.IDENTITY)
 
 
 func _shake_screen(amount: float) -> void:

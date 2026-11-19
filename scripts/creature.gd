@@ -6,12 +6,17 @@ extends Node3D
 ## a mood that keeps changing while the level is played -- breathing,
 ## looking around, wiggling, pushing at the shell toward the most-dug way out
 ## (harder the nearer it is to open), cheering a chain, and scared when a
-## heart is lost (and jumpier on the last heart). The game calls react() on
+## heart is lost (and jumpier on the last heart), and now and then making a
+## run at the shell: it bonks into it and the egg wobbles (`bumped`, which
+## the game answers with a knock and the wobble). The game calls react() on
 ## those moments and sets `hope`, `hole_dir` and `nervous` after each drop.
 ## Moods move only the inner body, so the escape tween on this node is free
 ## to shrink it and fly it out.
 
-enum Mood { IDLE, LOOK, WIGGLE, PUSH, SCARED, HAPPY }
+enum Mood { IDLE, LOOK, WIGGLE, PUSH, SCARED, HAPPY, BUMP }
+
+## A run at the shell (Mood.BUMP) hit it, toward `dir` (unit, from the egg's middle).
+signal bumped(dir: Vector3)
 
 const R := TSBoardView.CORE_RADIUS
 ## Each size of critter (the egg's difficulty sets its scale) has its own
@@ -27,6 +32,9 @@ const HORN := Color(1.0, 0.8, 0.38)
 const INNER_EAR := Color(1.0, 0.7, 0.78)
 const PUSH_REACH := 0.22     # how far a push carries the body toward the way out
 const PUSH_BEAT := 0.7       # seconds per push
+const BUMP_LEN := 1.9        # a run at the shell: wind-up, dash, bonk, bounce back, dizzy
+const BUMP_HIT := 0.5        # ...the moment it hits
+const BUMP_WEIGHT := 0.45    # how often it picks one (IDLE is 2.0): every half a minute or so
 
 var hope := 0.0              # 0..1: how near the most-dug way out is to open
 var hole_dir := Vector3.ZERO # toward that way out (unit), or zero for none
@@ -50,6 +58,9 @@ var _blink_in := 2.0
 var _blink_t := -1.0
 var _t := 0.0
 var _rng := RandomNumberGenerator.new()
+var _cam_dir := Vector3.BACK # toward the camera from the egg's middle (face_toward)
+var _bump_dir := Vector3.RIGHT
+var _bump_hit := false       # this run's bonk sent
 
 
 func _init(colour: Color) -> void:
@@ -158,13 +169,14 @@ func _part(offset: Vector3, radius: float, squash: Vector3, tint: Color, glow: f
 ## Keeps the face on the side of the core toward the camera, `dir` (unit)
 ## being the camera's direction from the middle of the egg.
 func face_toward(dir: Vector3, camera_at: Vector3) -> void:
+	_cam_dir = dir
 	_face.position = dir * (R * 0.99)
 	_face.look_at(camera_at, Vector3.UP)
 
 
 ## Something happened: switch to `mood` for `seconds` (a scare, a cheer).
 func react(mood: Mood, seconds := -1.0) -> void:
-	var lengths := {Mood.SCARED: 1.8, Mood.HAPPY: 1.4}
+	var lengths := {Mood.SCARED: 1.8, Mood.HAPPY: 1.4, Mood.BUMP: BUMP_LEN}
 	_set_mood(mood, seconds if seconds > 0.0 else float(lengths.get(mood, 2.0)))
 
 
@@ -173,6 +185,8 @@ func mood() -> Mood:
 
 
 func _set_mood(m: Mood, seconds: float) -> void:
+	if m == Mood.BUMP:
+		_aim_bump()
 	_mood = m
 	_mood_t = 0.0
 	_mood_len = seconds
@@ -187,6 +201,7 @@ func _pick_mood() -> void:
 		Mood.WIGGLE: 1.5,
 		Mood.PUSH: 0.6 + 4.0 * hope if hole_dir != Vector3.ZERO else 0.0,
 		Mood.SCARED: 2.5 if nervous else 0.0,
+		Mood.BUMP: BUMP_WEIGHT,
 	}
 	var total := 0.0
 	for w in weights.values():
@@ -199,8 +214,26 @@ func _pick_mood() -> void:
 			pick = m
 			break
 	var lengths := {Mood.IDLE: _rng.randf_range(2.0, 3.5), Mood.LOOK: _rng.randf_range(2.4, 3.6),
-		Mood.WIGGLE: _rng.randf_range(1.2, 1.8), Mood.PUSH: PUSH_BEAT * 3.0, Mood.SCARED: 1.6}
+		Mood.WIGGLE: _rng.randf_range(1.2, 1.8), Mood.PUSH: PUSH_BEAT * 3.0, Mood.SCARED: 1.6,
+		Mood.BUMP: BUMP_LEN}
 	_set_mood(pick, float(lengths[pick]))
+
+
+## Where the next run goes: off to one side of the camera's view of it (so the
+## dash shows), a little toward the viewer.
+func _aim_bump() -> void:
+	var side := _cam_dir.cross(Vector3.UP)
+	if side.length() < 0.1:
+		side = Vector3.RIGHT
+	side = side.normalized().rotated(_cam_dir, _rng.randf_range(-PI, PI))
+	_bump_dir = (side + _cam_dir * 0.35).normalized()
+	_bump_hit = false
+
+
+## How far the body can go before it meets the shell, in its own units: the
+## egg's inside is R across and the whole critter is scaled down inside it.
+func _room() -> float:
+	return maxf(0.15, R * (1.0 / maxf(scale.x, 0.3) - 1.0) * 0.92)
 
 
 func _process(delta: float) -> void:
@@ -247,6 +280,38 @@ func _process(delta: float) -> void:
 			_look_to = Vector2(sin(_t * 9.0) * 0.6, 0.2)
 			mouth = Vector3(0.8, 1.1, 0.5) * fade
 			sweat = true
+		Mood.BUMP:
+			# Backs up and crouches, dashes at the shell, bonks flat against it
+			# with its eyes squeezed shut, bounces back, then sees stars.
+			var t := _mood_t
+			var reach := _room()
+			if t < 0.32:
+				var k := t / 0.32
+				bump = -_bump_dir * reach * 0.18 * sin(k * PI * 0.5)
+				squash = 1.0 - 0.08 * k
+				open = 1.0 - 0.35 * k
+				mouth = Vector3(1.0, 0.35, 0.5)
+			elif t < BUMP_HIT:
+				var k := (t - 0.32) / (BUMP_HIT - 0.32)
+				bump = _bump_dir * reach * lerpf(-0.18, 1.0, k * k)
+				squash = 1.0 + 0.1 * k
+				open = 0.65
+			else:
+				if not _bump_hit:
+					_bump_hit = true
+					bumped.emit(_bump_dir)
+				var k := t - BUMP_HIT
+				# Out from the shell with a springy, dying bounce.
+				bump = _bump_dir * reach * maxf(0.0, cos(k * 9.0)) * exp(-k * 5.0)
+				squash = 1.0 - 0.16 * exp(-k * 7.0) * cos(k * 30.0)
+				if k < 0.35:
+					open = 0.1
+					mouth = Vector3(1.2, 0.8, 0.5)
+				else:
+					# Dizzy: pupils rolling round, a wobbly head.
+					_look_to = Vector2(cos(_t * 9.0), sin(_t * 9.0)) * 0.7
+					roll = sin(_t * 7.0) * 0.12 * fade
+					mouth = Vector3(0.9, 0.5, 0.5) * fade
 		Mood.HAPPY:
 			# A hop of joy with happy closed eyes and a big open smile.
 			bump = Vector3.UP * absf(sin(_mood_t * 9.0)) * 0.15 * fade
