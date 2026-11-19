@@ -17,13 +17,16 @@ and talk over them.
 |---|---|---|
 | `egg_escape_ugc_01_gameplay_rescue.avi` | Level 8: the egg spins, blocks drop and pop, the critter escapes, and the "Rescued!" card shows | The core loop, the hook |
 | `egg_escape_ugc_02_gameplay_chains.avi` | Level 33: matches set off chain reactions | "So satisfying" moments |
-| `egg_escape_ugc_03_gameplay_vines.avi` | Level 50: vines creep across the egg | Variety, challenge |
-| `egg_escape_ugc_04_gameplay_locks.avi` | Level 100: padlocks and the key that opens them | Variety, "puzzle brain" |
-| `egg_escape_ugc_05_gameplay_prisms.avi` | Level 150: prism stones that break one colour only | Variety |
-| `egg_escape_ugc_06_gameplay_fog.avi` | Level 200: fog hides part of the egg | Variety, mystery |
+| `egg_escape_ugc_03_gameplay_vines.avi` | Level 50: vines creep across the egg | Optional extra: variety |
+| `egg_escape_ugc_04_gameplay_locks.avi` | Level 100: padlocks and the key that opens them | Optional extra: variety |
+| `egg_escape_ugc_05_gameplay_prisms.avi` | Level 150: prism stones that break one colour only | Optional extra: variety |
+| `egg_escape_ugc_06_gameplay_fog.avi` | Level 200: fog hides part of the egg | Optional extra: variety |
 | `egg_escape_ugc_07_camp_build.avi` | The crash site with nothing built, then the fire, tent, bench, garden and well going up one by one, the "Camp Lv 2!" banner, and a glide past the finished camp and the ship | Camp, progression |
 | `egg_escape_ugc_08_critters.avi` | The Collection, full, scrolling slowly from top to bottom | Critters, collecting |
 | `egg_escape_ugc_09_critter_parade.avi` | Every critter hops across the camp, then they all pop in to fill the screen | Critters, the ending shot |
+
+The scripts below need only five clips: 01, 02, 07, 08 and 09. Clips 03-06 are optional
+extras for creators who want to show more of the puzzles.
 
 Each clip comes as the raw AVI (35-80 MB) and an H.264/AAC MP4 (7-20 MB). Send creators the
 MP4s. The gameplay clips run 10-26 seconds, the camp 22, the Collection 14 and the parade 17. A
@@ -73,8 +76,7 @@ Covers all three: gameplay, critters and camp.
 |---|---|---|
 | 0-3 s | Face-cam, or clip 02's chain reaction | "I found the coziest puzzle game and I'm obsessed." |
 | 3-10 s | Clip 01 | "Every level, a critter's trapped inside an egg. You spin the egg, drop blocks, and match colours to break your way in." |
-| 10-14 s | Clip 02, the chain | "Chain reactions are SO satisfying." |
-| 14-17 s | Clips 04 and 05, quick cuts | "And it keeps adding new stuff: locks, prisms, vines..." |
+| 10-17 s | Clip 02, the chain | "And chain reactions are SO satisfying. One match sets off the next, and the next..." |
 | 17-22 s | Clip 08 | "Every critter you save joins your collection. There are over a hundred and they're all adorable." |
 | 22-27 s | Clip 07, the camp going up | "And your wins rebuild this little crash-site camp, piece by piece, so you can fix the ship." |
 | 27-30 s | Clip 09's finale | "It's called Egg Escape, and it's free. Go save them all!" |
@@ -85,11 +87,11 @@ For a creator with a cozy-gaming or wind-down audience. Slower and more personal
 
 1. **Hook (0-5 s):** "This is my new wind-down game, and it's genuinely so relaxing." Face-cam
    with clip 01 behind.
-2. **How it works (5-20 s):** "So, every egg has a critter trapped inside. I spin it around,
+2. **How it works (5-18 s):** "So, every egg has a critter trapped inside. I spin it around,
    drop these block pieces, and when colours match they pop. Dig deep enough and the critter
-   escapes." Clip 01, then clip 02.
-3. **It gets clever (20-30 s):** "Later on you get puzzles like padlocks you need a key for,
-   prism stones, and fog that hides the egg." Clips 04, 05 and 06, a few seconds each.
+   escapes." Clip 01.
+3. **The chains (18-30 s):** "And the best feeling is setting up a chain reaction. Watch
+   this... one pop, then another, then another. I could watch that all day." Clip 02.
 4. **The critters (30-40 s):** "The best part is the critters. You collect them, level them
    up, and they all have little names. This one's my favourite." Clip 08; pause the scroll on
    one the creator picks.
