@@ -27,7 +27,7 @@ const TIMER_DISCOUNT_PERCENT := 10
 const DROP_WEIGHTS := {COMMON: 60, RARE: 30, LEGENDARY: 10}
 const COIN_PAYOUT := {COMMON: [200, 500], RARE: [2000, 6000], LEGENDARY: [8000, 12000]}
 ## Building materials for the camp and the ship (TSProfile.materials).
-const MATERIAL_PAYOUT := {COMMON: [80, 120], RARE: [200, 300], LEGENDARY: [500, 700]}
+const MATERIAL_PAYOUT := {COMMON: [120, 180], RARE: [300, 450], LEGENDARY: [750, 1050]}   # +50% (was 80-120, 200-300, 500-700)
 
 ## {} for an empty slot, or {"rarity", "unlock_end"}: 0 until the timer
 ## starts, then the unix time it finishes.

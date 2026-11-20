@@ -914,8 +914,8 @@ const SHIP_BUILD_SECONDS := 1200
 ## Finishing a build early: coins a minute of what is left (at least one minute's).
 const BUILD_SKIP_COINS_PER_MINUTE := 20
 ## Materials a win pays (the Daily Egg pays more).
-const MATERIALS_PER_WIN := 30
-const MATERIALS_PER_DAILY := 50
+const MATERIALS_PER_WIN := 45   # +50% (was 30)
+const MATERIALS_PER_DAILY := 75   # +50% (was 50)
 
 static var materials: int = 0
 ## Time skips: each takes TIME_SKIP_SECONDS off a build under way. From the
@@ -954,8 +954,8 @@ static func add_materials(n: int) -> void:
 ## The materials mine under the ship fills by itself -- more an hour the
 ## higher the Collection level -- up to MINE_CAP_SECONDS' worth, then waits
 ## to be emptied from its node on Home.
-const MINE_BASE_PER_HOUR := 30
-const MINE_PER_LEVEL_PER_HOUR := 5
+const MINE_BASE_PER_HOUR := 45   # +50% (was 30)
+const MINE_PER_LEVEL_PER_HOUR := 8   # was 5
 const MINE_CAP_SECONDS := 6 * 3600
 static var mine_since: int = 0   # unix time it was last emptied (0: not started yet)
 
@@ -2334,7 +2334,7 @@ static var battle_pass_paid_claimed: Array = []
 static var battle_pass_bonus_claimed: int = 0
 const BONUS_CHEST_STARS := 50
 const BONUS_CHEST_COINS := 1000
-const BONUS_CHEST_MATERIALS := 150
+const BONUS_CHEST_MATERIALS := 225   # +50% (was 150)
 const BONUS_CHEST_PREMIUM_TIMES := 2   # the premium track doubles each chest
 
 
@@ -2629,7 +2629,7 @@ const BATTLE_PASS_PAID_COINS_BASE := 1000
 const BATTLE_PASS_COINS_STEP := 100
 
 ## Every tier pays coins or building materials, taking turns: coins on the odd
-## tiers, materials on the even ones (100 + 20 a tier free, 200 + 40 premium).
+## tiers, materials on the even ones (150 + 30 a tier free, 300 + 60 premium: +50% since 1.3.5).
 ## Time skips come only on every 5th tier: 5 free, 10 premium.
 const BATTLE_PASS_SKIP_EVERY := 5
 
@@ -2641,7 +2641,7 @@ static func _pass_currency(tier: int, coins: int, materials: int, skips: int) ->
 
 
 static func battle_pass_free_reward(tier: int, season_n := 0) -> Dictionary:
-	var r := _pass_currency(tier, BATTLE_PASS_FREE_COINS_BASE + BATTLE_PASS_COINS_STEP * (tier - 1), 100 + 20 * tier, 5)
+	var r := _pass_currency(tier, BATTLE_PASS_FREE_COINS_BASE + BATTLE_PASS_COINS_STEP * (tier - 1), 150 + 30 * tier, 5)
 	if _tickets_season(season_n) and PASS_TICKET_FREE_TIERS.has(tier):
 		r["pass_tickets"] = 1
 	var critters: Dictionary = season_rewards(season_n)["free_critters"]
@@ -2659,7 +2659,7 @@ static func battle_pass_free_reward(tier: int, season_n := 0) -> Dictionary:
 ## 1 a tier, 3 on every 5th, 5 on the 10th and 20th -- unless the tier hands
 ## out a critter or a ship part.
 static func battle_pass_paid_reward(tier: int, season_n := 0) -> Dictionary:
-	var r := _pass_currency(tier, BATTLE_PASS_PAID_COINS_BASE + BATTLE_PASS_COINS_STEP * (tier - 1), 200 + 40 * tier, 10)
+	var r := _pass_currency(tier, BATTLE_PASS_PAID_COINS_BASE + BATTLE_PASS_COINS_STEP * (tier - 1), 300 + 60 * tier, 10)
 	if _tickets_season(season_n) and PASS_TICKET_PAID_TIERS.has(tier):
 		r["pass_tickets"] = 1
 	var season := season_rewards(season_n)
