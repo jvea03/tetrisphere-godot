@@ -40,7 +40,7 @@ var _bonus_coins_before := -1
 
 
 func build() -> void:
-	add_header("Battle Pass", true, true, func(): TSUI.reveal(_info["root"], _info["panel"]))
+	add_header("Battle Pass", true, true, _open_info)
 	var timer_pill := TSUI.pill("", TSUI.CARD, 22)
 	timer_pill.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_timer = timer_pill.get_meta("label")
@@ -627,22 +627,49 @@ func _quest_row(q: Dictionary) -> Control:
 # -- buying the pass --------------------------------------------------------------------
 
 func _build_dialogs() -> void:
-	_info = TSUI.dialog(self, 580)
-	var ibox: VBoxContainer = _info["box"]
-	ibox.add_child(TSUI.title("How the Battle Pass Works", 34))
-	ibox.add_child(TSUI.wrap(TSUI.label("1. Win levels to earn stars -- one for every heart you have left, and 2 more for a first try. Quests give more.\n2. Stars climb the tiers.\n3. Tap a reached tier's reward to collect it. Premium adds a bigger reward on every tier.", 22), 520))
-	var ok := TSUI.button("Got it", TSUI.PINK, 26)
-	ok.pressed.connect(func(): TSUI.conceal(_info["root"]))
-	ibox.add_child(ok)
+	_info = TSUI.dialog(self, 600)   # filled by _open_info
 	_buy = TSUI.dialog(self, 600)
 	_build_bonus_dialog()
 
 
-func _open_buy() -> void:
-	var box: VBoxContainer = _buy["box"]
+## The info button: how the pass works, then what Premium adds this season
+## (and, if it isn't owned, a way to get it). Built each time it opens, so
+## it names this season's rewards.
+func _open_info() -> void:
+	var box: VBoxContainer = _info["box"]
 	for c in box.get_children():
 		c.queue_free()
-	box.add_child(TSUI.title("Premium Pass", 44))
+	box.add_child(TSUI.title("How the Battle Pass Works", 34))
+	box.add_child(TSUI.wrap(TSUI.label("1. Win levels to earn stars -- one for every heart you have left, and 2 more for a first try. Quests give more.\n2. Stars climb the tiers.\n3. Tap a reached tier's reward to collect it.\n4. Past the last tier, every %d stars fills a Bonus Chest." % TSProfile.BONUS_CHEST_STARS, 22), 540))
+	var prem := PanelContainer.new()
+	prem.add_theme_stylebox_override("panel", TSUI.sb(COL_PREMIUM, 22, 3, 0, 16))
+	var pv := TSUI.vbox(8)
+	prem.add_child(pv)
+	var ph := TSUI.hbox(8)
+	ph.add_child(TSIcon.make("crown", 40))
+	ph.add_child(TSUI.label("Premium Pass" + ("  ·  Yours!" if TSProfile.battle_pass_purchased else ""), 28))
+	pv.add_child(ph)
+	var body := ""
+	for l in _premium_lines():
+		body += "•  " + l + "\n"
+	pv.add_child(TSUI.wrap(TSUI.label(body.strip_edges(), 20), 520))
+	box.add_child(prem)
+	if not TSProfile.battle_pass_purchased:
+		var get_it := TSUI.button("Unlock Premium  ·  %s" % _price(), COL_PREMIUM_RIM, 26, Vector2(0, 72))
+		get_it.pressed.connect(func():
+			TSUI.conceal(_info["root"])
+			_open_buy())
+		box.add_child(get_it)
+	var ok := TSUI.button("Got it", TSUI.PINK, 26)
+	ok.pressed.connect(func(): TSUI.conceal(_info["root"]))
+	box.add_child(ok)
+	TSUI.juice(box)
+	TSUI.reveal(_info["root"], _info["panel"])
+
+
+## What Premium adds this season, one line each (the info popup and the
+## Buy dialog share them).
+func _premium_lines() -> PackedStringArray:
 	var season := TSProfile.season_rewards()
 	var lines := PackedStringArray()
 	lines.append("A bigger reward on every tier: more coins or building materials, bombs, and more time skips every 5th tier.")
@@ -651,11 +678,25 @@ func _open_buy() -> void:
 		lines.append("%s at tier %d%s." % [TSProfile.critter_name(c), t, " -- only here" if TSProfile.is_critter_pass_exclusive(c) else ""])
 	for t in season["paid_parts"]:
 		lines.append("A free %s fix or upgrade at tier %d." % [TSProfile.part_name(int(season["paid_parts"][t])).to_lower(), t])
+	var stickers := PackedStringArray()
+	for t in season.get("paid_stickers", {}):
+		stickers.append("%s (tier %d)" % [str(season["paid_stickers"][t]).capitalize(), t])
+	if not stickers.is_empty():
+		lines.append("Stickers to send on the leaderboards: %s." % ", ".join(stickers))
 	lines.append("A 4th chest slot, with two chests unlocking at once.")
 	lines.append("Chests unlock %d%% faster." % TSChests.TIMER_DISCOUNT_PERCENT)
 	lines.append("+%d%% on every coin you earn, all season." % TSProfile.BATTLE_PASS_COIN_BONUS_PERCENT)
+	lines.append("Bonus Chests after the last tier hold %dx the coins and materials." % TSProfile.BONUS_CHEST_PREMIUM_TIMES)
+	return lines
+
+
+func _open_buy() -> void:
+	var box: VBoxContainer = _buy["box"]
+	for c in box.get_children():
+		c.queue_free()
+	box.add_child(TSUI.title("Premium Pass", 44))
 	var body := ""
-	for l in lines:
+	for l in _premium_lines():
 		body += "•  " + l + "\n"
 	box.add_child(TSUI.wrap(TSUI.label(body.strip_edges(), 22), 540))
 	var tier := TSProfile.battle_pass_tier()
