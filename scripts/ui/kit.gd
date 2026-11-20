@@ -123,7 +123,7 @@ static func ad_icon(b: Button) -> Button:
 	if TSProfile.no_ads:
 		return b
 	b.icon = AD_ICON
-	b.add_theme_constant_override("icon_max_width", int(b.get_theme_font_size("font_size") * 1.6))
+	b.add_theme_constant_override("icon_max_width", int(b.get_theme_font_size("font_size") * 2.1))
 	b.add_theme_constant_override("h_separation", 10)
 	return b
 
