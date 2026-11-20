@@ -39,7 +39,7 @@ app id `4973493136794668328`, developer account "The Little Guy Games".
 | `egg_featured_hatchers_hoard` | one-time, consumable | $4.99 | Hatcher's Hoard | 130,000 coins, 15 bombs, 2,000 materials. |
 | `egg_no_ads_pass` | one-time, non-consumable | $4.99 | No Ads Pass | No ads, 40,000 coins and bonuses. |
 | `egg_member_coins` | one-time, non-consumable | $6.99 | Coin Club | 40,000 coins, 1,000 a day by mail, +5% win coins. |
-| `egg_member_materials` | one-time, non-consumable | $4.99 (placeholder) | Material Club | 4,000 materials, 500 a day by mail, +5% win materials. |
+| `egg_member_materials` | one-time, non-consumable | $4.99 | Material Club | 4,000 materials, 500 a day by mail, +5% win materials. |
 | `egg_member_time` | one-time, non-consumable | $3.99 | Time Saver | 1,000 time skips, 50 a day, 10% faster builds and chests. |
 | `egg_battle_pass` | one-time, consumable | $4.99 | Battle Pass | Unlock this season's premium rewards. |
 | `egg_popup_hatch_day_2026` | one-time, consumable | $4.99 | Hatch Day Feast | 130,000 coins and 30 bombs. |

@@ -38,7 +38,6 @@ const MATERIAL_PACKS := [
 const STARTER_PACK_LIMIT := 3 # per day: 1 free + 2 ads
 const NO_ADS_PRICE := "$4.99"
 ## The lifetime memberships (TSProfile.MEMBERSHIPS), as the Shop lists them.
-## Material Club's price is a placeholder until it's set in the stores.
 const MEMBER_CARDS := [
 	{"kind": "coins", "product_id": "egg_member_coins", "price": "$6.99", "icon": "coin", "tint": Color(1.0, 0.86, 0.45)},
 	{"kind": "materials", "product_id": "egg_member_materials", "price": "$4.99", "icon": "materials", "tint": Color(0.9, 0.76, 0.6)},
