@@ -1,0 +1,71 @@
+EGG ESCAPE: PERSONAL LAUNCH POST AND STORY
+==========================================
+
+Images (in this folder):
+  egg_escape_post_1080x1350.png    Feed post (4:5, Instagram / Facebook / LinkedIn / X)
+  egg_escape_story_1080x1920.png   Story (9:16). The bottom is left clear for a link sticker.
+
+Links:
+  Android:  https://play.google.com/store/apps/details?id=com.jvea.eggescape
+  iPhone:   https://apps.apple.com/app/id6819941762
+
+
+POST CAPTION (Instagram / Facebook)
+-----------------------------------
+I made a game! 🥚✨
+
+Egg Escape is out now, free on iPhone and Android.
+
+Every level, a little critter is trapped inside an egg. You spin the egg,
+drop blocks, match them to pop, and dig a way out. Save them all, collect
+100+ critters, and rebuild a crash-landed camp one piece at a time.
+
+I built it from scratch (code, puzzles, critters and all), and it would
+mean a lot if you gave it a try, left a review, or shared it with someone
+who loves cozy puzzle games. 💛
+
+📱 Search "Egg Escape" on the App Store or Google Play, or tap the link in
+my bio.
+
+#EggEscape #indiegame #indiedev #gamedev #puzzlegame #cozygames
+#mobilegame #madewithgodot
+
+
+SHORTER VERSION (X / Threads)
+-----------------------------
+I made a game! 🥚 Egg Escape is out now, free on iPhone and Android.
+Spin the egg, match blocks, free the critter inside. Would love for you to
+try it 💛
+iPhone: https://apps.apple.com/app/id6819941762
+Android: https://play.google.com/store/apps/details?id=com.jvea.eggescape
+
+
+LINKEDIN VERSION
+----------------
+I'm excited to share that my game, Egg Escape, is now live on the App Store
+and Google Play.
+
+It's a cozy block-puzzle game: spin an egg, match blocks, and free the
+critter trapped inside, then collect 100+ critters and rebuild a camp
+along the way. I designed and built it myself in Godot, from the puzzle
+mechanics and level design to the in-game economy, live events and store
+launch on both platforms.
+
+It's free to play. I'd love for you to try it, and any feedback or a
+review would mean a lot.
+
+iPhone: https://apps.apple.com/app/id6819941762
+Android: https://play.google.com/store/apps/details?id=com.jvea.eggescape
+
+#indiegame #gamedev #godotengine #mobilegames
+
+
+STORY
+-----
+Slide 1: egg_escape_story_1080x1920.png
+  - Add a Link sticker in the empty space at the bottom. Use the App Store
+    link and label it "Get Egg Escape" (or post two slides, one per store).
+  - Optional text: "it's finally out 🥹"
+Slide 2 (optional): a screen recording of you playing level 1, or clip 01
+  from store/ugc/clips, with a "Poll: will you play it?" or "Ask me
+  anything about making it" sticker.
