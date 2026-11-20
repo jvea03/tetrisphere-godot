@@ -5,6 +5,14 @@
   },
   "messages": [
     {
+      "id": "gift-2026-11-19",
+      "title": "A gift for you!",
+      "body": "Thanks for playing Egg Escape! Here are some coins, materials and Time Skips to help build up your camp.",
+      "rewards": {"coins": 2500, "materials": 2000, "skips": 200},
+      "from": "2026-11-19",
+      "until": "2026-12-31"
+    },
+    {
       "id": "welcome-2026-11",
       "title": "Welcome to Egg Escape!",
       "body": "Thanks for playing! Here's a little gift to get you started: coins, plus Tier Skips to climb the Battle Pass faster.",
