@@ -137,6 +137,10 @@ static func note_pieces(n: int) -> void:
 # team's best without a team field on the row.
 
 const PUSH_EVERY := 60.0                 # seconds between row writes while playing
+## Coins for each team's top three throwers, paid once the weekend's over
+## (through TSProfile's board results: placed online, on a board of at least
+## TSProfile.BOARD_MIN_FOR_PRIZES players, collected on Home).
+const TOP_COINS := [5000, 3000, 2000]
 static var _pushed_at := -1.0e9
 
 
@@ -281,6 +285,10 @@ static func _settle() -> void:
 	if bombs > 0:
 		TSProfile.add_boosters("bomb", bombs)
 	result = {"team": team, "won": won, "coins": coins, "bombs": bombs, "mine": mine, "theirs": theirs, "thrown": thrown}
+	# Top Throwers: the team's board is placed online like the other boards,
+	# and a top-3 place pays TOP_COINS (only if the row was written online).
+	if thrown > 0 and TSProfile.boards_joined.has(board(team)):
+		TSProfile.pending_board_results.append({"period": "snowball", "board": board(team), "stars": thrown, "team": team})
 	week = -1
 	team = ""
 	thrown = 0

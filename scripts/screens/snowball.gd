@@ -237,7 +237,7 @@ func _top_view() -> ScrollContainer:
 	hero.add_child(TSIcon.make("trophy", 90))
 	var hv := TSUI.vbox(2)
 	hv.add_child(TSUI.label("Top Throwers", 32))
-	hv.add_child(TSUI.wrap(TSUI.label("Who's thrown the most snowballs for each team this weekend.", 19, TSUI.MUTED), 440))
+	hv.add_child(TSUI.wrap(TSUI.label("Who's thrown the most snowballs for each team this weekend. Each team's top 3 win coins when it ends!", 19, TSUI.MUTED), 440))
 	hero.add_child(hv)
 	v.add_child(hero)
 	_top_team = TSSnowball.team
@@ -299,6 +299,9 @@ func _top_row(rank: int, entry: Dictionary) -> Control:
 	name_lbl.clip_text = true
 	TSUI.expand(name_lbl)
 	h.add_child(name_lbl)
+	if rank <= TSSnowball.TOP_COINS.size():
+		h.add_child(TSIcon.make("coin", 26))
+		h.add_child(TSUI.label("+%s" % TSProfile.fmt_coins(TSSnowball.TOP_COINS[rank - 1]), 18, TSUI.MUTED))
 	var chip := TSUI.card(FROST if not me else TSUI.MINT, 99, 8, 0)
 	var ch := TSUI.hbox(4)
 	chip.add_child(ch)

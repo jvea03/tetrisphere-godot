@@ -2049,6 +2049,14 @@ static func _settle_board_result(r: Dictionary, place: int) -> void:
 	pending_board_results.erase(r)
 	boards_joined.erase(str(r["board"]))
 	var period := str(r["period"])
+	if period == "snowball":   # a Snowball Fight team's Top Throwers
+		if place > 0 and place <= TSSnowball.TOP_COINS.size():
+			var won: int = boost_earned_coins(TSSnowball.TOP_COINS[place - 1])
+			var team_name: String = TSSnowball.TEAM_NAMES.get(str(r.get("team", "")), "your team")
+			_queue_board_prize("Snowball Fight Top Throwers", place, "%s snowballs" % fmt_coins(int(r["stars"])), won)
+			_append_leaderboard_message("Snowball Fight: #%d thrower for %s (%s snowballs)! Collect +%s coins on Home." % [place, team_name, fmt_coins(int(r["stars"])), fmt_coins(won)])
+		save()
+		return
 	var table: Array = LEADERBOARD_DAILY_COIN_REWARDS if period == "daily" else (LEADERBOARD_WEEKLY_COIN_REWARDS if period == "weekly" else LEADERBOARD_SEASON_COIN_REWARDS)
 	if place > 0 and place <= table.size():
 		var coins: int = boost_earned_coins(table[place - 1])

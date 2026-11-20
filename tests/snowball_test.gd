@@ -57,6 +57,25 @@ func _ready() -> void:
 	var mine_rows := TSSnowball.standings("red")
 	_check("the player is on their team's Top Throwers with what they threw", mine_rows.size() == 1 and mine_rows[0]["is_player"] and int(mine_rows[0]["stars"]) == TSSnowball.thrown)
 	_check("and not on the other team's", TSSnowball.standings("green").is_empty())
+	# A finished weekend: a top-3 thrower's place is queued with the other boards,
+	# and pays TOP_COINS once placed.
+	var saved_week := TSSnowball.week
+	TSProfile.boards_joined.append(TSSnowball.board("red"))
+	var board_red := TSSnowball.board("red")
+	TSSnowball._settle()
+	var queued := TSProfile.pending_board_results.filter(func(r: Dictionary) -> bool: return r["board"] == board_red)
+	_check("the weekend's board is queued to be placed", queued.size() == 1 and queued[0]["period"] == "snowball" and int(queued[0]["stars"]) == 15)
+	var coins_before := TSProfile.pending_board_prizes.size()
+	TSProfile._settle_board_result(queued[0], 1)
+	_check("first place queues %s coins" % TSSnowball.TOP_COINS[0], TSProfile.pending_board_prizes.size() == coins_before + 1 and int(TSProfile.pending_board_prizes[-1]["coins"]) == TSProfile.boost_earned_coins(TSSnowball.TOP_COINS[0]))
+	var q2 := {"period": "snowball", "board": board_red, "stars": 15, "team": "red"}
+	TSProfile.pending_board_results.append(q2)
+	TSProfile._settle_board_result(q2, 4)
+	_check("fourth place pays nothing", TSProfile.pending_board_prizes.size() == coins_before + 1)
+	TSSnowball.result = {}
+	TSSnowball.week = saved_week
+	TSSnowball.team = "red"
+	TSSnowball.thrown = 15
 
 	# On the screen: mash, it flies, the other squad is knocked out, back later.
 	var screen: Node = (load("res://scenes/snowball.tscn") as PackedScene).instantiate()

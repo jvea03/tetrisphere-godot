@@ -18,8 +18,11 @@ and iOS work the same way, with no plugin.
   `snowball_W2970_red` / `snowball_W2970_green` (the weekend's week index;
   red is Team Gingerbread, green Team Snowman), `stars` holding the snowballs
   thrown. The phone writes its row at most once a minute while it pops pieces,
-  at once after a Giant Snowball and when the event screen opens. No prizes, and
-  no rule change was needed (the rules take any board id).
+  at once after a Giant Snowball and when the event screen opens. When the
+  weekend ends the board is placed like the others (`pending_board_results`,
+  period `snowball`): each team's top 3 get 5,000 / 3,000 / 2,000 coins
+  (`TSSnowball.TOP_COINS`), on a board of at least 10 players, collected on Home.
+  No rule change was needed (the rules take any board id).
 - **Prizes:** when a board ends, the phone asks how many rows beat it (a count
   query) and pays the top-3 coins as before. If it's offline, it asks next time.
 - **Stickers:** `stickers/{to}/got/{from}`. One waiting per sender per receiver;
