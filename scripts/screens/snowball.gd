@@ -274,19 +274,18 @@ class TugBar extends Control:
 
 
 ## The battle scene: Team Gingerbread's fort on the left, Team Snowman's on
-## the right, a squad of three behind each. Every squad member pops up on its
+## the right, a squad of three behind each: the game's own Ginger and
+## Snowman critters. Every squad member pops up on its
 ## own clock, winds back and throws at someone in the other squad; snowballs
 ## arc both ways and burst in a puff; snow falls.
 class SnowBattle extends Control:
 	const SQUAD := 3
 	const THROW_TIME := 0.7       # pop up, wind back, release, duck
 	const RELEASE := 0.34         # the moment in it the ball leaves the hand
-	const GINGER := Color(0.8, 0.5, 0.26)
-	const ICING := Color(1.0, 1.0, 0.98)
+	const GINGER := 3            # the Ginger critter (TSProfile.CRITTERS)
+	const SNOWMAN := 70          # and the Snowman
+	const SIZE := 116.0          # a squad member's sticker, across
 	const SNOW := Color(0.98, 0.99, 1.0)
-	const CARROT := Color(1.0, 0.56, 0.16)
-	const COAL := Color(0.16, 0.13, 0.16)
-	const STICK := Color(0.45, 0.3, 0.2)
 
 	var mine := ""
 	var _t := 0.0
@@ -360,11 +359,13 @@ class SnowBattle extends Control:
 			return lerpf(1.0, 0.3, (u - (THROW_TIME - 0.2)) / 0.2)
 		return 1.0
 
+	## The middle of a member's sticker: its face over the wall when
+	## ducked, most of it showing when it pops up.
 	func _head(left: bool, slot: int, rise: float) -> Vector2:
-		return Vector2(_slot_x(left, slot), _wall_top() - 14.0 - rise * 58.0)
+		return Vector2(_slot_x(left, slot), _wall_top() - 12.0 - rise * 62.0)
 
 	func _hand(left: bool, m: Dictionary) -> Vector2:
-		return _head(left, int(m["slot"]), _rise(m)) + Vector2((26.0 if left else -26.0), -26.0)
+		return _head(left, int(m["slot"]), _rise(m)) + Vector2((-26.0 if left else 26.0), -60.0)
 
 	func _draw() -> void:
 		# The sky, the hills, the snowy ground.
@@ -406,10 +407,7 @@ class SnowBattle extends Control:
 		var col: Color = TSSnowball.TEAM_COLORS["red" if left else "green"]
 		for m: Dictionary in _squads.get(left, []):
 			var head := _head(left, int(m["slot"]), _rise(m))
-			if left:
-				_gingerbread(head, col, m)
-			else:
-				_snowman(head, col, m)
+			_critter(head, left, m)
 		_fort(left)
 		var w := _fort_w()
 		var pole := Vector2(_fort_x(left) + (-w * 0.5 - 4.0 if left else w * 0.5 + 4.0), _wall_top())
@@ -460,86 +458,20 @@ class SnowBattle extends Control:
 		sb.set_border_width_all(2)
 		draw_style_box(sb, r)
 
-	## The throwing arm: back over the shoulder while winding up, then flung
-	## forward, the snowball in hand until it's let go.
-	func _arm(shoulder: Vector2, dir: float, m: Dictionary, col: Color, width: float) -> void:
+	## A squad member: the critter's own sticker (the snowmen flipped to face
+	## the gingerbread), tipping back as it winds up and forward as it throws,
+	## a snowball held up in its hand until it lets go.
+	func _critter(at: Vector2, left: bool, m: Dictionary) -> void:
+		var dir := 1.0 if left else -1.0
 		var u := float(m["throw"])
-		var ang := 0.6   # resting, down by the side
+		var tilt := 0.04 * sin(_t * 1.7 + float(m["bob"]))
 		if u >= 0.0:
-			if u < RELEASE:
-				ang = lerpf(0.6, -2.4, minf(u / (RELEASE * 0.7), 1.0))
-			else:
-				ang = lerpf(-2.4, 0.1, minf((u - RELEASE) / 0.12, 1.0))
-		var hand := shoulder + Vector2(cos(ang) * dir, sin(ang)) * 28.0
-		draw_line(shoulder, hand, TSUI.INK, width + 5.0, true)
-		draw_line(shoulder, hand, col, width, true)
+			tilt = lerpf(0.0, -0.3, minf(u / RELEASE, 1.0)) if u < RELEASE else lerpf(0.22, 0.0, minf((u - RELEASE) / (THROW_TIME - RELEASE), 1.0))
+		var tex: Texture2D = TSProfile.critter_art(GINGER if left else SNOWMAN)
+		draw_set_transform(at, tilt * dir, Vector2(1.0 if left else -1.0, 1.0))
+		draw_texture_rect(tex, Rect2(Vector2(-SIZE, -SIZE) * 0.5, Vector2(SIZE, SIZE)), false)
+		draw_set_transform(Vector2.ZERO)
 		if u >= 0.0 and not bool(m["thrown"]):
-			draw_circle(hand, 8.0, Color.WHITE, true, -1.0, true)
-			draw_circle(hand, 8.0, TSUI.INK, false, 2.0, true)
-
-	## A gingerbread person: a cookie head and body, icing eyes, smile and
-	## brow squiggle, gumdrop buttons and a bow tie in the team's colour.
-	func _gingerbread(head: Vector2, col: Color, m: Dictionary) -> void:
-		var sb := StyleBoxFlat.new()
-		sb.bg_color = GINGER
-		sb.set_corner_radius_all(18)
-		sb.border_color = TSUI.INK
-		sb.set_border_width_all(3)
-		draw_style_box(sb, Rect2(head + Vector2(-22, 16), Vector2(44, 70)))
-		var back := head + Vector2(-18, 30)   # the other arm, out to the side
-		draw_line(back, back + Vector2(-14, 14), TSUI.INK, 15.0, true)
-		draw_line(back, back + Vector2(-14, 14), GINGER, 10.0, true)
-		draw_circle(head, 24.0, GINGER, true, -1.0, true)
-		draw_circle(head, 24.0, TSUI.INK, false, 3.0, true)
-		for s in [-1.0, 1.0]:
-			draw_circle(head + Vector2(4.0 + s * 8.0, -3.0), 3.6, ICING, true, -1.0, true)
-			draw_circle(head + Vector2(4.0 + s * 8.0, -3.0), 3.6, TSUI.INK, false, 1.5, true)
-			draw_circle(head + Vector2(4.0 + s * 15.0, 7.0), 4.0, Color(1.0, 0.5, 0.5, 0.6), true, -1.0, true)
-		draw_arc(head + Vector2(4.0, 6.0), 8.0, 0.35, PI - 0.35, 10, ICING, 3.0, true)
-		var squig := PackedVector2Array()
-		for i in 7:
-			squig.append(head + Vector2(-14.0 + float(i) * 5.0, -14.0 + (2.0 if i % 2 == 0 else -2.0)))
-		draw_polyline(squig, ICING, 2.5, true)
-		var bow := head + Vector2(0, 24)
-		draw_colored_polygon(PackedVector2Array([bow, bow + Vector2(-11, -6), bow + Vector2(-11, 6)]), col)
-		draw_colored_polygon(PackedVector2Array([bow, bow + Vector2(11, -6), bow + Vector2(11, 6)]), col)
-		draw_circle(bow, 3.5, col.darkened(0.2), true, -1.0, true)
-		for k in 2:
-			draw_circle(head + Vector2(0, 38.0 + float(k) * 13.0), 4.5, col, true, -1.0, true)
-			draw_circle(head + Vector2(0, 38.0 + float(k) * 13.0), 4.5, TSUI.INK, false, 1.5, true)
-		_arm(head + Vector2(18, 30), 1.0, m, GINGER, 10.0)
-
-	## A snowman: two snowballs stacked, coal eyes and smile, a carrot nose
-	## pointing at the enemy, a scarf in the team's colour, stick arms and a
-	## top hat.
-	func _snowman(head: Vector2, col: Color, m: Dictionary) -> void:
-		var belly := head + Vector2(0, 42)
-		draw_circle(belly, 30.0, SNOW, true, -1.0, true)
-		draw_circle(belly, 30.0, TSUI.INK, false, 3.0, true)
-		for k in 2:
-			draw_circle(belly + Vector2(0, -8.0 + float(k) * 14.0), 3.5, COAL, true, -1.0, true)
-		var back := head + Vector2(22, 34)   # the other arm, a twig out to the side
-		draw_line(back, back + Vector2(18, 10), STICK, 4.0, true)
-		draw_line(back + Vector2(12, 7), back + Vector2(16, -2), STICK, 3.0, true)
-		draw_circle(head, 24.0, SNOW, true, -1.0, true)
-		draw_circle(head, 24.0, TSUI.INK, false, 3.0, true)
-		for s in [-1.0, 1.0]:
-			draw_circle(head + Vector2(-4.0 + s * 8.0, -4.0), 3.6, COAL, true, -1.0, true)
-			draw_circle(head + Vector2(-4.0 + s * 15.0, 7.0), 4.0, Color(1.0, 0.6, 0.66, 0.55), true, -1.0, true)
-		for i in 5:
-			var a := 0.45 + (PI - 0.9) * float(i) / 4.0
-			draw_circle(head + Vector2(-4.0, 4.0) + Vector2.from_angle(a) * 9.0, 1.8, COAL, true, -1.0, true)
-		draw_colored_polygon(PackedVector2Array([head + Vector2(-4, -1), head + Vector2(-4, 5), head + Vector2(-24, 3)]), CARROT)
-		var sb := StyleBoxFlat.new()
-		sb.bg_color = col
-		sb.set_corner_radius_all(5)
-		sb.border_color = TSUI.INK
-		sb.set_border_width_all(2)
-		draw_style_box(sb, Rect2(head + Vector2(-22, 17), Vector2(44, 10)))
-		var tail := head + Vector2(10, 24)
-		var flap := sin(_t * 5.0 + float(m["bob"])) * 4.0
-		draw_colored_polygon(PackedVector2Array([tail, tail + Vector2(8, 0), tail + Vector2(12 + flap, 22), tail + Vector2(2 + flap, 22)]), col)
-		draw_rect(Rect2(head + Vector2(-20, -24), Vector2(40, 6)), COAL)
-		draw_rect(Rect2(head + Vector2(-13, -48), Vector2(26, 25)), COAL)
-		draw_rect(Rect2(head + Vector2(-13, -32), Vector2(26, 6)), col)
-		_arm(head + Vector2(-20, 34), -1.0, m, STICK, 4.0)
+			var hand := _hand(left, m)
+			draw_circle(hand, 10.0, Color.WHITE, true, -1.0, true)
+			draw_circle(hand, 10.0, TSUI.INK, false, 2.5, true)
