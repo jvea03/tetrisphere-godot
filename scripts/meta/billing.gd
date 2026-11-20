@@ -39,6 +39,10 @@ const PRODUCTS := {
 	"egg_bundle_mega": {"coins": 150000, "bomb": 26, "skips": 80, "materials": 5000, "consumable": true},
 	"egg_featured_hatchers_hoard": {"coins": 130000, "bomb": 15, "skips": 40, "materials": 2000, "consumable": true},
 	NO_ADS: {"no_ads": true, "consumable": false},
+	# Lifetime memberships (TSProfile.MEMBERSHIPS): non-consumable, restored like NO_ADS.
+	"egg_member_coins": {"member": "coins", "consumable": false},
+	"egg_member_materials": {"member": "materials", "consumable": false},
+	"egg_member_time": {"member": "time", "consumable": false},
 	"egg_battle_pass": {"battle_pass": true, "consumable": true}, # one season; consumed so next season can buy again
 	# Pop-up sales (TSSales.OFFERS) -- Home only, never in the Shop.
 	"egg_popup_hatch_day_2026": {"coins": 130000, "bomb": 30, "skips": 60, "consumable": true},
@@ -116,7 +120,7 @@ func purchase(product_id: String) -> void:
 	if not PRODUCTS.has(product_id) or _pending != "":
 		purchase_result.emit(product_id, false)
 		return
-	if product_id == NO_ADS and TSProfile.no_ads:
+	if not PRODUCTS[product_id]["consumable"] and owns(product_id):
 		purchase_result.emit(product_id, false)
 		return
 	if product_id == "egg_battle_pass" and TSProfile.battle_pass_purchased:
@@ -145,6 +149,17 @@ func purchase(product_id: String) -> void:
 		_finish(product_id, false)
 
 
+## Whether this device already has a non-consumable (the No Ads pass, a
+## membership).
+func owns(product_id: String) -> bool:
+	var p: Dictionary = PRODUCTS.get(product_id, {})
+	if p.get("no_ads", false):
+		return TSProfile.no_ads
+	if p.has("member"):
+		return TSProfile.has_membership(str(p["member"]))
+	return false
+
+
 ## Re-grants non-consumables the account already owns (the No Ads pass).
 ## Apple requires a visible Restore button; on Android it also covers a
 ## reinstall. Emits restore_finished with what was restored.
@@ -168,6 +183,9 @@ func _grant(product_id: String) -> void:
 	TSProfile.record_purchase()
 	if p.get("no_ads", false):
 		TSProfile.buy_no_ads_pass()
+		return
+	if p.has("member"):
+		TSProfile.buy_membership(str(p["member"]))
 		return
 	if p.get("battle_pass", false):
 		TSProfile.purchase_battle_pass()
@@ -252,8 +270,8 @@ func _on_query_purchases(response: Dictionary) -> void:
 					# purchase and consume: grant it now and consume.
 					_grant(product_id)
 					_settle(pur, product_id)
-				elif product_id == NO_ADS:
-					if not TSProfile.no_ads:
+				else:   # a non-consumable: the No Ads pass or a membership
+					if not owns(product_id):
 						_grant(product_id)
 						restored.append(product_id)
 					_settle(pur, product_id)
@@ -330,7 +348,7 @@ func _on_store_event(ev: Dictionary) -> void:
 					# Only non-consumables come back. Re-grant the No Ads pass if this
 					# device does not have it; finish the transaction either way.
 					var product_id := str(ev.get("product_id", ""))
-					if product_id == NO_ADS and not TSProfile.no_ads:
+					if PRODUCTS.has(product_id) and not PRODUCTS[product_id]["consumable"] and not owns(product_id):
 						_grant(product_id)
 						_restored_ios.append(product_id)
 					if product_id != "":

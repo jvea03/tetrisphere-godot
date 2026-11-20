@@ -38,13 +38,17 @@ app id `4973493136794668328`, developer account "The Little Guy Games".
 | `egg_bundle_mega` | one-time, consumable | $6.99 | Mega Bundle | 150,000 coins, 26 bombs, 5,000 materials. |
 | `egg_featured_hatchers_hoard` | one-time, consumable | $4.99 | Hatcher's Hoard | 130,000 coins, 15 bombs, 2,000 materials. |
 | `egg_no_ads_pass` | one-time, non-consumable | $4.99 | No Ads Pass | No ads, 40,000 coins and bonuses. |
+| `egg_member_coins` | one-time, non-consumable | $6.99 | Coin Club | 40,000 coins, 1,000 a day by mail, +5% win coins. |
+| `egg_member_materials` | one-time, non-consumable | $4.99 (placeholder) | Material Club | 4,000 materials, 500 a day by mail, +5% win materials. |
+| `egg_member_time` | one-time, non-consumable | $3.99 | Time Saver | 1,000 time skips, 50 a day, 10% faster builds and chests. |
 | `egg_battle_pass` | one-time, consumable | $4.99 | Battle Pass | Unlock this season's premium rewards. |
 | `egg_popup_hatch_day_2026` | one-time, consumable | $4.99 | Hatch Day Feast | 130,000 coins and 30 bombs. |
 | `egg_popup_starter_sprinkle` | one-time, consumable | $0.99 | Starter Sprinkle | 25,000 coins and 9 bombs. |
 | `egg_popup_flash_sale` | one-time, consumable | $4.99 | Flash Sale | 75,000 coins and 15 bombs. |
 
-   `egg_no_ads_pass` is the only non-consumable on the iOS side; Play treats it
-   as a one-time product the game acknowledges instead of consuming
+   `egg_no_ads_pass` and the three `egg_member_*` memberships are the
+   non-consumables on the iOS side; Play treats them as one-time products the
+   game acknowledges instead of consuming
    (`scripts/meta/billing.gd` decides that from the product table).
 3. **Upload the AAB** to Closed testing, wait for the pre-launch report, keep 12
    testers opted in for 14 days in a row, then apply for production access.

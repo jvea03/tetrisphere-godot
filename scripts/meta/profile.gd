@@ -173,6 +173,42 @@ static func record_purchase() -> void:
 
 
 ## Grants the No Ads pass and its coin bundle (bought, not earned, so no bonus).
+# -- memberships ---------------------------------------------------------------
+# Lifetime Shop memberships (non-consumable, like the No Ads pass): each pays a
+# one-time bundle when bought, then keeps giving: a daily gift by mail (TSInbox:
+# one a day the game is opened). Coin Club and Material Club also add
+# MEMBER_WIN_BONUS_PERCENT to what a level win pays; Time Saver takes
+# MEMBER_TIME_PERCENT off chest unlocks (TSChests.timer_discount_percent) and
+# camp and ship builds (part_build_seconds).
+const MEMBERSHIPS := {
+	"coins": {"name": "Coin Club", "coins": 40000, "daily": {"coins": 1000}},
+	"materials": {"name": "Material Club", "materials": 4000, "daily": {"materials": 500}},
+	"time": {"name": "Time Saver", "skips": 1000, "daily": {"skips": 50}},
+}
+const MEMBER_WIN_BONUS_PERCENT := 5
+const MEMBER_TIME_PERCENT := 10
+
+static var memberships: Array = []   # the kinds owned: "coins", "materials", "time"
+
+
+static func has_membership(kind: String) -> bool:
+	return memberships.has(kind)
+
+
+## A membership bought (or restored on a new install): its bundle, once.
+static func buy_membership(kind: String) -> void:
+	if has_membership(kind) or not MEMBERSHIPS.has(kind):
+		return
+	memberships.append(kind)
+	is_payer = true
+	var m: Dictionary = MEMBERSHIPS[kind]
+	coin_count += int(m.get("coins", 0))
+	add_materials(int(m.get("materials", 0)))
+	time_skips += int(m.get("skips", 0))
+	TSAnalytics.earned("Shop", "Membership", int(m.get("coins", 0)), int(m.get("materials", 0)))
+	save()
+
+
 static func buy_no_ads_pass() -> void:
 	if no_ads:
 		return
@@ -944,7 +980,10 @@ static func part_next_materials(i: int) -> int:
 static func part_build_seconds(i: int) -> int:
 	var t := _build_tier(i)
 	var base: int = PART_BUILD_SECONDS[t] if t < PART_BUILD_SECONDS.size() else SHIP_BUILD_SECONDS
-	return base * (part_level_of(i) + 1)
+	var secs := base * (part_level_of(i) + 1)
+	if has_membership("time"):
+		secs = roundi(secs * (1.0 - MEMBER_TIME_PERCENT / 100.0))   # Time Saver
+	return secs
 
 
 static func add_materials(n: int) -> void:
@@ -1360,7 +1399,10 @@ static func collection_material_bonus_percent() -> int:
 ## The materials a win pays (the Daily Egg more), collection bonus included.
 static func win_materials(daily: bool) -> int:
 	var base := MATERIALS_PER_DAILY if daily else MATERIALS_PER_WIN
-	return boost_earned_materials(roundi(base * (1.0 + collection_material_bonus_percent() / 100.0)))
+	var paid := boost_earned_materials(roundi(base * (1.0 + collection_material_bonus_percent() / 100.0)))
+	if has_membership("materials"):
+		paid = roundi(paid * (1.0 + MEMBER_WIN_BONUS_PERCENT / 100.0))   # Material Club
+	return paid
 
 
 static func collection_points_for_level(level: int) -> int:
@@ -2085,7 +2127,10 @@ static func difficulty_coin_multiplier(difficulty: int) -> float:
 ## The coins a win pays for `stars_earned` stars, camp bonus included.
 static func win_coin_payout(stars_earned: int, difficulty: int = 0) -> int:
 	var base := stars_earned * coins_per_star() * (1.0 + camp_coin_bonus_percent() / 100.0)
-	return boost_earned_coins(roundi(base * difficulty_coin_multiplier(difficulty)))
+	var paid := boost_earned_coins(roundi(base * difficulty_coin_multiplier(difficulty)))
+	if has_membership("coins"):
+		paid = roundi(paid * (1.0 + MEMBER_WIN_BONUS_PERCENT / 100.0))   # Coin Club
+	return paid
 
 
 ## A wallet total, short enough for its pill: "99,999" in full, then "100k",
@@ -3079,6 +3124,7 @@ static func ensure_loaded() -> void:
 	var inbox: Variant = g.call("inbox_done", {})
 	inbox_done = inbox if inbox is Dictionary else {}
 	no_ads = bool(g.call("no_ads", false))
+	memberships = (g.call("memberships", []) as Array).filter(func(k: Variant) -> bool: return MEMBERSHIPS.has(str(k)))
 	is_payer = bool(g.call("is_payer", false)) or no_ads
 	interstitial_owed = bool(g.call("interstitial_owed", false))
 	interstitial_win_count = int(g.call("interstitial_win_count", 0))
@@ -3252,6 +3298,7 @@ static func save() -> void:
 	s.call("ad_rewards_date", ad_rewards_date)
 	s.call("inbox_done", inbox_done)
 	s.call("no_ads", no_ads)
+	s.call("memberships", memberships)
 	s.call("is_payer", is_payer)
 	s.call("interstitial_owed", interstitial_owed)
 	s.call("interstitial_win_count", interstitial_win_count)

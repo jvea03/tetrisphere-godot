@@ -56,6 +56,7 @@ const PRICE_CENTS := {
 	"egg_bundle_starter": 99, "egg_bundle_value": 299, "egg_bundle_mega": 699,
 	"egg_featured_hatchers_hoard": 499, "egg_no_ads_pass": 499, "egg_battle_pass": 499,
 	"egg_popup_hatch_day_2026": 499, "egg_popup_starter_sprinkle": 99, "egg_popup_flash_sale": 499,
+	"egg_member_coins": 699, "egg_member_materials": 499, "egg_member_time": 399,   # materials: placeholder price
 }
 
 var enabled := false

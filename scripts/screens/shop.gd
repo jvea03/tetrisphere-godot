@@ -37,6 +37,13 @@ const MATERIAL_PACKS := [
 ]
 const STARTER_PACK_LIMIT := 3 # per day: 1 free + 2 ads
 const NO_ADS_PRICE := "$4.99"
+## The lifetime memberships (TSProfile.MEMBERSHIPS), as the Shop lists them.
+## Material Club's price is a placeholder until it's set in the stores.
+const MEMBER_CARDS := [
+	{"kind": "coins", "product_id": "egg_member_coins", "price": "$6.99", "icon": "coin", "tint": Color(1.0, 0.86, 0.45)},
+	{"kind": "materials", "product_id": "egg_member_materials", "price": "$4.99", "icon": "materials", "tint": Color(0.9, 0.76, 0.6)},
+	{"kind": "time", "product_id": "egg_member_time", "price": "$3.99", "icon": "skip", "tint": Color(0.66, 0.84, 1.0)},
+]
 
 var _list: VBoxContainer
 var _scroll: ScrollContainer
@@ -74,6 +81,7 @@ const SECTIONS := [
 	["deals", "Featured Sale", Color(1.0, 0.54, 0.58), "tag"],
 	["pass", "Battle Pass", Color(0.74, 0.56, 1.0), "pass"],
 	["noads", "Remove Ads", Color(0.74, 0.62, 0.98), "noads"],
+	["members", "Memberships", Color(1.0, 0.7, 0.36), "crown"],
 	["bundles", "Bundles", Color(0.56, 0.74, 1.0), "chest"],
 	["coins", "Coins", Color(1.0, 0.76, 0.3), "coin"],
 	["materials", "Materials", Color(0.86, 0.64, 0.44), "materials"],
@@ -114,6 +122,9 @@ func _refresh() -> void:
 				_list.add_child(_pass_card())
 			"noads":
 				_list.add_child(_no_ads_card())
+			"members":
+				for mc: Dictionary in MEMBER_CARDS:
+					_list.add_child(_member_card(mc))
 			"bundles":
 				var bundles := TSUI.hbox(12)
 				for b in BUNDLES:
@@ -406,6 +417,55 @@ func _no_ads_card() -> Control:
 		var nb := _buy_button(_price({"product_id": Billing.NO_ADS, "price": NO_ADS_PRICE}), func(): Billing.purchase(Billing.NO_ADS))
 		nb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		row.add_child(nb)
+	return card
+
+
+## A lifetime membership: its icon, name, what it gives (the one-time bundle
+## until it's owned), and Buy -- or Active once it's yours.
+func _member_card(mc: Dictionary) -> Control:
+	var kind: String = mc["kind"]
+	var info: Dictionary = TSProfile.MEMBERSHIPS[kind]
+	var owned := TSProfile.has_membership(kind)
+	var card := TSUI.card((mc["tint"] as Color).lerp(Color.WHITE, 0.7), 26, 14, 3)
+	var row := TSUI.hbox(14)
+	card.add_child(row)
+	var art := TSIcon.make(str(mc["icon"]), 96)
+	art.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(art)
+	var v := TSUI.vbox(4)
+	TSUI.expand(v)
+	row.add_child(v)
+	var head := TSUI.hbox(8)
+	head.add_child(TSUI.label(str(info["name"]), 28))
+	head.add_child(TSUI.pill("LIFETIME", TSUI.GOLD, 15))
+	v.add_child(head)
+	var perks: Array = []
+	if not owned:
+		match kind:
+			"coins": perks.append("%s coins now" % TSProfile.fmt_coins(int(info["coins"])))
+			"materials": perks.append("%s materials now" % TSProfile.fmt_coins(int(info["materials"])))
+			"time": perks.append("%s time skips now" % TSProfile.fmt_coins(int(info["skips"])))
+	match kind:
+		"coins":
+			perks.append("+%s coins every day, by mail" % TSProfile.fmt_coins(int(info["daily"]["coins"])))
+			perks.append("+%d%% coins on level wins" % TSProfile.MEMBER_WIN_BONUS_PERCENT)
+		"materials":
+			perks.append("+%s materials every day, by mail" % TSProfile.fmt_coins(int(info["daily"]["materials"])))
+			perks.append("+%d%% materials on level wins" % TSProfile.MEMBER_WIN_BONUS_PERCENT)
+		"time":
+			perks.append("+%d time skips every day, by mail" % int(info["daily"]["skips"]))
+			perks.append("Builds and chests %d%% faster" % TSProfile.MEMBER_TIME_PERCENT)
+	for perk in perks:
+		var line := TSUI.hbox(6)
+		line.add_child(TSIcon.make("check", 24))
+		line.add_child(TSUI.label(perk, 18))
+		v.add_child(line)
+	if owned:
+		row.add_child(TSUI.label("Active", 26, Color(0.3, 0.64, 0.3)))
+	else:
+		var b := _buy_button(_price(mc), func(): Billing.purchase(str(mc["product_id"])))
+		b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(b)
 	return card
 
 

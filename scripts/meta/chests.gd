@@ -188,6 +188,8 @@ static func timer_discount_percent() -> int:
 		pct += TIMER_DISCOUNT_PERCENT
 	if TSProfile.battle_pass_active():
 		pct += TIMER_DISCOUNT_PERCENT
+	if TSProfile.has_membership("time"):
+		pct += TSProfile.MEMBER_TIME_PERCENT   # Time Saver
 	return pct
 
 

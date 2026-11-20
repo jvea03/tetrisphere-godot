@@ -53,13 +53,37 @@ static func applies(m: Dictionary, level: int, streak: int, date: String) -> boo
 	return (str(m["from"]) == "" or date >= str(m["from"])) and (str(m["until"]) == "" or date <= str(m["until"]))
 
 
-## The messages showing for this player now, newest in the file first.
+## The messages showing for this player now: today's membership gifts first,
+## then the file's, newest first.
 static func active() -> Array:
 	load_cache()
 	var out: Array = []
 	for m: Dictionary in messages:
 		if not TSProfile.inbox_done.has(m["id"]) and applies(m, TSProfile.last_level, TSProfile.login_streak_count, TSClock.date_string()):
 			out.push_front(m)
+	for m: Dictionary in member_gifts():
+		if not TSProfile.inbox_done.has(m["id"]):
+			out.push_front(m)
+	return out
+
+
+## Today's daily gift from each membership owned (TSProfile.MEMBERSHIPS), made
+## here on the phone: "member-coins-2026-12-05". One a day, for the day the
+## game is opened; a day missed isn't sent later.
+static func member_gifts() -> Array:
+	var out: Array = []
+	var today := TSClock.date_string()
+	for kind: String in TSProfile.MEMBERSHIPS:
+		var info: Dictionary = TSProfile.MEMBERSHIPS[kind]
+		if not TSProfile.has_membership(kind) or not info.has("daily"):
+			continue
+		var what: Dictionary = info["daily"]
+		var parts := PackedStringArray()
+		for key: String in what:
+			parts.append("%s %s" % [TSProfile.fmt_coins(int(what[key])), {"coins": "coins", "materials": "materials", "skips": "time skips"}.get(key, key)])
+		out.append({"id": "member-%s-%s" % [kind, today], "title": "%s: your daily gift" % info["name"],
+			"body": "Thanks for being a member! Here are today's %s." % " and ".join(parts), "rewards": what.duplicate(),
+			"from": today, "until": today, "min_level": 0, "max_level": 0, "min_streak": 0})
 	return out
 
 
@@ -68,6 +92,12 @@ static func claim(m: Dictionary) -> void:
 	if TSProfile.inbox_done.has(m["id"]):
 		return
 	TSProfile.inbox_done[m["id"]] = true
+	# Past days' membership gifts can't come back (only today's is made), so
+	# their "done" marks are dropped rather than kept forever.
+	var today := TSClock.date_string()
+	for id: Variant in TSProfile.inbox_done.keys():
+		if str(id).begins_with("member-") and not str(id).ends_with(today):
+			TSProfile.inbox_done.erase(id)
 	var rewards: Dictionary = m["rewards"]
 	TSProfile.coin_count += int(rewards.get("coins", 0))
 	TSProfile.add_materials(int(rewards.get("materials", 0)))
