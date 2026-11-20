@@ -105,7 +105,7 @@ func _test_wins_and_stars() -> void:
 	_check("Extreme pays double", TSProfile.coin_count - before == roundi(2 * TSProfile.coins_per_star() * (1.0 + TSProfile.camp_coin_bonus_percent() / 100.0)))
 	_check("wallet totals shorten from 100,000", TSProfile.fmt_wallet(99999) == "99,999" and TSProfile.fmt_wallet(100000) == "100k" and TSProfile.fmt_wallet(254321) == "254k" and TSProfile.fmt_wallet(1000000) == "1M" and TSProfile.fmt_wallet(1250000) == "1.2M")
 	_check("the Camp level adds 1%% coins a level (+%d%% at Lv %d)" % [TSProfile.camp_coin_bonus_percent(), TSProfile.camp_level()], TSProfile.camp_coin_bonus_percent() == TSProfile.camp_level())
-	_check("the Collection level adds materials to a win, not coins", TSProfile.win_materials(false) == roundi(TSProfile.MATERIALS_PER_WIN * (1.0 + TSProfile.collection_material_bonus_percent() / 100.0)))
+	_check("the Collection level adds materials to a win, not coins", TSProfile.win_materials(false) == TSProfile.boost_earned_materials(roundi(TSProfile.MATERIALS_PER_WIN * (1.0 + TSProfile.collection_material_bonus_percent() / 100.0))))
 
 
 func _test_chests() -> void:
@@ -194,7 +194,7 @@ func _test_battle_pass() -> void:
 	var coins_b := TSProfile.coin_count
 	var mats_b := TSProfile.materials
 	var got_b := TSProfile.claim_battle_pass_bonus()
-	_check("a Bonus Chest pays coins and materials, doubled with premium (%s)" % str(got_b), int(got_b.get("coins", 0)) >= TSProfile.BONUS_CHEST_COINS * 2 and int(got_b.get("materials", 0)) == TSProfile.BONUS_CHEST_MATERIALS * 2 and TSProfile.coin_count > coins_b and TSProfile.materials > mats_b and TSProfile.battle_pass_bonus_ready() == 2)
+	_check("a Bonus Chest pays coins and materials, doubled with premium (%s)" % str(got_b), int(got_b.get("coins", 0)) >= TSProfile.BONUS_CHEST_COINS * 2 and int(got_b.get("materials", 0)) == TSProfile.boost_earned_materials(TSProfile.BONUS_CHEST_MATERIALS * 2) and TSProfile.coin_count > coins_b and TSProfile.materials > mats_b and TSProfile.battle_pass_bonus_ready() == 2)
 	TSProfile.claim_all_battle_pass()
 	_check("Collect All opens the rest", TSProfile.battle_pass_bonus_ready() == 0 and TSProfile.claim_battle_pass_bonus().is_empty())
 	TSProfile.add_battle_pass_xp(TSProfile.BONUS_CHEST_STARS)
@@ -301,7 +301,7 @@ func _test_building() -> void:
 	var mats_before := TSProfile.materials
 	_check("emptying it pays its materials and starts it over", TSProfile.collect_mine() == rate * 6 and TSProfile.materials == mats_before + rate * 6 and TSProfile.mine_stored() == 0)
 	_check("an empty mine pays nothing", TSProfile.collect_mine() == 0)
-	_check("a higher Collection level fills it faster", TSProfile.MINE_PER_LEVEL_PER_HOUR > 0 and rate == TSProfile.MINE_BASE_PER_HOUR + TSProfile.MINE_PER_LEVEL_PER_HOUR * TSProfile.collection_level())
+	_check("a higher Collection level fills it faster", TSProfile.MINE_PER_LEVEL_PER_HOUR > 0 and rate == TSProfile.boost_earned_materials(TSProfile.MINE_BASE_PER_HOUR + TSProfile.MINE_PER_LEVEL_PER_HOUR * TSProfile.collection_level()))
 	TSProfile.start_part_build(p)
 	var coins := TSProfile.coin_count
 	var skip := TSProfile.part_build_skip_cost(p)
@@ -312,6 +312,10 @@ func _test_building() -> void:
 	_check("the Battle Pass takes turns: coins on odd tiers, materials on even", TSProfile.battle_pass_free_reward(1).has("coins") and not TSProfile.battle_pass_free_reward(1).has("materials") and TSProfile.battle_pass_free_reward(2).has("materials") and not TSProfile.battle_pass_free_reward(2).has("coins") and TSProfile.battle_pass_paid_reward(2).has("materials") and (TSProfile.materials > before or not TSProfile.can_claim_battle_pass_free(1)))
 	_check("chests pay materials", int(TSChests.MATERIAL_PAYOUT[TSChests.COMMON][0]) > 0)
 	_check("wins pay materials", TSProfile.MATERIALS_PER_WIN > 0)
+	_check("earned materials are 20% more by default", TSProfile.boost_earned_materials(100) == 120)
+	TSTunables.apply({"materials_earned_percent": 150})
+	_check("and the remote setting changes it (150%%: %d)" % TSProfile.boost_earned_materials(100), TSProfile.boost_earned_materials(100) == 150 and TSProfile.win_materials(false) >= 45)
+	TSTunables.apply({"materials_earned_percent": 120})
 	TSProfile.part_level[p] = 0
 	TSProfile.part_builds = {}
 

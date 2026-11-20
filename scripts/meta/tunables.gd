@@ -12,6 +12,7 @@ const DEFAULTS := {
 	"interstitial_every_n_wins": 3,
 	"interstitial_every_win_from_level": 60, # from here non-payers see one after every win (payers' first start here, every Nth win)
 	"coins_per_star": 100, # base win payout per star
+	"materials_earned_percent": 120, # materials from wins, chests, the mine and the Battle Pass, in percent (100 = the base amounts)
 	"no_ads_coin_bonus_percent": 5,
 	"bomb_buy_count": 3, # bombs per mid-game coin buy
 	"bomb_pack_cost": 4000, # the Shop's x5 price; the mid-game buy is pro rata
