@@ -973,17 +973,12 @@ func _draw_pause() -> void:
 	_rrect(Rect2(0.56, 0.3, 0.1, 0.4), 0.03, INK, false)
 
 
-## An ad: a coral tag with a bold white "AD" on it, outlined -- nothing else
-## beside the letters, so it can't be misread.
+## An ad: a red play button -- a rounded red screen with a white triangle
+## pointing right.
 func _draw_ad() -> void:
-	_rrect(Rect2(0.06, 0.22, 0.88, 0.56), 0.16, _col(Color(1.0, 0.5, 0.42)))
-	_rrect(Rect2(0.13, 0.27, 0.74, 0.1), 0.05, Color(1.0, 0.72, 0.66), false)   # a shine along the top
-	var font := TSToon.hand_font()
-	var fs := int(0.42 * _s)
-	var w := font.get_string_size("AD", HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-	var at := _u(Vector2(0.5, 0.5)) - Vector2(w * 0.5, -fs * 0.36)
-	draw_string_outline(font, at, "AD", HORIZONTAL_ALIGNMENT_LEFT, -1, fs, maxi(int(_s * 0.09), 2), INK)
-	draw_string(font, at, "AD", HORIZONTAL_ALIGNMENT_LEFT, -1, fs, WHITE)
+	_rrect(Rect2(0.08, 0.2, 0.84, 0.6), 0.2, _col(Color(0.93, 0.25, 0.27)))
+	_rrect(Rect2(0.16, 0.25, 0.68, 0.09), 0.045, Color(1.0, 0.5, 0.5), false)   # a shine along the top
+	_poly([Vector2(0.4, 0.34), Vector2(0.64, 0.5), Vector2(0.4, 0.66)], WHITE)
 
 
 func _draw_noads() -> void:
