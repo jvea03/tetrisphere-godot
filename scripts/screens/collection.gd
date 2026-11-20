@@ -182,7 +182,7 @@ func _build_sets() -> void:
 	hrow.add_child(TSIcon.make("trophy", 56))
 	var hv := TSUI.vbox(4)
 	hv.add_child(TSUI.label("Sets complete  %d/%d" % [done_n, TSSets.SETS.size()], 26))
-	hv.add_child(TSUI.wrap(TSUI.label("Collect every critter in a set to win its coins!", 18, TSUI.MUTED)))
+	hv.add_child(TSUI.wrap(TSUI.label("Collect every critter in a set to win its coins, then level them all up to rank the set up for more!", 18, TSUI.MUTED)))
 	hrow.add_child(TSUI.expand(hv))
 	_sets_list.add_child(head)
 	for st: Dictionary in TSSets.ordered():
@@ -191,8 +191,10 @@ func _build_sets() -> void:
 
 
 func _set_card(st: Dictionary) -> Control:
-	var done := TSSets.is_complete(st)
 	var claimed := TSSets.is_claimed(st)
+	var maxed := TSSets.is_maxed(st)
+	var need := TSSets.next_rank(st)   # the level every critter needs for the next rank
+	var done := TSSets.at_level(st, need) == (st["critters"] as Array).size()
 	var colour: Color = st.get("color", TSUI.BUTTER)
 	var ready_now := TSSets.can_claim(st)
 	var card := PanelContainer.new()
@@ -202,7 +204,7 @@ func _set_card(st: Dictionary) -> Control:
 		face.shadow_color = Color(TSUI.GOLD, 0.8)
 		face.shadow_size = 8
 	card.add_theme_stylebox_override("panel", face)
-	if claimed:
+	if maxed:
 		card.modulate = Color(1, 1, 1, 0.7)
 	var v := TSUI.vbox(10)
 	card.add_child(v)
@@ -211,9 +213,13 @@ func _set_card(st: Dictionary) -> Control:
 	var title := TSUI.pill(str(st["name"]), colour, 24)
 	title.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	top.add_child(title)
+	if claimed:
+		var rank_pill := TSUI.pill("Rank %d/%d" % [TSSets.rank(st), TSSets.MAX_RANK], TSUI.GOLD if maxed else Color.WHITE, 18)
+		rank_pill.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		top.add_child(rank_pill)
 	top.add_child(TSUI.expand(Control.new()))
 	if ready_now:
-		top.add_child(TSUI.pill("Complete!", TSUI.GOLD, 18))
+		top.add_child(TSUI.pill("Complete!" if need == 1 else "Rank %d ready!" % need, TSUI.GOLD, 18))
 	var featured := TSSets.is_featured(st) and not claimed
 	if featured:
 		# The season's featured set: a festive border, snow on its top edge,
@@ -245,19 +251,28 @@ func _set_card(st: Dictionary) -> Control:
 		art.size = Vector2(56, 56)
 		b.add_child(art)
 		art.lock_scale = 0.5
+		if owned and need > 1:
+			# Ranking up: each critter's level, dimmed while it's under the next rank's.
+			var lv := TSProfile.critter_level_of(i)
+			if lv < need and not maxed:
+				art.modulate = Color(1, 1, 1, 0.55)
+			var tag := TSUI.pill("Lv%d" % lv, TSUI.GOLD if lv >= need or maxed else Color.WHITE, 13)
+			tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			tag.position = Vector2(14, 44)
+			b.add_child(tag)
 		b.pressed.connect(func() -> void:
 			_sel_critter = i
 			_build_feature())
 		icons.add_child(b)
 	# How far along: a bar in the set's colour, and the count.
-	var have := TSSets.owned_in(st)
+	var have := TSSets.at_level(st, need)
 	var prog := TSUI.hbox(10)
 	v.add_child(prog)
 	var bar := TSUI.bar(colour.darkened(0.12) if not done else TSUI.GREEN, 18)
 	bar.max_value = members.size()
 	bar.value = have
 	prog.add_child(TSUI.expand(bar))
-	prog.add_child(TSUI.label("%d/%d" % [have, members.size()], 22, TSFX.COL_GAIN if done else TSUI.INK))
+	prog.add_child(TSUI.label(("%d/%d" % [have, members.size()]) if need == 1 else ("%d/%d at Lv %d" % [have, members.size(), need]), 22, TSFX.COL_GAIN if done else TSUI.INK))
 	var bottom := TSUI.hbox(8)
 	v.add_child(bottom)
 	var prize := TSUI.card(TSUI.BUTTER.lerp(Color.WHITE, 0.35), 99, 6, 0)
@@ -266,18 +281,19 @@ func _set_card(st: Dictionary) -> Control:
 	prize.add_child(ph)
 	ph.add_child(TSIcon.make("coin", 30))
 	ph.add_child(TSUI.label("+%s" % TSProfile.fmt_coins(TSSets.reward(st)), 24))
-	bottom.add_child(prize)
+	if not maxed:
+		bottom.add_child(prize)
 	if featured:
 		var twice := TSUI.pill("%dx" % TSSets.FEATURED_BONUS, Color(0.86, 0.24, 0.3), 20)
 		twice.rotation = -0.1
 		bottom.add_child(twice)
 	bottom.add_child(TSUI.expand(Control.new()))
-	if claimed:
-		var got := TSUI.pill("CLAIMED", TSUI.MINT, 20)
+	if maxed:
+		var got := TSUI.pill("MAX RANK", TSUI.MINT, 20)
 		got.rotation = -0.08
 		bottom.add_child(got)
 	elif done:
-		var claim := TSUI.button("Claim", TSUI.GREEN, 24, Vector2(150, 56))
+		var claim := TSUI.button("Claim" if need == 1 else "Claim Rank %d" % need, TSUI.GREEN, 24, Vector2(150, 56))
 		claim.pressed.connect(func() -> void:
 			var from := claim.get_global_rect()
 			var before := TSProfile.coin_count
@@ -289,6 +305,8 @@ func _set_card(st: Dictionary) -> Control:
 				_build_sets())
 		bottom.add_child(claim)
 		TSUI.breathe(claim, 1.6)
+	elif claimed:
+		bottom.add_child(TSUI.label("Level them all to Lv %d" % need, 18, TSUI.MUTED))
 	return card
 
 

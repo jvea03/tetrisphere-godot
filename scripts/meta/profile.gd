@@ -1966,6 +1966,9 @@ static var pending_board_results: Array = []
 static var stickers_owned: Array = []
 ## Collection sets whose coins have been claimed (TSSets ids).
 static var sets_claimed: Array = []
+## Each set's rank claimed (TSSets): set id -> 1..MAX_RANK. A set in
+## sets_claimed but not here is rank 1 (claimed before sets had ranks).
+static var sets_rank: Dictionary = {}
 ## Where this player last saw themselves on each board: board id -> [rank,
 ## stars], so the leaderboard can animate a climb (or a slip) since then.
 static var board_seen: Dictionary = {}
@@ -3200,6 +3203,7 @@ static func ensure_loaded() -> void:
 	stickers_owned = (g.call("stickers_owned", []) as Array).filter(func(id: Variant) -> bool: return TSStickers.ALL.has(str(id)))
 	blocked_players = (g.call("blocked_players", []) as Array).duplicate()
 	sets_claimed = (g.call("sets_claimed", []) as Array).duplicate()
+	sets_rank = (g.call("sets_rank", {}) as Dictionary).duplicate()
 	var auto: Variant = g.call("battle_pass_auto_claimed", {})
 	battle_pass_auto_claimed = (auto as Dictionary).duplicate(true) if auto is Dictionary else {}
 	tier_skips = maxi(0, int(g.call("tier_skips", 0)))
@@ -3338,6 +3342,7 @@ static func save() -> void:
 	s.call("pending_board_results", pending_board_results)
 	s.call("stickers_owned", stickers_owned)
 	s.call("sets_claimed", sets_claimed)
+	s.call("sets_rank", sets_rank)
 	s.call("board_seen", board_seen)
 	s.call("boards_joined", boards_joined)
 	s.call("present_paid_at", present_paid_at)
