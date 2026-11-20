@@ -2,7 +2,8 @@
 # mashed, added to the player's throws, then a six-hour wait (kept in the
 # save); and on the event screen, mashing it launches it, the other squad
 # is knocked out of its fort when it lands, and is back a few seconds later.
-# Run with:
+# Top Throwers keeps a board per team per weekend, with the player on their
+# own team's. Run with:
 #   Godot.exe --path . res://tests/snowball_test.tscn
 extends Node
 
@@ -50,6 +51,12 @@ func _ready() -> void:
 	_check("Home's tile shows a dot while it's ready", TSSnowball.has_alert())
 	_hold("2026-12-05T14:00:00")
 	TSSnowball.blast_at = 0.0
+
+	# Top Throwers: a board per team per weekend, the player on their own.
+	_check("each team has its own board this weekend (%s)" % TSSnowball.board("red"), TSSnowball.board("red") == "snowball_W%d_red" % TSSnowball.week and TSSnowball.board("green") != TSSnowball.board("red"))
+	var mine_rows := TSSnowball.standings("red")
+	_check("the player is on their team's Top Throwers with what they threw", mine_rows.size() == 1 and mine_rows[0]["is_player"] and int(mine_rows[0]["stars"]) == TSSnowball.thrown)
+	_check("and not on the other team's", TSSnowball.standings("green").is_empty())
 
 	# On the screen: mash, it flies, the other squad is knocked out, back later.
 	var screen: Node = (load("res://scenes/snowball.tscn") as PackedScene).instantiate()

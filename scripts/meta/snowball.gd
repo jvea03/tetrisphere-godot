@@ -127,6 +127,43 @@ static func note_pieces(n: int) -> void:
 		return
 	roll()
 	thrown += n
+	push_board()
+
+
+# -- top throwers ------------------------------------------------------------------
+# Each team has its own online board each weekend, "snowball_W<week>_<team>",
+# on Online's boards (a row's "stars" are the snowballs thrown; firestore.rules
+# takes any board, up to 100,000), so the Top Throwers tab can show either
+# team's best without a team field on the row.
+
+const PUSH_EVERY := 60.0                 # seconds between row writes while playing
+static var _pushed_at := -1.0e9
+
+
+static func board(t: String) -> String:
+	return Online.board_id("snowball", "W%d_%s" % [week, t])
+
+
+## Writes the player's row on their team's board: at most once a minute
+## while they pop pieces, or now (`now`).
+static func push_board(now := false) -> void:
+	if team == "" or thrown <= 0 or week < 0:
+		return
+	var t := Time.get_unix_time_from_system()
+	if not now and t - _pushed_at < PUSH_EVERY:
+		return
+	_pushed_at = t
+	Online.push(board(team), mini(thrown, 100000))
+
+
+## A team's top throwers this weekend, best first: the board's rows (minus
+## anyone the player blocked), with the player's own row on their team.
+static func standings(t: String) -> Array:
+	var rows: Array = Online.entries(board(t)).filter(func(e: Dictionary) -> bool: return not e.get("is_player", false) and not TSProfile.blocked_players.has(e.get("uid", "")))
+	if t == team:
+		rows.append({"uid": Online.uid, "name": TSProfile.player_name, "avatar": TSProfile.avatar(), "stars": thrown, "is_player": true})
+	rows.sort_custom(func(a, b): return int(a["stars"]) > int(b["stars"]) or (int(a["stars"]) == int(b["stars"]) and a.get("is_player", false) and not b.get("is_player", false)))
+	return rows
 
 
 ## Whether the Giant Snowball is ready to throw.
@@ -154,6 +191,7 @@ static func blast(taps: int) -> int:
 	thrown += n
 	blast_at = TSClock.now()
 	TSProfile.save()
+	push_board(true)
 	return n
 
 

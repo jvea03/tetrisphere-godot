@@ -19,6 +19,11 @@ var _mash_left := -1.0   # seconds of mashing left; -1 not mashing
 var _taps := 0
 var _flying := false     # the Giant Snowball is in the air
 var _blast_gain := 0     # what it threw, shown when it lands
+var _top_team := ""      # the team the Top Throwers tab is showing
+var _main_tabs: PanelContainer
+var _top_tabs: PanelContainer
+var _top_list: VBoxContainer
+var _top_status: Label
 
 var _red_total: Label
 var _green_total: Label
@@ -37,7 +42,23 @@ func build() -> void:
 	TSSnowball.roll()
 	add_header("Snowball Fight", true)
 	var list := TSUI.vbox(14)
-	content.add_child(TSUI.scroll(list))
+	var battle_scroll := TSUI.scroll(list)
+	if TSSnowball.is_live():
+		var top_scroll := _top_view()
+		top_scroll.visible = false
+		_main_tabs = TSUI.tabs(["Battle", "Top Throwers"], func(i: int):
+			TSUI.style_tabs(_main_tabs, i)
+			battle_scroll.visible = i == 0
+			top_scroll.visible = i == 1
+			if i == 1:
+				_show_top())
+		content.add_child(_main_tabs)
+		content.add_child(battle_scroll)
+		content.add_child(top_scroll)
+		TSSnowball.push_board(true)
+		Online.boards_changed.connect(_on_boards_changed)
+	else:
+		content.add_child(battle_scroll)
 	var res := TSSnowball.take_result()
 	if not res.is_empty():
 		list.add_child(_result_card(res))
@@ -202,6 +223,89 @@ func _refresh_blast() -> void:
 	else:
 		_blast_btn.text = "Ready in " + TSUI.fmt_duration(TSSnowball.blast_wait())
 		_blast_note.text = "Rolling a new one. You can throw a Giant Snowball every %d hours." % (TSSnowball.BLAST_COOLDOWN / 3600)
+
+
+
+# -- top throwers ------------------------------------------------------------------
+
+## The Top Throwers tab: each team's best this weekend, from the online
+## boards (TSSnowball.standings), the player's own team first.
+func _top_view() -> ScrollContainer:
+	var v := TSUI.vbox(12)
+	var hero := TSUI.hbox(10)
+	hero.alignment = BoxContainer.ALIGNMENT_CENTER
+	hero.add_child(TSIcon.make("trophy", 90))
+	var hv := TSUI.vbox(2)
+	hv.add_child(TSUI.label("Top Throwers", 32))
+	hv.add_child(TSUI.wrap(TSUI.label("Who's thrown the most snowballs for each team this weekend.", 19, TSUI.MUTED), 440))
+	hero.add_child(hv)
+	v.add_child(hero)
+	_top_team = TSSnowball.team
+	var names: Array = []
+	for t: String in [TSSnowball.team, TSSnowball.rival()]:
+		names.append(TSSnowball.TEAM_NAMES[t].trim_prefix("Team "))
+	_top_tabs = TSUI.tabs(names, func(i: int):
+		TSUI.style_tabs(_top_tabs, i)
+		_top_team = TSSnowball.team if i == 0 else TSSnowball.rival()
+		_show_top())
+	v.add_child(_top_tabs)
+	_top_status = TSUI.wrap(TSUI.label("", 21, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(_top_status)
+	_top_list = TSUI.vbox(8)
+	v.add_child(_top_list)
+	v.add_child(TSUI.spacer(10))
+	return TSUI.scroll(v)
+
+
+func _show_top() -> void:
+	Online.fetch(TSSnowball.board(_top_team))
+	_refresh_top()
+
+
+func _on_boards_changed() -> void:
+	if _top_list != null and _top_list.is_visible_in_tree():
+		_refresh_top()
+
+
+func _refresh_top() -> void:
+	for c in _top_list.get_children():
+		c.queue_free()
+	var rows := TSSnowball.standings(_top_team)
+	var fetched := not Online.entries(TSSnowball.board(_top_team)).is_empty()
+	var mine := _top_team == TSSnowball.team
+	if not Online.enabled():
+		_top_status.text = "The Top Throwers board isn't available right now."
+	elif rows.is_empty() or (rows.size() == 1 and mine and fetched):
+		_top_status.text = ("Only you so far -- pop pieces to stay on top!" if mine else "Nobody on %s has thrown yet." % TSSnowball.TEAM_NAMES[_top_team]) if fetched else "Loading the top throwers..."
+	elif not fetched and Online.last_error != "":
+		_top_status.text = "Can't reach the leaderboard right now. Check your connection."
+	else:
+		_top_status.text = ""
+	_top_status.visible = _top_status.text != ""
+	for i in mini(rows.size(), Online.TOP_N):
+		_top_list.add_child(_top_row(i + 1, rows[i]))
+
+
+func _top_row(rank: int, entry: Dictionary) -> Control:
+	var me: bool = entry.get("is_player", false)
+	var card := TSUI.card(Color(0.86, 0.96, 0.8) if me else TSUI.CARD, 22, 12, 3)
+	var h := TSUI.hbox(10)
+	card.add_child(h)
+	var rank_lbl := TSUI.label(str(rank), 30, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER)
+	rank_lbl.custom_minimum_size = Vector2(56, 56)
+	h.add_child(TSFX.medal_plate(rank, rank_lbl))
+	h.add_child(TSIcon.make("critter", 52, TSProfile.avatar() if me else int(entry.get("avatar", 0))))
+	var name_lbl := TSUI.label("%s (You)" % entry["name"] if me else str(entry["name"]), 24)
+	name_lbl.clip_text = true
+	TSUI.expand(name_lbl)
+	h.add_child(name_lbl)
+	var chip := TSUI.card(FROST if not me else TSUI.MINT, 99, 8, 0)
+	var ch := TSUI.hbox(4)
+	chip.add_child(ch)
+	ch.add_child(TSIcon.make("snowball", 32))
+	ch.add_child(TSUI.label(TSProfile.fmt_coins(int(entry["stars"])), 26))
+	h.add_child(chip)
+	return card
 
 
 ## Both teams' totals, the tug-of-war between them, who's ahead, time left.

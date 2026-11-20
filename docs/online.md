@@ -14,6 +14,12 @@ and iOS work the same way, with no plugin.
   `stars`, `t`. Board ids: `daily_2026-11-14`, `weekly_W2915`, `season_S2`
   (the UTC date and week, so every player is on the same board and it resets at UTC midnight for everyone; the week starts Monday, the season with the Battle Pass). The phone writes its own row
   after each win, name change or new avatar, and reads the top 50.
+- **Snowball Fight Top Throwers:** one board per team per weekend,
+  `snowball_W2970_red` / `snowball_W2970_green` (the weekend's week index;
+  red is Team Gingerbread, green Team Snowman), `stars` holding the snowballs
+  thrown. The phone writes its row at most once a minute while it pops pieces,
+  at once after a Giant Snowball and when the event screen opens. No prizes, and
+  no rule change was needed (the rules take any board id).
 - **Prizes:** when a board ends, the phone asks how many rows beat it (a count
   query) and pays the top-3 coins as before. If it's offline, it asks next time.
 - **Stickers:** `stickers/{to}/got/{from}`. One waiting per sender per receiver;
