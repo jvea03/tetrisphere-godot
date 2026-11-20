@@ -35,3 +35,6 @@ addons/admob/ios/bin/
 /store/screenshots_src/
 # Recorded UGC B-roll (tools/make_ugc.ps1): 50-130 MB each, rebuilt on demand.
 /store/ugc/clips/
+
+# The story video (17 MB): rebuilt from store/social/story_video.filter (see captions.txt)
+/store/social/*.mp4

@@ -4,6 +4,20 @@ EGG ESCAPE: PERSONAL LAUNCH POST AND STORY
 Images (in this folder):
   egg_escape_post_1080x1350.png    Feed post (4:5, Instagram / Facebook / LinkedIn / X)
   egg_escape_story_1080x1920.png   Story (9:16). The bottom is left clear for a link sticker.
+  egg_escape_story_video_1080x1920.mp4
+                                   Story video (9:16, 18 s, with the game's music): the
+                                   headline card, level 8 cleared ("Free the critter inside
+                                   the egg!"), the critter parade ("Collect 100+ critters"),
+                                   and the card again with the bottom clear for a link sticker.
+                                   Not in git; rebuild it from the UGC clips (store/ugc/clips)
+                                   with story_video.filter:
+                                     ffmpeg -loop 1 -t 2.5 -i store/social/egg_escape_story_1080x1920.png
+                                       -i store/ugc/clips/egg_escape_ugc_01_gameplay_rescue.mp4
+                                       -i store/ugc/clips/egg_escape_ugc_09_critter_parade.mp4
+                                       -loop 1 -t 3.5 -i store/social/egg_escape_story_1080x1920.png
+                                       -/filter_complex store/social/story_video.filter -map "[v]" -map "[aout]"
+                                       -c:v libx264 -crf 18 -pix_fmt yuv420p -c:a aac -b:a 192k
+                                       -movflags +faststart -t 18 store/social/egg_escape_story_video_1080x1920.mp4
 
 Links:
   Android:  https://play.google.com/store/apps/details?id=com.jvea.eggescape
@@ -62,7 +76,7 @@ Android: https://play.google.com/store/apps/details?id=com.jvea.eggescape
 
 STORY
 -----
-Slide 1: egg_escape_story_1080x1920.png
+Slide 1: egg_escape_story_1080x1920.png (or the video, egg_escape_story_video_1080x1920.mp4)
   - Add a Link sticker in the empty space at the bottom. Use the App Store
     link and label it "Get Egg Escape" (or post two slides, one per store).
   - Optional text: "it's finally out 🥹"
