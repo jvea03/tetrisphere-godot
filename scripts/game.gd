@@ -2715,6 +2715,7 @@ func _show_win_card() -> void:
 		box.add_child(_streak_line())
 	if _win_coins + _win_prize > 0 and not early and TSProfile.ad_rewards_left("win_coins") > 0:
 		var double := TSUI.button(TSAdReward.text("Double Coins (+%s)" % TSProfile.fmt_coins(_win_coins + _win_prize)), TSUI.SKY, 28, Vector2(0, 76))
+		TSUI.ad_icon(double)
 		double.pressed.connect(func(): _double_win_coins(double, coin_amount))
 		box.add_child(double)
 	var next_text := "Next Level"
@@ -3093,6 +3094,7 @@ func _refresh_lose_card() -> void:
 		box.add_child(wallet)
 		if not lose_ad_used and not TSProfile.is_payer and not TSProfile.no_ads:
 			var ad := TSUI.button("Watch an ad: +1 heart%s" % more, TSUI.SKY, 26, Vector2(0, 72))
+			TSUI.ad_icon(ad)
 			ad.pressed.connect(func(): _open_ad("life"))
 			box.add_child(ad)
 		box.add_child(TSUI.label("Giving up loses this egg's progress", 18, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
@@ -3329,6 +3331,7 @@ func _open_ad(reward: String) -> void:
 		status.text = "Watch a short ad to continue to Level %d." % (current_level + 1)
 	if can_watch:
 		var watch := TSUI.button("Watch Ad", TSUI.SKY, 28, Vector2(0, 72))
+		TSUI.ad_icon(watch)
 		watch.pressed.connect(_on_ad_watch)
 		buttons.add_child(watch)
 		var noads := TSUI.button("Remove Ads  ·  %s" % "$4.99", TSUI.LILAC, 22, Vector2(0, 60))

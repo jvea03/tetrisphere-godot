@@ -113,6 +113,21 @@ static func restyle(b: Button, color: Color, lip := 6) -> void:
 	b.add_theme_stylebox_override("disabled", sb(GREY, radius, BORDER, lip, 18))
 
 
+## The "AD" tag (TSIcon "ad", baked to a picture so it can sit in a button's
+## own icon slot and survive the button's text changing).
+const AD_ICON := preload("res://icons/ui/ad.png")
+
+## Marks a button that plays an ad with the AD tag before its text. Not with
+## the No Ads pass, where nothing plays.
+static func ad_icon(b: Button) -> Button:
+	if TSProfile.no_ads:
+		return b
+	b.icon = AD_ICON
+	b.add_theme_constant_override("icon_max_width", int(b.get_theme_font_size("font_size") * 1.6))
+	b.add_theme_constant_override("h_separation", 10)
+	return b
+
+
 ## Puts an icon before a button's text, the two centred together. The text is
 ## then set with set_icon_text (the button's own text stays empty), and both
 ## fade with the button when it's disabled.

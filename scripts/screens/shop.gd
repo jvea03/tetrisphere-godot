@@ -510,6 +510,8 @@ func _free_card(p: Dictionary) -> Control:
 	v.add_child(TSUI.label("Back tomorrow" if left <= 0 else ("Free now, %d more later" % (left - 1) if claims == 0 else ("%d more today" % left if TSProfile.no_ads else "%d ad%s left today" % [left, "" if left == 1 else "s"])), 16, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	v.add_child(TSUI.spacer(0, true))
 	var b := TSUI.button(_starter_button_text(claims, left), TSUI.PINK if left > 0 else TSUI.GREY, 24, Vector2(0, 62), 5)
+	if b.text == "Watch Ad":
+		TSUI.ad_icon(b)
 	b.pressed.connect(func():
 		_last_btn = b
 		_on_starter(p))
@@ -633,6 +635,7 @@ func _open_ad(pack: Dictionary) -> void:
 	progress.visible = false
 	box.add_child(progress)
 	var watch := TSUI.button("Watch Ad", TSUI.SKY, 28)
+	TSUI.ad_icon(watch)
 	var close := TSUI.button("Not now", TSUI.GREY, 24, Vector2(0, 60))
 	watch.pressed.connect(func():
 		if _ad_watching or Ads.is_busy():

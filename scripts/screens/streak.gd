@@ -118,6 +118,7 @@ func _make_card(title_text: String, pill_color: Color, icon: String, parts: Dict
 	v.add_child(parts["collected"])
 	if on_tap == _on_login_tap:   # today's login coins, doubled by a rewarded ad
 		var ad := TSUI.button("", TSUI.SKY, 24, Vector2(0, 66), 5)
+		TSUI.ad_icon(ad)
 		ad.pressed.connect(func(): _on_login_ad(ad))
 		v.add_child(ad)
 		parts["ad"] = ad

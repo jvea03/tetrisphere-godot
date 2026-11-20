@@ -549,6 +549,7 @@ func _build_part_card() -> void:
 	skips.add_child(all)
 	_part["skip_all"] = all
 	var build_ad := TSUI.button("", TSUI.SKY, 22, Vector2(0, 64), 4)
+	TSUI.ad_icon(build_ad)
 	build_ad.pressed.connect(_on_build_ad)
 	box.add_child(build_ad)
 	_part["ad"] = build_ad
@@ -1614,6 +1615,7 @@ func _build_dialogs() -> void:
 	mbox.add_child(mine_body)
 	_mine["body"] = mine_body
 	var mine_ad := TSUI.button("", TSUI.SKY, 26)
+	TSUI.ad_icon(mine_ad)
 	mine_ad.pressed.connect(_on_mine_ad)
 	mbox.add_child(mine_ad)
 	_mine["ad"] = mine_ad
@@ -1637,6 +1639,7 @@ func _build_dialogs() -> void:
 	sbox.add_child(confirm)
 	_skip["confirm"] = confirm
 	var chest_ad := TSUI.button("", TSUI.SKY, 26)
+	TSUI.ad_icon(chest_ad)
 	chest_ad.pressed.connect(_on_chest_ad)
 	sbox.add_child(chest_ad)
 	_skip["ad"] = chest_ad

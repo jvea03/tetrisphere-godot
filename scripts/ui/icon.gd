@@ -973,9 +973,12 @@ func _draw_pause() -> void:
 	_rrect(Rect2(0.56, 0.3, 0.1, 0.4), 0.03, INK, false)
 
 
+## An ad: a gold tag with a play button and "AD" on it.
 func _draw_ad() -> void:
-	_rrect(Rect2(0.12, 0.22, 0.76, 0.56), 0.08, _col(Color(0.62, 0.84, 1.0)))
-	_poly([Vector2(0.42, 0.36), Vector2(0.64, 0.5), Vector2(0.42, 0.64)], WHITE)
+	_rrect(Rect2(0.06, 0.2, 0.88, 0.6), 0.14, _col(Color(1.0, 0.79, 0.3)))
+	_rrect(Rect2(0.12, 0.25, 0.76, 0.12), 0.06, Color(1.0, 0.9, 0.6), false)   # a shine along the top
+	_poly([Vector2(0.16, 0.38), Vector2(0.31, 0.5), Vector2(0.16, 0.62)], WHITE)
+	_text(Vector2(0.62, 0.51), "AD", 0.36, INK)
 
 
 func _draw_noads() -> void:
