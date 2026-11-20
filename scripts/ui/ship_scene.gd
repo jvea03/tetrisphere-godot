@@ -767,7 +767,7 @@ func _poke(at: Vector2) -> void:
 			return
 	for c in _crew:
 		var icon: TSIcon = c["icon"]
-		if icon.get_global_rect().has_point(at):
+		if icon.get_global_rect().abs().has_point(at):   # abs: a crew member facing left is flipped (negative scale)
 			c["hop"] = _t
 			TSSfx.play("tap")
 			return
