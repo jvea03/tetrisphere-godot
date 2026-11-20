@@ -43,6 +43,12 @@ func build() -> void:
 	TSProfile.ensure_loaded()
 	TSSnowball.roll()
 	_build_how()
+	# Winter over the paper: an icy tint and snow drifting down behind the cards.
+	var fall := Snowfall.new()
+	fall.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	fall.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(fall)
+	move_child(fall, 1)
 	add_header("Snowball Fight", true, true, func(): TSUI.reveal(_how["root"], _how["panel"]))
 	var list := TSUI.vbox(14)
 	var battle_scroll := TSUI.scroll(list)
@@ -327,6 +333,23 @@ func _top_row(rank: int, entry: Dictionary) -> Control:
 	return card
 
 
+
+## A team's name on the score card, with its squad's critter beside it.
+func _team_tag(t: String) -> Control:
+	var h := TSUI.hbox(6)
+	var face := TSIcon.make("critter", 40, SnowBattle.GINGER if t == "red" else SnowBattle.SNOWMAN)
+	face.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var name_lbl := TSUI.label(TSSnowball.TEAM_NAMES[t].trim_prefix("Team "), 22, TSSnowball.TEAM_COLORS[t].darkened(0.35))
+	if t == "red":
+		h.add_child(face)
+		h.add_child(name_lbl)
+	else:
+		h.alignment = BoxContainer.ALIGNMENT_END
+		h.add_child(name_lbl)
+		h.add_child(face)
+	return h
+
+
 ## Both teams' totals, the tug-of-war between them, who's ahead, time left.
 func _score_card() -> Control:
 	var card := TSUI.card(TSUI.CARD, 28, 16, 4)
@@ -336,7 +359,7 @@ func _score_card() -> Control:
 	v.add_child(row)
 	var left := TSUI.vbox(0)
 	TSUI.expand(left)
-	left.add_child(TSUI.label(TSSnowball.TEAM_NAMES["red"], 20, TSUI.MUTED))
+	left.add_child(_team_tag("red"))
 	_red_total = TSUI.label("", 32, TSSnowball.TEAM_COLORS["red"].darkened(0.25))
 	left.add_child(_red_total)
 	row.add_child(left)
@@ -345,7 +368,7 @@ func _score_card() -> Control:
 	row.add_child(vs)
 	var right := TSUI.vbox(0)
 	TSUI.expand(right)
-	right.add_child(TSUI.label(TSSnowball.TEAM_NAMES["green"], 20, TSUI.MUTED, HORIZONTAL_ALIGNMENT_RIGHT))
+	right.add_child(_team_tag("green"))
 	_green_total = TSUI.label("", 32, TSSnowball.TEAM_COLORS["green"].darkened(0.3), HORIZONTAL_ALIGNMENT_RIGHT)
 	right.add_child(_green_total)
 	row.add_child(right)
@@ -497,6 +520,28 @@ func _refresh_score() -> void:
 	_ends.text = "Ends in " + TSUI.fmt_duration(TSSnowball.seconds_left())
 
 
+
+
+## Behind the whole screen: a cool wash over the paper, deepening toward the
+## top, and slow flakes drifting down.
+class Snowfall extends Control:
+	var _t := 0.0
+
+	func _process(delta: float) -> void:
+		_t += delta
+		queue_redraw()
+
+	func _draw() -> void:
+		draw_polygon(PackedVector2Array([Vector2.ZERO, Vector2(size.x, 0), size, Vector2(0, size.y)]),
+			PackedColorArray([Color(0.72, 0.84, 1.0, 0.42), Color(0.72, 0.84, 1.0, 0.42), Color(0.86, 0.92, 1.0, 0.18), Color(0.86, 0.92, 1.0, 0.18)]))
+		for i in 46:
+			var speed := 22.0 + float(i % 6) * 9.0
+			var x := fmod(float(i) * 83.7, size.x) + sin(_t * 0.6 + float(i) * 1.3) * 18.0
+			var y := fmod(float(i) * 141.3 + _t * speed, size.y + 20.0) - 10.0
+			var r := 2.0 + float(i % 4)
+			draw_circle(Vector2(x, y), r, Color(1, 1, 1, 0.75), true, -1.0, true)
+
+
 ## The snowball in the Giant Snowball button: small when it's ready, growing
 ## (and wobbling) with every mash, faded while it waits.
 class SnowFace extends Control:
@@ -506,7 +551,7 @@ class SnowFace extends Control:
 
 	func _process(delta: float) -> void:
 		_t += delta
-		if grow > 0.0:
+		if grow > 0.0 or not dim:
 			queue_redraw()
 
 	func _draw() -> void:
@@ -515,6 +560,18 @@ class SnowFace extends Control:
 		if grow > 0.0:
 			r += sin(_t * 28.0) * 3.0 * grow
 		var a := 0.45 if dim else 1.0
+		if not dim:
+			# Ready (or charging): a soft glow breathing round it, and sparkles
+			# turning about it.
+			var pulse := 0.5 + 0.5 * sin(_t * 3.0)
+			for k in 3:
+				draw_circle(c, r + 8.0 + 9.0 * float(k) + 5.0 * pulse, Color(1, 1, 1, 0.16 - 0.04 * float(k)), true, -1.0, true)
+			for k in 4:
+				var ang := _t * (1.2 + grow * 3.0) + TAU * float(k) / 4.0
+				var at := c + Vector2.from_angle(ang) * (r + 22.0)
+				var s := 5.0 + 3.0 * sin(_t * 5.0 + float(k) * 1.7)
+				draw_colored_polygon(PackedVector2Array([at + Vector2(0, -s * 1.6), at + Vector2(s * 0.4, 0), at + Vector2(0, s * 1.6), at + Vector2(-s * 0.4, 0)]), Color(1, 1, 1, 0.95))
+				draw_colored_polygon(PackedVector2Array([at + Vector2(-s * 1.6, 0), at + Vector2(0, s * 0.4), at + Vector2(s * 1.6, 0), at + Vector2(0, -s * 0.4)]), Color(1, 1, 1, 0.95))
 		draw_circle(c + Vector2(0, r * 0.1), r, Color(0.3, 0.45, 0.8, 0.35 * a), true, -1.0, true)
 		draw_circle(c, r, Color(1, 1, 1, a), true, -1.0, true)
 		draw_circle(c, r, Color(TSUI.INK, a), false, 4.0, true)
@@ -711,17 +768,46 @@ class SnowBattle extends Control:
 		return _head(left, int(m["slot"]), _rise(m)) + Vector2((-26.0 if left else 26.0), -60.0)
 
 	func _draw() -> void:
-		# The sky, the hills, the snowy ground.
-		draw_rect(Rect2(Vector2.ZERO, size), Color(0.7, 0.84, 1.0))
-		draw_rect(Rect2(Vector2(0, size.y * 0.45), Vector2(size.x, size.y * 0.55)), Color(0.78, 0.88, 1.0))
+		# The sky, top to bottom; a pale winter sun; far hills with pines; the
+		# snowy ground with the forts' shadows on it and a twinkle here and there.
+		var sky_top := Color(0.55, 0.74, 0.98)
+		var sky_low := Color(0.86, 0.93, 1.0)
+		draw_polygon(PackedVector2Array([Vector2.ZERO, Vector2(size.x, 0), Vector2(size.x, size.y), Vector2(0, size.y)]),
+			PackedColorArray([sky_top, sky_top, sky_low, sky_low]))
+		var sun := Vector2(size.x * 0.5, size.y * 0.3)
+		for k in 4:
+			draw_circle(sun, 30.0 + 18.0 * float(k), Color(1.0, 0.98, 0.9, 0.16), true, -1.0, true)
+		draw_circle(sun, 26.0, Color(1.0, 0.98, 0.9, 0.85), true, -1.0, true)
+		var far := PackedVector2Array()
+		for i in 25:
+			var x := size.x * float(i) / 24.0
+			far.append(Vector2(x, _ground() - 78.0 - 22.0 * sin(float(i) * 0.45 + 1.0)))
+		far.append(Vector2(size.x, size.y))
+		far.append(Vector2(0, size.y))
+		draw_colored_polygon(far, Color(0.8, 0.88, 0.99))
+		for i in 9:
+			var px := size.x * (0.04 + 0.115 * float(i)) + 9.0 * sin(float(i) * 2.3)
+			var py := _ground() - 70.0 - 22.0 * sin(px / size.x * 24.0 * 0.45 + 1.0) * 0.6
+			_pine(Vector2(px, py), 34.0 + 12.0 * float((i * 5) % 3))
 		var hill := PackedVector2Array()
 		for i in 25:
 			var x := size.x * float(i) / 24.0
 			hill.append(Vector2(x, _ground() - 40.0 - 18.0 * sin(float(i) * 0.7)))
 		hill.append(Vector2(size.x, size.y))
 		hill.append(Vector2(0, size.y))
-		draw_colored_polygon(hill, Color(0.9, 0.95, 1.0))
+		draw_colored_polygon(hill, Color(0.91, 0.95, 1.0))
 		draw_rect(Rect2(Vector2(0, _ground()), Vector2(size.x, size.y)), SNOW)
+		for left in [true, false]:
+			draw_set_transform(Vector2(_fort_x(left), _ground() + 6.0), 0.0, Vector2(1.0, 0.16))
+			draw_circle(Vector2.ZERO, _fort_w() * 0.58, Color(0.55, 0.68, 0.9, 0.3), true, -1.0, true)
+			draw_set_transform(Vector2.ZERO)
+		for i in 8:
+			var glint := sin(_t * 2.6 + float(i) * 1.9)
+			if glint > 0.4:
+				var at := Vector2(fmod(float(i) * 151.0 + 40.0, size.x), _ground() + 8.0 + fmod(float(i) * 23.0, size.y - _ground() - 12.0))
+				var r := 5.0 * (glint - 0.4) / 0.6
+				draw_line(at - Vector2(r, 0), at + Vector2(r, 0), Color(0.7, 0.84, 1.0), 2.0, true)
+				draw_line(at - Vector2(0, r), at + Vector2(0, r), Color(0.7, 0.84, 1.0), 2.0, true)
 		for left in [true, false]:
 			_draw_side(left)
 		# Knocked-out critters, tumbling up and away in front of everything.
@@ -812,17 +898,51 @@ class SnowBattle extends Control:
 					continue
 				var rx := maxf(bx, x - w * 0.5)
 				_block(Rect2(Vector2(rx, g - bh * float(r + 1)), Vector2(minf(bx + bw, x + w * 0.5) - rx, bh)))
+		# Fresh snow along the top of the wall, icicles hanging from it.
+		_snow_cap(Rect2(Vector2(x - w * 0.5 - 3.0, g - bh * 3.0 - 5.0), Vector2(w + 6.0, 10.0)))
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 11 if left else 23
+		for i in 9:
+			var ix := x - w * 0.5 + 10.0 + (w - 20.0) * float(i) / 8.0 + rng.randf_range(-4, 4)
+			var il := rng.randf_range(7.0, 15.0)
+			var top := g - bh * 3.0 + 4.0
+			draw_colored_polygon(PackedVector2Array([Vector2(ix - 3.5, top), Vector2(ix + 3.5, top), Vector2(ix, top + il)]), Color(0.86, 0.94, 1.0, 0.95))
 		for s in [-0.5, -0.16, 0.16, 0.5]:
 			var cx := clampf(x + w * s - bw * 0.5, x - w * 0.5, x + w * 0.5 - bw)
 			_block(Rect2(Vector2(cx, g - bh * 4.0), Vector2(bw, bh)))
+			_snow_cap(Rect2(Vector2(cx - 2.0, g - bh * 4.0 - 5.0), Vector2(bw + 4.0, 9.0)))
 
+	## A snow block: pale ice, a brighter top edge and a bluer shaded bottom.
 	func _block(r: Rect2) -> void:
 		var sb := StyleBoxFlat.new()
-		sb.bg_color = Color(0.96, 0.98, 1.0)
+		sb.bg_color = Color(0.93, 0.96, 1.0)
 		sb.set_corner_radius_all(6)
-		sb.border_color = Color(0.6, 0.72, 0.92)
+		sb.border_color = Color(0.58, 0.7, 0.92)
 		sb.set_border_width_all(2)
 		draw_style_box(sb, r)
+		draw_line(r.position + Vector2(6, 4), Vector2(r.end.x - 6, r.position.y + 4), Color(1, 1, 1, 0.95), 3.0, true)
+		draw_line(Vector2(r.position.x + 6, r.end.y - 4), r.end - Vector2(6, 4), Color(0.78, 0.86, 0.98), 2.0, true)
+
+	## A soft heap of snow lying on top of something.
+	func _snow_cap(r: Rect2) -> void:
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color.WHITE
+		sb.set_corner_radius_all(int(r.size.y * 0.5))
+		sb.border_color = Color(0.7, 0.8, 0.95)
+		sb.set_border_width_all(1)
+		draw_style_box(sb, r)
+		for k in int(r.size.x / 26.0):
+			draw_circle(Vector2(r.position.x + 13.0 + float(k) * 26.0, r.position.y + 1.0), r.size.y * 0.42, Color.WHITE, true, -1.0, true)
+
+	## A snowy pine on the far hills: dark green tiers dusted with snow.
+	func _pine(base: Vector2, h: float) -> void:
+		draw_rect(Rect2(base + Vector2(-h * 0.05, -h * 0.12), Vector2(h * 0.1, h * 0.14)), Color(0.45, 0.42, 0.5))
+		for k in 3:
+			var y0 := base.y - h * (0.1 + 0.27 * float(k))
+			var half := h * (0.36 - 0.09 * float(k))
+			var tip := Vector2(base.x, y0 - h * 0.38)
+			draw_colored_polygon(PackedVector2Array([Vector2(base.x - half, y0), Vector2(base.x + half, y0), tip]), Color(0.42, 0.62, 0.66))
+			draw_colored_polygon(PackedVector2Array([tip, tip + Vector2(-half * 0.42, h * 0.16), tip + Vector2(half * 0.42, h * 0.16)]), Color(0.97, 0.99, 1.0))
 
 	## A squad member: the critter's own sticker (the snowmen flipped to face
 	## the gingerbread), tipping back as it winds up and forward as it throws,
