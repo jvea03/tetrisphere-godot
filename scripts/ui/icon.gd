@@ -981,11 +981,20 @@ func _draw_ad() -> void:
 	_poly([Vector2(0.4, 0.34), Vector2(0.64, 0.5), Vector2(0.4, 0.66)], WHITE)
 
 
+## No Ads: the ad icon's red play button under a "no" sign -- a dark ring
+## with a slash across it, edged in white so it stands off the red.
 func _draw_noads() -> void:
-	_circle(Vector2(0.5, 0.5), 0.42, WHITE)
-	_text(Vector2(0.5, 0.52), "AD", 0.3, INK)
-	draw_arc(_u(Vector2(0.5, 0.5)), 0.4 * _s, 0.0, TAU, 32, Color(0.92, 0.3, 0.36), _w() * 1.3, true)
-	_line([Vector2(0.24, 0.24), Vector2(0.76, 0.76)], Color(0.92, 0.3, 0.36), 1.3)
+	_rrect(Rect2(0.16, 0.28, 0.68, 0.46), 0.16, Color(0.93, 0.25, 0.27))
+	_poly([Vector2(0.43, 0.39), Vector2(0.61, 0.51), Vector2(0.43, 0.63)], WHITE)
+	var c := _u(Vector2(0.5, 0.51))
+	var r := 0.42 * _s
+	var a := c + Vector2(-1, -1).normalized() * r
+	var b := c + Vector2(1, 1).normalized() * r
+	for pass_i in 2:   # white edge first, then the dark sign on top
+		var col := WHITE if pass_i == 0 else INK
+		var wid := _w() * (3.4 if pass_i == 0 else 2.0)
+		draw_arc(c, r, 0.0, TAU, 40, col, wid, true)
+		draw_line(a, b, col, wid, true)
 
 
 func _draw_music() -> void:
