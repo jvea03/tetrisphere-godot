@@ -6,8 +6,8 @@
   "messages": [
     {
       "id": "gift-2026-11-19",
-      "title": "A gift for you!",
-      "body": "Thanks for playing Egg Escape! Here are some coins, materials and Time Skips to help build up your camp.",
+      "title": "Thanksgiving Break Reward",
+      "body": "Happy Thanksgiving! We're thankful for you. Enjoy some coins, materials and Time Skips to build up your camp over the break.",
       "rewards": {"coins": 2500, "materials": 2000, "skips": 200},
       "from": "2026-11-19",
       "until": "2026-12-31"
