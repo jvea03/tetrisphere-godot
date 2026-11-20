@@ -4,7 +4,8 @@
 # tools/make_ads.gd's key art, sky, phone and headline helpers.
 # The phone shows store/ads/src/game_tied.png: level 20 with the shell dug away
 # round its first tie-down, the egg turned a column past it, so the critter sits
-# in plain view in its chains (a posed 1080 x 1920 capture, not a played board).
+# in plain view in its chains, the camera a quarter closer than in play (a
+# posed 1080 x 1920 capture, not a played board).
 # Run:
 #   Godot.exe --path . res://tools/make_social.tscn
 extends "res://tools/make_ads.gd"
