@@ -20,6 +20,7 @@
 # --planet=<theme> the critters' planet dressed for a season: christmas, newyear...
 # --crashed      Home with the ship as it crash-landed: no part fixed or built
 # --built        Home with every camp and ship part built to the top
+# --camp=<n>     Home with every camp spot at level n (its build nodes showing)
 # --collected=<n> the first n critters collected (a fuller Collection)
 # --streak=<n>   on a win streak of n wins
 # --release      as players see it: features the editor switches on early stay off
@@ -93,6 +94,10 @@ func _ready() -> void:
 	if OS.get_cmdline_user_args().has("--fake"):   # leaderboard: the editor's fake board of made-up players, never Firebase
 		Online.force_fake = true
 	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--camp="):   # every camp spot at level n: a plus on each one not finished
+			for i in TSProfile.PART_COUNT:
+				if TSProfile.PARTS[i]["group"] == "camp":
+					TSProfile.part_level[i] = int(a.substr(7))
 		if a.begins_with("--streak="):   # on a win streak of n
 			TSProfile.win_streak = int(a.substr(9))
 		if a.begins_with("--collected="):   # the first n critters collected, at mixed levels
@@ -237,6 +242,7 @@ func _profile(level: int) -> void:
 	TSProfile.camp_callout_seen = true
 	TSProfile.collection_tutorial_seen = true
 	TSProfile.club_intro_seen = true
+	TSProfile.name_callout_seen = true
 	TSProfile.coin_count = 48250
 	TSProfile.bomb_count = 7
 	for i in [1, 2, 4, 8, 11, 15]:

@@ -35,7 +35,7 @@ signal present_tapped(at: Vector2)
 ## which glides the world over to them.
 
 const W := 2600.0                # the world, in the menus' 720-wide units
-const H := 2610.0                # deep enough to scroll the far south (the village square and the hot spring) up over the chest tray (home_test checks)
+const H := 2900.0                # deep enough to scroll the far south (the village square and the hot spring) up over the chest tray (home_test checks)
 const INK := Color(0.27, 0.16, 0.19)
 const GLASS := Color(0.62, 0.84, 1.0)
 const DIRT := Color(0.74, 0.58, 0.44)
@@ -318,9 +318,8 @@ var _falling: Array = []        # drifting leaves: [x, y, fall speed, sway phase
 
 ## Where the build nodes on the ground float, in world coordinates (above each
 ## camp spot, and the solar panels' stand), by TSProfile.PARTS index.
-## Each camp spot's build node (and the solar panels'): over where the spot
-## stands, just clear of the top of what is drawn there at its level now
-## (SPOT_TOPS), so it rises as the spot is built up.
+## Each camp spot's build node (and the solar panels'): just under where the
+## spot stands, so it stays put however tall the spot is built up.
 const GROUND_NODES := {0: FIRE, 1: TENT, 2: BENCH, 3: GARDEN, 4: WELL, 5: LOOKOUT, 14: SOLAR,
 	15: HAMMOCK, 16: PICNIC, 17: CLOTHESLINE, 18: MAILBOX, 19: WINDMILL, 20: DOCK, 21: PLAYGROUND, 22: TREEHOUSE, 23: STALL,
 	24: GREENHOUSE, 25: SPRING, 26: OBSERVATORY, 27: OVEN, 28: STATUE}
@@ -789,9 +788,8 @@ func _node_parts() -> Array:
 
 ## Where a part's node floats, in world coordinates.
 func _node_world(i: int) -> Vector2:
-	if GROUND_NODES.has(i):   # the top of what stands there now (the node sits over it: _node_lift)
-		var tops: Array = SPOT_TOPS[i]
-		return (GROUND_NODES[i] as Vector2) - Vector2(0.0, float(tops[clampi(_lv(i), 0, tops.size() - 1)]))
+	if GROUND_NODES.has(i):   # the spot's foot (the node sits just under it: _node_lift)
+		return GROUND_NODES[i] as Vector2
 	var a := deg_to_rad(float(SHIP_SLOTS[i]))
 	return _xf * (SHIP_MIDDLE + Vector2(cos(a) * SHIP_RING.x, sin(a) * SHIP_RING.y))
 
@@ -801,10 +799,11 @@ func node_screen_position(i: int) -> Vector2:
 	return _world.position + _node_world(i) * _zoom - _node_lift(i)
 
 
-## A camp spot's node sits on screen just clear of the spot's top, whatever
-## the zoom; a ship part's sits on its ring.
+## A camp spot's node sits on screen just under the spot's foot, whatever the
+## zoom (so a tall building never pushes it off the top of the screen); a
+## ship part's sits on its ring. (Negative: it drops the node.)
 func _node_lift(i: int) -> Vector2:
-	return Vector2(0.0, NODE_R + 4.0 + NODE_GAP) if GROUND_NODES.has(i) else Vector2.ZERO
+	return Vector2(0.0, -(NODE_R + 4.0 + NODE_GAP)) if GROUND_NODES.has(i) else Vector2.ZERO
 
 
 ## The ship and its scaffold on screen (a walkthrough's spotlight), in the
