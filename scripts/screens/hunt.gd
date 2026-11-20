@@ -12,6 +12,15 @@ const TODAY := Color(1.0, 0.95, 0.76)
 const LOCKED := Color(0.9, 0.88, 0.9)
 const GRAND := Color(1.0, 0.86, 0.5)
 const QUEST_ICONS := {"level": "trophy", "clear": "star", "booster": "bomb", "flawless": "heart", "chest": "chest", "collection": "collection", "daily_puzzle": "calendar", "sticker": "sticker", "challenge_played": "clock"}
+## In the Christmas season the event dresses up: a winter wash and falling snow
+## behind it, a frosty banner with a present and a Holiday Edition ribbon, the
+## days as advent-calendar doors in red and green with a wrapped present
+## behind each open one, and the grand prize under holly.
+const SNOWFALL := preload("res://scripts/screens/snowball.gd")
+const XMAS_RED := Color(1.0, 0.86, 0.86)
+const XMAS_GREEN := Color(0.85, 0.95, 0.87)
+const XMAS_FROST := Color(0.87, 0.93, 1.0)
+const GIFT_COLORS := [Color(1.0, 0.42, 0.45), Color(0.45, 0.78, 0.5), Color(0.55, 0.72, 1.0), Color(1.0, 0.8, 0.32)]
 
 var _days: HBoxContainer
 var _day_title: Label
@@ -22,12 +31,20 @@ var _ends: Label
 var _prize_sub: Label
 var _prize_pips: HBoxContainer
 var _selected := 1
+var _xmas := false
 
 
 func build() -> void:
 	TSProfile.ensure_loaded()
 	TSHunt.roll()
 	TSHunt.mark_seen()
+	_xmas = TSProfile.season_theme() == "christmas"
+	if _xmas:
+		var fall: Control = SNOWFALL.Snowfall.new()
+		fall.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		fall.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(fall)
+		move_child(fall, 1)
 	add_header("7-Day Eggsperience", true)
 	var list := TSUI.vbox(14)
 	content.add_child(TSUI.scroll(list))
@@ -59,14 +76,23 @@ func _default_day() -> int:
 
 ## The top: the basket, what to do, and the time left on a pill.
 func _banner() -> Control:
-	var card := TSUI.card(Color(0.94, 0.88, 1.0), 28, 14, 4)
+	var card := TSUI.card(XMAS_FROST if _xmas else Color(0.94, 0.88, 1.0), 28, 14, 4)
 	var row := TSUI.hbox(12)
 	card.add_child(row)
-	row.add_child(TSIcon.make("hunt", 120))
+	if _xmas:
+		var present := TSIcon.make("gift", 120)
+		present.tint = GIFT_COLORS[0]
+		row.add_child(present)
+	else:
+		row.add_child(TSIcon.make("hunt", 120))
 	var v := TSUI.vbox(8)
 	TSUI.expand(v)
 	v.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_child(v)
+	if _xmas:
+		var ribbon := TSUI.pill("Holiday Edition", Color(0.93, 0.33, 0.36), 20, Color.WHITE)
+		ribbon.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		v.add_child(ribbon)
 	v.add_child(TSUI.wrap(TSUI.label("A new day of quests unlocks every day. Finish a day's three quests for coins, and all seven days for the grand prize!", 21)))
 	var pill := PanelContainer.new()
 	pill.add_theme_stylebox_override("panel", TSUI.sb(Color.WHITE, 99, 2, 0, 12))
@@ -168,6 +194,8 @@ func _day_card(day: int) -> Control:
 	var grand := day == TSHunt.DAYS
 	var selected := day == _selected
 	var bg := DONE if done else (TODAY if today and unlocked else (TSUI.CARD if unlocked else LOCKED))
+	if _xmas and unlocked and not done and not today and not grand:
+		bg = XMAS_RED if day % 2 == 1 else XMAS_GREEN   # advent doors, red and green in turn
 	if grand and not done:
 		bg = GRAND if unlocked else GRAND.lerp(LOCKED, 0.55)
 	var b := Button.new()
@@ -202,8 +230,10 @@ func _day_card(day: int) -> Control:
 		elif not unlocked:
 			icon = "lock"
 		else:
-			icon = "egg"
+			icon = "gift" if _xmas else "egg"
 	var ic := TSIcon.make(icon, 54, (day - 1) % TSProfile.EGG_PAINT_COUNT, variant)
+	if icon == "gift":
+		ic.tint = GIFT_COLORS[(day - 1) % GIFT_COLORS.size()]
 	ic.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	if not unlocked and not grand:
 		ic.modulate.a = 0.6
@@ -220,7 +250,7 @@ func _quest_row(day: int, i: int) -> Control:
 	var have := TSHunt.quest_progress(day, i)
 	var target := int(q["target"])
 	var done := have >= target
-	var card := TSUI.card(DONE if done else Color(1.0, 0.96, 0.9), 20, 14, 2)
+	var card := TSUI.card(DONE if done else (Color(0.95, 0.97, 1.0) if _xmas else Color(1.0, 0.96, 0.9)), 20, 14, 2)
 	var h := TSUI.hbox(10)
 	card.add_child(h)
 	var disc := PanelContainer.new()
@@ -250,10 +280,15 @@ func _quest_row(day: int, i: int) -> Control:
 
 ## The grand prize: the big chest, what it pays, and a pip per day claimed.
 func _prize_card() -> Control:
-	var card := TSUI.card(GRAND.lerp(Color.WHITE, 0.45), 28, 16, 4)
+	var card := TSUI.card(Color(1.0, 0.9, 0.88) if _xmas else GRAND.lerp(Color.WHITE, 0.45), 28, 16, 4)
 	var row := TSUI.hbox(14)
 	card.add_child(row)
-	row.add_child(TSIcon.make("chest", 110, 0, "legendary"))
+	if _xmas:
+		var big := TSIcon.make("gift", 110)
+		big.tint = GIFT_COLORS[1]
+		row.add_child(big)
+	else:
+		row.add_child(TSIcon.make("chest", 110, 0, "legendary"))
 	var v := TSUI.vbox(6)
 	TSUI.expand(v)
 	v.alignment = BoxContainer.ALIGNMENT_CENTER
