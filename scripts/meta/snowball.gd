@@ -3,7 +3,7 @@ extends RefCounted
 
 ## The Snowball Fight: a weekend team event in the Christmas season. Every
 ## weekend (Friday to Sunday, local time) while the Christmas Battle Pass
-## season runs, the player joins Team Red or Team Green; every piece they pop
+## season runs, the player joins Team Gingerbread (id "red") or Team Snowman ("green"); every piece they pop
 ## in a level throws a snowball for their team. The two teams' totals race on
 ## a tug-of-war bar. The player's own throws pay milestone prizes along the
 ## way, and when the weekend ends everyone who threw at least MIN_TO_PLACE
@@ -16,7 +16,7 @@ extends RefCounted
 const LENGTH_DAYS := 3                   # Friday, Saturday, Sunday
 const FRIDAY := 4                        # Monday is 0
 const TEAMS := ["red", "green"]
-const TEAM_NAMES := {"red": "Team Red", "green": "Team Green"}
+const TEAM_NAMES := {"red": "Team Gingerbread", "green": "Team Snowman"}
 const TEAM_COLORS := {"red": Color(1.0, 0.46, 0.48), "green": Color(0.42, 0.8, 0.5)}
 const CROWD := 1_200_000                 # roughly what each team throws in a weekend, without the player
 ## The player's own milestones: {at, coins} or {at, bombs}.
