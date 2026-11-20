@@ -1,9 +1,11 @@
 # Builds the launch images for a personal social account into store/social/:
 # a feed post (1080 x 1350, 4:5) and a story (1080 x 1920, 9:16, with the top
 # and bottom kept clear for the app's bars and a link sticker). It reuses
-# tools/make_ads.gd's key art, sky, phone and headline helpers. Run:
-# The phone shows store/ads/src/game_peek.png, the critter peeking out:
-#   Godot --path . res://tools/store_shot.tscn -- --scene=game --level=25 --drops=5 --size=1080x1920 --out=<repo>/store/ads/src/game_peek.png
+# tools/make_ads.gd's key art, sky, phone and headline helpers.
+# The phone shows store/ads/src/game_tied.png: level 20 with the shell dug away
+# round its first tie-down, the egg turned a column past it, so the critter sits
+# in plain view in its chains (a posed 1080 x 1920 capture, not a played board).
+# Run:
 #   Godot.exe --path . res://tools/make_social.tscn
 extends "res://tools/make_ads.gd"
 
@@ -56,7 +58,7 @@ func _compose_social(root: Control, shape: String, s: Vector2) -> void:
 	var rib_h := 150.0
 	var rib_y := bottom - rib_h
 	var hero := Rect2(0, title_y + title_h + 4.0, s.x, rib_y - (title_y + title_h + 4.0) + 30.0)
-	_phone_hero(root, {"shot": "game_peek.png", "critters": [8, 1]}, hero, false)
+	_phone_hero(root, {"shot": "game_tied.png", "critters": [8, 1]}, hero, false)
 	var rib := TSUI.ribbon("Out now, free!", TSUI.PINK, 52, 560.0)
 	rib.position = Vector2((s.x - 560.0) / 2.0, rib_y)
 	root.add_child(rib)
