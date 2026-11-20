@@ -319,7 +319,6 @@ func _pass_card() -> Control:
 		if r.has("sticker"):
 			stickers.append(str(r["sticker"]))
 	var grid := GridContainer.new()
-	grid.columns = 4
 	grid.add_theme_constant_override("h_separation", 6)
 	grid.add_theme_constant_override("v_separation", 6)
 	for t in season["paid_critters"]:
@@ -330,6 +329,7 @@ func _pass_card() -> Control:
 		grid.add_child(_pass_item(TSIcon.make("part", 64, p), TSProfile.part_name(p)))
 	for st in stickers:
 		grid.add_child(_pass_item(TSIcon.make("sticker", 64, 0, st), TSStickers.sticker_name(st)))
+	grid.columns = clampi(grid.get_child_count(), 1, 5)   # all on one row when they fit (five do)
 	var center := CenterContainer.new()
 	center.add_child(grid)
 	v.add_child(TSUI.label("Exclusive this season", 18, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
