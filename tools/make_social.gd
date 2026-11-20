@@ -50,7 +50,7 @@ func _compose_social(root: Control, shape: String, s: Vector2) -> void:
 	# The story keeps ~250 px clear at the top and ~380 px at the bottom.
 	var top := 250.0 if story else 30.0
 	var bottom := s.y - (380.0 if story else 30.0)
-	_headline(root, "I made a game!", 74, Rect2(40, top, s.x - 80, 100))
+	_headline(root, "I made a second game!", 66, Rect2(40, top, s.x - 80, 100))
 	var title_w := 820.0 if story else 700.0
 	var title_h := title_w * TITLE_RECT.size.y / TITLE_RECT.size.x
 	var title_y := top + 100.0
