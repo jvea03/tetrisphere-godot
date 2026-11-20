@@ -6,19 +6,21 @@ extends TSScreen
 ## both teams' totals on a tug-of-war bar, which team the player is on and
 ## whether it's ahead -- the time left, the player's own throws with a prize
 ## at each milestone (claimed here), the team prize, and PLAY. Under the
-## battle, the Giant Snowball (mash it every six hours) and how snowballs
-## are earned. A finished weekend's result is shown first, once.
+## score, the Giant Snowball (mash it every six hours); the info button says
+## how snowballs are earned. A finished weekend's result is shown first, once.
 
 const FROST := Color(0.88, 0.94, 1.0)
 
 var _field: SnowBattle
 var _blast_btn: Button
-var _blast_bar: ProgressBar
+var _blast_ball: SnowFace
+var _blast_label: Label
 var _blast_note: Label
 var _mash_left := -1.0   # seconds of mashing left; -1 not mashing
 var _taps := 0
 var _flying := false     # the Giant Snowball is in the air
 var _blast_gain := 0     # what it threw, shown when it lands
+var _how: Dictionary      # the info button's "How to earn snowballs"
 var _top_team := ""      # the team the Top Throwers tab is showing
 var _main_tabs: PanelContainer
 var _top_tabs: PanelContainer
@@ -40,7 +42,8 @@ var _tick := 0.0
 func build() -> void:
 	TSProfile.ensure_loaded()
 	TSSnowball.roll()
-	add_header("Snowball Fight", true)
+	_build_how()
+	add_header("Snowball Fight", true, true, func(): TSUI.reveal(_how["root"], _how["panel"]))
 	var list := TSUI.vbox(14)
 	var battle_scroll := TSUI.scroll(list)
 	if TSSnowball.is_live():
@@ -68,10 +71,9 @@ func build() -> void:
 		_toast_text = TSUI.wrap(TSUI.label("", 24, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER))
 		_toast.add_child(_toast_text)
 		_toast.visible = false
+		list.add_child(_score_card())
 		list.add_child(_toast)
 		list.add_child(_blast_card())
-		list.add_child(_how_card())
-		list.add_child(_score_card())
 		list.add_child(_throws_card())
 		list.add_child(_prize_card())
 		list.add_child(_play_button())
@@ -86,7 +88,7 @@ func build() -> void:
 func _process(delta: float) -> void:
 	if _mash_left >= 0.0:
 		_mash_left -= delta
-		_blast_btn.text = "MASH!  %.1f" % maxf(_mash_left, 0.0)
+		_blast_label.text = "MASH!  %.1f" % maxf(_mash_left, 0.0)
 		if _mash_left <= 0.0:
 			_throw_giant()
 	_tick += delta
@@ -119,26 +121,25 @@ func _battle_card() -> Control:
 
 
 
-## How snowballs are earned, said plainly.
-func _how_card() -> Control:
-	var card := TSUI.card(TSUI.CARD, 28, 16, 4)
-	var v := TSUI.vbox(10)
-	card.add_child(v)
-	v.add_child(TSUI.label("How to earn snowballs", 28))
+## How snowballs are earned, said plainly: the header's info button opens it.
+func _build_how() -> void:
+	_how = TSUI.dialog(self, 580)
+	var v: VBoxContainer = _how["box"]
+	v.add_child(TSUI.title("How to earn snowballs", 34))
 	for row: Array in [
 		["egg", "Play any level: every piece you pop throws 1 snowball for your team."],
-		["snowball", "Giant Snowball: mash the button above for %d-%d snowballs, once every %d hours." % [TSSnowball.BLAST_MIN, TSSnowball.BLAST_MAX, TSSnowball.BLAST_COOLDOWN / 3600]],
+		["snowball", "Giant Snowball: mash the Giant Snowball button for %d-%d snowballs, once every %d hours." % [TSSnowball.BLAST_MIN, TSSnowball.BLAST_MAX, TSSnowball.BLAST_COOLDOWN / 3600]],
 		["chest", "Throw enough for the prizes below, and %d by Sunday night to share the team prize." % TSSnowball.MIN_TO_PLACE],
 	]:
 		var h := TSUI.hbox(12)
 		var icon := TSIcon.make(str(row[0]), 48)
 		icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		h.add_child(icon)
-		var l := TSUI.wrap(TSUI.label(str(row[1]), 20, TSUI.INK))
-		TSUI.expand(l)
-		h.add_child(l)
+		h.add_child(TSUI.wrap(TSUI.label(str(row[1]), 22, TSUI.INK), 440))
 		v.add_child(h)
-	return card
+	var ok := TSUI.button("Got it", TSUI.PINK, 26)
+	ok.pressed.connect(func(): TSUI.conceal(_how["root"]))
+	v.add_child(ok)
 
 
 ## The Giant Snowball: tap to start, mash for a few seconds, and it flies.
@@ -156,16 +157,26 @@ func _blast_card() -> Control:
 	hv.add_child(_blast_note)
 	head.add_child(hv)
 	v.add_child(head)
-	_blast_bar = TSUI.bar(TSUI.SKY, 18)
-	_blast_bar.max_value = TSSnowball.BLAST_TAPS
-	_blast_bar.visible = false
-	v.add_child(_blast_bar)
-	_blast_btn = TSUI.button("", TSUI.SKY, 30, Vector2(0, 84))
-	for k in ["font_color", "font_hover_color", "font_pressed_color", "font_disabled_color"]:
-		_blast_btn.add_theme_color_override(k, Color.WHITE)
-	_blast_btn.add_theme_color_override("font_outline_color", TSUI.INK)
-	_blast_btn.add_theme_constant_override("outline_size", 8)
+	# A big square button with a snowball in it that grows as it's mashed,
+	# and what to do (or how long to wait) along its bottom.
+	_blast_btn = TSUI.button("", TSUI.SKY, 30, Vector2(260, 260))
+	_blast_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_blast_btn.button_down.connect(_mash)
+	var inside := TSUI.vbox(0)
+	inside.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	inside.offset_top = 10
+	inside.offset_bottom = -14
+	inside.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_blast_ball = SnowFace.new()
+	_blast_ball.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_blast_ball.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	inside.add_child(_blast_ball)
+	_blast_label = TSUI.label("", 34, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	_blast_label.add_theme_color_override("font_outline_color", TSUI.INK)
+	_blast_label.add_theme_constant_override("outline_size", 9)
+	_blast_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	inside.add_child(_blast_label)
+	_blast_btn.add_child(inside)
 	v.add_child(_blast_btn)
 	_refresh_blast()
 	return card
@@ -179,10 +190,11 @@ func _mash() -> void:
 			return
 		_mash_left = TSSnowball.BLAST_SECONDS
 		_taps = 0
-		_blast_bar.visible = true
+		_blast_label.add_theme_font_size_override("font_size", 34)
 	_taps = mini(_taps + 1, TSSnowball.BLAST_TAPS)
-	_blast_bar.value = _taps
 	_field.charge = float(_taps) / float(TSSnowball.BLAST_TAPS)
+	_blast_ball.grow = _field.charge
+	_blast_ball.queue_redraw()
 	TSSfx.play("tick", 0.8 + 0.6 * _field.charge)
 	TSHaptics.light()
 	_blast_btn.scale = Vector2(0.94, 0.94)
@@ -193,7 +205,7 @@ func _mash() -> void:
 ## Mashing's over: the snowballs are thrown, and the Giant Snowball flies.
 func _throw_giant() -> void:
 	_mash_left = -1.0
-	_blast_bar.visible = false
+	_blast_ball.grow = 0.0
 	_blast_gain = TSSnowball.blast(_taps)
 	_flying = true
 	_field.launch()
@@ -217,11 +229,15 @@ func _refresh_blast() -> void:
 		return
 	var ready := TSSnowball.blast_ready() and not _flying
 	_blast_btn.disabled = not ready
+	_blast_ball.dim = not ready
+	_blast_ball.queue_redraw()
 	if ready:
-		_blast_btn.text = "THROW IT!"
+		_blast_label.add_theme_font_size_override("font_size", 34)
+		_blast_label.text = "THROW IT!"
 		_blast_note.text = "Tap, then mash as fast as you can for %d seconds: %d-%d snowballs." % [int(TSSnowball.BLAST_SECONDS), TSSnowball.BLAST_MIN, TSSnowball.BLAST_MAX]
 	else:
-		_blast_btn.text = "Ready in " + TSUI.fmt_duration(TSSnowball.blast_wait())
+		_blast_label.add_theme_font_size_override("font_size", 26)
+		_blast_label.text = "Ready in " + TSUI.fmt_duration(TSSnowball.blast_wait())
 		_blast_note.text = "Rolling a new one. You can throw a Giant Snowball every %d hours." % (TSSnowball.BLAST_COOLDOWN / 3600)
 
 
@@ -479,6 +495,33 @@ func _refresh_score() -> void:
 	_tug.queue_redraw()
 	_status.text = "Your team is winning -- keep it up!" if TSSnowball.winning() else "Your team is behind -- throw more snowballs!"
 	_ends.text = "Ends in " + TSUI.fmt_duration(TSSnowball.seconds_left())
+
+
+## The snowball in the Giant Snowball button: small when it's ready, growing
+## (and wobbling) with every mash, faded while it waits.
+class SnowFace extends Control:
+	var grow := 0.0    # 0..1, how charged
+	var dim := false   # waiting out the cooldown
+	var _t := 0.0
+
+	func _process(delta: float) -> void:
+		_t += delta
+		if grow > 0.0:
+			queue_redraw()
+
+	func _draw() -> void:
+		var c := size * 0.5
+		var r := minf(size.x, size.y) * (0.26 + 0.24 * grow)
+		if grow > 0.0:
+			r += sin(_t * 28.0) * 3.0 * grow
+		var a := 0.45 if dim else 1.0
+		draw_circle(c + Vector2(0, r * 0.1), r, Color(0.3, 0.45, 0.8, 0.35 * a), true, -1.0, true)
+		draw_circle(c, r, Color(1, 1, 1, a), true, -1.0, true)
+		draw_circle(c, r, Color(TSUI.INK, a), false, 4.0, true)
+		for k in 2:
+			var s := 0.4 + PI * float(k) + _t * 2.0 * grow
+			draw_arc(c, r * 0.62, s, s + 1.1, 14, Color(0.7, 0.82, 0.98, a), 5.0, true)
+		draw_circle(c + Vector2(-r * 0.36, -r * 0.4), r * 0.15, Color(1, 1, 1, 0.9 * a), true, -1.0, true)
 
 
 ## Red from the left, green from the right, meeting at the share line, with a

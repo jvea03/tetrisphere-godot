@@ -84,12 +84,14 @@ func _ready() -> void:
 	await get_tree().process_frame
 	_check("the screen says how to earn snowballs", not screen.find_children("*", "Label", true, false).filter(func(l: Label) -> bool: return l.text == "How to earn snowballs").is_empty())
 	var btn: Button = screen._blast_btn
-	_check("its button is ready (%s)" % btn.text, not btn.disabled and btn.text == "THROW IT!")
+	_check("its button is ready (%s)" % screen._blast_label.text, not btn.disabled and screen._blast_label.text == "THROW IT!")
 	var thrown_before := TSSnowball.thrown
 	for i in 20:
 		screen._mash()
 	var field = screen._field
 	_check("mashing charges the Giant Snowball (%.2f)" % field.charge, field.charge > 0.6)
+	await get_tree().process_frame
+	_check("the snowball in the button grows (%.2f) and it counts down MASH! (%s)" % [screen._blast_ball.grow, screen._blast_label.text], screen._blast_ball.grow > 0.6 and screen._blast_label.text.begins_with("MASH!"))
 	await get_tree().create_timer(TSSnowball.BLAST_SECONDS + 0.2).timeout
 	_check("after the mashing it's in the air", not field._giant.is_empty())
 	_check("and threw 12 snowballs (%d)" % (TSSnowball.thrown - thrown_before), TSSnowball.thrown - thrown_before == TSSnowball.blast_amount(20))
@@ -97,7 +99,7 @@ func _ready() -> void:
 	var out := (field._squads[false] as Array).filter(func(m: Dictionary) -> bool: return m.has("out")).size()
 	_check("it knocks all three snowmen out of their fort (%d)" % out, out == 3)
 	_check("and says what it threw", screen._toast.visible and screen._toast_text.text.contains("+12"))
-	_check("the button waits six hours (%s)" % btn.text, btn.disabled and btn.text.begins_with("Ready in"))
+	_check("the button waits six hours (%s)" % screen._blast_label.text, btn.disabled and screen._blast_label.text.begins_with("Ready in"))
 	await get_tree().create_timer(field.KNOCKED + field.SPAWN + 0.3).timeout
 	out = (field._squads[false] as Array).filter(func(m: Dictionary) -> bool: return m.has("out") or m.has("spawn")).size()
 	_check("they're back a few seconds later", out == 0)
