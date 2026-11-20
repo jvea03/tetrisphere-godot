@@ -12,6 +12,9 @@ extends RefCounted
 ## The other players' throws are simulated for now (a steady, seeded climb
 ## per weekend, each team surging at its own moments, so the lead changes
 ## hands); the player's own throws are added to their team's.
+##
+## Snowballs come from every piece popped in a level, and from the Giant
+## Snowball the event screen offers every six hours (blast).
 
 const LENGTH_DAYS := 3                   # Friday, Saturday, Sunday
 const FRIDAY := 4                        # Monday is 0
@@ -30,6 +33,14 @@ const MILESTONES := [
 const MIN_TO_PLACE := 100                # throws to share in the team prize
 const WIN_COINS := 3000
 const LOSE_COINS := 1000
+## The Giant Snowball: once every BLAST_COOLDOWN seconds the player mashes a
+## button for BLAST_SECONDS; it throws BLAST_MIN to BLAST_MAX snowballs for
+## their team, more the faster they tap (BLAST_TAPS taps for the most).
+const BLAST_COOLDOWN := 6 * 3600
+const BLAST_SECONDS := 5.0
+const BLAST_MIN := 5
+const BLAST_MAX := 15
+const BLAST_TAPS := 30
 
 static var week := -1                    # the weekend joined (TSProfile's week index); -1 none
 static var team := ""
@@ -40,10 +51,12 @@ static var claimed: Array = []           # milestone indexes claimed
 static var result := {}
 ## Set to force the event on (captures, tests), whatever the date.
 static var force_live := false
+## When the last Giant Snowball was thrown (TSClock seconds); 0 never.
+static var blast_at := 0.0
 
 
 static func to_save() -> Dictionary:
-	return {"week": week, "team": team, "thrown": thrown, "claimed": claimed.duplicate(), "result": result.duplicate()}
+	return {"week": week, "team": team, "thrown": thrown, "claimed": claimed.duplicate(), "result": result.duplicate(), "blast_at": blast_at}
 
 
 static func from_save(data: Dictionary) -> void:
@@ -52,6 +65,7 @@ static func from_save(data: Dictionary) -> void:
 	thrown = int(data.get("thrown", 0))
 	claimed = (data.get("claimed", []) as Array).duplicate()
 	result = (data.get("result", {}) as Dictionary).duplicate()
+	blast_at = float(data.get("blast_at", 0.0))
 
 
 # -- the calendar ------------------------------------------------------------------
@@ -113,6 +127,34 @@ static func note_pieces(n: int) -> void:
 		return
 	roll()
 	thrown += n
+
+
+## Whether the Giant Snowball is ready to throw.
+static func blast_ready() -> bool:
+	return is_live() and blast_wait() <= 0
+
+
+## Seconds until the Giant Snowball is ready again.
+static func blast_wait() -> int:
+	return maxi(int(blast_at + BLAST_COOLDOWN - TSClock.now()), 0)
+
+
+## How many snowballs a Giant Snowball mashed `taps` times throws.
+static func blast_amount(taps: int) -> int:
+	return clampi(BLAST_MIN + roundi(float(taps) * float(BLAST_MAX - BLAST_MIN) / float(BLAST_TAPS)), BLAST_MIN, BLAST_MAX)
+
+
+## Throws the Giant Snowball: its snowballs go to the player's team and the
+## cooldown starts. Returns how many it threw (0 if it wasn't ready).
+static func blast(taps: int) -> int:
+	if not blast_ready():
+		return 0
+	roll()
+	var n := blast_amount(taps)
+	thrown += n
+	blast_at = TSClock.now()
+	TSProfile.save()
+	return n
 
 
 ## What a team has thrown so far (the crowd's, plus the player's for theirs).
@@ -223,4 +265,4 @@ static func show_tile() -> bool:
 
 
 static func has_alert() -> bool:
-	return claimable_count() > 0 or not result.is_empty() or (is_live() and week != _week_now())
+	return claimable_count() > 0 or not result.is_empty() or (is_live() and week != _week_now()) or blast_ready()

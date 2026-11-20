@@ -5,9 +5,20 @@ extends TSScreen
 ## lobbing snowballs at each other under falling snow. Then the score --
 ## both teams' totals on a tug-of-war bar, which team the player is on and
 ## whether it's ahead -- the time left, the player's own throws with a prize
-## at each milestone (claimed here), the team prize, and PLAY. A finished weekend's result is shown first, once.
+## at each milestone (claimed here), the team prize, and PLAY. Under the
+## battle, the Giant Snowball (mash it every six hours) and how snowballs
+## are earned. A finished weekend's result is shown first, once.
 
 const FROST := Color(0.88, 0.94, 1.0)
+
+var _field: SnowBattle
+var _blast_btn: Button
+var _blast_bar: ProgressBar
+var _blast_note: Label
+var _mash_left := -1.0   # seconds of mashing left; -1 not mashing
+var _taps := 0
+var _flying := false     # the Giant Snowball is in the air
+var _blast_gain := 0     # what it threw, shown when it lands
 
 var _red_total: Label
 var _green_total: Label
@@ -32,12 +43,14 @@ func build() -> void:
 		list.add_child(_result_card(res))
 	list.add_child(_battle_card())
 	if TSSnowball.is_live():
-		list.add_child(_score_card())
 		_toast = TSUI.card(TSUI.BUTTER, 20, 12, 3)
-		_toast_text = TSUI.label("", 24, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER)
+		_toast_text = TSUI.wrap(TSUI.label("", 24, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER))
 		_toast.add_child(_toast_text)
 		_toast.visible = false
 		list.add_child(_toast)
+		list.add_child(_blast_card())
+		list.add_child(_how_card())
+		list.add_child(_score_card())
 		list.add_child(_throws_card())
 		list.add_child(_prize_card())
 		list.add_child(_play_button())
@@ -50,10 +63,16 @@ func build() -> void:
 
 
 func _process(delta: float) -> void:
+	if _mash_left >= 0.0:
+		_mash_left -= delta
+		_blast_btn.text = "MASH!  %.1f" % maxf(_mash_left, 0.0)
+		if _mash_left <= 0.0:
+			_throw_giant()
 	_tick += delta
 	if _tick >= 1.0 and TSSnowball.is_live():
 		_tick = 0.0
 		_refresh_score()
+		_refresh_blast()
 
 
 ## The battle: an animated scene, with which team the player's on over it.
@@ -62,6 +81,8 @@ func _battle_card() -> Control:
 	var field := SnowBattle.new()
 	field.custom_minimum_size = Vector2(0, 320)
 	field.mine = TSSnowball.team
+	field.giant_landed.connect(_on_giant_landed)
+	_field = field
 	card.add_child(field)
 	if TSSnowball.is_live():
 		var pill := TSUI.pill("You're on %s!" % TSSnowball.TEAM_NAMES[TSSnowball.team], TSSnowball.TEAM_COLORS[TSSnowball.team], 22, Color.WHITE)
@@ -74,6 +95,113 @@ func _battle_card() -> Control:
 		over.add_child(pill)
 		card.add_child(over)
 	return card
+
+
+
+## How snowballs are earned, said plainly.
+func _how_card() -> Control:
+	var card := TSUI.card(TSUI.CARD, 28, 16, 4)
+	var v := TSUI.vbox(10)
+	card.add_child(v)
+	v.add_child(TSUI.label("How to earn snowballs", 28))
+	for row: Array in [
+		["egg", "Play any level: every piece you pop throws 1 snowball for your team."],
+		["snowball", "Giant Snowball: mash the button above for %d-%d snowballs, once every %d hours." % [TSSnowball.BLAST_MIN, TSSnowball.BLAST_MAX, TSSnowball.BLAST_COOLDOWN / 3600]],
+		["chest", "Throw enough for the prizes below, and %d by Sunday night to share the team prize." % TSSnowball.MIN_TO_PLACE],
+	]:
+		var h := TSUI.hbox(12)
+		var icon := TSIcon.make(str(row[0]), 48)
+		icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		h.add_child(icon)
+		var l := TSUI.wrap(TSUI.label(str(row[1]), 20, TSUI.INK))
+		TSUI.expand(l)
+		h.add_child(l)
+		v.add_child(h)
+	return card
+
+
+## The Giant Snowball: tap to start, mash for a few seconds, and it flies.
+func _blast_card() -> Control:
+	var card := TSUI.card(Color(0.9, 0.96, 1.0), 28, 16, 4)
+	var v := TSUI.vbox(10)
+	card.add_child(v)
+	var head := TSUI.hbox(10)
+	head.add_child(TSIcon.make("snowball", 64))
+	var hv := TSUI.vbox(0)
+	TSUI.expand(hv)
+	hv.alignment = BoxContainer.ALIGNMENT_CENTER
+	hv.add_child(TSUI.label("Giant Snowball", 28))
+	_blast_note = TSUI.wrap(TSUI.label("", 18, TSUI.MUTED))
+	hv.add_child(_blast_note)
+	head.add_child(hv)
+	v.add_child(head)
+	_blast_bar = TSUI.bar(TSUI.SKY, 18)
+	_blast_bar.max_value = TSSnowball.BLAST_TAPS
+	_blast_bar.visible = false
+	v.add_child(_blast_bar)
+	_blast_btn = TSUI.button("", TSUI.SKY, 30, Vector2(0, 84))
+	for k in ["font_color", "font_hover_color", "font_pressed_color", "font_disabled_color"]:
+		_blast_btn.add_theme_color_override(k, Color.WHITE)
+	_blast_btn.add_theme_color_override("font_outline_color", TSUI.INK)
+	_blast_btn.add_theme_constant_override("outline_size", 8)
+	_blast_btn.button_down.connect(_mash)
+	v.add_child(_blast_btn)
+	_refresh_blast()
+	return card
+
+
+## A tap on the Giant Snowball button: the first starts the mashing, every
+## one after grows the ball.
+func _mash() -> void:
+	if _mash_left < 0.0:
+		if not TSSnowball.blast_ready() or _flying:
+			return
+		_mash_left = TSSnowball.BLAST_SECONDS
+		_taps = 0
+		_blast_bar.visible = true
+	_taps = mini(_taps + 1, TSSnowball.BLAST_TAPS)
+	_blast_bar.value = _taps
+	_field.charge = float(_taps) / float(TSSnowball.BLAST_TAPS)
+	TSSfx.play("tick", 0.8 + 0.6 * _field.charge)
+	TSHaptics.light()
+	_blast_btn.scale = Vector2(0.94, 0.94)
+	_blast_btn.pivot_offset = _blast_btn.size * 0.5
+	create_tween().tween_property(_blast_btn, "scale", Vector2.ONE, 0.12)
+
+
+## Mashing's over: the snowballs are thrown, and the Giant Snowball flies.
+func _throw_giant() -> void:
+	_mash_left = -1.0
+	_blast_bar.visible = false
+	_blast_gain = TSSnowball.blast(_taps)
+	_flying = true
+	_field.launch()
+	TSSfx.play("whoosh")
+	_refresh_blast()
+
+
+func _on_giant_landed() -> void:
+	_flying = false
+	TSSfx.play("puff")
+	TSHaptics.medium()
+	if _blast_gain > 0:
+		_toast_text.text = "Giant Snowball! +%d snowballs for %s" % [_blast_gain, TSSnowball.TEAM_NAMES[TSSnowball.team]]
+		_toast.visible = true
+		_blast_gain = 0
+	_refresh()
+
+
+func _refresh_blast() -> void:
+	if _blast_btn == null or _mash_left >= 0.0:
+		return
+	var ready := TSSnowball.blast_ready() and not _flying
+	_blast_btn.disabled = not ready
+	if ready:
+		_blast_btn.text = "THROW IT!"
+		_blast_note.text = "Tap, then mash as fast as you can for %d seconds: %d-%d snowballs." % [int(TSSnowball.BLAST_SECONDS), TSSnowball.BLAST_MIN, TSSnowball.BLAST_MAX]
+	else:
+		_blast_btn.text = "Ready in " + TSUI.fmt_duration(TSSnowball.blast_wait())
+		_blast_note.text = "Rolling a new one. You can throw a Giant Snowball every %d hours." % (TSSnowball.BLAST_COOLDOWN / 3600)
 
 
 ## Both teams' totals, the tug-of-war between them, who's ahead, time left.
@@ -275,9 +403,12 @@ class TugBar extends Control:
 
 ## The battle scene: Team Gingerbread's fort on the left, Team Snowman's on
 ## the right, a squad of three behind each: the game's own Ginger and
-## Snowman critters. Every squad member pops up on its
-## own clock, winds back and throws at someone in the other squad; snowballs
-## arc both ways and burst in a puff; snow falls.
+## Snowman critters. Every squad member pops up on its own clock, winds back
+## and throws at someone in the other squad; snowballs arc both ways and
+## burst in a puff; snow falls. The Giant Snowball (charge, then launch)
+## grows over the player's fort while they mash, then flies across and
+## knocks the other squad tumbling out of their fort; they pop back in a
+## couple of seconds later.
 class SnowBattle extends Control:
 	const SQUAD := 3
 	const THROW_TIME := 0.7       # pop up, wind back, release, duck
@@ -286,13 +417,54 @@ class SnowBattle extends Control:
 	const SNOWMAN := 70          # and the Snowman
 	const SIZE := 116.0          # a squad member's sticker, across
 	const SNOW := Color(0.98, 0.99, 1.0)
+	const GIANT_FLIGHT := 1.0     # the Giant Snowball's flight, in seconds
+	const KNOCKED := 2.4          # how long a knocked-out squad is gone
+	const SPAWN := 0.4            # popping back in
+	const FALL := 1400.0          # gravity on a knocked-out critter, px/s²
+
+	signal giant_landed
 
 	var mine := ""
+	## The Giant Snowball while it's being mashed: 0..1, how charged; -1 none.
+	var charge := -1.0
 	var _t := 0.0
 	var _balls: Array = []    # {from, to, t, dur}
-	var _puffs: Array = []    # {at, t}
-	var _squads := {}         # left (bool) -> [{slot, wait, throw, thrown, aim, bob}]
+	var _puffs: Array = []    # {at, t, big}
+	var _squads := {}         # left (bool) -> [{slot, wait, throw, thrown, aim, bob, (out, vx, vy, spin), (spawn)}]
+	var _giant := {}          # the Giant Snowball in flight: {t, from, to, left}
 	var _rng := RandomNumberGenerator.new()
+
+	## The player's side: Team Gingerbread's ("red") is on the left.
+	func _mine_left() -> bool:
+		return mine != "green"
+
+	## Throws the charged Giant Snowball at the other team.
+	func launch() -> void:
+		var left := _mine_left()
+		_giant = {"t": 0.0, "from": _charge_at(), "to": Vector2(_fort_x(not left), _wall_top() - 30.0), "left": left}
+		charge = -1.0
+
+	## Where the Giant Snowball grows while charging: over the player's fort.
+	func _charge_at() -> Vector2:
+		return Vector2(_fort_x(_mine_left()), _wall_top() - 112.0)
+
+	func _giant_radius() -> float:
+		return 22.0 + 30.0 * clampf(charge, 0.0, 1.0)
+
+	## A squad knocked out of its fort: each critter flies up and away,
+	## spinning, and is back after KNOCKED seconds.
+	func _knock(left: bool) -> void:
+		var away := -1.0 if left else 1.0
+		for m: Dictionary in _squads[left]:
+			m["out"] = 0.0
+			m["vx"] = away * _rng.randf_range(120.0, 300.0)
+			m["vy"] = -_rng.randf_range(420.0, 600.0)
+			m["spin"] = away * _rng.randf_range(5.0, 10.0)
+			m["throw"] = -1.0
+			m.erase("spawn")
+		var at := Vector2(_fort_x(left), _wall_top() - 20.0)
+		for k in 6:
+			_puffs.append({"at": at + Vector2(_rng.randf_range(-90, 90), _rng.randf_range(-40, 30)), "t": -0.04 * float(k), "big": true})
 
 	func _ready() -> void:
 		_rng.randomize()
@@ -307,6 +479,18 @@ class SnowBattle extends Control:
 		_t += delta
 		for left: bool in _squads:
 			for m: Dictionary in _squads[left]:
+				if m.has("out"):
+					m["out"] = float(m["out"]) + delta
+					if float(m["out"]) >= KNOCKED:
+						m.erase("out")
+						m["spawn"] = 0.0
+						m["wait"] = _rng.randf_range(0.6, 1.6)
+					continue
+				if m.has("spawn"):
+					m["spawn"] = float(m["spawn"]) + delta
+					if float(m["spawn"]) >= SPAWN:
+						m.erase("spawn")
+					continue
 				if float(m["throw"]) < 0.0:
 					m["wait"] = float(m["wait"]) - delta
 					if float(m["wait"]) <= 0.0:
@@ -327,9 +511,15 @@ class SnowBattle extends Control:
 		for ball: Dictionary in _balls.filter(func(x: Dictionary) -> bool: return float(x["t"]) >= float(x["dur"])):
 			_puffs.append({"at": ball["to"], "t": 0.0})
 		_balls = _balls.filter(func(x: Dictionary) -> bool: return float(x["t"]) < float(x["dur"]))
+		if not _giant.is_empty():
+			_giant["t"] = float(_giant["t"]) + delta
+			if float(_giant["t"]) >= GIANT_FLIGHT:
+				_knock(not bool(_giant["left"]))
+				_giant = {}
+				giant_landed.emit()
 		for p: Dictionary in _puffs:
 			p["t"] = float(p["t"]) + delta
-		_puffs = _puffs.filter(func(x: Dictionary) -> bool: return float(x["t"]) < 0.45)
+		_puffs = _puffs.filter(func(x: Dictionary) -> bool: return float(x["t"]) < (0.8 if x.get("big", false) else 0.45))
 		queue_redraw()
 
 	func _ground() -> float:
@@ -350,6 +540,9 @@ class SnowBattle extends Control:
 
 	## How far up a member has popped: about 0 ducked, 1 fully up to throw.
 	func _rise(m: Dictionary) -> float:
+		if m.has("spawn"):   # popping back up from behind the wall
+			var k := clampf(float(m["spawn"]) / SPAWN, 0.0, 1.0)
+			return lerpf(-1.4, 0.3, 1.0 - pow(1.0 - k, 3.0)) + 0.25 * sin(k * PI)
 		var u := float(m["throw"])
 		if u < 0.0:
 			return 0.3 + 0.08 * sin(_t * 2.2 + float(m["bob"]))
@@ -381,6 +574,13 @@ class SnowBattle extends Control:
 		draw_rect(Rect2(Vector2(0, _ground()), Vector2(size.x, size.y)), SNOW)
 		for left in [true, false]:
 			_draw_side(left)
+		# Knocked-out critters, tumbling up and away in front of everything.
+		for left: bool in _squads:
+			for m: Dictionary in _squads[left]:
+				if m.has("out"):
+					var s := float(m["out"])
+					var at := _head(left, int(m["slot"]), 0.3) + Vector2(float(m["vx"]) * s, float(m["vy"]) * s + 0.5 * FALL * s * s)
+					_critter(at, left, m, float(m["spin"]) * s)
 		for ball: Dictionary in _balls:
 			var u := float(ball["t"]) / float(ball["dur"])
 			var a: Vector2 = ball["from"]
@@ -390,11 +590,27 @@ class SnowBattle extends Control:
 			draw_circle(p, 9.0, Color.WHITE, true, -1.0, true)
 			draw_circle(p, 9.0, TSUI.INK, false, 2.0, true)
 		for puff: Dictionary in _puffs:
-			var k := float(puff["t"]) / 0.45
+			if float(puff["t"]) < 0.0:
+				continue
+			var big: bool = puff.get("big", false)
+			var k := float(puff["t"]) / (0.8 if big else 0.45)
 			var at: Vector2 = puff["at"]
+			var reach := 60.0 if big else 26.0
+			var blob := 16.0 if big else 6.0
 			for j in 7:
-				var d := Vector2.from_angle(TAU * float(j) / 7.0) * (8.0 + 26.0 * k)
-				draw_circle(at + d, 6.0 * (1.0 - k) + 1.0, Color(1, 1, 1, 1.0 - k), true, -1.0, true)
+				var d := Vector2.from_angle(TAU * float(j) / 7.0 + (0.4 if big else 0.0)) * (8.0 + reach * k)
+				draw_circle(at + d, blob * (1.0 - k) + 1.0, Color(1, 1, 1, 1.0 - k), true, -1.0, true)
+		# The Giant Snowball: growing over the player's fort while it's mashed,
+		# then flying across, spinning.
+		if charge >= 0.0:
+			var r := _giant_radius() + 2.0 * sin(_t * 30.0)
+			_giant_ball(_charge_at() + Vector2(0, -r * 0.3), r, _t * 2.0)
+		if not _giant.is_empty():
+			var u := float(_giant["t"]) / GIANT_FLIGHT
+			var a: Vector2 = _giant["from"]
+			var b: Vector2 = _giant["to"]
+			var p := a.lerp(b, u) + Vector2(0, -130.0 * sin(u * PI))
+			_giant_ball(p, 52.0, u * TAU * (1.5 if bool(_giant["left"]) else -1.5))
 		# Falling snow.
 		for i in 40:
 			var sx := fmod(float(i) * 97.3 + sin(_t * 0.8 + float(i)) * 14.0, size.x)
@@ -406,8 +622,8 @@ class SnowBattle extends Control:
 	func _draw_side(left: bool) -> void:
 		var col: Color = TSSnowball.TEAM_COLORS["red" if left else "green"]
 		for m: Dictionary in _squads.get(left, []):
-			var head := _head(left, int(m["slot"]), _rise(m))
-			_critter(head, left, m)
+			if not m.has("out"):
+				_critter(_head(left, int(m["slot"]), _rise(m)), left, m)
 		_fort(left)
 		var w := _fort_w()
 		var pole := Vector2(_fort_x(left) + (-w * 0.5 - 4.0 if left else w * 0.5 + 4.0), _wall_top())
@@ -461,17 +677,28 @@ class SnowBattle extends Control:
 	## A squad member: the critter's own sticker (the snowmen flipped to face
 	## the gingerbread), tipping back as it winds up and forward as it throws,
 	## a snowball held up in its hand until it lets go.
-	func _critter(at: Vector2, left: bool, m: Dictionary) -> void:
+	func _critter(at: Vector2, left: bool, m: Dictionary, spin := 0.0) -> void:
 		var dir := 1.0 if left else -1.0
 		var u := float(m["throw"])
 		var tilt := 0.04 * sin(_t * 1.7 + float(m["bob"]))
 		if u >= 0.0:
 			tilt = lerpf(0.0, -0.3, minf(u / RELEASE, 1.0)) if u < RELEASE else lerpf(0.22, 0.0, minf((u - RELEASE) / (THROW_TIME - RELEASE), 1.0))
 		var tex: Texture2D = TSProfile.critter_art(GINGER if left else SNOWMAN)
-		draw_set_transform(at, tilt * dir, Vector2(1.0 if left else -1.0, 1.0))
+		draw_set_transform(at, tilt * dir + spin, Vector2(1.0 if left else -1.0, 1.0))
 		draw_texture_rect(tex, Rect2(Vector2(-SIZE, -SIZE) * 0.5, Vector2(SIZE, SIZE)), false)
 		draw_set_transform(Vector2.ZERO)
 		if u >= 0.0 and not bool(m["thrown"]):
 			var hand := _hand(left, m)
 			draw_circle(hand, 10.0, Color.WHITE, true, -1.0, true)
 			draw_circle(hand, 10.0, TSUI.INK, false, 2.5, true)
+
+	## A big snowball: a soft shadow, the ball, an outline, and a couple of
+	## curved shading lines that turn with it.
+	func _giant_ball(at: Vector2, r: float, turn: float) -> void:
+		draw_circle(at + Vector2(0, r * 0.12), r, Color(0.55, 0.68, 0.9, 0.45), true, -1.0, true)
+		draw_circle(at, r, Color.WHITE, true, -1.0, true)
+		draw_circle(at, r, TSUI.INK, false, 3.5, true)
+		for k in 2:
+			var a := turn + PI * float(k)
+			draw_arc(at, r * 0.62, a, a + 1.1, 12, Color(0.7, 0.82, 0.98), 4.0, true)
+		draw_circle(at + Vector2(-r * 0.35, -r * 0.4), r * 0.16, Color(1, 1, 1, 0.9), true, -1.0, true)

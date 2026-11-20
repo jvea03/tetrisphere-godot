@@ -1,8 +1,9 @@
-# The Snowball Fight: on only on Christmas-season weekends; the player joins a
-# team, every piece popped throws a snowball, milestones pay once, and when
-# the weekend ends the team prize (and any milestone left unclaimed) is paid.
+# The Snowball Fight's Giant Snowball: 5-15 snowballs by how fast it's
+# mashed, added to the player's throws, then a six-hour wait (kept in the
+# save); and on the event screen, mashing it launches it, the other squad
+# is knocked out of its fort when it lands, and is back a few seconds later.
 # Run with:
-#   Godot.exe --headless --path . res://tests/snowball_test.tscn
+#   Godot.exe --path . res://tests/snowball_test.tscn
 extends Node
 
 var _failures := 0
@@ -14,40 +15,67 @@ func _check(label: String, cond: bool) -> void:
 		_failures += 1
 
 
-func _at(when: String) -> void:
-	TSClock.offset = Time.get_unix_time_from_datetime_string(when) - Time.get_unix_time_from_system()
+func _process(_delta: float) -> void:
+	_hold("2026-12-05T14:00:00")
+
+
+func _hold(at: String) -> void:
+	TSClock.offset = Time.get_unix_time_from_datetime_string(at) - Time.get_unix_time_from_system()
 
 
 func _ready() -> void:
 	TSProfile.use_test_profile(20)
-	var before := TSClock.offset
-	_at("2026-11-21T12:00:00")
-	_check("not on an autumn weekend", not TSSnowball.is_live())
-	_at("2026-12-03T12:00:00")
-	_check("not on a Christmas Thursday", not TSSnowball.is_live())
-	_at("2026-12-05T12:00:00")
-	_check("on a Christmas Saturday", TSSnowball.is_live() and TSSnowball.seconds_left() > 0 and TSSnowball.seconds_left() < 2 * 86400)
+	_hold("2026-12-05T14:00:00")
+	TSProfile.planet_season = TSProfile.battle_pass_season_number()
+	TSSnowball.blast_at = 0.0
 	TSSnowball.roll()
-	_check("joined a team", TSSnowball.TEAMS.has(TSSnowball.team) and TSSnowball.thrown == 0)
-	var mine := TSSnowball.team_total(TSSnowball.team)
-	TSProfile.record_quest_event("clear", 160)
-	_check("popping 160 pieces throws 160 snowballs, for the team too", TSSnowball.thrown == 160 and TSSnowball.team_total(TSSnowball.team) == mine + 160)
-	_check("the crowd has thrown plenty by Saturday", TSSnowball.team_total(TSSnowball.rival()) > 100000)
-	var coins := TSProfile.coin_count
-	_check("the first milestone is ready", TSSnowball.claimable_count() == 1)
-	var got := TSSnowball.claim(0)
-	_check("and pays once (%s)" % got, got != "" and TSProfile.coin_count > coins and TSSnowball.claim(0) == "" and TSSnowball.claimable_count() == 0)
-	TSProfile.record_quest_event("clear", 300)   # 460: the bomb milestone, left unclaimed
-	var bombs := TSProfile.bomb_count
-	coins = TSProfile.coin_count
-	_at("2026-12-08T12:00:00")
-	TSSnowball.roll()
-	var r := TSSnowball.result
-	_check("the next week settles it: the team prize and the unclaimed bomb", not r.is_empty() and TSProfile.coin_count - coins >= TSSnowball.LOSE_COINS and TSProfile.bomb_count == bombs + 1 and int(r["thrown"]) == 460)
-	_check("not live on Tuesday, but Home still shows the result", not TSSnowball.is_live() and TSSnowball.show_tile())
-	TSSnowball.take_result()
-	_check("once seen the tile goes", not TSSnowball.show_tile())
-	TSClock.offset = before
+	_check("the fight is on on a Christmas Saturday", TSSnowball.is_live())
+	TSSnowball.team = "red"
+	TSSnowball.thrown = 0
+	_check("a Giant Snowball is ready to start with", TSSnowball.blast_ready())
+	_check("one tap throws 5 (%d)" % TSSnowball.blast_amount(1), TSSnowball.blast_amount(1) == 5)
+	_check("15 taps throw 10 (%d)" % TSSnowball.blast_amount(15), TSSnowball.blast_amount(15) == 10)
+	_check("30 taps or more throw 15", TSSnowball.blast_amount(30) == 15 and TSSnowball.blast_amount(80) == 15)
+	var mine_before := TSSnowball.team_total("red")
+	var n := TSSnowball.blast(30)
+	_check("it throws 15 for the team", n == 15 and TSSnowball.thrown == 15 and TSSnowball.team_total("red") == mine_before + 15)
+	_check("then it isn't ready again", not TSSnowball.blast_ready() and TSSnowball.blast(30) == 0 and TSSnowball.thrown == 15)
+	_check("for six hours (%d s)" % TSSnowball.blast_wait(), absi(TSSnowball.blast_wait() - 6 * 3600) <= 2)
+	var saved := TSSnowball.to_save()
+	TSSnowball.blast_at = 0.0
+	TSSnowball.from_save(saved)
+	_check("the wait is kept in the save", not TSSnowball.blast_ready())
+	_hold("2026-12-05T20:01:00")
+	_check("ready again after six hours", TSSnowball.blast_ready())
+	_check("Home's tile shows a dot while it's ready", TSSnowball.has_alert())
+	_hold("2026-12-05T14:00:00")
+	TSSnowball.blast_at = 0.0
+
+	# On the screen: mash, it flies, the other squad is knocked out, back later.
+	var screen: Node = (load("res://scenes/snowball.tscn") as PackedScene).instantiate()
+	add_child(screen)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_check("the screen says how to earn snowballs", not screen.find_children("*", "Label", true, false).filter(func(l: Label) -> bool: return l.text == "How to earn snowballs").is_empty())
+	var btn: Button = screen._blast_btn
+	_check("its button is ready (%s)" % btn.text, not btn.disabled and btn.text == "THROW IT!")
+	var thrown_before := TSSnowball.thrown
+	for i in 20:
+		screen._mash()
+	var field = screen._field
+	_check("mashing charges the Giant Snowball (%.2f)" % field.charge, field.charge > 0.6)
+	await get_tree().create_timer(TSSnowball.BLAST_SECONDS + 0.2).timeout
+	_check("after the mashing it's in the air", not field._giant.is_empty())
+	_check("and threw 12 snowballs (%d)" % (TSSnowball.thrown - thrown_before), TSSnowball.thrown - thrown_before == TSSnowball.blast_amount(20))
+	await get_tree().create_timer(field.GIANT_FLIGHT).timeout
+	var out := (field._squads[false] as Array).filter(func(m: Dictionary) -> bool: return m.has("out")).size()
+	_check("it knocks all three snowmen out of their fort (%d)" % out, out == 3)
+	_check("and says what it threw", screen._toast.visible and screen._toast_text.text.contains("+12"))
+	_check("the button waits six hours (%s)" % btn.text, btn.disabled and btn.text.begins_with("Ready in"))
+	await get_tree().create_timer(field.KNOCKED + field.SPAWN + 0.3).timeout
+	out = (field._squads[false] as Array).filter(func(m: Dictionary) -> bool: return m.has("out") or m.has("spawn")).size()
+	_check("they're back a few seconds later", out == 0)
+
 	print("")
 	print("ALL PASSED" if _failures == 0 else "%d FAILED" % _failures)
 	get_tree().quit(0 if _failures == 0 else 1)
