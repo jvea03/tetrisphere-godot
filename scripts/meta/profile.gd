@@ -1837,9 +1837,9 @@ static func record_login() -> void:
 	record_quest_event("login")
 	if login_streak_count % STREAK_REWARD_INTERVAL == 0:
 		bomb_count += STREAK_REWARD_BOMBS
-		time_skips += STREAK_REWARD_SKIPS
+		time_skips += boost_earned_skips(STREAK_REWARD_SKIPS)
 		bombs_unlocked = true
-		_append_streak_message("Login streak: %d days! +%d bombs, +%d time skips" % [login_streak_count, STREAK_REWARD_BOMBS, STREAK_REWARD_SKIPS])
+		_append_streak_message("Login streak: %d days! +%d bombs, +%d time skips" % [login_streak_count, STREAK_REWARD_BOMBS, boost_earned_skips(STREAK_REWARD_SKIPS)])
 	save()
 
 
@@ -1855,9 +1855,9 @@ static func record_daily_play() -> void:
 	daily_streak_last_date = today
 	if daily_streak_count % STREAK_REWARD_INTERVAL == 0:
 		bomb_count += STREAK_REWARD_BOMBS
-		time_skips += STREAK_REWARD_SKIPS
+		time_skips += boost_earned_skips(STREAK_REWARD_SKIPS)
 		bombs_unlocked = true
-		_append_streak_message("Daily Egg streak: %d days! +%d bombs, +%d time skips" % [daily_streak_count, STREAK_REWARD_BOMBS, STREAK_REWARD_SKIPS])
+		_append_streak_message("Daily Egg streak: %d days! +%d bombs, +%d time skips" % [daily_streak_count, STREAK_REWARD_BOMBS, boost_earned_skips(STREAK_REWARD_SKIPS)])
 	save()
 
 
@@ -2115,6 +2115,13 @@ static func earned_coin_bonus_percent() -> int:
 	if battle_pass_active():
 		pct += BATTLE_PASS_COIN_BONUS_PERCENT
 	return pct
+
+
+## Time skips earned in play (chests, login and Daily Egg streaks, Battle Pass
+## tiers), times the remote-tunable "skips_earned_percent" (TSTunables; 200 =
+## twice the base). Purchases and inbox gifts are not boosted.
+static func boost_earned_skips(base: int) -> int:
+	return roundi(base * TSTunables.get_int("skips_earned_percent") / 100.0)
 
 
 ## Materials earned in play (wins, chests, the mine, the Battle Pass and its
@@ -2643,7 +2650,7 @@ const BATTLE_PASS_SKIP_EVERY := 5
 static func _pass_currency(tier: int, coins: int, materials: int, skips: int) -> Dictionary:
 	var r := {"coins": coins} if tier % 2 == 1 else {"materials": boost_earned_materials(materials)}
 	if tier % BATTLE_PASS_SKIP_EVERY == 0:
-		r["skips"] = skips
+		r["skips"] = boost_earned_skips(skips)
 	return r
 
 

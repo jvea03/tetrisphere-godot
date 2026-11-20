@@ -237,7 +237,7 @@ func _test_streaks() -> void:
 	var skips_before := TSProfile.time_skips
 	TSProfile.record_login()
 	_check("the 7th day in a row pays %d bombs" % TSProfile.STREAK_REWARD_BOMBS, TSProfile.login_streak_count == 7 and TSProfile.bomb_count == bombs + TSProfile.STREAK_REWARD_BOMBS)
-	_check("...and %d time skips" % TSProfile.STREAK_REWARD_SKIPS, TSProfile.time_skips == skips_before + TSProfile.STREAK_REWARD_SKIPS)
+	_check("...and %d time skips" % TSProfile.boost_earned_skips(TSProfile.STREAK_REWARD_SKIPS), TSProfile.time_skips == skips_before + TSProfile.boost_earned_skips(TSProfile.STREAK_REWARD_SKIPS))
 
 
 ## Time skips: bundles carry them, and they work on a chest as on a build.
@@ -290,7 +290,12 @@ func _test_building() -> void:
 	TSChests.slots[0] = {"rarity": TSChests.LEGENDARY, "unlock_end": 1}
 	var skips_before := TSProfile.time_skips
 	var opened := TSChests.open(0)
-	_check("the Battle Pass gives time skips; chests don't", int(TSProfile.battle_pass_free_reward(5).get("skips", 0)) > 0 and not TSProfile.battle_pass_free_reward(4).has("skips") and not opened.is_empty() and not opened.has("skips") and TSProfile.time_skips == skips_before)
+	var got_skips := int(opened.get("skips", 0))
+	_check("the Battle Pass gives time skips, twice the base by default", int(TSProfile.battle_pass_free_reward(5).get("skips", 0)) == 10 and not TSProfile.battle_pass_free_reward(4).has("skips"))
+	_check("a legendary chest gives time skips too (%d)" % got_skips, got_skips >= 20 and got_skips <= 30 and TSProfile.time_skips == skips_before + got_skips)
+	TSTunables.apply({"skips_earned_percent": 100})
+	_check("and the remote setting changes it", int(TSProfile.battle_pass_free_reward(5).get("skips", 0)) == 5)
+	TSTunables.apply({"skips_earned_percent": 200})
 
 	# The mine under the ship: fills by the hour with the Collection level, up to six hours.
 	TSProfile.mine_since = TSProfile._now_unix() - 3600

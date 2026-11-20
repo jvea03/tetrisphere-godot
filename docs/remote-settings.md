@@ -42,6 +42,7 @@ cache), and remember it offline. Needs a build with this feature (1.3.3 on).
 | `ad_build_per_day` | 3 | "30 min off" ads a day for camp/ship builds |
 | `coins_per_star` | 100 | Coins per star on a win |
 | `materials_earned_percent` | 120 | Materials earned in play (wins, Daily Eggs, chests, the mine, Battle Pass tiers and its Bonus Chest), in percent of the base amounts: 120 is 20% more, 100 the base. Not purchases or inbox gifts. Version 1.3.5 and later |
+| `skips_earned_percent` | 200 | Time skips earned in play (chests, login and Daily Egg streaks, Battle Pass tiers), in percent of the base amounts: 200 is twice the base, 100 the base. Not purchases or inbox gifts. Version 1.3.5 and later |
 | `no_ads_coin_bonus_percent` | 5 | Extra coins for No Ads owners |
 | `bomb_buy_count`, `swap_buy_count`, `rocks_buy_count` | 3, 3, 2 | Boosters per mid-game coin buy |
 | `bomb_pack_cost`, `swap_pack_cost`, `rocks_pack_cost` | 4000, 3000, 6000 | Shop x5 prices (mid-game buys are pro rata) |
