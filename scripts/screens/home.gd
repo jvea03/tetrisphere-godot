@@ -540,11 +540,11 @@ func _build_part_card() -> void:
 	var skips := TSUI.hbox(12)
 	box.add_child(skips)
 	_part["skips"] = skips
-	var one := TSUI.expand(TSUI.button("", TSUI.SKY, 22, Vector2(0, 64), 4)) as Button
+	var one := TSUI.with_icon(TSUI.expand(TSUI.button("", TSUI.SKY, 22, Vector2(0, 64), 4)) as Button, "skip")
 	one.pressed.connect(func(): _use_skips(1))
 	skips.add_child(one)
 	_part["skip_one"] = one
-	var all := TSUI.expand(TSUI.button("", TSUI.SKY, 22, Vector2(0, 64), 4)) as Button
+	var all := TSUI.with_icon(TSUI.expand(TSUI.button("", TSUI.SKY, 22, Vector2(0, 64), 4)) as Button, "skip")
 	all.pressed.connect(func(): _use_skips(TSProfile.time_skips_to_finish(_part_index)))
 	skips.add_child(all)
 	_part["skip_all"] = all
@@ -673,10 +673,10 @@ func _fill_part_card() -> void:
 		var need := TSProfile.time_skips_to_finish(i)
 		var one: Button = _part["skip_one"]
 		var all: Button = _part["skip_all"]
-		one.text = "Skip 1 min"
+		TSUI.set_icon_text(one, "Skip 1 min")
 		one.disabled = TSProfile.time_skips <= 0
 		var use := mini(need, TSProfile.time_skips)
-		all.text = ("Use %d to finish" % need) if TSProfile.time_skips >= need else ("Use all %d" % TSProfile.time_skips)
+		TSUI.set_icon_text(all, ("Use %d to finish" % need) if TSProfile.time_skips >= need else ("Use all %d" % TSProfile.time_skips))
 		all.disabled = use <= 0 or need <= 1
 		var skip := TSProfile.part_build_skip_cost(i)
 		go.text = "Finish Now  ·  %s coins" % TSProfile.fmt_coins(skip)
@@ -1064,8 +1064,8 @@ func _refresh_skip() -> void:
 	var have := TSProfile.time_skips
 	var need := TSChests.time_skips_to_finish(_skip_slot)
 	(_skip["skips"] as Control).visible = have > 0
-	(_skip["skip_one"] as Button).text = "Skip 1 min"
-	(_skip["skip_all"] as Button).text = ("Use %d to finish" % need) if have >= need else ("Use all %d" % have)
+	TSUI.set_icon_text(_skip["skip_one"], "Skip 1 min")
+	TSUI.set_icon_text(_skip["skip_all"], ("Use %d to finish" % need) if have >= need else ("Use all %d" % have))
 	(_skip["skip_all"] as Button).disabled = need <= 1
 
 
@@ -1644,11 +1644,11 @@ func _build_dialogs() -> void:
 	var chest_skips := TSUI.hbox(12)
 	sbox.add_child(chest_skips)
 	_skip["skips"] = chest_skips
-	var one_skip := TSUI.expand(TSUI.button("", TSUI.SKY, 22, Vector2(0, 64), 4)) as Button
+	var one_skip := TSUI.with_icon(TSUI.expand(TSUI.button("", TSUI.SKY, 22, Vector2(0, 64), 4)) as Button, "skip")
 	one_skip.pressed.connect(func(): _use_chest_skips(1))
 	chest_skips.add_child(one_skip)
 	_skip["skip_one"] = one_skip
-	var all_skips := TSUI.expand(TSUI.button("", TSUI.SKY, 22, Vector2(0, 64), 4)) as Button
+	var all_skips := TSUI.with_icon(TSUI.expand(TSUI.button("", TSUI.SKY, 22, Vector2(0, 64), 4)) as Button, "skip")
 	all_skips.pressed.connect(func(): _use_chest_skips(TSChests.time_skips_to_finish(_skip_slot)))
 	chest_skips.add_child(all_skips)
 	_skip["skip_all"] = all_skips

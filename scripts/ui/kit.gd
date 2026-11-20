@@ -113,6 +113,38 @@ static func restyle(b: Button, color: Color, lip := 6) -> void:
 	b.add_theme_stylebox_override("disabled", sb(GREY, radius, BORDER, lip, 18))
 
 
+## Puts an icon before a button's text, the two centred together. The text is
+## then set with set_icon_text (the button's own text stays empty), and both
+## fade with the button when it's disabled.
+static func with_icon(b: Button, icon: String, px := 36) -> Button:
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var row := hbox(8)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	center.add_child(row)
+	var ic := TSIcon.make(icon, px)
+	ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(ic)
+	var l := Label.new()
+	l.add_theme_font_override("font", TSToon.hand_font())
+	l.add_theme_font_size_override("font_size", b.get_theme_font_size("font_size"))
+	l.add_theme_color_override("font_color", INK)
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(l)
+	b.add_child(center)
+	b.set_meta("icon_label", l)
+	b.set_meta("icon_row", row)
+	b.text = ""
+	b.draw.connect(func() -> void: row.modulate = Color(1, 1, 1, 0.5) if b.disabled else Color.WHITE)
+	return b
+
+
+## The text of a with_icon button.
+static func set_icon_text(b: Button, text: String) -> void:
+	(b.get_meta("icon_label") as Label).text = text
+
+
 ## A round (or square) button with an icon in it.
 static func icon_button(icon: String, px := 84, color := CARD, idx := 0) -> Button:
 	var b := Button.new()

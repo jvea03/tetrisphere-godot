@@ -73,7 +73,7 @@ func _run() -> void:
 	TSUI.conceal(_skip["root"])
 	TSProfile.time_skips = 4
 	_open_skip(0)
-	_check("with some it offers them", (_skip["skips"] as Control).visible and (_skip["skip_one"] as Button).text == "Skip 1 min" and (_skip["skip_all"] as Button).text == "Use all 4")
+	_check("with some it offers them", (_skip["skips"] as Control).visible and (_skip["skip_one"].get_meta("icon_label") as Label).text == "Skip 1 min" and (_skip["skip_all"].get_meta("icon_label") as Label).text == "Use all 4")
 	left = TSChests.seconds_left(0)
 	(_skip["skip_one"] as Button).pressed.emit()
 	_check("one takes a minute off", TSProfile.time_skips == 3 and TSChests.seconds_left(0) <= left - 60 and TSChests.is_unlocking(0))
