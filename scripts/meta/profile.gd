@@ -2613,6 +2613,14 @@ static func season_theme() -> String:
 	return str(season_rewards().get("theme", "autumn"))
 
 
+## The Battle Pass banner for the season running now (the Shop's pass card
+## and the pass screen): the Christmas one in the Christmas season, the autumn
+## one otherwise (tools/make_pass_banner builds the Christmas one).
+static func season_banner() -> Texture2D:
+	var path := "res://icons/battle_pass_banner_%s.png" % season_theme()
+	return load(path) if ResourceLoader.exists(path) else load("res://icons/battle_pass_banner.png")
+
+
 ## The season running now, from 1 (BATTLE_PASS_CALENDAR).
 static func battle_pass_season_number() -> int:
 	var now := int(TSClock.now())

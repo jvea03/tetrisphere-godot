@@ -295,7 +295,7 @@ func _pass_card() -> Control:
 	card.add_child(v)
 	# The season's banner, its title over it.
 	var art := TextureRect.new()
-	art.texture = load("res://icons/battle_pass_banner.png")
+	art.texture = TSProfile.season_banner()
 	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	# The whole picture, at its own shape, however wide the card is.
