@@ -465,11 +465,16 @@ func _ready() -> void:
 			[_draw_dock, DOCK], [_draw_playground, PLAYGROUND], [_draw_treehouse, TREEHOUSE], [_draw_stall, STALL], [_draw_greenhouse, GREENHOUSE],
 			[_draw_spring, SPRING], [_draw_observatory, OBSERVATORY], [_draw_oven, OVEN], [_draw_statue, STATUE], [_draw_mine, MINE]]:
 		var at: Vector2 = spot[1]
-		var layer := _area_layer(Rect2(at - Vector2(SPOT_REACH, SPOT_REACH), Vector2(SPOT_REACH * 2.0, SPOT_REACH + 140.0)), spot[0], at.y)
+		var painter: Callable = spot[0]
+		# On a season's planet each camp spot is that season's work site (TSSites).
+		var part := _camp_part_at(at)
+		if part >= 0 and TSSites.has(theme_name()):
+			painter = func(ci: Control) -> void: _draw_site(ci, part)
+		var layer := _area_layer(Rect2(at - Vector2(SPOT_REACH, SPOT_REACH), Vector2(SPOT_REACH * 2.0, SPOT_REACH + 140.0)), painter, at.y)
 		layer.set_meta("at", at)
 		_painters.append(layer)
 	# The season's dressing on some worksites, over each one (snow and lights at Christmas).
-	if SEASON_DRESS.has(theme_name()):
+	if SEASON_DRESS.has(theme_name()) and not TSSites.has(theme_name()):
 		for part: int in SEASON_DRESS[theme_name()]:
 			var spot_at: Vector2 = GROUND_NODES[part]
 			var dress := _area_layer(Rect2(spot_at - Vector2(SPOT_REACH, SPOT_REACH), Vector2(SPOT_REACH * 2.0, SPOT_REACH + 140.0)), func(ci: Control): _draw_dress(ci, part), spot_at.y + 0.5)
@@ -797,6 +802,23 @@ func _node_world(i: int) -> Vector2:
 ## Where a part's node is on screen (this control's space).
 func node_screen_position(i: int) -> Vector2:
 	return _world.position + _node_world(i) * _zoom - _node_lift(i)
+
+
+## The camp spot standing at `at` (a GROUND_NODES place), or -1 (the solar
+## panels, the mine).
+func _camp_part_at(at: Vector2) -> int:
+	for i: int in GROUND_NODES:
+		if GROUND_NODES[i] == at and TSProfile.is_camp(i):
+			return i
+	return -1
+
+
+## A season's work site for camp spot `part` (TSSites), once its wave is open.
+func _draw_site(ci: Control, part: int) -> void:
+	if not _spot_open(part):
+		return
+	var at: Vector2 = GROUND_NODES[part]
+	TSSites.draw(self, ci, theme_name(), part, _lv(part), at, _depth_scale(at.y))
 
 
 ## A camp spot's node sits on screen just under the spot's foot, whatever the

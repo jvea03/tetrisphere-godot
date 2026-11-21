@@ -132,7 +132,7 @@ static func ad_skip_build(i: int) -> bool:
 	if not is_part_building(i) or is_part_build_done(i):
 		return false
 	part_builds[i]["end"] = maxi(int(part_builds[i]["end"]) - AD_SKIP_SECONDS, _now_unix())
-	TSAnalytics.design("Camp:Speedup:Ad:" + part_name(i).replace(" ", ""))
+	TSAnalytics.design("Camp:Speedup:Ad:" + part_key(i))
 	save()
 	return true
 
@@ -810,8 +810,45 @@ static func level_up_critter(i: int) -> bool:
 	return true
 
 
+## Each season's planet has its own work sites in place of the camp spots
+## (TSSites draws them): the same place, wave, costs and levels, another name
+## and other stages. part_name / part_stage give the planet's (planet_theme);
+## the autumn camp is PARTS' own.
+const SITES := {
+	"christmas": {
+		CAMP_FIRE: ["Yule Log Fire", ["Cold Embers", "Yule Log", "Stone Ring", "Cocoa Pot", "Roaring Yule Fire"]],
+		CAMP_TENT: ["Igloo", ["Snow Pile", "Snow Dome", "Ice Door", "Icicle Lights", "Snow Palace"]],
+		CAMP_BENCH: ["Toy Bench", ["Loose Planks", "Toy Bench", "Toy Rack", "Wrapping Station", "Candy Awning"]],
+		CAMP_GARDEN: ["Tree Farm", ["Frozen Dirt", "Saplings", "Little Pines", "Baubles", "Star-Topped Tree"]],
+		CAMP_WELL: ["Cocoa Fountain", ["Ice Chunks", "Fountain", "Cocoa Flowing", "Marshmallows", "Candy Cane Rim"]],
+		CAMP_LOOKOUT: ["Bell Tower", ["Pile of Logs", "Platform", "Bell", "Peaked Roof", "Wreath"]],
+		CAMP_HAMMOCK: ["Sled", ["Broken Runners", "Sled", "Blanket", "Scarf", "Sleigh Bells"]],
+		CAMP_PICNIC: ["Cookie Table", ["Snowy Log", "Log Seats", "Cookie Table", "Red Cloth", "Cookie Feast"]],
+		CAMP_CLOTHESLINE: ["Stocking Line", ["Loose Line", "Line", "Stockings", "Mittens", "Garland"]],
+		CAMP_MAILBOX: ["North Pole Mailbox", ["Dented Can", "Mailbox", "Candy Stripes", "Flag Up", "Letters to Santa"]],
+		CAMP_WINDMILL: ["Snow Mill", ["Broken Blades", "Spinning", "Striped Sails", "Little Door", "Snow Puffs"]],
+		CAMP_DOCK: ["Ice Fishing Hut", ["Driftwood", "Ice Hole", "Little Hut", "Lantern", "Fish Flag"]],
+		CAMP_PLAYGROUND: ["Sledding Hill", ["Snow Heap", "Sled Run", "Two Sleds", "Snowman", "Flag Run"]],
+		CAMP_TREEHOUSE: ["Christmas Tree", ["Bare Pine", "Garland", "Baubles", "Lights", "Golden Star"]],
+		CAMP_STALL: ["Cocoa Stand", ["Crates", "Stand", "Striped Awning", "Steaming Mugs", "Bell & Sign"]],
+		CAMP_GREENHOUSE: ["Gingerbread House", ["Crumbs", "Cookie Walls", "Icing Roof", "Gumdrops", "Candy Cane Door"]],
+		CAMP_SPRING: ["Skating Rink", ["Puddle", "Ice Rink", "Skater", "Lanterns", "Twinkle Lights"]],
+		CAMP_OBSERVATORY: ["Sleigh Pad", ["Rubble", "Runway", "Sleigh", "Sacks of Gifts", "Sleigh Bells"]],
+		CAMP_OVEN: ["Cookie Oven", ["Clay Lump", "Brick Oven", "Chimney", "Cookie Trays", "Gingerbread Shelf"]],
+		CAMP_STATUE: ["Ice Sculpture", ["Ice Block", "Rough Carving", "Critter Sculpture", "Pedestal", "Sparkling Ice"]],
+	},
+}
+
+
+## What a part is called on this planet: a season's work site, or PARTS' name.
 static func part_name(i: int) -> String:
-	return str(PARTS[i]["name"])
+	var site: Array = (SITES.get(planet_theme, {}) as Dictionary).get(i, [])
+	return str(site[0]) if not site.is_empty() else str(PARTS[i]["name"])
+
+
+## A part's own name whatever the planet (analytics keep it, season to season).
+static func part_key(i: int) -> String:
+	return str(PARTS[i]["name"]).replace(" ", "")
 
 
 static func part_level_of(i: int) -> int:
@@ -828,7 +865,8 @@ static func is_part_max_level(i: int) -> bool:
 
 ## What a part looks like at a level: "Smoking Wreck", "Chrome Nozzle"...
 static func part_stage(i: int, level: int) -> String:
-	var stages: Array = PARTS[i]["stages"]
+	var site: Array = (SITES.get(planet_theme, {}) as Dictionary).get(i, [])
+	var stages: Array = site[1] if not site.is_empty() else PARTS[i]["stages"]
 	return str(stages[clampi(level, 0, stages.size() - 1)])
 
 
@@ -1112,8 +1150,8 @@ static func part_build_block(i: int) -> String:
 static func start_part_build(i: int) -> bool:
 	if part_build_block(i) != "":
 		return false
-	TSAnalytics.spent("Camp", part_name(i).replace(" ", ""), part_next_cost(i), part_next_materials(i))
-	TSAnalytics.design("Camp:Build:" + part_name(i).replace(" ", ""), part_level[i] + 1)
+	TSAnalytics.spent("Camp", part_key(i), part_next_cost(i), part_next_materials(i))
+	TSAnalytics.design("Camp:Build:" + part_key(i), part_level[i] + 1)
 	coin_count -= part_next_cost(i)
 	materials -= part_next_materials(i)
 	part_builds[i] = {"end": _now_unix() + part_build_seconds(i), "critter": int(free_builders()[0])}
@@ -1134,7 +1172,7 @@ static func _complete_build(i: int) -> void:
 	part_builds.erase(i)
 	_fill_parts()
 	part_level[i] = mini(part_level[i] + 1, PART_MAX_LEVEL)
-	TSAnalytics.design("Camp:Built:" + part_name(i).replace(" ", ""), part_level[i])
+	TSAnalytics.design("Camp:Built:" + part_key(i), part_level[i])
 
 
 ## Coins to finish a build now: BUILD_SKIP_COINS_PER_MINUTE a minute left.

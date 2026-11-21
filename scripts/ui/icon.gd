@@ -282,6 +282,9 @@ func _draw_rocks() -> void:
 ## the camp's wood and canvas -- or, broken, dull and damaged: cracks, a bend,
 ## smoke, a heap of planks.
 func _draw_part(i: int, broken: bool) -> void:
+	if TSProfile.is_camp(i) and TSSites.has(TSProfile.planet_theme):   # a season's work site
+		TSSites.icon(self, TSProfile.planet_theme, i, broken)
+		return
 	var hull := Color(0.62, 0.6, 0.66) if broken else _col(Color(1.0, 0.74, 0.82))
 	var trim := Color(0.8, 0.78, 0.82) if broken else Color(1.0, 0.97, 0.9)
 	var glass := Color(0.36, 0.38, 0.5) if broken else Color(0.62, 0.84, 1.0)

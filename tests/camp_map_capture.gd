@@ -22,8 +22,9 @@ func _ready() -> void:
 	for i in TSProfile.CRITTER_COUNT:
 		TSProfile.critter_unlocked[i] = true
 		TSProfile.critter_level[i] = 1
-	if OS.get_cmdline_user_args().has("christmas"):
-		TSProfile.planet_theme = "christmas"   # `christmas`: the planet dressed for it
+	for a in OS.get_cmdline_user_args():
+		if TSShipScene.THEMES.has(a):
+			TSProfile.planet_theme = a   # `christmas`, `newyear`, `valentine`: the planet dressed for it, with its work sites
 	for i in TSProfile.PART_COUNT:
 		TSProfile.part_level[i] = _level if TSProfile.PARTS[i]["group"] == "camp" else 0
 	# `ship`: just the crash site round the ship, closer up.
@@ -51,8 +52,8 @@ func _ready() -> void:
 		for i in LABELS:
 			var p: Vector2 = (TSShipScene.GROUND_NODES[i] - view.position) * scale
 			marks.draw_circle(p, 4.0, Color.RED)
-			marks.draw_string_outline(font, p + Vector2(6, 16), LABELS[i], HORIZONTAL_ALIGNMENT_LEFT, -1, 16, 4, Color.WHITE)
-			marks.draw_string(font, p + Vector2(6, 16), LABELS[i], HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color.BLACK))
+			marks.draw_string_outline(font, p + Vector2(6, 16), TSProfile.part_name(i), HORIZONTAL_ALIGNMENT_LEFT, -1, 16, 4, Color.WHITE)
+			marks.draw_string(font, p + Vector2(6, 16), TSProfile.part_name(i), HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color.BLACK))
 	holder.add_child(marks)
 	await get_tree().create_timer(1.0).timeout
 	await RenderingServer.frame_post_draw
