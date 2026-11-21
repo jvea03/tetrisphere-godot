@@ -3239,7 +3239,7 @@ func _refresh_lose_card() -> void:
 		var k := _escape_size()
 		var open := int(board.best_escape_patch(k)["open"])
 		var pct := clampi(roundi(100.0 * float(open) / float(k * k)), 0, 99)
-		box.add_child(TSUI.halo(TSIcon.make("milky", 130, _creature.kind + 1, "sad"), 190.0, TSUI.LILAC, false))
+		box.add_child(_sad_stage())
 		box.add_child(TSUI.wrap(TSUI.label("The Milky is %d%% of the way out!" % pct, 28, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER)))
 		var progress := TSUI.bar(TSUI.MINT, 24)
 		progress.value = pct
@@ -3309,6 +3309,49 @@ func _refresh_lose_card() -> void:
 	quit.pressed.connect(_lose_give_up)
 	box.add_child(quit)
 	TSUI.juice(box)
+
+
+## The lose card's Milky: sad, swaying a little, on a soft grey-blue disc,
+## under its own small rain cloud.
+func _sad_stage() -> Control:
+	var stage := Control.new()
+	stage.custom_minimum_size = Vector2(260, 220)
+	stage.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var backdrop := Control.new()
+	backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	backdrop.set_anchors_preset(Control.PRESET_FULL_RECT)
+	var t0 := Time.get_ticks_msec()
+	backdrop.draw.connect(func() -> void:
+		var t := (Time.get_ticks_msec() - t0) / 1000.0
+		var c := Vector2(130, 132)
+		backdrop.draw_circle(c, 82.0, Color(0.8, 0.84, 0.94, 0.7), true, -1.0, true)
+		backdrop.draw_circle(c, 64.0, Color(0.88, 0.91, 0.98, 0.8), true, -1.0, true)
+		# Rain falling from the cloud, past the Milky.
+		for k in 6:
+			var age := fposmod(t * 0.9 + float(k) / 6.0, 1.0)
+			var at := Vector2(92.0 + k * 15.0, 46.0 + age * 120.0)
+			backdrop.draw_line(at, at + Vector2(-3, 12), Color(0.5, 0.7, 0.95, 0.8 * (1.0 - age)), 4.0, true)
+		# The cloud: overlapping puffs, inked.
+		var puffs := [[Vector2(108, 36), 22.0], [Vector2(132, 26), 28.0], [Vector2(158, 36), 22.0], [Vector2(130, 44), 24.0]]
+		for p in puffs:
+			backdrop.draw_circle(p[0], float(p[1]) + 3.0, TSToon.INK, true, -1.0, true)
+		for p in puffs:
+			backdrop.draw_circle(p[0], float(p[1]), Color(0.78, 0.8, 0.88), true, -1.0, true)
+		backdrop.draw_circle(Vector2(124, 20), 9.0, Color(1, 1, 1, 0.5), true, -1.0, true))
+	stage.add_child(backdrop)
+	var tick := backdrop.create_tween().set_loops()
+	tick.tween_callback(backdrop.queue_redraw).set_delay(1.0 / 30.0)
+	var milky := TSIcon.make("milky", 130, _creature.kind + 1, "sad")
+	milky.size = Vector2(130, 130)
+	milky.position = Vector2(65, 70)
+	milky.pivot_offset = Vector2(65, 120)
+	milky.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stage.add_child(milky)
+	var sway := milky.create_tween().set_loops()
+	sway.tween_property(milky, "rotation", 0.06, 1.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	sway.tween_property(milky, "rotation", -0.06, 1.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	return stage
 
 
 ## Give Up (or the card's X): back Home, this egg's progress let go.
