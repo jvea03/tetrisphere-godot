@@ -1419,6 +1419,7 @@ func _refresh_pieces() -> void:
 func _refresh_piece() -> void:
 	for child in _ghost_root.get_children():
 		child.queue_free()
+	_hide_aim_bubble()
 	if state != State.PLAYING:
 		return
 
@@ -1577,8 +1578,84 @@ func _show_aim() -> void:
 	if aim_combo > 0 and not _near_fog(cols):
 		_ghost_root.add_child(view.make_plate(shown, cols, depths, 0.75, 0.45))
 		_light_match(board.match_preview(current_offsets(), cursor, cur_type, _current_depth()))
+		_show_aim_bubble(cols, "match")
 	else:
 		_ghost_root.add_child(view.make_plate(shown, cols, depths, 0.32, 0.0))
+		if not _near_fog(cols):
+			_show_aim_bubble(cols, "free" if _unlimited_lives() else "miss")
+
+
+# -- the aim bubble -------------------------------------------------------------------
+# Over where the piece would land, a bubble says what the drop will do: a
+# green tick and "+5" (the pieces it pops) on a match, a red cross and
+# "-1 [heart]" on a miss -- "Free miss" on the first levels, where misses
+# cost nothing. Hidden under fog (it would give the colours away) and while
+# a bomb is armed.
+var _aim_bubble: PanelContainer
+var _aim_bubble_icon: TSIcon
+var _aim_bubble_text: Label
+var _aim_bubble_heart: TSIcon
+var _aim_bubble_kind := ""
+var _aim_bubble_cols: Array = []
+const AIM_BUBBLE_LIFT := 64.0   # how far over the landing spot it floats
+const AIM_BUBBLE_COLOURS := {"match": Color(0.55, 0.86, 0.55), "miss": Color(1.0, 0.5, 0.5), "free": Color(0.62, 0.82, 1.0)}
+
+
+func _show_aim_bubble(cols: Array, kind: String) -> void:
+	if bomb_armed or state != State.PLAYING:
+		return
+	if _aim_bubble == null:
+		_aim_bubble = PanelContainer.new()
+		_aim_bubble.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var row := TSUI.hbox(6)
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_aim_bubble.add_child(row)
+		_aim_bubble_icon = TSIcon.make("check", 46)
+		_aim_bubble_text = TSUI.label("", 36)
+		_aim_bubble_heart = TSIcon.make("heart", 40)
+		for c in [_aim_bubble_icon, _aim_bubble_text, _aim_bubble_heart]:
+			(c as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
+			(c as Control).size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			row.add_child(c)
+		_hud.add_child(_aim_bubble)
+	_aim_bubble_cols = cols
+	if kind != _aim_bubble_kind:
+		_aim_bubble_kind = kind
+		_aim_bubble.add_theme_stylebox_override("panel", TSUI.sb(AIM_BUBBLE_COLOURS[kind], 99, 3, 3, 10))
+		_aim_bubble_icon.set_icon("check" if kind == "match" else "close")
+		_aim_bubble_icon.visible = kind != "free"
+		_aim_bubble_heart.visible = kind != "match"
+		# A pop as it changes.
+		_aim_bubble.pivot_offset = _aim_bubble.size * 0.5
+		_aim_bubble.scale = Vector2.ONE * 0.6
+		_aim_bubble.create_tween().tween_property(_aim_bubble, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_aim_bubble_text.text = "+%d" % aim_combo if kind == "match" else ("-1" if kind == "miss" else "Free miss")
+	_aim_bubble.reset_size()
+	_aim_bubble.visible = true
+	_place_aim_bubble()
+
+
+func _hide_aim_bubble() -> void:
+	if _aim_bubble != null:
+		_aim_bubble.visible = false
+
+
+## Over the middle of the aimed footprint, following the egg as it turns.
+func _place_aim_bubble() -> void:
+	if _aim_bubble == null or not _aim_bubble.visible or _aim_bubble_cols.is_empty():
+		return
+	if state != State.PLAYING or bomb_armed or _any_card_open():
+		_aim_bubble.visible = false
+		return
+	var mid := Vector2.ZERO
+	var top := INF
+	for col in _aim_bubble_cols:
+		var at := _screen_of_cell(col)
+		mid += at
+		top = minf(top, at.y)
+	mid /= float(_aim_bubble_cols.size())
+	_aim_bubble.pivot_offset = _aim_bubble.size * 0.5
+	_aim_bubble.position = Vector2(mid.x - _aim_bubble.size.x * 0.5, top - AIM_BUBBLE_LIFT - _aim_bubble.size.y)
 
 
 const MATCH_GLOW_BOB := 0.012   # how far the lit match rises off the egg at the top of its bob (a share of its size)
@@ -2012,6 +2089,7 @@ static func _heart_shape(s: float) -> PackedVector2Array:
 
 func _process(delta: float) -> void:
 	_animate_boosters(delta)
+	_place_aim_bubble()
 	_fly_sleigh()
 	_tick_challenge(delta)
 	_track_pointer()
