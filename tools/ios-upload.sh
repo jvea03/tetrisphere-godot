@@ -48,11 +48,15 @@ PY
 )
 done
 
+# The team for every target, the Swift packages' resource bundles included
+# (Firebase's GoogleUtilities, nanopb, Promises...): without it their signing
+# fails with "requires a development team".
+TEAM=$(sed -n 's/^application\/app_store_team_id="\(.*\)"/\1/p' export_presets.cfg | head -1)
 echo "== archive =="
 rm -rf build/EggEscape.xcarchive
 ( cd build/ios && xcodebuild -project EggEscape.xcodeproj -scheme EggEscape -configuration Release \
 	-destination "generic/platform=iOS" -archivePath "$PWD/../EggEscape.xcarchive" \
-	CODE_SIGN_IDENTITY="Apple Development" -allowProvisioningUpdates "${AUTH[@]}" archive 2>&1 \
+	CODE_SIGN_IDENTITY="Apple Development" DEVELOPMENT_TEAM="$TEAM" -allowProvisioningUpdates "${AUTH[@]}" archive 2>&1 \
 	| grep -E "error:|ARCHIVE (SUCCEEDED|FAILED)" | grep -v DVTPlugIn | sort -u )
 
 echo "== export + upload =="
