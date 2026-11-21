@@ -1351,6 +1351,15 @@ static func launch_reward() -> int:
 static func voyage_due() -> bool:
 	if planet_season <= 0:
 		planet_season = battle_pass_season_number()
+		# A brand-new player (nothing built yet) lands on this season's planet,
+		# not the autumn one the save starts with. An old save with work done
+		# keeps the camp it built.
+		var built := false
+		for i in PART_COUNT:
+			if part_level_of(i) > 0:
+				built = true
+		if not built:
+			planet_theme = season_theme()
 		save()
 		return false
 	return intro_seen and tutorial_seen and planet_season < battle_pass_season_number()
@@ -3252,6 +3261,7 @@ static func ensure_loaded() -> void:
 				slide_tutorial_seen = last_level > 2
 	var cfg := _read_save() if persist else null
 	if cfg == null:
+		planet_theme = season_theme()   # a new player starts on this season's planet
 		return
 	var g := func(key: String, default: Variant) -> Variant: return cfg.get_value("profile", key, default)
 	player_name = str(g.call("name", DEFAULT_NAME))
