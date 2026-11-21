@@ -50,6 +50,8 @@ app id `4973493136794668328`, developer account "The Little Guy Games".
    non-consumables on the iOS side; Play treats them as one-time products the
    game acknowledges instead of consuming
    (`scripts/meta/billing.gd` decides that from the product table).
+   The three memberships were created and activated in Play Console on
+   2026-11-21 (purchase option `buy`, USD price, every country and region).
 3. **Upload the AAB** to Closed testing, wait for the pre-launch report, keep 12
    testers opted in for 14 days in a row, then apply for production access.
 4. Re-check the Play **App content** answers (Ads: yes; Data safety to match the
