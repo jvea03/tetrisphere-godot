@@ -46,6 +46,8 @@ static func draw(s: TSShipScene, ci: CanvasItem, theme: String, part: int, lv: i
 	# The layer draws in world coordinates, shifted by its own position.
 	var off: Vector2 = (ci as Control).position if ci is Control else Vector2.ZERO
 	ci.draw_set_transform(p - off, 0.0, Vector2(k, k))
+	if lv >= 1:
+		_dressing(s, ci, theme, part)
 	match theme:
 		"christmas":
 			TSSitesChristmas.draw(s, ci, part, lv)
@@ -53,6 +55,12 @@ static func draw(s: TSShipScene, ci: CanvasItem, theme: String, part: int, lv: i
 			TSSitesNewYear.draw(s, ci, part, lv)
 		"valentine":
 			TSSitesValentine.draw(s, ci, part, lv)
+	if lv >= TSProfile.PART_MAX_LEVEL:
+		# Finished: a glint now and then, somewhere on it.
+		var beat := fposmod(s._t * 0.5 + float(part) * 0.37, 1.0)
+		if beat < 0.25:
+			var at := Vector2(sin(float(part) * 2.1) * 50.0, -60.0 - fposmod(float(part) * 37.0, 80.0))
+			s._sparkle(ci, at, 12.0 * sin(beat / 0.25 * PI), Color(1.0, 0.96, 0.7))
 	ci.draw_set_transform(-off)
 
 
@@ -65,6 +73,34 @@ static func icon(ic: TSIcon, theme: String, part: int, broken: bool) -> void:
 			TSSitesNewYear.icon(ic, part, broken)
 		"valentine":
 			TSSitesValentine.icon(ic, part, broken)
+
+
+## The season round a built site's foot, under it: snow drifts at Christmas,
+## confetti scattered at New Year, little flowers at Valentine's -- placed the
+## same way every time for a spot (seeded by its part).
+static func _dressing(s: TSShipScene, ci: CanvasItem, theme: String, part: int) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = part * 7919 + 17
+	match theme:
+		"christmas":
+			for side in [-1.0, 1.0]:
+				var at := Vector2(side * rng.randf_range(70.0, 110.0), rng.randf_range(2.0, 12.0))
+				var w := rng.randf_range(26.0, 40.0)
+				s._ellipse(ci, at, w, w * 0.32, SNOW)
+				s._ellipse(ci, at + Vector2(-w * 0.3, -w * 0.1), w * 0.4, w * 0.14, Color(1, 1, 1), false)
+		"newyear":
+			for j in 9:
+				var at := Vector2(rng.randf_range(-120.0, 120.0), rng.randf_range(-4.0, 16.0))
+				var d := Vector2(6, 0).rotated(rng.randf() * TAU)
+				ci.draw_line(at - d, at + d, TSSitesNewYear.PARTY[j % TSSitesNewYear.PARTY.size()], 4.0, true)
+		"valentine":
+			for j in 4:
+				var side := -1.0 if j % 2 == 0 else 1.0
+				var at := Vector2(side * rng.randf_range(60.0, 115.0), rng.randf_range(0.0, 14.0))
+				ci.draw_line(at, at + Vector2(0, -14), Color(0.36, 0.62, 0.42), 3.0, true)
+				for petal in 5:
+					ci.draw_circle(at + Vector2(0, -16) + Vector2.from_angle(TAU * petal / 5.0) * 5.0, 4.0, [PINK, Color(1, 1, 1), LILAC][j % 3], true, -1.0, true)
+				ci.draw_circle(at + Vector2(0, -16), 3.0, BUTTER, true, -1.0, true)
 
 
 # -- shared pieces (local coordinates) -----------------------------------------
