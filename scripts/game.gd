@@ -2503,6 +2503,7 @@ func _restyle_creature() -> void:
 	_creature.set_kind(TSCreature.kind_for_scale(s))
 	if view != null and view.board != null:
 		view.critter_scale = s   # the tie-down chains loop round it
+		view.cap_style = difficulty   # the egg's top and bottom wear its difficulty
 		view.rebuild()
 
 

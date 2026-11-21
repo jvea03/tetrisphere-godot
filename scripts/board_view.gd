@@ -41,6 +41,17 @@ const CAP_COLOR := Color(0.99, 0.94, 0.84)
 const CAP_TRIM_COLOR := Color(0.86, 0.68, 0.5)
 const CAP_SPECKLE := Color(0.66, 0.48, 0.36)
 const CAP_SPECKLES := 26          # per cap
+## The caps change with the egg's difficulty (TSLevels.DIFFICULTIES, by
+## index): [dome, trim, speckles]. Beginner is the plain cream eggshell above;
+## then a sky-blue egg, a peach one, a lilac one banded in purple, and Extreme
+## a dark plum egg banded in gold. Always speckled, so never a piece.
+const CAP_STYLES := [
+	[CAP_COLOR, CAP_TRIM_COLOR, CAP_SPECKLE],
+	[Color(0.84, 0.93, 1.0), Color(0.52, 0.72, 0.94), Color(0.42, 0.6, 0.86)],
+	[Color(1.0, 0.87, 0.78), Color(0.95, 0.56, 0.44), Color(0.84, 0.44, 0.34)],
+	[Color(0.9, 0.84, 1.0), Color(0.66, 0.52, 0.92), Color(0.6, 0.48, 0.86)],
+	[Color(0.4, 0.32, 0.46), Color(1.0, 0.76, 0.28), Color(1.0, 0.62, 0.36)],
+]
 
 # One colour per piece, in TSBoard.SHAPES order: soft pastels, kept far enough
 # apart in hue to tell at a glance. The two lines keep the footage's pairing --
@@ -120,6 +131,9 @@ var _wires: MultiMeshInstance3D   # every tie-down chain link: straps, chains in
 var critter_scale := 1.0   # the critter's size (the game sets it), for the loops round it
 var _caps: Array = []      # the cap meshes, rebuilt for a ball of another depth
 var _caps_depth := -1
+## Which CAP_STYLES the caps wear (the game sets it to the difficulty, then rebuilds).
+var cap_style := 0
+var _caps_style := -1
 
 
 func setup(b: TSBoard) -> void:
@@ -133,19 +147,20 @@ func _cap_radius() -> float:
 	return CORE_RADIUS + board.shell_depth * LAYER_H + 0.04
 
 
-## The caps are plain dark shell (CAP_COLOR), and
+## The caps are the egg's shell, in its difficulty's colours (CAP_STYLES), and
 ## stand level with the top of a fresh shell of this ball's depth.
 func _build_caps() -> void:
 	for mi in _caps:
 		(mi as Node).queue_free()
 	_caps.clear()
 	_caps_depth = board.shell_depth
+	_caps_style = cap_style
+	var look: Array = CAP_STYLES[clampi(cap_style, 0, CAP_STYLES.size() - 1)]
 	var cap_r := _cap_radius()
-	var cap := CAP_COLOR
-	var dome_mat := make_material(cap, 1.0)
-	var trim_mat := make_material(CAP_TRIM_COLOR, 1.0, 0.0, false)
-	var wall_mat := make_material(CAP_TRIM_COLOR.darkened(0.25), 1.0, 0.0, false)
-	var speck_mat := make_material(CAP_SPECKLE, 1.0, 0.0, false)
+	var dome_mat := make_material(look[0], 1.0)
+	var trim_mat := make_material(look[1], 1.0, 0.0, false)
+	var wall_mat := make_material((look[1] as Color).darkened(0.25), 1.0, 0.0, false)
+	var speck_mat := make_material(look[2], 1.0, 0.0, false)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 1712   # the same speckles on every egg
 	var outward := func(p: Vector3) -> Vector3: return p
@@ -459,7 +474,7 @@ static func _open_above(stack: Array, d: int) -> bool:
 
 
 func rebuild() -> void:
-	if board.shell_depth != _caps_depth:
+	if board.shell_depth != _caps_depth or cap_style != _caps_style:
 		_build_caps()
 	_build_tie_wires()
 	var tallest := 1
