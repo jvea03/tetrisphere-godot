@@ -211,7 +211,7 @@ func _draw() -> void:
 		"egg": _draw_shell(index, Vector2(0.5, 0.52), 0.44)
 		"part": _draw_part(index, variant == "broken")
 		"critter": _draw_critter(index, Vector2(0.5, 0.56), 0.4)
-		"milky": _draw_milky_rescued() if variant == "rescued" else (_draw_milky_trapped() if variant == "trapped" else _draw_milky(Vector2(0.5, 0.55), 0.38))
+		"milky": _draw_milky_rescued() if variant == "rescued" else _draw_milky(Vector2(0.5, 0.55), 0.38, variant == "sad")
 		"ship": _draw_ship_icon()
 		"badge": _draw_badge(index)
 		_: _circle(Vector2(0.5, 0.5), 0.4, _col(GOLD))
@@ -1205,34 +1205,6 @@ func _draw_milky(c: Vector2, r: float, sad := false) -> void:
 		_milky_front(c, r, kind)
 
 
-## The lose card's Milky: still stuck in its egg, and sad about it -- peeking
-## out through a hole in the shell, chained in, a tear on its cheek.
-func _draw_milky_trapped() -> void:
-	var c := Vector2(0.5, 0.56)
-	# The egg round it: a pastel shell, a big hole broken in its front.
-	var egg: Array = []
-	for k in 40:
-		var a := TAU * float(k) / 40.0
-		egg.append(Vector2(0.5, 0.54) + Vector2(cos(a) * 0.4, sin(a) * (0.42 if sin(a) > 0.0 else 0.48)))
-	_poly(egg, Color(0.98, 0.9, 0.72))
-	var hole: Array = []
-	for k in 16:
-		var a := TAU * float(k) / 16.0
-		var jag := 0.03 if k % 2 == 0 else -0.01
-		hole.append(c + Vector2(cos(a) * (0.29 + jag), sin(a) * (0.28 + jag)))
-	_poly(hole, Color(0.4, 0.3, 0.36))
-	_draw_milky(c + Vector2(0, 0.03), 0.23, true)
-	# Two chains straight across it, holding it in.
-	for y in [0.4, 0.76]:
-		_line([Vector2(0.16, y), Vector2(0.84, y)], Color(INK, 0.9), 1.1)
-		for k in 6:
-			var at := Vector2(0.21 + k * 0.116, y)
-			_ellipse(at, 0.045, 0.026 if k % 2 == 0 else 0.016, Color(0.8, 0.82, 0.9), true)
-	# Cracks in the shell.
-	_line([Vector2(0.24, 0.18), Vector2(0.3, 0.24), Vector2(0.26, 0.3)], INK, 0.6)
-	_line([Vector2(0.78, 0.8), Vector2(0.72, 0.84), Vector2(0.76, 0.9)], INK, 0.6)
-
-
 ## A sad face: eyes looking down under worried brows, a tear, a wobbly frown.
 func _milky_sad_face(c: Vector2, r: float) -> void:
 	for side in [-1.0, 1.0]:
@@ -1243,7 +1215,7 @@ func _milky_sad_face(c: Vector2, r: float) -> void:
 		_ellipse(c + Vector2(side * 0.6 * r, 0.24 * r), 0.12 * r, 0.06 * r, Color(1.0, 0.58, 0.68, 0.6), false)
 	draw_arc(_u(c + Vector2(0, 0.34) * r), 0.12 * r * _s, PI + 0.4, TAU - 0.4, 12, INK, _w() * 0.8, true)
 	# A tear rolling down one cheek.
-	_poly([c + Vector2(0.4, 0.12) * r, c + Vector2(0.48, 0.3) * r, c + Vector2(0.4, 0.36) * r, c + Vector2(0.32, 0.3) * r], Color(0.56, 0.8, 1.0))
+	_poly([c + Vector2(0.4, 0.12) * r, c + Vector2(0.48, 0.3) * r, c + Vector2(0.4, 0.36) * r, c + Vector2(0.32, 0.3) * r], Color(0.56, 0.8, 1.0), false)
 
 
 ## The win card's Milky: free at last -- standing on its own two feet, arms

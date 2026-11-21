@@ -3051,7 +3051,7 @@ func _refresh_lose_card() -> void:
 		var k := _escape_size()
 		var open := int(board.best_escape_patch(k)["open"])
 		var pct := clampi(roundi(100.0 * float(open) / float(k * k)), 0, 99)
-		box.add_child(TSUI.halo(TSIcon.make("milky", 150, _creature.kind + 1, "trapped"), 190.0, TSUI.LILAC, false))
+		box.add_child(TSUI.halo(TSIcon.make("milky", 130, _creature.kind + 1, "sad"), 190.0, TSUI.LILAC, false))
 		box.add_child(TSUI.wrap(TSUI.label("The Milky is %d%% of the way out!" % pct, 28, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER)))
 		var progress := TSUI.bar(TSUI.MINT, 24)
 		progress.value = pct
