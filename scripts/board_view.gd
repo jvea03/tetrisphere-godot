@@ -590,9 +590,9 @@ func _same_sides(c: int, r: int, d: int, p: int) -> Array:
 # A free-standing piece, used for the aiming footprint. `cols` are its columns
 # and `depths` the depth each block will settle at. It is see-through and
 # draws through the shell, so a piece slid in under an overhang stays visible.
-func make_plate(kind: int, cols: Array, depths: Array, alpha: float, glow: float) -> Node3D:
+func make_plate(kind: int, cols: Array, depths: Array, alpha: float, glow: float, tint := Color(0, 0, 0, 0)) -> Node3D:
 	var root := Node3D.new()
-	var mat := TSToon.material(TYPE_COLORS[kind], alpha, glow, true, false, true)
+	var mat := TSToon.material(tint if tint.a > 0.0 else TYPE_COLORS[kind], alpha, glow, true, false, true)   # `tint` in place of the kind's colour (a miss: grey)
 	var sets := {}
 	for i in cols.size():
 		var v: Vector2i = cols[i]

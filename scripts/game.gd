@@ -1420,6 +1420,8 @@ func _refresh_piece() -> void:
 	for child in _ghost_root.get_children():
 		child.queue_free()
 	_hide_aim_bubble()
+	if _miss_x != null:
+		_miss_x.visible = false
 	if state != State.PLAYING:
 		return
 
@@ -1580,10 +1582,63 @@ func _show_aim() -> void:
 		if _aim_help():
 			_light_match(board.match_preview(current_offsets(), cursor, cur_type, _current_depth()))
 			_show_aim_bubble(cols, "match")
-	else:
+	elif _near_fog(cols):
 		_ghost_root.add_child(view.make_plate(shown, cols, depths, 0.32, 0.0))
-		if _aim_help() and not _near_fog(cols):
+	else:
+		# A miss: the footprint goes grey, an X across it.
+		_ghost_root.add_child(view.make_plate(shown, cols, depths, 0.32, 0.0, MISS_GREY))
+		_show_miss_x(cols)
+		if _aim_help():
 			_show_aim_bubble(cols, "free" if _unlimited_lives() else "miss")
+
+
+# -- a miss's X ------------------------------------------------------------------------
+# A drop that won't match shows its footprint grey, with an X over it.
+const MISS_GREY := Color(0.62, 0.6, 0.64)
+var _miss_x: Control
+var _miss_x_cols: Array = []
+
+
+func _show_miss_x(cols: Array) -> void:
+	if bomb_armed or state != State.PLAYING:
+		return
+	if _miss_x == null:
+		_miss_x = Control.new()
+		_miss_x.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_miss_x.draw.connect(func() -> void:
+			var r := _miss_x.size.x * 0.5
+			var c := _miss_x.size * 0.5
+			for d in [Vector2(1, 1), Vector2(1, -1)]:
+				_miss_x.draw_line(c - d * r * 0.7, c + d * r * 0.7, Color(TSToon.INK, 0.45), r * 0.34, true)
+				_miss_x.draw_line(c - d * r * 0.7, c + d * r * 0.7, Color(1, 1, 1, 0.55), r * 0.2, true))
+		_hud.add_child(_miss_x)
+		_hud.move_child(_miss_x, 0)   # under the rest of the HUD
+	_miss_x_cols = cols
+	_miss_x.visible = true
+	_place_miss_x()
+
+
+## Over the middle of the footprint, as big as its narrower side, following the egg.
+func _place_miss_x() -> void:
+	if _miss_x == null or not _miss_x.visible or _miss_x_cols.is_empty():
+		return
+	if state != State.PLAYING or bomb_armed or _any_card_open():
+		_miss_x.visible = false
+		return
+	var lo := Vector2(INF, INF)
+	var hi := -lo
+	var mid := Vector2.ZERO
+	for col in _miss_x_cols:
+		var at := _screen_of_cell(col)
+		mid += at
+		lo = Vector2(minf(lo.x, at.x), minf(lo.y, at.y))
+		hi = Vector2(maxf(hi.x, at.x), maxf(hi.y, at.y))
+	mid /= float(_miss_x_cols.size())
+	# A cell's span is about a step between neighbours; a lone cell gets a fixed size.
+	var side := clampf(minf(hi.x - lo.x, hi.y - lo.y) + 70.0, 70.0, 130.0)
+	_miss_x.size = Vector2(side, side)
+	_miss_x.position = mid - _miss_x.size * 0.5
+	_miss_x.queue_redraw()
 
 
 # -- the aim bubble -------------------------------------------------------------------
@@ -2100,6 +2155,7 @@ static func _heart_shape(s: float) -> PackedVector2Array:
 func _process(delta: float) -> void:
 	_animate_boosters(delta)
 	_place_aim_bubble()
+	_place_miss_x()
 	_fly_sleigh()
 	_tick_challenge(delta)
 	_track_pointer()
