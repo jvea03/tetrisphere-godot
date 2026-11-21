@@ -113,11 +113,14 @@ func build() -> void:
 	TSProfile.save()
 	# Last season's Battle Pass rewards the player hadn't claimed, collected for
 	# them as the season ended (TSProfile._collect_left_behind): say so first.
+	var season_done := not walkthrough and not TSProfile.season_complete_pending.is_empty()
 	var pass_left := not walkthrough and not TSProfile.battle_pass_auto_claimed.is_empty()
-	var results := not walkthrough and not pass_left and not TSProfile.pending_board_prizes.is_empty()
+	var results := not walkthrough and not pass_left and not season_done and not TSProfile.pending_board_prizes.is_empty()
 	var sale_up := not TSSales.current().is_empty() and not TSSales.popup_shown
-	_setup_sale(walkthrough or results or pass_left)
-	if pass_left:
+	_setup_sale(walkthrough or results or pass_left or season_done)
+	if season_done:
+		_open_season_complete.call_deferred()
+	elif pass_left:
 		_open_pass_collected.call_deferred()
 	elif results:
 		_open_board_results.call_deferred()
@@ -810,6 +813,10 @@ func _built(i: int, camp_before: int) -> void:
 	TSFX.sparkle_burst_at(self, Rect2(at - Vector2(50, 50), Vector2(100, 100)))
 	_world.refresh_parts()
 	_refresh_camp_badge()
+	if not TSProfile.season_complete_pending.is_empty():
+		TSUI.conceal(_part["root"])
+		_open_season_complete()
+		return
 	var camp_now := TSProfile.camp_level()
 	if camp_now > camp_before:
 		TSUI.conceal(_part["root"])
@@ -1544,6 +1551,71 @@ func _open_pass_collected() -> void:
 	TSSfx.play("popper")
 
 
+const SEASON_TINTS := {"autumn": Color(1.0, 0.84, 0.62), "christmas": Color(0.8, 0.92, 1.0), "newyear": Color(0.86, 0.8, 1.0), "valentine": Color(1.0, 0.84, 0.9)}
+
+
+## A season completed (TSProfile.season_complete_pending): its trophy, the
+## critter that joins the crew, and the lasting bonus.
+func _open_season_complete() -> void:
+	var done: Dictionary = TSProfile.season_complete_pending
+	if done.is_empty():
+		return
+	var theme := str(done.get("theme", "autumn"))
+	var d := TSUI.dialog(self, 600)
+	var box: VBoxContainer = d["box"]
+	box.add_child(TSUI.ribbon("Season Complete!", TSUI.GOLD, 38, 480.0))
+	box.add_child(TSUI.wrap(TSUI.label("You built the %s all the way up -- every site and the whole ship!" % TSProfile.season_title(theme), 22, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER)))
+	var row := TSUI.hbox(30)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	var plate := TSUI.card(SEASON_TINTS.get(theme, TSUI.CARD), 24, 12, 4)
+	var pv := TSUI.vbox(2)
+	plate.add_child(pv)
+	var cup := TSIcon.make("trophy", 110)
+	cup.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	pv.add_child(cup)
+	pv.add_child(TSUI.label(TSProfile.season_title(theme), 20, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER))
+	row.add_child(plate)
+	var critter := int(done.get("critter", -1))
+	if critter >= 0:
+		row.add_child(_got_item(TSIcon.make("critter", 120, critter), "%s joins you!" % TSProfile.critter_name(critter)))
+	elif int(done.get("coins", 0)) > 0:
+		row.add_child(_stack("coin", "+" + TSProfile.fmt_coins(int(done["coins"]))))
+	box.add_child(row)
+	box.add_child(TSUI.wrap(TSUI.label("+%d%% coins and materials, for good!" % TSProfile.SEASON_TROPHY_BONUS_PERCENT + ("" if TSProfile.season_bonus_percent() <= TSProfile.SEASON_TROPHY_BONUS_PERCENT else " (now +%d%% in all)" % TSProfile.season_bonus_percent()), 24, TSFX.COL_GAIN, HORIZONTAL_ALIGNMENT_CENTER)))
+	var ok := TSUI.button("Hooray!", TSUI.GREEN, 30, Vector2(0, 80))
+	ok.pressed.connect(func() -> void:
+		TSProfile.season_complete_pending = {}
+		TSProfile.save()
+		_refresh_materials()
+		TSUI.conceal(d["root"])
+		d["root"].queue_free.call_deferred())
+	box.add_child(ok)
+	TSUI.juice(box)
+	TSUI.reveal(d["root"], d["panel"])
+	TSSfx.play("popper")
+	TSHaptics.medium()
+
+
+## The profile's trophies: one plate a season completed, or how to win one.
+func _fill_trophies() -> void:
+	var flow: HFlowContainer = _profile.get("trophies")
+	if flow == null:
+		return
+	for c in flow.get_children():
+		c.queue_free()
+	if TSProfile.season_trophies.is_empty():
+		flow.add_child(TSUI.wrap(TSUI.label("Build every site and the whole ship on a season's planet to win its trophy, a critter, and +%d%% coins and materials for good." % TSProfile.SEASON_TROPHY_BONUS_PERCENT, 18, TSUI.MUTED)))
+		return
+	for t in TSProfile.season_trophies:
+		var theme := str((t as Dictionary).get("theme", "autumn"))
+		var tile := TSUI.card(SEASON_TINTS.get(theme, TSUI.CARD), 16, 8, 2)
+		var h := TSUI.hbox(6)
+		tile.add_child(h)
+		h.add_child(TSIcon.make("trophy", 40))
+		h.add_child(TSUI.label(TSProfile.season_title(theme), 18))
+		flow.add_child(tile)
+
+
 func _got_item(art: Control, caption: String) -> Control:
 	var v := TSUI.vbox(2)
 	art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -1866,6 +1938,12 @@ func _build_profile() -> void:
 	stats.add_theme_constant_override("v_separation", 10)
 	box.add_child(stats)
 	_profile["stats"] = stats
+	box.add_child(TSUI.label("SEASON TROPHIES", 20, TSUI.MUTED))
+	var trophies := HFlowContainer.new()
+	trophies.add_theme_constant_override("h_separation", 10)
+	trophies.add_theme_constant_override("v_separation", 10)
+	box.add_child(trophies)
+	_profile["trophies"] = trophies
 	box.add_child(TSUI.label("NAME", 20, TSUI.MUTED))
 	_name_edit = LineEdit.new()
 	_name_edit.max_length = 18
@@ -1908,6 +1986,7 @@ func _refresh_swatches() -> void:
 
 ## The Profile's stats: four across, each an icon, a number and what it is.
 func _fill_stats() -> void:
+	_fill_trophies()
 	var grid: GridContainer = _profile["stats"]
 	for c in grid.get_children():
 		c.queue_free()

@@ -21,6 +21,7 @@
 # --crashed      Home with the ship as it crash-landed: no part fixed or built
 # --built        Home with every camp and ship part built to the top
 # --camp=<n>     Home with every camp spot at level n (its build nodes showing)
+# --season_done=<theme> Home with that season just completed: its card
 # --collected=<n> the first n critters collected (a fuller Collection)
 # --streak=<n>   on a win streak of n wins
 # --release      as players see it: features the editor switches on early stay off
@@ -94,6 +95,11 @@ func _ready() -> void:
 	if OS.get_cmdline_user_args().has("--fake"):   # leaderboard: the editor's fake board of made-up players, never Firebase
 		Online.force_fake = true
 	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--season_done="):   # a season just completed: its card on Home (and its trophy on the profile)
+			var th := a.substr(14)
+			TSProfile.planet_theme = th
+			TSProfile.season_trophies = [{"theme": th, "season": 2, "planet": 2}]
+			TSProfile.season_complete_pending = {"theme": th, "critter": int(TSProfile.SEASON_CRITTERS.get(th, -1)), "coins": 0}
 		if a.begins_with("--camp="):   # every camp spot at level n: a plus on each one not finished
 			for i in TSProfile.PART_COUNT:
 				if TSProfile.PARTS[i]["group"] == "camp":

@@ -1217,6 +1217,7 @@ static func _complete_build(i: int) -> void:
 	_fill_parts()
 	part_level[i] = mini(part_level[i] + 1, PART_MAX_LEVEL)
 	TSAnalytics.design("Camp:Built:" + part_key(i), part_level[i])
+	_check_planet_complete()
 
 
 ## Coins to finish a build now: BUILD_SKIP_COINS_PER_MINUTE a minute left.
@@ -1277,6 +1278,7 @@ static func grant_part_level(i: int) -> bool:
 		return false
 	_fill_parts()
 	part_level[i] += 1
+	_check_planet_complete()
 	return true
 
 
@@ -1381,6 +1383,68 @@ static func take_voyage() -> int:
 	last_voyage_reward = reward
 	save()
 	return reward
+
+
+# -- season trophies -------------------------------------------------------------
+# Building a planet right up -- every camp site and every ship part at the top
+# level -- completes its season. That earns, once per planet: a trophy for the
+# season (kept for good, shown on the profile), the season's exclusive critter
+# (SEASON_CRITTERS; never given anywhere else), and a lasting bonus of
+# SEASON_TROPHY_BONUS_PERCENT more coins and materials from play, which adds up
+# with every season completed.
+const SEASON_CRITTERS := {"autumn": 95, "christmas": 29, "newyear": 58, "valentine": 72}   # Pilgrim, Elf, Wizard, Blossom
+const SEASON_TROPHY_BONUS_PERCENT := 2
+## Coins instead, when the season's critter is already owned (its theme come round again).
+const SEASON_CRITTER_OWNED_COINS := 10000
+const SEASON_TITLES := {"autumn": "Autumn Camp", "christmas": "Christmas Village", "newyear": "New Year Party", "valentine": "Valentine's Village"}
+
+## The seasons completed: {"theme", "season" (the Battle Pass season), "planet"}.
+static var season_trophies: Array = []
+## A season just completed, waiting for Home's card: {"theme", "critter", "coins"}; empty when none.
+static var season_complete_pending: Dictionary = {}
+
+
+## Every camp site and ship part on this planet at the top level.
+static func is_planet_complete() -> bool:
+	for i in PART_COUNT:
+		if part_level_of(i) < PART_MAX_LEVEL:
+			return false
+	return true
+
+
+static func has_planet_trophy() -> bool:
+	for t in season_trophies:
+		if int((t as Dictionary).get("planet", 0)) == planet_number:
+			return true
+	return false
+
+
+## The lasting bonus from season trophies: SEASON_TROPHY_BONUS_PERCENT each.
+static func season_bonus_percent() -> int:
+	return season_trophies.size() * SEASON_TROPHY_BONUS_PERCENT
+
+
+static func season_title(theme: String) -> String:
+	return str(SEASON_TITLES.get(theme, "Season"))
+
+
+## Once the planet is built right up: the trophy, the critter and the bonus,
+## and the card for Home (season_complete_pending). Returns whether it was just earned.
+static func _check_planet_complete() -> bool:
+	if has_planet_trophy() or not is_planet_complete():
+		return false
+	var theme := planet_theme
+	season_trophies.append({"theme": theme, "season": planet_season if planet_season > 0 else battle_pass_season_number(), "planet": planet_number})
+	var critter := int(SEASON_CRITTERS.get(theme, -1))
+	var coins := 0
+	if critter < 0 or not grant_critter(critter):
+		coins = SEASON_CRITTER_OWNED_COINS
+		coin_count += coins
+		TSAnalytics.earned("Season", "Trophy", coins)
+		critter = -1
+	season_complete_pending = {"theme": theme, "critter": critter, "coins": coins}
+	TSAnalytics.design("Season:Complete:" + theme.capitalize(), season_trophies.size())
+	return true
 
 
 static func is_critter_new(i: int) -> bool:
@@ -2248,6 +2312,7 @@ static func battle_pass_active() -> bool:
 
 static func earned_coin_bonus_percent() -> int:
 	var pct := 0
+	pct += season_bonus_percent()   # season trophies, for good
 	if no_ads:
 		pct += no_ads_coin_bonus_percent()
 	if battle_pass_active():
@@ -2266,7 +2331,7 @@ static func boost_earned_skips(base: int) -> int:
 ## Bonus Chest), times the remote-tunable "materials_earned_percent" (TSTunables;
 ## 120 = 20% more). Purchases and inbox gifts are not boosted.
 static func boost_earned_materials(base: int) -> int:
-	return roundi(base * TSTunables.get_int("materials_earned_percent") / 100.0)
+	return roundi(base * TSTunables.get_int("materials_earned_percent") / 100.0 * (1.0 + season_bonus_percent() / 100.0))   # season trophies add theirs
 
 
 static func boost_earned_coins(base: int) -> int:
@@ -3207,6 +3272,9 @@ static func ensure_loaded() -> void:
 	inbox_done = inbox if inbox is Dictionary else {}
 	no_ads = bool(g.call("no_ads", false))
 	memberships = (g.call("memberships", []) as Array).filter(func(k: Variant) -> bool: return MEMBERSHIPS.has(str(k)))
+	season_trophies = (g.call("season_trophies", []) as Array).filter(func(t: Variant) -> bool: return t is Dictionary)
+	var done: Variant = g.call("season_complete_pending", {})
+	season_complete_pending = done if done is Dictionary else {}
 	is_payer = bool(g.call("is_payer", false)) or no_ads
 	interstitial_owed = bool(g.call("interstitial_owed", false))
 	interstitial_win_count = int(g.call("interstitial_win_count", 0))
@@ -3381,6 +3449,8 @@ static func save() -> void:
 	s.call("inbox_done", inbox_done)
 	s.call("no_ads", no_ads)
 	s.call("memberships", memberships)
+	s.call("season_trophies", season_trophies)
+	s.call("season_complete_pending", season_complete_pending)
 	s.call("is_payer", is_payer)
 	s.call("interstitial_owed", interstitial_owed)
 	s.call("interstitial_win_count", interstitial_win_count)
