@@ -1174,17 +1174,22 @@ func landing_depth(offsets: Array, at: Vector2i) -> int:
 # it touches. Drives the aim cue and the lives rule's warning. Chain reactions
 # that follow are not predicted.
 func combo_preview(offsets: Array, at: Vector2i, kind: int, depth: int) -> int:
+	var group := match_preview(offsets, at, kind, depth)
+	return group.size() + 1 if not group.is_empty() else 0
+
+
+## The pieces already on the egg that a drop there would pop along with it
+## (its match, not counting the piece itself), or none if it wouldn't match.
+func match_preview(offsets: Array, at: Vector2i, kind: int, depth: int) -> Array:
 	if kind == WILD:
 		kind = wild_kind(offsets, at, depth)
-	var total := 1
 	var seen := {}
 	for p in _contacts(kind, footprint_cells(offsets, at), depth):
 		if seen.has(p):
 			continue
 		for g in _component(p):
 			seen[g] = true
-			total += 1
-	return total if total >= MIN_MATCH else 0
+	return seen.keys() if seen.size() + 1 >= MIN_MATCH else []
 
 
 # What the Any Piece (WILD) becomes when it lands on `at` in layer `depth`:

@@ -1576,8 +1576,31 @@ func _show_aim() -> void:
 	# Fog hides what is under it, the aim's glow included.
 	if aim_combo > 0 and not _near_fog(cols):
 		_ghost_root.add_child(view.make_plate(shown, cols, depths, 0.75, 0.45))
+		_light_match(board.match_preview(current_offsets(), cursor, cur_type, _current_depth()))
 	else:
 		_ghost_root.add_child(view.make_plate(shown, cols, depths, 0.32, 0.0))
+
+
+const MATCH_GLOW_BOB := 0.012   # how far the lit match rises off the egg at the top of its bob (a share of its size)
+
+# A matching aim lights up the pieces already on the egg that would pop with
+# it: a glowing skin over each, bobbing gently up off the shell and back, so
+# the whole match shows before the drop. (Scaling the layer about the egg's
+# centre lifts it straight out from the shell.)
+func _light_match(ids: Array) -> void:
+	if ids.is_empty():
+		return
+	var lit := Node3D.new()
+	for id in ids:
+		var pcols: Array = board.plate_cols[id]
+		var pdepths: Array = []
+		for _c in pcols:
+			pdepths.append(float(board.depth_of(id)) + 0.3)   # just over its top face
+		lit.add_child(view.make_plate(int(board.plate_kind[id]), pcols, pdepths, 0.55, 0.9))
+	_ghost_root.add_child(lit)
+	var bob := lit.create_tween().set_loops()
+	bob.tween_property(lit, "scale", Vector3.ONE * (1.0 + MATCH_GLOW_BOB), 0.45).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	bob.tween_property(lit, "scale", Vector3.ONE, 0.45).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 
 
 # While a piece is held your own piece is put away, and the held piece glows
