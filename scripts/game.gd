@@ -1577,19 +1577,19 @@ func _show_aim() -> void:
 	# Fog hides what is under it, the aim's glow included.
 	if aim_combo > 0 and not _near_fog(cols):
 		_ghost_root.add_child(view.make_plate(shown, cols, depths, 0.75, 0.45))
-		_light_match(board.match_preview(current_offsets(), cursor, cur_type, _current_depth()))
-		_show_aim_bubble(cols, "match")
+		if _aim_help():
+			_light_match(board.match_preview(current_offsets(), cursor, cur_type, _current_depth()))
+			_show_aim_bubble(cols, "match")
 	else:
 		_ghost_root.add_child(view.make_plate(shown, cols, depths, 0.32, 0.0))
-		if not _near_fog(cols):
+		if _aim_help() and not _near_fog(cols):
 			_show_aim_bubble(cols, "free" if _unlimited_lives() else "miss")
 
 
 # -- the aim bubble -------------------------------------------------------------------
-# Over where the piece would land, a bubble says what the drop will do: a
-# green tick and "+5" (the pieces it pops) on a match, a red cross and
-# "-1 [heart]" on a miss -- "Free miss" on the first levels, where misses
-# cost nothing. Hidden under fog (it would give the colours away) and while
+# Over where the piece would land (on the first AIM_HELP_THROUGH levels), a
+# bubble says what the drop will do: a green tick on a match, a red cross and
+# a heart on a miss -- "Free miss" on the levels where misses cost nothing. Hidden under fog (it would give the colours away) and while
 # a bomb is armed.
 var _aim_bubble: PanelContainer
 var _aim_bubble_icon: TSIcon
@@ -1597,6 +1597,15 @@ var _aim_bubble_text: Label
 var _aim_bubble_heart: TSIcon
 var _aim_bubble_kind := ""
 var _aim_bubble_cols: Array = []
+## The first levels' aiming help -- the bubble and the lit match -- through
+## this level; after it, the plain bright-or-faint footprint alone.
+const AIM_HELP_THROUGH := 10
+
+
+func _aim_help() -> bool:
+	return current_level <= AIM_HELP_THROUGH and not is_daily and not is_challenge
+
+
 const AIM_BUBBLE_LIFT := 64.0   # how far over the landing spot it floats
 const AIM_BUBBLE_COLOURS := {"match": Color(0.55, 0.86, 0.55), "miss": Color(1.0, 0.5, 0.5), "free": Color(0.62, 0.82, 1.0)}
 
@@ -1629,7 +1638,8 @@ func _show_aim_bubble(cols: Array, kind: String) -> void:
 		_aim_bubble.pivot_offset = _aim_bubble.size * 0.5
 		_aim_bubble.scale = Vector2.ONE * 0.6
 		_aim_bubble.create_tween().tween_property(_aim_bubble, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	_aim_bubble_text.text = "+%d" % aim_combo if kind == "match" else ("-1" if kind == "miss" else "Free miss")
+	_aim_bubble_text.text = "Free miss" if kind == "free" else ""
+	_aim_bubble_text.visible = kind == "free"
 	_aim_bubble.reset_size()
 	_aim_bubble.visible = true
 	_place_aim_bubble()
