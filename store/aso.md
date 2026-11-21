@@ -171,6 +171,26 @@ Release name: `1.3.2 (10) – Faster start`
     Thanks for playing!
     </en-US>
 
+## Release notes for version code 14 (1.3.6)
+
+What's new since 1.3.4 (code 13 never shipped). 444 of 500 characters. The App Store's What's New can use the same text.
+
+Release name: `1.3.6 (14) – Christmas, seasonal sites and trophies`
+
+    <en-US>
+    New in Egg Escape!
+
+    • Christmas is here: a snowy planet to build up, and a Snowball Fight every weekend
+    • Every season's planet has its own work sites. Build one all the way up for a trophy, a rare critter and +2% coins and materials for good
+    • Memberships in the Shop
+    • Collection sets now have ranks
+    • Bonus Chests after the Battle Pass
+    • Clearer aiming and easier first levels
+    • Bug fixes and improvements
+
+    Thanks for playing!
+    </en-US>
+
 ## Release notes for version code 13 (1.3.5)
 
 What's new since 1.3.4.
