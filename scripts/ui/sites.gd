@@ -16,7 +16,7 @@ extends RefCounted
 ## round the spot's foot at (0, 0), y up the screen negative, already scaled
 ## for the spot's depth.
 
-const THEMES := ["christmas", "newyear"]
+const THEMES := ["christmas", "newyear", "valentine"]
 
 const INK := TSShipScene.INK
 const WOOD := TSShipScene.WOOD

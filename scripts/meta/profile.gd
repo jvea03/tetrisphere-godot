@@ -859,6 +859,28 @@ const SITES := {
 		CAMP_OVEN: ["Cake Bakery", ["Clay Lump", "Oven", "Chimney", "Cupcakes", "Tiered Cake"]],
 		CAMP_STATUE: ["Golden Hourglass", ["Big Rock", "Base", "Hourglass", "Pedestal", "Golden Hourglass"]],
 	},
+	"valentine": {
+		CAMP_FIRE: ["Heart Fire", ["Cold Ashes", "Little Fire", "Heart Stones", "Fondue Pot", "Heart Bonfire"]],
+		CAMP_TENT: ["Rose Cottage", ["Torn Tarp", "Cottage", "Heart Door", "Rose Vines", "Heart Roof"]],
+		CAMP_BENCH: ["Card Desk", ["Loose Planks", "Desk", "Paper Rack", "Lace Lamp", "Heart Awning"]],
+		CAMP_GARDEN: ["Rose Garden", ["Bare Dirt", "Sprouts", "Rosebuds", "Roses", "Heart Topiary"]],
+		CAMP_WELL: ["Kissing Well", ["Pile of Stones", "Stone Well", "Heart Roof", "Bucket of Petals", "Rose Boxes"]],
+		CAMP_LOOKOUT: ["Cupid's Tower", ["Pile of Logs", "Platform", "Bow Rack", "Roof", "Heart Flag"]],
+		CAMP_HAMMOCK: ["Porch Swing", ["Tangled Rope", "Swing Seat", "Heart Pillows", "Canopy", "Fairy Lights"]],
+		CAMP_PICNIC: ["Sweetheart Picnic", ["Fallen Log", "Blanket", "Basket", "Heart Cloth", "Chocolate Spread"]],
+		CAMP_CLOTHESLINE: ["Heart Garland", ["Loose Line", "Line", "Paper Hearts", "Ribbons", "Bunting"]],
+		CAMP_MAILBOX: ["Love Letter Box", ["Dented Can", "Mailbox", "Pink Paint", "Heart Flag", "Letter Pile"]],
+		CAMP_WINDMILL: ["Heart Windmill", ["Broken Blades", "Heart Sails", "Painted Roof", "Little Door", "Flower Boxes"]],
+		CAMP_DOCK: ["Swan Boat Dock", ["Driftwood", "Little Dock", "Swan Boat", "Lantern Post", "Heart Float"]],
+		CAMP_PLAYGROUND: ["Carousel", ["Loose Poles", "Platform", "Ponies", "Canopy", "Heart Lights"]],
+		CAMP_TREEHOUSE: ["Blossom Treehouse", ["Bare Tree", "Blossoms", "Little House", "Heart Ladder", "Lanterns"]],
+		CAMP_STALL: ["Chocolate Stand", ["Crates", "Stall", "Awning", "Chocolate Boxes", "Bell & Sign"]],
+		CAMP_GREENHOUSE: ["Flower Shop", ["Glass Shards", "Frame", "Glass Panes", "Bouquets", "Heart Window"]],
+		CAMP_SPRING: ["Love Fountain", ["Puddle", "Pool", "Heart Fountain", "Swans", "Rose Rim"]],
+		CAMP_OBSERVATORY: ["Wedding Gazebo", ["Rubble", "Round Base", "Gazebo Roof", "Bell", "Heart Banner"]],
+		CAMP_OVEN: ["Chocolate Kitchen", ["Clay Lump", "Oven", "Chimney", "Heart Cookies", "Cake Shelf"]],
+		CAMP_STATUE: ["Cupid Statue", ["Big Rock", "Rough Carving", "Cupid Statue", "Pedestal", "Golden Cupid"]],
+	},
 }
 
 
