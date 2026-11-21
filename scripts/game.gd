@@ -1420,6 +1420,7 @@ func _refresh_piece() -> void:
 	for child in _ghost_root.get_children():
 		child.queue_free()
 	_hide_aim_bubble()
+	_miss_x_on = false
 	if _miss_x != null:
 		_miss_x.visible = false
 	if state != State.PLAYING:
@@ -1597,6 +1598,7 @@ func _show_aim() -> void:
 const MISS_GREY := Color(0.62, 0.6, 0.64)
 var _miss_x: Control
 var _miss_x_cols: Array = []
+var _miss_x_on := false   # the aim is a miss: the X shows whenever nothing covers it
 
 
 func _show_miss_x(cols: Array) -> void:
@@ -1621,16 +1623,17 @@ func _show_miss_x(cols: Array) -> void:
 		_hud.add_child(_miss_x)
 		_hud.move_child(_miss_x, 0)   # under the rest of the HUD
 	_miss_x_cols = cols
-	_miss_x.visible = true
+	_miss_x_on = true
 	_place_miss_x()
 
 
 ## Over the middle of the footprint, as big as its narrower side, following the egg.
 func _place_miss_x() -> void:
-	if _miss_x == null or not _miss_x.visible or _miss_x_cols.is_empty():
+	if _miss_x == null:
 		return
-	if state != State.PLAYING or bomb_armed or _any_card_open():
-		_miss_x.visible = false
+	# Shown while the aim is a miss, but not over a card or a walkthrough.
+	_miss_x.visible = _miss_x_on and not _miss_x_cols.is_empty() and state == State.PLAYING and not bomb_armed and not _any_card_open() and not _tutorial.visible
+	if not _miss_x.visible:
 		return
 	var lo := Vector2(INF, INF)
 	var hi := -lo
@@ -1660,6 +1663,7 @@ var _aim_bubble_heart: TSIcon
 var _aim_bubble_kind := ""
 var _aim_bubble_cols: Array = []
 var _aim_tail: Control
+var _aim_bubble_on := false   # there is an aim to judge: the bubble shows whenever nothing covers it
 ## The first levels' aiming help -- the bubble and the lit match -- through
 ## this level; after it, the plain bright-or-faint footprint alone.
 const AIM_HELP_THROUGH := 10
@@ -1670,6 +1674,7 @@ func _aim_help() -> bool:
 
 
 const AIM_BUBBLE_LIFT := 64.0   # how far over the landing spot it floats
+const POINTER_CLEARANCE := 96.0   # more lift when the walkthrough's arrow is under it
 const AIM_BUBBLE_COLOURS := {"match": Color(0.55, 0.86, 0.55), "miss": Color(1.0, 0.5, 0.5), "free": Color(0.62, 0.82, 1.0)}
 
 
@@ -1714,11 +1719,12 @@ func _show_aim_bubble(cols: Array, kind: String) -> void:
 	_aim_bubble_text.text = "Free miss" if kind == "free" else ""
 	_aim_bubble_text.visible = kind == "free"
 	_aim_bubble.reset_size()
-	_aim_bubble.visible = true
+	_aim_bubble_on = true
 	_place_aim_bubble()
 
 
 func _hide_aim_bubble() -> void:
+	_aim_bubble_on = false
 	if _aim_bubble != null:
 		_aim_bubble.visible = false
 		_aim_tail.visible = false
@@ -1726,11 +1732,12 @@ func _hide_aim_bubble() -> void:
 
 ## Over the middle of the aimed footprint, following the egg as it turns.
 func _place_aim_bubble() -> void:
-	if _aim_bubble == null or not _aim_bubble.visible or _aim_bubble_cols.is_empty():
+	if _aim_bubble == null:
 		return
-	if state != State.PLAYING or bomb_armed or _any_card_open():
-		_aim_bubble.visible = false
-		_aim_tail.visible = false
+	# Shown while there is an aim to judge, but not over a card or a walkthrough.
+	_aim_bubble.visible = _aim_bubble_on and not _aim_bubble_cols.is_empty() and state == State.PLAYING and not bomb_armed and not _any_card_open() and not _tutorial.visible
+	_aim_tail.visible = _aim_bubble.visible
+	if not _aim_bubble.visible:
 		return
 	var mid := Vector2.ZERO
 	var top := INF
@@ -1740,7 +1747,9 @@ func _place_aim_bubble() -> void:
 		top = minf(top, at.y)
 	mid /= float(_aim_bubble_cols.size())
 	_aim_bubble.pivot_offset = _aim_bubble.size * 0.5
-	_aim_bubble.position = Vector2(mid.x - _aim_bubble.size.x * 0.5, top - AIM_BUBBLE_LIFT - _aim_bubble.size.y)
+	# Over the walkthrough's arrow when it points here too (levels 1 and 2).
+	var lift := AIM_BUBBLE_LIFT + (POINTER_CLEARANCE if _pointer != null and _pointer.visible else 0.0)
+	_aim_bubble.position = Vector2(mid.x - _aim_bubble.size.x * 0.5, top - lift - _aim_bubble.size.y)
 	_aim_tail.visible = true
 	_aim_tail.position = Vector2(mid.x - 15.0, _aim_bubble.position.y + _aim_bubble.size.y - 3.0)
 
