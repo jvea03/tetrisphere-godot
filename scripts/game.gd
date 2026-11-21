@@ -2932,8 +2932,6 @@ func _fill_first_win_top(box: VBoxContainer) -> void:
 	hero.add_child(medal)
 	_pop_in(medal, 0.55)
 	box.add_child(hero)
-	box.add_child(TSUI.label("Rescued on your first try!", 30, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER))
-	box.add_child(TSUI.wrap(TSUI.label("No retries needed. Great job!", 22, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER), 500.0))
 
 
 ## A challenge beaten: the trophy with the rescued critter beside it, the time
