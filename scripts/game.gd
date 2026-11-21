@@ -1608,9 +1608,16 @@ func _show_miss_x(cols: Array) -> void:
 		_miss_x.draw.connect(func() -> void:
 			var r := _miss_x.size.x * 0.5
 			var c := _miss_x.size * 0.5
-			for d in [Vector2(1, 1), Vector2(1, -1)]:
-				_miss_x.draw_line(c - d * r * 0.7, c + d * r * 0.7, Color(TSToon.INK, 0.45), r * 0.34, true)
-				_miss_x.draw_line(c - d * r * 0.7, c + d * r * 0.7, Color(1, 1, 1, 0.55), r * 0.2, true))
+			# Two rounded strokes, white and inked, over a soft shadow.
+			for layer in [[Vector2(0, r * 0.08), Color(TSToon.INK, 0.18), 0.4], [Vector2.ZERO, Color(TSToon.INK, 0.6), 0.36], [Vector2.ZERO, Color(1, 1, 1, 0.8), 0.22]]:
+				var off: Vector2 = layer[0]
+				var w: float = r * float(layer[2])
+				for d in [Vector2(1, 1), Vector2(1, -1)]:
+					var a: Vector2 = c + off - d * r * 0.6
+					var b: Vector2 = c + off + d * r * 0.6
+					_miss_x.draw_line(a, b, layer[1], w, true)
+					_miss_x.draw_circle(a, w * 0.5, layer[1], true, -1.0, true)
+					_miss_x.draw_circle(b, w * 0.5, layer[1], true, -1.0, true))
 		_hud.add_child(_miss_x)
 		_hud.move_child(_miss_x, 0)   # under the rest of the HUD
 	_miss_x_cols = cols
@@ -1652,6 +1659,7 @@ var _aim_bubble_text: Label
 var _aim_bubble_heart: TSIcon
 var _aim_bubble_kind := ""
 var _aim_bubble_cols: Array = []
+var _aim_tail: Control
 ## The first levels' aiming help -- the bubble and the lit match -- through
 ## this level; after it, the plain bright-or-faint footprint alone.
 const AIM_HELP_THROUGH := 10
@@ -1682,10 +1690,20 @@ func _show_aim_bubble(cols: Array, kind: String) -> void:
 			(c as Control).size_flags_vertical = Control.SIZE_SHRINK_CENTER
 			row.add_child(c)
 		_hud.add_child(_aim_bubble)
+		_aim_tail = Control.new()
+		_aim_tail.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_aim_tail.size = Vector2(30, 18)
+		_aim_tail.draw.connect(func() -> void:
+			var fill: Color = AIM_BUBBLE_COLOURS.get(_aim_bubble_kind, Color.WHITE)
+			var pts := PackedVector2Array([Vector2(0, 0), Vector2(30, 0), Vector2(15, 18)])
+			_aim_tail.draw_colored_polygon(pts, fill)
+			_aim_tail.draw_polyline(PackedVector2Array([Vector2(1, 2), Vector2(15, 17), Vector2(29, 2)]), TSToon.INK, 3.0, true))
+		_hud.add_child(_aim_tail)
 	_aim_bubble_cols = cols
 	if kind != _aim_bubble_kind:
 		_aim_bubble_kind = kind
 		_aim_bubble.add_theme_stylebox_override("panel", TSUI.sb(AIM_BUBBLE_COLOURS[kind], 99, 3, 3, 10))
+		_aim_tail.queue_redraw()
 		_aim_bubble_icon.set_icon("check" if kind == "match" else "close")
 		_aim_bubble_icon.visible = kind != "free"
 		_aim_bubble_heart.visible = kind != "match"
@@ -1703,6 +1721,7 @@ func _show_aim_bubble(cols: Array, kind: String) -> void:
 func _hide_aim_bubble() -> void:
 	if _aim_bubble != null:
 		_aim_bubble.visible = false
+		_aim_tail.visible = false
 
 
 ## Over the middle of the aimed footprint, following the egg as it turns.
@@ -1711,6 +1730,7 @@ func _place_aim_bubble() -> void:
 		return
 	if state != State.PLAYING or bomb_armed or _any_card_open():
 		_aim_bubble.visible = false
+		_aim_tail.visible = false
 		return
 	var mid := Vector2.ZERO
 	var top := INF
@@ -1721,6 +1741,8 @@ func _place_aim_bubble() -> void:
 	mid /= float(_aim_bubble_cols.size())
 	_aim_bubble.pivot_offset = _aim_bubble.size * 0.5
 	_aim_bubble.position = Vector2(mid.x - _aim_bubble.size.x * 0.5, top - AIM_BUBBLE_LIFT - _aim_bubble.size.y)
+	_aim_tail.visible = true
+	_aim_tail.position = Vector2(mid.x - 15.0, _aim_bubble.position.y + _aim_bubble.size.y - 3.0)
 
 
 const MATCH_GLOW_BOB := 0.012   # how far the lit match rises off the egg at the top of its bob (a share of its size)
