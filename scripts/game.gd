@@ -1578,15 +1578,15 @@ func _show_aim() -> void:
 		shown = TSBoard.WILD   # it would give away the colours hidden under the fog
 	# Fog hides what is under it, the aim's glow included.
 	if aim_combo > 0 and not _near_fog(cols):
-		_ghost_root.add_child(view.make_plate(shown, cols, depths, 0.75, 0.45))
+		_ghost_root.add_child(view.make_plate(shown, cols, depths, 0.85, 0.45))
 		if _aim_help():
 			_light_match(board.match_preview(current_offsets(), cursor, cur_type, _current_depth()))
 			_show_aim_bubble(cols, "match")
 	elif _near_fog(cols):
-		_ghost_root.add_child(view.make_plate(shown, cols, depths, 0.32, 0.0))
+		_ghost_root.add_child(view.make_plate(shown, cols, depths, 0.45, 0.0))
 	else:
 		# A miss: the footprint goes grey, an X across it.
-		_ghost_root.add_child(view.make_plate(shown, cols, depths, 0.32, 0.0, MISS_GREY))
+		_ghost_root.add_child(view.make_plate(shown, cols, depths, 0.45, 0.0, MISS_GREY))
 		_show_miss_x(cols)
 		if _aim_help():
 			_show_aim_bubble(cols, "free" if _unlimited_lives() else "miss")
