@@ -3868,7 +3868,7 @@ func _start_tutorial() -> void:
 		{"rect": ball, "text": "Tap the egg to aim. Swipe to turn it around."},
 		{"rect": _piece_column_rect(), "text": "Your piece, with the next one above it. Pieces never rotate."},
 		{"rect": ball, "text": "Drop your piece on top of two or more of the same piece and they all pop! Your aim glows where a drop will match. Double-tap to drop."},
-		{"rect": _hearts_rect(), "text": "A drop that matches nothing costs a heart -- but not on this first egg. Practise!"},
+		{"rect": _hearts_rect(), "text": "A drop that matches nothing costs a heart -- but not on this first egg, so try a few!"},
 	])
 
 
