@@ -3024,6 +3024,16 @@ func _refresh_lose_card() -> void:
 		_fill_challenge_lose(box)
 		return
 	var overload := lose_reason == "SHELL OVERLOADED"
+	# Along the top: the coins on the left (what a continue spends), and the X
+	# (giving up) on the right.
+	var top := TSUI.hbox(8)
+	if not overload:
+		top.add_child(TSCoinPill.new())
+	top.add_child(TSUI.expand(Control.new()))
+	var close := TSUI.close_button()
+	close.pressed.connect(_lose_give_up)
+	top.add_child(close)
+	box.add_child(top)
 	box.add_child(TSUI.ribbon("Egg overloaded!" if overload else ("Out of pieces!" if lose_reason == "OUT OF PIECES" else "Out of hearts!"), TSUI.LILAC, 40, 500.0))
 	if overload:
 		box.add_child(TSUI.halo(TSIcon.make("heart_empty", 140), 220.0, TSUI.LILAC, false))
@@ -3041,14 +3051,11 @@ func _refresh_lose_card() -> void:
 		var k := _escape_size()
 		var open := int(board.best_escape_patch(k)["open"])
 		var pct := clampi(roundi(100.0 * float(open) / float(k * k)), 0, 99)
-		box.add_child(TSUI.halo(TSIcon.make("milky", 120, _creature.kind + 1), 190.0, TSUI.LILAC, false))
+		box.add_child(TSUI.halo(TSIcon.make("milky", 150, _creature.kind + 1, "trapped"), 190.0, TSUI.LILAC, false))
 		box.add_child(TSUI.wrap(TSUI.label("The Milky is %d%% of the way out!" % pct, 28, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER)))
 		var progress := TSUI.bar(TSUI.MINT, 24)
 		progress.value = pct
 		box.add_child(progress)
-		var ties := board.ties_left()
-		if ties > 0:
-			box.add_child(TSUI.label("%d tie-down%s still holding on" % [ties, "" if ties == 1 else "s"], 20, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 		if _streak_lost > 0:
 			var keep := TSUI.hbox(6)
 			keep.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -3062,13 +3069,23 @@ func _refresh_lose_card() -> void:
 		var deal := cost < LIVES_REFILL_COST
 		var short := cost - TSProfile.coin_count
 		var pack := _coin_pack_for(short) if short > 0 else {}
-		var price_line := "%s coins" % TSProfile.fmt_coins(cost)
+		# Its face: "Continue [heart] x5" over "[coin] 300 (was 900)", or the
+		# coin pack it'd buy.
+		var price_line := TSProfile.fmt_coins(cost)
 		if deal:
 			price_line += "  (was %s)" % TSProfile.fmt_coins(LIVES_REFILL_COST)
 		if not pack.is_empty():
-			price_line = "Get %s coins  ·  %s" % [TSProfile.fmt_coins(int(pack["coins"])), pack["price"]]
-		var more := ", +%d pieces" % CONTINUE_PIECES if _has_piece_limit() and pieces_left <= 0 else ""   # out of pieces: a few come too (_revive)
-		var cont := TSUI.button("Continue  +%d hearts%s\n%s" % [LIVES, more, price_line], TSUI.GREEN, 28, Vector2(0, 112))
+			price_line = "Get %s  ·  %s" % [TSProfile.fmt_coins(int(pack["coins"])), pack["price"]]
+		var more := "+%d pieces" % CONTINUE_PIECES if _has_piece_limit() and pieces_left <= 0 else ""   # out of pieces: a few come too (_revive)
+		var cont := TSUI.button("", TSUI.GREEN, 28, Vector2(0, 112))
+		cont.name = "Continue"
+		var lines := TSUI.vbox(0)
+		var first := _icon_row([TSUI.label("Continue", 30), TSIcon.make("heart", 40), TSUI.label("x%d" % LIVES, 30)])
+		if more != "":
+			first.add_child(TSUI.label(more, 24))
+		lines.add_child(first)
+		lines.add_child(_icon_row([TSIcon.make("coin", 30), TSUI.label(price_line, 24)]))
+		_fill_button(cont, lines)
 		cont.disabled = short > 0 and pack.is_empty()
 		if deal:
 			# A tilted sale tag on the button's corner, as on the Shop's deals.
@@ -3078,7 +3095,6 @@ func _refresh_lose_card() -> void:
 			tag.rotation = 0.12
 			tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			cont.add_child(tag)
-			box.add_child(TSUI.label("First continue on this egg: on sale!", 20, TSFX.COL_GAIN, HORIZONTAL_ALIGNMENT_CENTER))
 		cont.pressed.connect(func():
 			if TSProfile.coin_count >= _continue_cost():
 				_buy_continue()
@@ -3087,25 +3103,52 @@ func _refresh_lose_card() -> void:
 				Billing.purchase(_lose_pack))
 		box.add_child(cont)
 		TSUI.breathe(cont, 1.8)
-		var wallet := TSUI.hbox(6)
-		wallet.alignment = BoxContainer.ALIGNMENT_CENTER
-		wallet.add_child(TSIcon.make("coin", 26))
-		wallet.add_child(TSUI.label("You have %s" % TSProfile.fmt_coins(TSProfile.coin_count), 20, TSUI.MUTED))
-		box.add_child(wallet)
 		if not lose_ad_used and not TSProfile.is_payer and not TSProfile.no_ads:
-			var ad := TSUI.button("Watch an ad: +1 heart%s" % more, TSUI.SKY, 26, Vector2(0, 72))
-			TSUI.ad_icon(ad)
+			var ad := TSUI.button("", TSUI.SKY, 26, Vector2(0, 76))
+			ad.name = "WatchAd"
+			var ad_tag := TextureRect.new()
+			ad_tag.texture = TSUI.AD_ICON
+			ad_tag.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			ad_tag.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			ad_tag.custom_minimum_size = Vector2(64, 40)
+			var ad_row := _icon_row([TSUI.label("Watch", 28), ad_tag, TSIcon.make("heart", 38), TSUI.label("x1", 28)])
+			if more != "":
+				ad_row.add_child(TSUI.label(more, 22))
+			_fill_button(ad, ad_row)
 			ad.pressed.connect(func(): _open_ad("life"))
 			box.add_child(ad)
-		box.add_child(TSUI.label("Giving up loses this egg's progress", 18, TSUI.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	var quit := TSUI.button("Quit" if overload else "Give Up", TSUI.GREY, 22 if not overload else 26, Vector2(0, 56 if not overload else 68))
-	quit.pressed.connect(func():
-		if not is_daily:
-			TSSession.retried_level = current_level
-		TSSession.clear()
-		SceneFlow.go(SceneFlow.HOME))
+	quit.pressed.connect(_lose_give_up)
 	box.add_child(quit)
 	TSUI.juice(box)
+
+
+## Give Up (or the card's X): back Home, this egg's progress let go.
+func _lose_give_up() -> void:
+	if not is_daily:
+		TSSession.retried_level = current_level
+	TSSession.clear()
+	SceneFlow.go(SceneFlow.HOME)
+
+
+## Pieces in a row, centred, letting taps through (a button's face).
+func _icon_row(parts: Array) -> HBoxContainer:
+	var row := TSUI.hbox(8)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	for p in parts:
+		(p as Control).size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(p)
+	return row
+
+
+## Lays `face` over a button, centred, ignoring the mouse so the button gets the taps.
+func _fill_button(b: Button, face: Control) -> void:
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.add_child(face)
+	b.add_child(center)
+	for n in [center, face] + face.find_children("*", "Control", true, false):
+		(n as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
 ## A lost challenge's card: no continue and no retry -- the journey moves on

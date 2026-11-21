@@ -168,10 +168,10 @@ func _run() -> void:
 	_check("...then they do", not shielded)
 	var first_offer := ""
 	for b in (_lose_card["box"] as Node).get_children():
-		if b is Button and (b as Button).text.begins_with("Continue"):
-			first_offer = (b as Button).text
+		if b is Button and b.name == "Continue":
+			first_offer = _button_face(b)
 	_revive_after_refill()
-	_check("the first continue on a ball is on sale", first_offer.contains("%s coins  (was %s)" % [TSProfile.fmt_coins(FIRST_CONTINUE_COST), TSProfile.fmt_coins(LIVES_REFILL_COST)]))
+	_check("the first continue on a ball is on sale", first_offer.contains("%s  (was %s)" % [TSProfile.fmt_coins(FIRST_CONTINUE_COST), TSProfile.fmt_coins(LIVES_REFILL_COST)]))
 	_check("the first refill costs %d coins and restores %d hearts" % [FIRST_CONTINUE_COST, LIVES], TSProfile.coin_count == 5000 - FIRST_CONTINUE_COST and lives == LIVES and state == State.PLAYING and not is_first_attempt)
 
 	# the second continue on the same ball is full price -- and short of coins,
@@ -183,9 +183,9 @@ func _run() -> void:
 	_lose()
 	var offer := ""
 	for b in (_lose_card["box"] as Node).get_children():
-		if b is Button and (b as Button).text.begins_with("Continue"):
-			offer = (b as Button).text
-	_check("short of coins, Continue offers the 5,000 coin pack", offer.contains("Get 5,000 coins"))
+		if b is Button and b.name == "Continue":
+			offer = _button_face(b)
+	_check("short of coins, Continue offers the 5,000 coin pack", offer.contains("Get 5,000"))
 	_revive_after_refill()
 	_check("buying it from the lose card spends the refill and carries on", TSProfile.coin_count == 1000 + 5000 - LIVES_REFILL_COST and lives == LIVES and state == State.PLAYING)
 	lives = 0
@@ -207,7 +207,7 @@ func _run() -> void:
 	for b in (_lose_card["box"] as Node).get_children():
 		if b is Button:
 			texts.append((b as Button).text)
-	_check("the overload card offers Try Again and no Continue", texts.has("Try Again") and not texts.any(func(t): return str(t).begins_with("Continue")))
+	_check("the overload card offers Try Again and no Continue", texts.has("Try Again") and not (_lose_card["box"] as Node).has_node("Continue"))
 	_close_cards()
 	_start_level(current_level)
 
@@ -383,10 +383,15 @@ func get_root_ref() -> Node:
 	return get_tree().root
 
 
+## What a button's face says: its labels, in order.
+func _button_face(b: Node) -> String:
+	return " ".join(b.find_children("*", "Label", true, false).map(func(l: Label) -> String: return l.text))
+
+
 ## The lose card's refill button, pressed.
 func _revive_after_refill() -> void:
 	for b in (_lose_card["box"] as Node).get_children():
-		if b is Button and (b as Button).text.begins_with("Continue"):
+		if b is Button and b.name == "Continue":
 			(b as Button).pressed.emit()
 			return
 
