@@ -42,16 +42,20 @@ const CAP_TRIM_COLOR := Color(0.86, 0.68, 0.5)
 const CAP_SPECKLE := Color(0.66, 0.48, 0.36)
 const CAP_SPECKLES := 26          # per cap
 ## The caps change with the egg's difficulty (TSLevels.DIFFICULTIES, by
-## index): [dome, trim, speckles]. Beginner is the plain cream eggshell above;
-## then a sky-blue egg, a peach one, a lilac one banded in purple, and Extreme
-## a dark plum egg banded in gold. Always speckled, so never a piece.
+## index): [dome, band, speckles, the band's pattern]. Beginner is the plain
+## cream eggshell above with its tan band; Intermediate sky blue, its band
+## dotted white; Hard peach, its band striped; Expert lilac, its purple band
+## studded gold; Extreme dark plum banded in gold, with a gold crown round the
+## top and a ruby on it. Always speckled, so never a piece.
 const CAP_STYLES := [
-	[CAP_COLOR, CAP_TRIM_COLOR, CAP_SPECKLE],
-	[Color(0.84, 0.93, 1.0), Color(0.52, 0.72, 0.94), Color(0.42, 0.6, 0.86)],
-	[Color(1.0, 0.87, 0.78), Color(0.95, 0.56, 0.44), Color(0.84, 0.44, 0.34)],
-	[Color(0.9, 0.84, 1.0), Color(0.66, 0.52, 0.92), Color(0.6, 0.48, 0.86)],
-	[Color(0.4, 0.32, 0.46), Color(1.0, 0.76, 0.28), Color(1.0, 0.62, 0.36)],
+	[CAP_COLOR, CAP_TRIM_COLOR, CAP_SPECKLE, ""],
+	[Color(0.84, 0.93, 1.0), Color(0.52, 0.72, 0.94), Color(0.42, 0.6, 0.86), "dots"],
+	[Color(1.0, 0.87, 0.78), Color(0.95, 0.56, 0.44), Color(0.84, 0.44, 0.34), "stripes"],
+	[Color(0.9, 0.84, 1.0), Color(0.66, 0.52, 0.92), Color(0.6, 0.48, 0.86), "studs"],
+	[Color(0.4, 0.32, 0.46), Color(1.0, 0.76, 0.28), Color(1.0, 0.62, 0.36), "crown"],
 ]
+const CAP_GOLD := Color(1.0, 0.8, 0.32)
+const CAP_RUBY := Color(0.94, 0.3, 0.42)
 
 # One colour per piece, in TSBoard.SHAPES order: soft pastels, kept far enough
 # apart in hue to tell at a glance. The two lines keep the footage's pairing --
@@ -194,7 +198,16 @@ func _build_caps() -> void:
 		# Trim: a ring standing a little proud of the dome, over the band's edge.
 		var trim := func(u: float, v: float) -> Vector3:
 			return _sphere_dir(u * TAU, lerpf(edge - 0.01 * s, edge + CAP_TRIM * s, v)) * (cap_r + 0.06)
-		_add_cap_part(trim, outward, 64, 2, trim_mat)
+		if str(look[3]) == "stripes":
+			# The band in segments, every other one lighter.
+			var light_mat := make_material((look[1] as Color).lerp(Color(1.0, 0.97, 0.92), 0.75), 1.0, 0.0, false)
+			for seg in 16:
+				var seg_trim := func(u: float, v: float) -> Vector3:
+					return trim.call((float(seg) + u) / 16.0, v)
+				_add_cap_part(seg_trim, outward, 4, 2, trim_mat if seg % 2 == 0 else light_mat)
+		else:
+			_add_cap_part(trim, outward, 64, 2, trim_mat)
+		_cap_band_pattern(str(look[3]), edge, s, cap_r)
 		# Wall: the band's end face, from the core out to the trim, facing the
 		# equator (where you look from when you dig the last row out).
 		var wall := func(u: float, v: float) -> Vector3:
@@ -203,6 +216,60 @@ func _build_caps() -> void:
 			var theta := atan2(p.x, p.z)
 			return -s * Vector3(-sin(edge) * sin(theta), cos(edge), -sin(edge) * cos(theta))
 		_add_cap_part(wall, toward_equator, 64, 3, wall_mat)
+
+
+## A band's pattern (CAP_STYLES): white dots or gold studs round it, or for
+## Extreme a gold crown of points just above it and a ruby at the pole.
+func _cap_band_pattern(kind: String, edge: float, s: float, cap_r: float) -> void:
+	var mid := edge + CAP_TRIM * 0.5 * s
+	match kind:
+		"dots":
+			for k in 18:
+				_cap_bead(_sphere_dir(TAU * k / 18.0, mid) * (cap_r + 0.08), 0.09, Color(1, 1, 1), 0.35)
+		"studs":
+			for k in 22:
+				_cap_bead(_sphere_dir(TAU * (k + 0.5) / 22.0, mid) * (cap_r + 0.08), 0.1, CAP_GOLD, 0.7)
+		"crown":
+			for k in 22:
+				_cap_bead(_sphere_dir(TAU * (k + 0.5) / 22.0, mid) * (cap_r + 0.08), 0.07, CAP_RUBY if k % 2 == 0 else Color(1, 1, 1), 0.7)
+			var gold := make_material(CAP_GOLD, 1.0, 0.0, false)
+			for k in 12:
+				var foot := _sphere_dir(TAU * k / 12.0, edge + CAP_TRIM * 1.6 * s) * cap_r
+				var spike := MeshInstance3D.new()
+				var cone := CylinderMesh.new()
+				cone.top_radius = 0.0
+				cone.bottom_radius = 0.16
+				cone.height = 0.42
+				cone.radial_segments = 8
+				cone.rings = 1
+				spike.mesh = cone
+				spike.material_override = gold
+				var up := egg(foot).normalized()
+				var across := up.cross(Vector3.RIGHT if absf(up.x) < 0.9 else Vector3.FORWARD).normalized()
+				spike.basis = Basis(across, up, across.cross(up))
+				spike.position = egg(foot) + up * 0.16
+				add_child(spike)
+				_caps.append(spike)
+			_cap_bead(Vector3(0, cap_r * s, 0), 0.24, CAP_RUBY, 1.0)
+
+
+## A little round bead on a cap at sphere point `p`, `r` across, flattened to `flat` against the shell.
+func _cap_bead(p: Vector3, r: float, colour: Color, flat: float) -> void:
+	var at := egg(p)
+	var dot := MeshInstance3D.new()
+	var sm := SphereMesh.new()
+	sm.radius = r
+	sm.height = r * 2.0
+	sm.radial_segments = 10
+	sm.rings = 6
+	dot.mesh = sm
+	dot.material_override = make_material(colour, 1.0, 0.0, false)
+	var up := at.normalized()
+	var across := up.cross(Vector3.RIGHT if absf(up.x) < 0.9 else Vector3.FORWARD).normalized()
+	dot.basis = Basis(across, up * flat, across.cross(up))
+	dot.position = at
+	add_child(dot)
+	_caps.append(dot)
 
 
 static func _sphere_dir(theta: float, phi: float) -> Vector3:
