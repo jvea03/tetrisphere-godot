@@ -20,6 +20,7 @@ import asc  # noqa: E402  (its API key session)
 V2 = "https://api.appstoreconnect.apple.com/v2"
 SHOP = "build/store/ios/1290x2796/4_shop.png"
 HOME = "build/store/ios/1290x2796/1_home.png"
+MEMBERS = "build/store/ios/1290x2796/7_members.png"   # the Shop at Memberships (store_shot --scene=shop --section=members)
 
 C, N = "CONSUMABLE", "NON_CONSUMABLE"
 # product id, type, USD, name (<= 30), description (<= 45), review screenshot
@@ -39,9 +40,9 @@ PRODUCTS = [
     ("egg_bundle_mega", C, "6.99", "Mega Bundle", "150,000 coins, 26 bombs, 5,000 materials.", SHOP),
     ("egg_featured_hatchers_hoard", C, "4.99", "Hatcher's Hoard", "130,000 coins, 15 bombs, 2,000 materials.", SHOP),
     ("egg_no_ads_pass", N, "4.99", "No Ads Pass", "No ads, 40,000 coins and bonuses.", SHOP),
-    ("egg_member_coins", N, "6.99", "Coin Club", "40,000 coins, then 1,000 a day and +5% win coins.", SHOP),
-    ("egg_member_materials", N, "4.99", "Material Club", "4,000 materials, then 500 a day and +5% on wins.", SHOP),
-    ("egg_member_time", N, "3.99", "Time Saver", "1,000 time skips, 50 a day, faster builds and chests.", SHOP),
+    ("egg_member_coins", N, "6.99", "Coin Club", "40,000 coins, 1,000 a day, +5% win coins.", MEMBERS),
+    ("egg_member_materials", N, "4.99", "Material Club", "4,000 materials, 500 a day, +5% on wins.", MEMBERS),
+    ("egg_member_time", N, "3.99", "Time Saver", "1,000 skips, 50 a day, faster builds.", MEMBERS),
     ("egg_battle_pass", C, "4.99", "Battle Pass", "Unlock this season's premium rewards.", SHOP),
     ("egg_popup_hatch_day_2026", C, "4.99", "Hatch Day Feast", "130,000 coins and 30 bombs.", HOME),
     ("egg_popup_starter_sprinkle", C, "0.99", "Starter Sprinkle", "25,000 coins and 9 bombs.", HOME),

@@ -28,6 +28,7 @@
 # --challenge    a challenge level waiting (one sits behind --level, e.g. 41)
 # --look=<x,y>  Home centred on that point of the camp (world units), as far as its edges allow
 # --bare        Home with its buttons and bars hidden: the camp alone
+# --section=<id> the Shop scrolled to a section (members, noads, bundles, coins...)
 # --fake        the leaderboard filled with the editor's made-up players (no Firebase)
 # Over Home: camp (its info card), mine (a haul, and the ad to double it),
 # chest_skip (an unlocking chest's card), build (a build under way). And
@@ -174,6 +175,11 @@ func _ready() -> void:
 		if OS.get_cmdline_user_args().has("--bare"):   # the camp alone: Home's buttons and bars hidden
 			_bare(inst, inst._world)
 			await get_tree().create_timer(0.3).timeout
+	if scene_name == "shop":
+		for a in OS.get_cmdline_user_args():
+			if a.begins_with("--section="):   # the Shop scrolled to a section: members, coins, bundles...
+				inst._jump_to(a.substr(10))
+				await get_tree().create_timer(0.8).timeout
 	if scene_name == "win":
 		inst._debug_win()
 		await get_tree().create_timer(wait).timeout
