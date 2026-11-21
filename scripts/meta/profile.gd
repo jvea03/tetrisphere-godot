@@ -837,6 +837,28 @@ const SITES := {
 		CAMP_OVEN: ["Cookie Oven", ["Clay Lump", "Brick Oven", "Chimney", "Cookie Trays", "Gingerbread Shelf"]],
 		CAMP_STATUE: ["Ice Sculpture", ["Ice Block", "Rough Carving", "Critter Sculpture", "Pedestal", "Sparkling Ice"]],
 	},
+	"newyear": {
+		CAMP_FIRE: ["Sparkler Fire", ["Cold Ashes", "Sparkler Fire", "Stone Ring", "Fondue Pot", "Spark Fountain"]],
+		CAMP_TENT: ["Party Tent", ["Torn Tarp", "Party Tent", "Pennants", "Disco Ball", "Big Top"]],
+		CAMP_BENCH: ["Firework Bench", ["Loose Planks", "Bench", "Rocket Rack", "Fuse Spools", "Star Awning"]],
+		CAMP_GARDEN: ["Starflower Garden", ["Bare Dirt", "Sprouts", "Moonflowers", "Starflowers", "Glowing Lamps"]],
+		CAMP_WELL: ["Wishing Well", ["Pile of Stones", "Stone Well", "Starry Roof", "Coin Sparkles", "Wish Ribbons"]],
+		CAMP_LOOKOUT: ["Clock Tower", ["Pile of Bricks", "Base", "Tower", "Clock Face", "Midnight Bell"]],
+		CAMP_HAMMOCK: ["Stargazing Chairs", ["Fallen Log", "Deck Chair", "Two Chairs", "Blankets", "Star Lamp"]],
+		CAMP_PICNIC: ["Party Table", ["Fallen Log", "Table", "Party Cloth", "Party Hats", "Confetti Feast"]],
+		CAMP_CLOTHESLINE: ["Banner Line", ["Loose Line", "Line", "Pennants", "Lanterns", "Happy New Year"]],
+		CAMP_MAILBOX: ["Wish Box", ["Dented Can", "Box", "Starry Paint", "Wish Slip", "Flying Wishes"]],
+		CAMP_WINDMILL: ["Pinwheel Tower", ["Broken Pinwheel", "Spinning", "Glitter Sails", "Little Door", "Sparkle Lights"]],
+		CAMP_DOCK: ["Lantern Dock", ["Driftwood", "Little Dock", "Paper Boat", "Lantern Post", "Floating Lanterns"]],
+		CAMP_PLAYGROUND: ["Dance Floor", ["Loose Tiles", "Floor", "Light Tiles", "DJ Booth", "Disco Ball"]],
+		CAMP_TREEHOUSE: ["Firework Tower", ["Scaffold", "Platform", "Rocket Rack", "Fireworks", "Big Rocket"]],
+		CAMP_STALL: ["Party Shop", ["Crates", "Stall", "Awning", "Party Hats", "Balloons & Sign"]],
+		CAMP_GREENHOUSE: ["Lantern House", ["Glass Shards", "Frame", "Glass Panes", "Paper Lanterns", "Glow"]],
+		CAMP_SPRING: ["Bubbly Fountain", ["Puddle", "Stone Pool", "Bubbles", "Sparkling Jets", "Gold Rim"]],
+		CAMP_OBSERVATORY: ["Countdown Stage", ["Rubble", "Stage", "Curtains", "Spotlights", "Countdown Clock"]],
+		CAMP_OVEN: ["Cake Bakery", ["Clay Lump", "Oven", "Chimney", "Cupcakes", "Tiered Cake"]],
+		CAMP_STATUE: ["Golden Hourglass", ["Big Rock", "Base", "Hourglass", "Pedestal", "Golden Hourglass"]],
+	},
 }
 
 
