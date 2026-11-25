@@ -7,6 +7,8 @@ extends EditorPlugin
 # EggAnalytics plugin (setMeta) only while analytics are allowed -- consent in
 # the UK/EEA/Switzerland, the Settings switch everywhere (scripts/meta/analytics.gd
 # sync_meta). Once started it logs App Install and App Launch by itself.
+# Level 10 and the first lesson are standard events from that same plugin
+# (logMetaEvent -> AppEventsLogger), and only while setMeta(true) is in force.
 #
 # The Meta app's IDs come from Project Settings: tetrisphere/meta_app_id and
 # tetrisphere/meta_client_token (both shipped inside every app, not secrets).

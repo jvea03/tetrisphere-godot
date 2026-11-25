@@ -153,6 +153,18 @@ static var interstitial_win_count: int = 0
 ## the 3rd rewarded ad), which Google Ads can bid on.
 static var rewarded_earned_count: int = 0
 static var valuable_player_sent: bool = false
+## Won story level 10 at least once. Shared by Android and iOS (this save).
+static var reached_level_10: bool = false
+## level_10_won has been emitted once. A replay or a restart does not emit it
+## again. Stays false until analytics are allowed, so the one send can wait
+## for consent.
+static var level_10_won_sent: bool = false
+## Won a story level 1 at least once. Not tutorial_seen (that is the lesson card).
+static var won_level_1: bool = false
+## Meta standard events handed to the Android SDK. Stay false until analytics
+## are allowed, so a win before consent is sent on the later Allow.
+static var meta_level_sent: bool = false
+static var meta_tutorial_sent: bool = false
 ## A watched double-coins ad whose win had no interstitial due buys off the
 ## next one that comes due (game.gd _take_interstitial_skip).
 static var interstitial_skip: bool = false
@@ -3246,6 +3258,24 @@ static func _quest_rows(defs: Array, progress: Dictionary, done: Array, claimed:
 
 # -- saving -----------------------------------------------------------------------
 
+## A save written before level_10_won_sent / won_level_1 existed. True when a
+## flag changed. has_* is whether that key is in the file (a false this version
+## saved still counts as present). Past level 10 already produced level_10_won
+## in 1.3.6, so it is not emitted again and neither is the new Meta event.
+static func note_legacy_analytics_flags(has_level_10_key: bool, has_won_level_1_key: bool) -> bool:
+	var changed := false
+	if not has_level_10_key and last_level > 10:
+		reached_level_10 = true
+		level_10_won_sent = true
+		meta_level_sent = true
+		changed = true
+	if not has_won_level_1_key and last_level > 1:
+		won_level_1 = true
+		meta_tutorial_sent = true
+		changed = true
+	return changed
+
+
 ## Idempotent -- safe to call from every screen's _ready().
 static func ensure_loaded() -> void:
 	if _loaded:
@@ -3295,6 +3325,18 @@ static func ensure_loaded() -> void:
 	interstitial_win_count = int(g.call("interstitial_win_count", 0))
 	rewarded_earned_count = int(g.call("rewarded_earned_count", 0))
 	valuable_player_sent = bool(g.call("valuable_player_sent", false))
+	reached_level_10 = bool(g.call("reached_level_10", false))
+	level_10_won_sent = bool(g.call("level_10_won_sent", false))
+	won_level_1 = bool(g.call("won_level_1", false))
+	meta_level_sent = bool(g.call("meta_level_sent", false))
+	meta_tutorial_sent = bool(g.call("meta_tutorial_sent", false))
+	# A save from before these keys: anyone already past the milestone has had
+	# the Firebase event (1.3.6 logged every win) and must not emit a new Meta
+	# "just reached level 10" / tutorial on the update. Keys this version wrote
+	# are left as saved, so a win before consent still sends after Allow.
+	var analytics_backfill := note_legacy_analytics_flags(
+		cfg.has_section_key("profile", "level_10_won_sent"),
+		cfg.has_section_key("profile", "won_level_1"))
 	interstitial_skip = bool(g.call("interstitial_skip", false))
 	analytics_enabled = bool(g.call("analytics_enabled", true))
 	analytics_consent = str(g.call("analytics_consent", ""))
@@ -3445,6 +3487,8 @@ static func ensure_loaded() -> void:
 	TSSnowball.from_save(g.call("snowball", {}))
 	TSSales.from_save(g.call("sales", {}))
 	TSSession.restore()   # a ball left in play last time
+	if analytics_backfill:
+		save()
 
 
 static func save() -> void:
@@ -3473,6 +3517,11 @@ static func save() -> void:
 	s.call("interstitial_win_count", interstitial_win_count)
 	s.call("rewarded_earned_count", rewarded_earned_count)
 	s.call("valuable_player_sent", valuable_player_sent)
+	s.call("reached_level_10", reached_level_10)
+	s.call("level_10_won_sent", level_10_won_sent)
+	s.call("won_level_1", won_level_1)
+	s.call("meta_level_sent", meta_level_sent)
+	s.call("meta_tutorial_sent", meta_tutorial_sent)
 	s.call("interstitial_skip", interstitial_skip)
 	s.call("interstitial_open", interstitial_open)
 	s.call("analytics_enabled", analytics_enabled)

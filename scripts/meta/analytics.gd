@@ -40,17 +40,97 @@ static func _ready_plugin() -> Object:
 
 ## The Meta SDK (Android, EggMeta + the EggAnalytics plugin's setMeta) runs only
 ## while analytics are allowed, the same rule as Firebase: it is told on every
-## change, and on every event as a backstop. Never starts the plugin itself.
+## change, and on every event as a backstop. On Android, Allow starts the
+## EggAnalytics plugin if a level has not done so yet, then setMeta.
+## Standard events (level 10, the first lesson) go through logMetaEvent, which
+## the plugin ignores unless setMeta(true) has run. iOS has no Meta SDK: the
+## call is a no-op there and does not count as delivered.
 static var _meta_on := false
+static var _meta_flushing := false
+
+## AppEventsConstants.EVENT_NAME_ACHIEVED_LEVEL / EVENT_PARAM_LEVEL /
+## EVENT_NAME_COMPLETED_TUTORIAL. Firebase never sees these names.
+const META_LEVEL_ACHIEVED := "fb_mobile_level_achieved"
+const META_LEVEL_PARAM := "fb_level"
+const META_TUTORIAL := "fb_mobile_tutorial_completion"
+## Firebase event names Google Ads imports. Stable on purpose: 40 characters
+## or fewer, a letter first, no firebase_ / google_ / ga_ prefix.
+const LEVEL_10_WON := "level_10_won"
+const VALUABLE_PLAYER := "valuable_player"
 
 
 static func sync_meta() -> void:
-	if _plugin == null or OS.get_name() != "Android" or not _plugin.has_method("setMeta"):
-		return
 	var want := _allowed()
-	if want != _meta_on:
-		_meta_on = want
-		_plugin.setMeta(want)
+	if OS.get_name() == "Android":
+		if want:
+			_ready_plugin()
+		if _plugin != null and _plugin.has_method("setMeta") and want != _meta_on:
+			_meta_on = want
+			_plugin.setMeta(want)
+	if _meta_flushing:
+		return
+	_meta_flushing = true
+	# Level 10's Firebase event waits until analytics are allowed, then fires
+	# once. A win before consent (or before the plugin exists) is sent from
+	# here on the later Allow, not on a replay.
+	_firebase_level_10()
+	_meta_level_achieved()
+	_meta_tutorial_completed()
+	_meta_flushing = false
+
+
+## Hands one standard event to the Android bridge. True only when it counted:
+## analytics allowed, and (on Android) the bridge is on. Desktop and the
+## editor count it so the once-flag sticks in tests; iOS does not, so a later
+## SDK can still send the milestone once.
+static func _hand_meta(name: String, params: Dictionary) -> bool:
+	if not _allowed():
+		return false
+	var os := OS.get_name()
+	if os == "iOS":
+		return false
+	if os == "Android":
+		if _plugin == null:
+			_ready_plugin()
+		if _plugin == null or not _meta_on or not _plugin.has_method("logMetaEvent"):
+			return false
+		_plugin.logMetaEvent(name, params)
+	recent.append([name, params])
+	if recent.size() > 20:
+		recent.pop_front()
+	return true
+
+
+## level_10_won, once per player, only while analytics are allowed. The
+## milestone is reached_level_10; the sent flag is what blocks replays.
+static func _firebase_level_10() -> void:
+	if TSProfile.level_10_won_sent or not TSProfile.reached_level_10 or not _allowed():
+		return
+	TSProfile.level_10_won_sent = true
+	TSProfile.save()
+	event(LEVEL_10_WON)
+
+
+## fb_mobile_level_achieved with fb_level "10", once, after level_10_won has
+## been decided. A win before consent waits; the next sync_meta after Allow
+## sends it. Replays do not send it again.
+static func _meta_level_achieved() -> void:
+	if TSProfile.meta_level_sent or not TSProfile.level_10_won_sent:
+		return
+	if _hand_meta(META_LEVEL_ACHIEVED, {META_LEVEL_PARAM: "10"}):
+		TSProfile.meta_level_sent = true
+		TSProfile.save()
+
+
+## fb_mobile_tutorial_completion, once, after the first level-1 win. Same
+## consent wait as the level event. Firebase's tutorial_complete is separate
+## and still fires on every level-1 win.
+static func _meta_tutorial_completed() -> void:
+	if TSProfile.meta_tutorial_sent or not TSProfile.won_level_1:
+		return
+	if _hand_meta(META_TUTORIAL, {}):
+		TSProfile.meta_tutorial_sent = true
+		TSProfile.save()
 
 
 ## Starts Firebase as the game opens, so its first_open counts every install.
@@ -199,16 +279,29 @@ static func level_start(level: int, kind: String) -> void:
 ## A level won or lost (Firebase's level_end), with how long it took (play
 ## time, cards and pauses aside), the pieces dropped and the hearts left;
 ## and the first level won (tutorial_complete: past the first lesson).
+## level_10_won is once per player (saved, so a restart or a replay does not
+## send it again) on Android and iOS, which share this script. Level 5 and
+## level 20 still fire on every win of that level.
 static func level_end(level: int, won: bool, kind: String, seconds := 0.0, drops := 0, hearts := 0) -> void:
 	event("level_end", {"level_name": "%s_%d" % [kind, level], "level": str(level), "kind": kind, "success": "1" if won else "0",
 		"seconds": roundi(seconds), "drops": drops, "hearts_left": hearts})
 	if won and kind == "level":
 		if level == 1:
+			if not TSProfile.won_level_1:
+				TSProfile.won_level_1 = true
+				TSProfile.save()
 			event("tutorial_complete")
-		elif level in [5, 10, 20]:
+		elif level == 10:
+			if not TSProfile.reached_level_10:
+				TSProfile.reached_level_10 = true
+				TSProfile.save()
+			# Once, and only while analytics are allowed. A win before consent
+			# stays pending until Allow (sync_meta), then still fires once.
+			_firebase_level_10()
+			# Own once-flag: still the first of level 10 or the 3rd rewarded ad.
+			valuable_player("level_10")
+		elif level in [5, 20]:
 			event("level_%d_won" % level)
-			if level == 10:
-				valuable_player("level_10")
 
 
 ## A rewarded ad watched to the end (ad_rewarded_earned, with how many this
@@ -232,4 +325,4 @@ static func valuable_player(why: String) -> void:
 		return
 	TSProfile.valuable_player_sent = true
 	TSProfile.save()
-	event("valuable_player", {"why": why})
+	event(VALUABLE_PLAYER, {"why": why})
