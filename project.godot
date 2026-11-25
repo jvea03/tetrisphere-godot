@@ -44,7 +44,7 @@ window/handheld/orientation=1
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/EggAnalytics/plugin.cfg", "res://addons/EggManifest/plugin.cfg", "res://addons/EggNotify/plugin.cfg", "res://addons/EggReview/plugin.cfg", "res://addons/GodotGooglePlayBilling/plugin.cfg", "res://addons/admob/plugin.cfg")
+enabled=PackedStringArray("res://addons/EggAnalytics/plugin.cfg", "res://addons/EggManifest/plugin.cfg", "res://addons/EggMeta/plugin.cfg", "res://addons/EggNotify/plugin.cfg", "res://addons/EggReview/plugin.cfg", "res://addons/GodotGooglePlayBilling/plugin.cfg", "res://addons/admob/plugin.cfg")
 
 [input_devices]
 
@@ -61,3 +61,5 @@ anti_aliasing/quality/msaa_3d=2
 
 preview_date=""
 test_ads=false
+meta_app_id="1108143348953147"
+meta_client_token="63e6681f78dea9516ade591666ab7790"
