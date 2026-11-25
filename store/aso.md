@@ -171,6 +171,19 @@ Release name: `1.3.2 (10) – Faster start`
     Thanks for playing!
     </en-US>
 
+## Release notes for version code 15 (1.3.7)
+
+What's new since 1.3.6. Short, because most of it is behind the scenes. The App Store's What's New can use the same text.
+
+Release name: `1.3.7 (15) – Fresh start fix`
+
+    <en-US>
+    • New players now start on the current season's planet
+    • Friendlier wording in the first lesson
+    • Runs on more devices, including Chromebooks
+    • Bug fixes and improvements
+    </en-US>
+
 ## Release notes for version code 14 (1.3.6)
 
 What's new since 1.3.4 (code 13 never shipped). 444 of 500 characters. The App Store's What's New can use the same text.
