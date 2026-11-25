@@ -66,6 +66,36 @@ public class EggAnalytics extends GodotPlugin {
         analytics.logEvent(name, b);
     }
 
+    /**
+     * The Meta (Facebook) SDK, for Meta app-install ads: it is not started by
+     * the manifest (AutoInitEnabled false, addons/EggMeta), only here, and only
+     * while the player's analytics are allowed (consent in the UK/EEA/Switzerland,
+     * the Settings switch everywhere: scripts/meta/analytics.gd sync_meta). On
+     * true it starts and logs app opens and installs; on false it stops logging
+     * and stops reading the advertising ID (it can't be un-started, but nothing
+     * more is sent). Builds without the Meta SDK (no IDs set) do nothing.
+     */
+    @UsedByGodot
+    public void setMeta(boolean on) {
+        try {
+            Meta.set(on);
+        } catch (Throwable t) {
+            // no Meta SDK in this build
+        }
+    }
+
+    /** Own class, so a build without the Meta SDK never loads it. */
+    private static final class Meta {
+        static void set(boolean on) {
+            com.facebook.FacebookSdk.setAutoLogAppEventsEnabled(on);
+            com.facebook.FacebookSdk.setAdvertiserIDCollectionEnabled(on);
+            if (on) {
+                com.facebook.FacebookSdk.setAutoInitEnabled(true);
+                com.facebook.FacebookSdk.fullyInitialize();
+            }
+        }
+    }
+
     @UsedByGodot
     public void setUserProperty(String name, String value) {
         if (analytics == null) return;

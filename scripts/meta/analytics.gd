@@ -38,6 +38,21 @@ static func _ready_plugin() -> Object:
 	return _plugin
 
 
+## The Meta SDK (Android, EggMeta + the EggAnalytics plugin's setMeta) runs only
+## while analytics are allowed, the same rule as Firebase: it is told on every
+## change, and on every event as a backstop. Never starts the plugin itself.
+static var _meta_on := false
+
+
+static func sync_meta() -> void:
+	if _plugin == null or OS.get_name() != "Android" or not _plugin.has_method("setMeta"):
+		return
+	var want := _allowed()
+	if want != _meta_on:
+		_meta_on = want
+		_plugin.setMeta(want)
+
+
 ## Starts Firebase as the game opens, so its first_open counts every install.
 static func start() -> void:
 	_ready_plugin()
@@ -48,6 +63,7 @@ static func event(name: String, params := {}) -> void:
 	if recent.size() > 20:
 		recent.pop_front()
 	var p := _ready_plugin()
+	sync_meta()
 	if p != null and _allowed():
 		p.logEvent(name, params)
 	_to_ga(name, params)

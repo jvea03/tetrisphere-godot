@@ -1332,6 +1332,7 @@ func _open_analytics_consent() -> void:
 
 ## Starts or stops GameAnalytics (and Firebase on Android) to match a new answer.
 func _apply_analytics(on: bool) -> void:
+	TSAnalytics.sync_meta()
 	var ga := TSAnalytics.ga()
 	if ga == null:
 		return

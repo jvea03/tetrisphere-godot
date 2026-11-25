@@ -2,8 +2,11 @@
 extends EditorPlugin
 
 # The Meta (Facebook) SDK in Android exports, so Meta app-promotion ads can
-# see installs and app opens. The SDK starts by itself and logs App Install
-# and App Launch with no code in the game (see docs/meta_ads.md).
+# see installs and app opens. The SDK does NOT start by itself: the manifest
+# turns auto-init and auto-logging off, and the game starts it through the
+# EggAnalytics plugin (setMeta) only while analytics are allowed -- consent in
+# the UK/EEA/Switzerland, the Settings switch everywhere (scripts/meta/analytics.gd
+# sync_meta). Once started it logs App Install and App Launch by itself.
 #
 # The Meta app's IDs come from Project Settings: tetrisphere/meta_app_id and
 # tetrisphere/meta_client_token (both shipped inside every app, not secrets).
@@ -54,7 +57,7 @@ class EggMetaExportPlugin extends EditorExportPlugin:
 		return "\n".join([
 			'<meta-data android:name="com.facebook.sdk.ApplicationId" android:value="fb%s" />' % _app_id(),
 			'<meta-data android:name="com.facebook.sdk.ClientToken" android:value="%s" />' % _client_token(),
-			'<meta-data android:name="com.facebook.sdk.AutoInitEnabled" android:value="true" />',
-			'<meta-data android:name="com.facebook.sdk.AutoLogAppEventsEnabled" android:value="true" />',
+			'<meta-data android:name="com.facebook.sdk.AutoInitEnabled" android:value="false" />',
+			'<meta-data android:name="com.facebook.sdk.AutoLogAppEventsEnabled" android:value="false" />',
 			'<meta-data android:name="com.facebook.sdk.AdvertiserIDCollectionEnabled" android:value="true" />',
 		])

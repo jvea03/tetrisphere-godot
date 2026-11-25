@@ -6,20 +6,20 @@ duckdoku-privacy repo) and the Play Data safety form, **before** that release
 ships. Do not publish it until the consent gate below is built, because the
 policy text promises it.
 
-## Blocker: the SDK must wait for consent first
+## Consent gate (built 2026-11-25; needs a phone test before release)
 
-`addons/EggMeta` currently starts the Meta SDK on its own at launch
-(`AutoInitEnabled` true). Firebase and GameAnalytics do not: they wait for
+`addons/EggMeta` used to let the Meta SDK start on its own at launch. Now the
+manifest turns auto-init and auto-logging off, and the EggAnalytics plugin's
+`setMeta(on)` starts it (and stops it logging) from `TSAnalytics.sync_meta()`,
+using the same `_allowed()` rule as Firebase, on every change and every event. Firebase and GameAnalytics do not: they wait for
 `TSPrivacyRegion.analytics_allowed()` (a "yes" on Home's card in the UK, EEA and
 Switzerland; the Settings > Share usage data switch everywhere). The Meta SDK
 must follow the same rule, or a player in the UK would be tracked by Meta
 before saying yes, and the Settings switch would not stop it.
 
-To build: manifest `AutoInitEnabled` false and `AutoLogAppEventsEnabled` false;
-start Meta (FacebookSdk init, then enable app-event logging) from the
-EggAnalytics plugin only once `analytics_allowed()` is true, and stop it when the
-switch goes off. That is Kotlin in android_plugins/EggAnalytics (rebuilt with
-tools/build_notify_plugin.ps1 -Name EggAnalytics) and needs a test on a phone.
+Still to do: test on a phone in a regulated region (UK locale or UTC+0..3 time
+zone): nothing reaches Meta (Events Manager) before Allow, and the Settings
+switch stops it. Do not publish the policy before that.
 
 ## 1. Policy text (store/privacy.html)
 
