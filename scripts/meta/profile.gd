@@ -148,6 +148,11 @@ static var is_payer: bool = false
 ## instead of pressing Next Level: Home's PLAY shows that ad first.
 static var interstitial_owed: bool = false
 static var interstitial_win_count: int = 0
+## Rewarded ads watched to the end, ever; and whether this player has been
+## counted as a valuable player (TSAnalytics.valuable_player: level 10 won or
+## the 3rd rewarded ad), which Google Ads can bid on.
+static var rewarded_earned_count: int = 0
+static var valuable_player_sent: bool = false
 ## A watched double-coins ad whose win had no interstitial due buys off the
 ## next one that comes due (game.gd _take_interstitial_skip).
 static var interstitial_skip: bool = false
@@ -3288,6 +3293,8 @@ static func ensure_loaded() -> void:
 	is_payer = bool(g.call("is_payer", false)) or no_ads
 	interstitial_owed = bool(g.call("interstitial_owed", false))
 	interstitial_win_count = int(g.call("interstitial_win_count", 0))
+	rewarded_earned_count = int(g.call("rewarded_earned_count", 0))
+	valuable_player_sent = bool(g.call("valuable_player_sent", false))
 	interstitial_skip = bool(g.call("interstitial_skip", false))
 	analytics_enabled = bool(g.call("analytics_enabled", true))
 	analytics_consent = str(g.call("analytics_consent", ""))
@@ -3464,6 +3471,8 @@ static func save() -> void:
 	s.call("is_payer", is_payer)
 	s.call("interstitial_owed", interstitial_owed)
 	s.call("interstitial_win_count", interstitial_win_count)
+	s.call("rewarded_earned_count", rewarded_earned_count)
+	s.call("valuable_player_sent", valuable_player_sent)
 	s.call("interstitial_skip", interstitial_skip)
 	s.call("interstitial_open", interstitial_open)
 	s.call("analytics_enabled", analytics_enabled)

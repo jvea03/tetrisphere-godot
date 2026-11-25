@@ -92,6 +92,9 @@ static func design(event_id: String, value = null) -> void:
 		g.design(event_id, value)
 
 
+## Firebase-only events, for Google Ads to bid on.
+const FIREBASE_ONLY := ["ad_rewarded_earned", "valuable_player"]
+
 ## Firebase's event names, as GameAnalytics design ids ("ad_inter_owed" ->
 ## "Ad:Interstitial:Owed"). Levels go as progression events instead.
 const GA_NAMES := {
@@ -125,6 +128,8 @@ static func _to_ga(name: String, params: Dictionary) -> void:
 		_:
 			if GA_NAMES.has(name):
 				g.design(GA_NAMES[name], params.get("level", null))
+			elif FIREBASE_ONLY.has(name):
+				pass # GameAnalytics has its own (Ad:Rewarded:Earned, the progression events)
 			elif name.begins_with("level_") and name.ends_with("_won"):
 				pass # Firebase's Google Ads conversions; GameAnalytics has the progression event
 			else:
@@ -186,3 +191,29 @@ static func level_end(level: int, won: bool, kind: String, seconds := 0.0, drops
 			event("tutorial_complete")
 		elif level in [5, 10, 20]:
 			event("level_%d_won" % level)
+			if level == 10:
+				valuable_player("level_10")
+
+
+## A rewarded ad watched to the end (ad_rewarded_earned, with how many this
+## player has watched in all). The 3rd makes a valuable player.
+const VALUABLE_REWARDED := 3
+
+
+static func rewarded_earned() -> void:
+	TSProfile.rewarded_earned_count += 1
+	TSProfile.save()
+	event("ad_rewarded_earned", {"count": str(TSProfile.rewarded_earned_count)})
+	if TSProfile.rewarded_earned_count >= VALUABLE_REWARDED:
+		valuable_player("rewarded_ads")
+
+
+## valuable_player, once per player: the first of winning level 10 or watching
+## the 3rd rewarded ad ("why"). One event for both, so there are enough of them
+## for a Google Ads campaign to bid on (store/ads/README.md).
+static func valuable_player(why: String) -> void:
+	if TSProfile.valuable_player_sent:
+		return
+	TSProfile.valuable_player_sent = true
+	TSProfile.save()
+	event("valuable_player", {"why": why})

@@ -132,6 +132,8 @@ func show_interstitial(source: String = "Level") -> void:
 
 func _finish_rewarded(earned: bool) -> void:
 	_busy = false
+	if earned:
+		TSAnalytics.rewarded_earned()
 	rewarded_result.emit(earned)
 
 
