@@ -10,7 +10,11 @@
       "id": "gift-2026-11-19",
       "title": "Thanksgiving Break Reward",
       "body": "Happy Thanksgiving! We're thankful for you. Enjoy some coins, materials and Time Skips to build up your camp over the break.",
-      "rewards": {"coins": 2500, "materials": 2000, "skips": 200},
+      "rewards": {
+        "coins": 2500,
+        "materials": 2000,
+        "skips": 200
+      },
       "from": "2026-11-19",
       "until": "2026-12-31"
     },
@@ -18,8 +22,45 @@
       "id": "welcome-2026-11",
       "title": "Welcome to Egg Escape!",
       "body": "Thanks for playing! Here's a little gift to get you started: coins, plus Tier Skips to climb the Battle Pass faster.",
-      "rewards": {"coins": 500, "tier_skips": 5},
+      "rewards": {
+        "coins": 500,
+        "tier_skips": 5
+      },
       "until": "2027-01-31"
+    },
+    {
+      "id": "thanks-2026-11-26",
+      "title": "Happy Thanksgiving!",
+      "body": "Wishing you a warm Thanksgiving. Here's a gift of coins and materials to spend at camp. Thank you for playing Egg Escape!",
+      "rewards": {
+        "coins": 5000,
+        "materials": 500
+      },
+      "from": "2026-11-26",
+      "until": "2026-12-02"
+    },
+    {
+      "id": "black-friday-2026-11-27",
+      "title": "A Black Friday Gift",
+      "body": "No rush and no catch, just a thank-you from us. Enjoy some coins and materials for your camp.",
+      "rewards": {
+        "coins": 5000,
+        "materials": 500
+      },
+      "from": "2026-11-27",
+      "until": "2026-12-02"
+    },
+    {
+      "id": "cyber-monday-2026-11-30",
+      "title": "A Cyber Monday Treat",
+      "body": "Hope your week is off to a cozy start. Here's a bundle of boosters: Bombs, Any Pieces and Rocks, to help free more critters.",
+      "rewards": {
+        "bomb": 3,
+        "swap": 3,
+        "rocks": 3
+      },
+      "from": "2026-11-30",
+      "until": "2026-12-02"
     }
   ]
 }
