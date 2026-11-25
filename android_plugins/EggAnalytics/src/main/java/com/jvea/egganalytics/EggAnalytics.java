@@ -2,6 +2,7 @@ package com.jvea.egganalytics;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.pm.ApplicationInfo;
 import android.os.Bundle;
 
 import com.google.firebase.FirebaseApp;
@@ -25,6 +26,7 @@ import java.util.Map;
  */
 public class EggAnalytics extends GodotPlugin {
     private FirebaseAnalytics analytics;
+    private Context appContext;
 
     public EggAnalytics(Godot godot) {
         super(godot);
@@ -50,6 +52,7 @@ public class EggAnalytics extends GodotPlugin {
             FirebaseApp.initializeApp(c, o);
         }
         analytics = FirebaseAnalytics.getInstance(c);
+        appContext = c;
     }
 
     @UsedByGodot
@@ -78,21 +81,87 @@ public class EggAnalytics extends GodotPlugin {
     @UsedByGodot
     public void setMeta(boolean on) {
         try {
-            Meta.set(on);
+            Meta.set(context(), on);
         } catch (Throwable t) {
             // no Meta SDK in this build
         }
     }
 
+    /**
+     * One Meta standard event (AppEventsLogger.logEvent). No-op unless setMeta(true)
+     * has turned the SDK on, which is only while analytics are allowed. name and
+     * param keys are the AppEventsConstants strings (fb_mobile_level_achieved /
+     * fb_level, fb_mobile_tutorial_completion). Builds without the Meta SDK do nothing.
+     */
+    @UsedByGodot
+    public void logMetaEvent(String name, Dictionary params) {
+        try {
+            Meta.log(context(), name, params);
+        } catch (Throwable t) {
+            // no Meta SDK in this build
+        }
+    }
+
+    private Context context() {
+        if (appContext != null) return appContext;
+        Activity a = getActivity();
+        return a != null ? a.getApplicationContext() : null;
+    }
+
     /** Own class, so a build without the Meta SDK never loads it. */
     private static final class Meta {
-        static void set(boolean on) {
+        static volatile boolean enabled = false;
+        static volatile boolean debug = false;
+
+        static void set(Context context, boolean on) {
+            enabled = on;
+            if (on && context != null
+                    && (context.getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
+                debug = true;
+                // Events Manager > Test Events reads these. Release builds leave them off.
+                com.facebook.FacebookSdk.setIsDebugEnabled(true);
+                com.facebook.FacebookSdk.addLoggingBehavior(com.facebook.LoggingBehavior.APP_EVENTS);
+            }
             com.facebook.FacebookSdk.setAutoLogAppEventsEnabled(on);
             com.facebook.FacebookSdk.setAdvertiserIDCollectionEnabled(on);
             if (on) {
                 com.facebook.FacebookSdk.setAutoInitEnabled(true);
                 com.facebook.FacebookSdk.fullyInitialize();
             }
+        }
+
+        static void log(Context context, String name, Dictionary params) {
+            if (!enabled || context == null || name == null || name.isEmpty()) return;
+            Bundle b = new Bundle();
+            if (params != null) {
+                for (Map.Entry<String, Object> e : params.entrySet()) {
+                    String key = e.getKey();
+                    Object v = e.getValue();
+                    if (key == null || v == null) continue;
+                    // fb_level is AppEventsConstants.EVENT_PARAM_LEVEL, and Meta wants it as text.
+                    if (com.facebook.appevents.AppEventsConstants.EVENT_PARAM_LEVEL.equals(key)) {
+                        b.putString(com.facebook.appevents.AppEventsConstants.EVENT_PARAM_LEVEL, String.valueOf(v));
+                    } else if (v instanceof Integer || v instanceof Long) {
+                        b.putLong(key, ((Number) v).longValue());
+                    } else if (v instanceof Number) {
+                        b.putDouble(key, ((Number) v).doubleValue());
+                    } else if (v instanceof Boolean) {
+                        b.putLong(key, ((Boolean) v) ? 1 : 0);
+                    } else {
+                        b.putString(key, String.valueOf(v));
+                    }
+                }
+            }
+            String event = name;
+            if (com.facebook.appevents.AppEventsConstants.EVENT_NAME_ACHIEVED_LEVEL.equals(name)) {
+                event = com.facebook.appevents.AppEventsConstants.EVENT_NAME_ACHIEVED_LEVEL;
+            } else if (com.facebook.appevents.AppEventsConstants.EVENT_NAME_COMPLETED_TUTORIAL.equals(name)) {
+                event = com.facebook.appevents.AppEventsConstants.EVENT_NAME_COMPLETED_TUTORIAL;
+            }
+            com.facebook.appevents.AppEventsLogger logger =
+                    com.facebook.appevents.AppEventsLogger.newLogger(context);
+            logger.logEvent(event, b);
+            if (debug) logger.flush();
         }
     }
 

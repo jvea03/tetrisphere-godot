@@ -34,7 +34,7 @@ purchase services need to work."
 
 ```html
 <h2>Ad measurement (Meta)</h2>
-<p>On Android, the game includes the Meta (Facebook) SDK so that we can tell whether people who saw our ads on Facebook or Instagram went on to install and open the game. While it is running, the SDK sends Meta that the game was installed or opened, the game version, your device's advertising ID, your IP address and a coarse location derived from it, device and operating system details, and, for in-app purchases made on Android, the product and price. You do not need a Facebook or Instagram account, and the game never sends Meta your leaderboard name, anything you type, or your contacts. Meta may use this data to measure and improve our ads and, under its own policies, for its own purposes, including showing you ads. It processes the data under <a href="https://www.facebook.com/privacy/policy/">Meta's Privacy Policy</a>.</p>
+<p>On Android, the game includes the Meta (Facebook) SDK so that we can tell whether people who saw our ads on Facebook or Instagram went on to install the game and play it. While it is running, the SDK sends Meta that the game was installed or opened, that the first lesson was finished, and that level 10 was reached for the first time, the game version, your device's advertising ID, your IP address and a coarse location derived from it, device and operating system details, and, for in-app purchases made on Android, the product and price. You do not need a Facebook or Instagram account, and the game never sends Meta your leaderboard name, anything you type, or your contacts. Meta may use this data to measure and improve our ads and, under its own policies, for its own purposes, including showing you ads. It processes the data under <a href="https://www.facebook.com/privacy/policy/">Meta's Privacy Policy</a>.</p>
 <p>In the United Kingdom, the European Economic Area and Switzerland the SDK does not start, and nothing is sent to Meta, unless you tap Allow on the consent card. Everywhere else it runs by default. Wherever you are, you can turn it off at any time in the game's Settings &rarr; Share usage data, and you can reset or limit your advertising ID in your device's Settings. The iPhone and iPad version does not include the Meta SDK.</p>
 ```
 
@@ -52,7 +52,7 @@ Change these, all "Collected" **and "Shared"** (with Meta), optional left as is:
 | Data type | Shared with Meta | Purpose to add |
 |---|---|---|
 | Device or other IDs (advertising ID) | yes | Advertising or marketing; Analytics |
-| App activity > App interactions (installs, opens) | yes | Advertising or marketing; Analytics |
+| App activity > App interactions (installs, opens, first lesson finished, level 10 reached once) | yes | Advertising or marketing; Analytics |
 | Approximate location (from IP) | yes | Advertising or marketing |
 | Purchase history (only if "Log In-App Purchases Automatically" stays on in the Meta app) | yes | Advertising or marketing |
 
