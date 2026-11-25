@@ -21,7 +21,7 @@ Still to do: test on a phone in a regulated region (UK locale or UTC+0..3 time
 zone): nothing reaches Meta (Events Manager) before Allow, and the Settings
 switch stops it. Do not publish the policy before that.
 
-## 1. Policy text (store/privacy.html)
+## 1. Policy text (store/privacy.html -- applied 2026-11-25, dated 25 November 2026; change the date to the publish day)
 
 **Date line:** `Last updated: <the day it ships>`.
 
