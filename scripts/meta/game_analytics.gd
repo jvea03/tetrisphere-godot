@@ -242,6 +242,19 @@ func _begin_session() -> void:
 
 
 func _notification(what: int) -> void:
+	# OS keeps a logger added with add_logger until remove_logger. Godot calls
+	# loggers from whichever thread hit the error, including errors raised in
+	# Main::cleanup after this node is freed. The logger's Mutex is a
+	# recursive_mutex; locking one that was already destroyed aborts with the
+	# same FORTIFY message as the Android GL-thread crash
+	# (godotengine/godot#125384). Pause already flushed what was waiting.
+	# Opt-out sets enabled to false but leaves the logger registered, so this
+	# must run even then.
+	if what == NOTIFICATION_EXIT_TREE:
+		if _errors != null:
+			OS.remove_logger(_errors)
+			_errors = null
+		return
 	if not enabled:
 		return
 	if what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_WM_CLOSE_REQUEST:
