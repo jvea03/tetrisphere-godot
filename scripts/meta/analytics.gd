@@ -42,8 +42,11 @@ static func _ready_plugin() -> Object:
 ## while analytics are allowed, the same rule as Firebase: it is told on every
 ## change, and on every event as a backstop. On Android, Allow starts the
 ## EggAnalytics plugin if a level has not done so yet, then setMeta.
-## Standard events (level 10, the first lesson) go through logMetaEvent, which
-## the plugin ignores unless setMeta(true) has run. iOS has no Meta SDK: the
+## setMeta returns at once. The plugin waits until after the next frame, then
+## initializes the SDK on a background thread, and still logs the install and
+## the app activation once that finishes. Standard events (level 10, the first
+## lesson) go through logMetaEvent, which holds them until that init finishes
+## and ignores them unless setMeta(true) has run. iOS has no Meta SDK: the
 ## call is a no-op there and does not count as delivered.
 static var _meta_on := false
 static var _meta_flushing := false
