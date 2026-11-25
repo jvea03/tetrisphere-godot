@@ -132,9 +132,10 @@ static func note_pieces(n: int) -> void:
 
 # -- top throwers ------------------------------------------------------------------
 # Each team has its own online board each weekend, "snowball_W<week>_<team>",
-# on Online's boards (a row's "stars" are the snowballs thrown; firestore.rules
-# takes any board, up to 100,000), so the Top Throwers tab can show either
-# team's best without a team field on the row.
+# on Online's boards (a row's "stars" are the snowballs thrown). firestore.rules
+# allows that write from Thursday 00:00 UTC through Monday 18:00 UTC, up to the
+# phone's own 100,000 clamp, and rejects it outside the window. The Top Throwers
+# tab can show either team's best without a team field on the row.
 
 const PUSH_EVERY := 60.0                 # seconds between row writes while playing
 ## Coins for each team's top three throwers, paid once the weekend's over

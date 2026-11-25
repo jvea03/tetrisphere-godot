@@ -100,6 +100,10 @@ static func board_id(period: String, key: String) -> String:
 
 
 ## Writes the player's row on a board (name, avatar, stars), if any changed.
+## Those four fields are the whole document. firestore.rules rejects any other
+## shape, a stars total the board's age cannot support, and a total lower than
+## the one already stored. `t` is the device clock and the rules do not compare
+## it to the server, so a wrong phone clock still posts.
 func push(board: String, stars: int) -> void:
 	if fake() or stars <= 0:
 		return   # no row until there's a star to show (none below level 7)
