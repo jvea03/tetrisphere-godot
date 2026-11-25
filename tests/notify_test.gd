@@ -1,9 +1,10 @@
 # The reminders scheduled as the game goes to the background
 # (scripts/meta/notify.gd): night-time ones move to 9 am, a chest unlocking
 # gets one, a quick chest doesn't, and the daily one's words follow the Daily
-# Egg's unlock and the streak. Run with:
-#   Godot.exe --headless --path . -s tests/notify_test.gd
-extends SceneTree
+# Egg's unlock and the streak. A scene, like the other tests, so the Online
+# autoload exists before profile.gd is compiled. Run with:
+#   Godot.exe --headless --path . res://tests/notify_test.tscn
+extends Node
 
 const N := preload("res://scripts/meta/notify.gd")
 
@@ -23,7 +24,7 @@ func _find(list: Array, id: int) -> Dictionary:
 	return {}
 
 
-func _initialize() -> void:
+func _ready() -> void:
 	var h := 3600
 	_check("a daytime reminder stays put", int(N._entry(1, "", "", h, 10 * h)["seconds"]) == h)
 	_check("11 pm moves to 9 am", int(N._entry(1, "", "", h, 22 * h)["seconds"]) == 11 * h)
@@ -54,5 +55,6 @@ func _initialize() -> void:
 		var at := (TSClock.local_unix() % 86400 + int(r["seconds"])) % 86400 / 3600
 		_check("%d lands in waking hours" % int(r["id"]), at >= N.QUIET_TO and at < N.QUIET_FROM)
 
-	print("notify_test: %d failure(s)" % _failures)
-	quit(1 if _failures > 0 else 0)
+	print("")
+	print("ALL PASSED" if _failures == 0 else "%d FAILED" % _failures)
+	get_tree().quit(0 if _failures == 0 else 1)
