@@ -153,4 +153,4 @@ App Privacy in App Store Connect: done 25 Nov 2026 (Coarse Location, Device ID, 
 Advertising Data were already Third-Party Advertising, linked and tracking for AdMob; Purchase History
 gained Analytics, Third-Party Advertising and tracking, since Meta auto-logs in-app purchases)
 and `store/privacy.html` (done and published 26 Nov 2026: Meta on iPhone and iPad "from version 1.3.8";
-the change only when the iOS build goes live); then the Meta campaign.
+true of 1.3.7 as well, so it went live straight away); then the Meta campaign.
