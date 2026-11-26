@@ -38,18 +38,26 @@ static func _ready_plugin() -> Object:
 	return _plugin
 
 
-## The Meta SDK (Android, EggMeta + the EggAnalytics plugin's setMeta) runs only
-## while analytics are allowed, the same rule as Firebase: it is told on every
-## change, and on every event as a backstop. Never starts the plugin itself.
+## The Meta SDK (Android: EggMeta + the EggAnalytics plugin's setMeta; iOS: the
+## FacebookCore Swift package + the same setMeta) runs only while analytics are
+## allowed, the same rule as Firebase: it is told on every change, and on every
+## event as a backstop. On iOS the advertising ID also needs a yes on the tracking
+## prompt, so a change in that answer is passed on too. Never starts the plugin itself.
 static var _meta_on := false
+static var _meta_att := false
 
 
 static func sync_meta() -> void:
-	if _plugin == null or OS.get_name() != "Android" or not _plugin.has_method("setMeta"):
+	var os_name := OS.get_name()
+	if _plugin == null or (os_name != "Android" and os_name != "iOS") or not _plugin.has_method("setMeta"):
 		return
 	var want := _allowed()
-	if want != _meta_on:
+	var att := true
+	if os_name == "iOS":
+		att = _plugin.has_method("attAuthorized") and bool(_plugin.attAuthorized())
+	if want != _meta_on or (want and att != _meta_att):
 		_meta_on = want
+		_meta_att = att
 		_plugin.setMeta(want)
 
 

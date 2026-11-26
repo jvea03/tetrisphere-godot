@@ -29,6 +29,13 @@ class EggAnalyticsExportPlugin extends EditorExportPlugin:
 	const FIREBASE_URL := "https://github.com/firebase/firebase-ios-sdk.git"
 	const FIREBASE_VERSION := "11.15.0"
 	const FIREBASE_PRODUCTS := ["FirebaseAnalytics"]
+	## Meta SDK (iOS), only when tetrisphere/meta_app_id and meta_client_token are set.
+	## 17.4.0 is the last release whose frameworks are arm64-only (18.1.0 to 19.0.1 ship
+	## an arm64e slice that can fail to launch on iOS 17/18). The product is FacebookCore
+	## (module FBSDKCoreKit). The package identity comes from the URL: facebook-ios-sdk.
+	const META_URL := "https://github.com/facebook/facebook-ios-sdk.git"
+	const META_VERSION := "17.4.0"
+	const META_PRODUCTS := ["FacebookCore"]
 	const SPM_DIR := "egg_spm"
 	const SPM_NAME := "EggAnalyticsDeps"
 	# Object ids for the pbxproj patch: 24 hex digits, unlike the AdMob addon's AD00...
@@ -38,6 +45,7 @@ class EggAnalyticsExportPlugin extends EditorExportPlugin:
 
 	var _ios_path := ""
 	var _patched := false
+	var _meta := false
 
 	func _supports_platform(platform):
 		return platform is EditorExportPlatformAndroid or platform is EditorExportPlatformIOS
@@ -52,15 +60,49 @@ class EggAnalyticsExportPlugin extends EditorExportPlugin:
 	func _get_name():
 		return NAME
 
+	func _meta_app_id() -> String:
+		return str(ProjectSettings.get_setting("tetrisphere/meta_app_id", "")).strip_edges()
+
+	func _meta_client_token() -> String:
+		return str(ProjectSettings.get_setting("tetrisphere/meta_client_token", "")).strip_edges()
+
+	## The Meta SDK's Info.plist entries. Auto-logging and advertiser-ID collection
+	## start OFF: the plugin's setMeta() turns them on only after consent and, for
+	## the ID, the iOS tracking prompt (scripts/meta/analytics.gd sync_meta).
+	func _meta_plist() -> String:
+		return "".join([
+			"<key>FacebookAppID</key><string>%s</string>\n" % _meta_app_id(),
+			"<key>FacebookClientToken</key><string>%s</string>\n" % _meta_client_token(),
+			"<key>FacebookDisplayName</key><string>Egg Escape</string>\n",
+			"<key>FacebookAutoLogAppEventsEnabled</key><false/>\n",
+			"<key>FacebookAdvertiserIDCollectionEnabled</key><false/>\n",
+			"<key>CFBundleURLTypes</key><array><dict><key>CFBundleURLSchemes</key><array><string>fb%s</string></array></dict></array>\n" % _meta_app_id(),
+			"<key>SKAdNetworkItems</key><array><dict><key>SKAdNetworkIdentifier</key><string>v9wttpbfk9.skadnetwork</string></dict><dict><key>SKAdNetworkIdentifier</key><string>n38lu8286q.skadnetwork</string></dict></array>\n",
+		])
+
+	func _add_plist(content: String) -> void:
+		if has_method("add_apple_embedded_platform_plist_content"):
+			call("add_apple_embedded_platform_plist_content", content)
+		elif has_method("add_ios_plist_content"):
+			call("add_ios_plist_content", content)
+
 	func _export_begin(features: PackedStringArray, _is_debug: bool, path: String, _flags: int) -> void:
 		_ios_path = ""
 		_patched = false
+		_meta = false
 		if not features.has("ios"):
 			return
+		_meta = _meta_app_id() != "" and _meta_client_token() != ""
+		if _meta:
+			_add_plist(_meta_plist())
+		else:
+			push_warning("EggAnalytics: tetrisphere/meta_app_id or meta_client_token is empty; the Meta SDK is left out of the iOS build")
 		if not FileAccess.file_exists("res://ios/plugins/egganalytics.gdip"):
 			push_warning("EggAnalytics: ios/plugins/egganalytics.gdip is missing (run tools/ios-setup.sh); iOS builds will send nothing to Firebase")
 		if has_method("add_apple_embedded_platform_spm_package"):
 			call("add_apple_embedded_platform_spm_package", FIREBASE_URL, FIREBASE_VERSION, PackedStringArray(FIREBASE_PRODUCTS))
+			if _meta:
+				call("add_apple_embedded_platform_spm_package", META_URL, META_VERSION, PackedStringArray(META_PRODUCTS))
 			return
 		_ios_path = path
 
@@ -89,8 +131,13 @@ class EggAnalyticsExportPlugin extends EditorExportPlugin:
 		var products := ""
 		for p: String in FIREBASE_PRODUCTS:
 			products += '                .product(name: "%s", package: "firebase-ios-sdk"),\n' % p
+		var deps := '        .package(url: "%s", exact: "%s"),\n' % [FIREBASE_URL, FIREBASE_VERSION]
+		if _meta:
+			deps += '        .package(url: "%s", exact: "%s"),\n' % [META_URL, META_VERSION]
+			for p: String in META_PRODUCTS:
+				products += '                .product(name: "%s", package: "facebook-ios-sdk"),\n' % p
 		var manifest := """// swift-tools-version:5.9
-// Written by addons/EggAnalytics/export_plugin.gd: Firebase for the EggAnalytics plugin.
+// Written by addons/EggAnalytics/export_plugin.gd: Firebase (and Meta) for the EggAnalytics plugin.
 import PackageDescription
 
 let package = Package(
@@ -98,8 +145,7 @@ let package = Package(
     platforms: [.iOS(.v15)],
     products: [.library(name: "%s", targets: ["%s"])],
     dependencies: [
-        .package(url: "%s", exact: "%s"),
-    ],
+%s    ],
     targets: [
         .target(
             name: "%s",
@@ -109,7 +155,7 @@ let package = Package(
         )
     ]
 )
-""" % [SPM_NAME, SPM_NAME, SPM_NAME, FIREBASE_URL, FIREBASE_VERSION, SPM_NAME, products, SPM_NAME]
+""" % [SPM_NAME, SPM_NAME, SPM_NAME, deps, SPM_NAME, products, SPM_DIR]
 		_store(dir.path_join(SPM_DIR).path_join("Package.swift"), manifest)
 		_store(src.path_join("Dummy.swift"), "// Dummy: a package target needs a source file.\nimport Foundation\n\npublic struct %s {\n    public init() {}\n}\n" % SPM_NAME)
 

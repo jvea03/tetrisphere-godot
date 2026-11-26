@@ -116,3 +116,34 @@ first run on a phone the Xcode console should show Firebase starting, and no
 `[EggAnalytics] Firebase is not linked` line. App Privacy in App Store Connect
 already declares analytics (Product Interaction, Device ID); add **Coarse
 Location** (Firebase derives it from the IP) if it is not there.
+
+## Meta SDK on iOS (written 25 Nov 2026, NOT built or run yet)
+
+For Meta app-install ads on iPhone. Written on Windows; **nothing here has been
+compiled**, so the first Mac build is also the first test.
+
+- **Meta app** (1108143348953147): iOS platform added 25 Nov 2026 with bundle id
+  `com.jvea.eggescape` and App Store id 6819941762 (iPhone and iPad). No shared secret.
+- **SDK**: `addons/EggAnalytics/export_plugin.gd` adds `facebook-ios-sdk` **17.4.0**
+  (product `FacebookCore`) to the local `egg_spm` package beside Firebase, only when
+  `tetrisphere/meta_app_id` and `meta_client_token` are set. 17.4.0 on purpose: 18.1.0 to
+  19.0.1 ship an arm64e slice that can fail to launch on iOS 17/18 (changelog "Unreleased").
+- **Info.plist** (same plugin): FacebookAppID, FacebookClientToken, display name,
+  `fb1108143348953147` URL scheme, Meta's two SKAdNetwork ids, and auto-logging and
+  advertiser-ID collection both **false**. Check the exported plist has no duplicate keys.
+- **Plugin**: `ios_plugins/egganalytics` gained `setMeta(on)` and `attAuthorized()`. Every
+  Meta class and selector is looked up by name and guarded, so a mismatch means "Meta
+  does nothing" (the Output says `Meta SDK is not linked` / `has no initializeSDK`).
+  `setMeta(true)` turns auto-logging on, collects the advertising ID only if the tracking
+  prompt was answered yes, calls `initializeSDK` and `activateApp`. `setMeta(false)` stops
+  logging and ID collection (the SDK cannot be un-started). Rebuild it with `tools/ios-setup.sh`.
+- **Consent**: `TSAnalytics.sync_meta()` now covers iOS with the same rule as Firebase
+  (yes on the card in the UK/EEA/Switzerland, Settings > Share usage data everywhere).
+- **Unchanged on purpose**: `privacy/tracking_enabled=false`, no tracking domains (build 4 was
+  rejected for tracking true without domains; see Privacy manifest above).
+
+Before it ships: build on the Mac and check the Xcode console; confirm in Events Manager
+that nothing arrives before Allow in a UK locale and that the Settings switch stops it;
+update the App Privacy labels in App Store Connect (advertising data, tracking, device ID)
+and `store/privacy.html` (it says the iPhone and iPad version has no Meta SDK; publish
+the change only when the iOS build goes live); then the Meta campaign.
