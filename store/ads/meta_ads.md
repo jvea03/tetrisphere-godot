@@ -18,9 +18,28 @@ from the Google Ads App campaign (README.md), with "100+ critters" corrected to
   ads to under-18s are restricted).
 - **Placements:** Advantage+ placements (Facebook, Instagram, Audience Network,
   Messenger).
-- **Start:** published straight away (26 Nov 2026), while 1.3.8 was still in
-  App Review: until it's live, Meta can't see iPhone installs, so learning
-  starts once it is.
+- **Start:** published 26 Nov 2026, while 1.3.8 was still in App Review: until
+  it's live, Meta can't see iPhone installs, so learning starts once it is.
+
+## Live (26 Nov 2026)
+
+Campaign `EE - Meta - iOS - Installs - US/CA` (Advantage+ app campaign, iOS 14+
+campaign with SKAdNetwork reporting, $10/day campaign budget), ad set
+`EE - iOS - US/CA - 18+ - Advantage+` (US and Canada, 18+, Advantage+
+placements, Maximize number of app installs), page The Little Guy Games and
+Instagram @thelittleguygames, six ads with the five primary texts and five
+headlines below and Install now:
+
+- `EE - Images - Google Ads set (80+)` (01 crack), `EE - 02 Rescue - portrait`,
+  `EE - 03 Collect 80+ - portrait`, `EE - 04 Adventure - portrait`,
+  `EE - 05 Spin - portrait`: the 1200x1500 images.
+- `EE - Video - gameplay 9:16`: the portrait gameplay video for vertical
+  placements and the square one for feeds (Crop step, per placement).
+
+Advantage+ creative: Text improvements and Add overlays off (no AI rewrites of
+the copy, no text over the art); visual touch-ups, animation and Flex media on;
+no AI-generated images. The account also holds the Duckdoku (DB) drafts from
+another session: publish Egg Escape drafts by selecting their rows only.
 
 ## Primary text (up to 5; 125 characters show before "See more")
 
@@ -55,7 +74,14 @@ The "Collect" images were rebuilt on 26 Nov 2026 to say "Collect 80+ cute critte
 
 ## Videos
 
-The gameplay videos (README.md, `store/ads/video/`) are made on the Windows PC
-and aren't in git. Meta wants the files themselves (not YouTube links): add the
-portrait 720x1280 one (Reels and Stories) and the square one (feeds) to the ad
-from that PC. Meta takes AVI, but MP4 uploads faster.
+Rebuilt on the Mac 26 Nov 2026 with Godot's Movie Maker (the same
+tools/make_video.tscn as make_videos.ps1, with a temporary override.cfg for the
+window size), then made into H.264 MP4s for upload (Meta via the browser takes
+files under 10 MB):
+
+```
+ffmpeg -i egg_escape_portrait_720x1280.avi -c:v libx264 -preset slow -crf 22 -pix_fmt yuv420p -movflags +faststart -c:a aac -b:a 128k egg_escape_portrait_720x1280.mp4
+```
+
+Portrait 720x1280 (6.8 MB) and square 1080x1080 (3.9 MB), about 18 s each, in
+store/ads/video/ (git-ignored).
