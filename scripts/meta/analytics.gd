@@ -87,9 +87,12 @@ static func _to_meta(name: String, params: Dictionary) -> void:
 		_plugin.logMetaEvent(m[0], m[1])
 
 
-## Starts Firebase as the game opens, so its first_open counts every install.
+## Starts Firebase as the game opens, so its first_open counts every install,
+## and the Meta SDK with it (where allowed), so Meta counts every app open, not
+## only sessions that reach a level or another event.
 static func start() -> void:
 	_ready_plugin()
+	sync_meta()
 
 
 static func event(name: String, params := {}) -> void:
