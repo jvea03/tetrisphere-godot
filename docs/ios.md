@@ -149,6 +149,8 @@ github.com (Deny is fine: the repo is public).
 
 Before it ships: build on the Mac and check the Xcode console; confirm in Events Manager
 that nothing arrives before Allow in a UK locale and that the Settings switch stops it;
-update the App Privacy labels in App Store Connect (advertising data, tracking, device ID)
+App Privacy in App Store Connect: done 25 Nov 2026 (Coarse Location, Device ID, Product Interaction and
+Advertising Data were already Third-Party Advertising, linked and tracking for AdMob; Purchase History
+gained Analytics, Third-Party Advertising and tracking, since Meta auto-logs in-app purchases)
 and `store/privacy.html` (it says the iPhone and iPad version has no Meta SDK; publish
 the change only when the iOS build goes live); then the Meta campaign.
