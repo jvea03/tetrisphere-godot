@@ -11,7 +11,7 @@ set it up once production access is granted and the app is published.
 
 1. Crack the egg, free a critter
 2. Spin, match & break free!
-3. Collect 100+ cute critters
+3. Collect 80+ cute critters
 4. Cozy block puzzle game
 5. Free puzzle fun, any time
 
@@ -19,7 +19,7 @@ set it up once production access is granted and the app is published.
 
 1. Spin the egg, drop matching blocks and dig a path out for the critter trapped inside.
 2. Hundreds of levels, clever blockers, win streaks and timed challenge eggs to beat!
-3. Collect and level up 100+ cute critters, open chests and rebuild your crashed ship.
+3. Collect and level up 80+ cute critters, open chests and rebuild your crashed ship.
 4. Relaxing pastel art, cozy music and a new Daily Egg puzzle to crack every day.
 5. Can you save them all? Play Egg Escape: Block Puzzle Match free today!
 
@@ -31,7 +31,7 @@ Five ideas, each in all three shapes App campaigns use. Upload all 15.
 |---|---|---|---|---|
 | Crack | Crack the egg. Free the critter! | `01_crack_landscape_1200x628.png` | `01_crack_square_1200x1200.png` | `01_crack_portrait_1200x1500.png` |
 | Rescue | Can you save them all? | `02_rescue_landscape_1200x628.png` | `02_rescue_square_1200x1200.png` | `02_rescue_portrait_1200x1500.png` |
-| Collect | Collect 100+ cute critters! | `03_collect_landscape_1200x628.png` | `03_collect_square_1200x1200.png` | `03_collect_portrait_1200x1500.png` |
+| Collect | Collect 80+ cute critters! | `03_collect_landscape_1200x628.png` | `03_collect_square_1200x1200.png` | `03_collect_portrait_1200x1500.png` |
 | Adventure | A cozy puzzle adventure | `04_adventure_landscape_1200x628.png` | `04_adventure_square_1200x1200.png` | `04_adventure_portrait_1200x1500.png` |
 | Spin | Spin. Match. Escape! | `05_spin_landscape_1200x628.png` | `05_spin_square_1200x1200.png` | `05_spin_portrait_1200x1500.png` |
 
