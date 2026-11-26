@@ -26,26 +26,30 @@ echo "== export (release) =="
 # resolve the checkouts, then download each binaryTarget ourselves from the
 # URL in its Package.swift and verify the manifest's checksum.
 echo "== swift packages =="
-( cd build/ios && xcodebuild -resolvePackageDependencies -project EggEscape.xcodeproj -scheme EggEscape >/dev/null 2>&1 )
+# It can sit for ever on facebook-ios-sdk's zips once the checkouts are done, so
+# it gets 5 minutes (perl's alarm: macOS has no timeout(1)).
+( cd build/ios && perl -e 'alarm 300; exec @ARGV' xcodebuild -resolvePackageDependencies -project EggEscape.xcodeproj -scheme EggEscape >/dev/null 2>&1 ) || echo "  (resolver stopped; using the checkouts it made)"
 SP=$(ls -d ~/Library/Developer/Xcode/DerivedData/EggEscape-*/SourcePackages | head -1)
+CACHE=~/Library/Caches/org.swift.swiftpm/artifacts
+mkdir -p "$CACHE"
 for pkg in "$SP"/checkouts/*; do
 	name=$(basename "$pkg")
 	while IFS='|' read -r target url sum; do
 		dest="$SP/artifacts/$name/$target"
-		[ -d "$dest/$target.xcframework" ] && { echo "  have $target"; continue; }
-		tmp=$(mktemp -d)
-		curl -fsSL -o "$tmp/a.zip" "$url"
-		got=$(shasum -a 256 "$tmp/a.zip" | cut -d' ' -f1)
-		[ "$got" = "$sum" ] || { echo "checksum mismatch for $target"; exit 1; }
-		mkdir -p "$dest" && unzip -q "$tmp/a.zip" -d "$dest" && rm -rf "$tmp"
+		# SwiftPM's own download cache too (the URL with every other character
+		# made "_"): the archive step downloads again unless the zip is there,
+		# and xcodebuild's downloader stalls on GitHub release files (Meta's).
+		cached="$CACHE/$(printf '%s' "$url" | sed 's/[^A-Za-z0-9]/_/g')"
+		if [ -d "$dest/$target.xcframework" ] && [ -f "$cached" ]; then echo "  have $target"; continue; fi
+		if [ ! -f "$cached" ] || [ "$(shasum -a 256 "$cached" | cut -d' ' -f1)" != "$sum" ]; then
+			curl -fsSL -o "$cached.part" "$url"
+			got=$(shasum -a 256 "$cached.part" | cut -d' ' -f1)
+			[ "$got" = "$sum" ] || { echo "checksum mismatch for $target"; exit 1; }
+			mv "$cached.part" "$cached"
+		fi
+		rm -rf "$dest" && mkdir -p "$dest" && unzip -q "$cached" -d "$dest"
 		echo "  fetched $target"
-	done < <(python3 - "$pkg/Package.swift" <<'PY'
-import re, sys
-src = open(sys.argv[1]).read()
-for m in re.finditer(r'binaryTarget\(\s*name:\s*"([^"]+)"\s*,\s*url:\s*"([^"]+)"\s*,\s*checksum:\s*"([^"]+)"', src, re.S):
-    print("|".join(m.groups()))
-PY
-)
+	done < <(python3 tools/spm_binaries.py "$pkg/Package.swift")
 done
 
 # The team for every target, the Swift packages' resource bundles included

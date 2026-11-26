@@ -69,6 +69,8 @@ class EggAnalyticsExportPlugin extends EditorExportPlugin:
 	## The Meta SDK's Info.plist entries. Auto-logging and advertiser-ID collection
 	## start OFF: the plugin's setMeta() turns them on only after consent and, for
 	## the ID, the iOS tracking prompt (scripts/meta/analytics.gd sync_meta).
+	## No SKAdNetworkItems here: the AdMob plugin writes Google's list, which already
+	## has Meta's two ids (v9wttpbfk9, n38lu8286q), and a second key would be a duplicate.
 	func _meta_plist() -> String:
 		return "".join([
 			"<key>FacebookAppID</key><string>%s</string>\n" % _meta_app_id(),
@@ -77,7 +79,6 @@ class EggAnalyticsExportPlugin extends EditorExportPlugin:
 			"<key>FacebookAutoLogAppEventsEnabled</key><false/>\n",
 			"<key>FacebookAdvertiserIDCollectionEnabled</key><false/>\n",
 			"<key>CFBundleURLTypes</key><array><dict><key>CFBundleURLSchemes</key><array><string>fb%s</string></array></dict></array>\n" % _meta_app_id(),
-			"<key>SKAdNetworkItems</key><array><dict><key>SKAdNetworkIdentifier</key><string>v9wttpbfk9.skadnetwork</string></dict><dict><key>SKAdNetworkIdentifier</key><string>n38lu8286q.skadnetwork</string></dict></array>\n",
 		])
 
 	func _add_plist(content: String) -> void:
@@ -155,7 +156,7 @@ let package = Package(
         )
     ]
 )
-""" % [SPM_NAME, SPM_NAME, SPM_NAME, deps, SPM_NAME, products, SPM_DIR]
+""" % [SPM_NAME, SPM_NAME, SPM_NAME, deps, SPM_NAME, products, SPM_NAME]
 		_store(dir.path_join(SPM_DIR).path_join("Package.swift"), manifest)
 		_store(src.path_join("Dummy.swift"), "// Dummy: a package target needs a source file.\nimport Foundation\n\npublic struct %s {\n    public init() {}\n}\n" % SPM_NAME)
 

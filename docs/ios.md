@@ -117,10 +117,15 @@ first run on a phone the Xcode console should show Firebase starting, and no
 already declares analytics (Product Interaction, Device ID); add **Coarse
 Location** (Firebase derives it from the IP) if it is not there.
 
-## Meta SDK on iOS (written 25 Nov 2026, NOT built or run yet)
+## Meta SDK on iOS (built 25 Nov 2026: 1.3.8 build 14, uploaded; not run on a phone yet)
 
-For Meta app-install ads on iPhone. Written on Windows; **nothing here has been
-compiled**, so the first Mac build is also the first test.
+For Meta app-install ads on iPhone. Written on Windows, first built on the Mac for 1.3.8 (14):
+the archive embeds FBSDKCoreKit, FBSDKCoreKit_Basics and FBAEMKit and the app links them.
+Fixed on that first build: the local package's target path (`EggAnalyticsDeps`, not
+`egg_spm`), a duplicate `SKAdNetworkItems` key (AdMob's list already has Meta's ids), and
+`tools/ios-upload.sh` now fetches Meta's GitHub-hosted zips itself (`tools/spm_binaries.py`)
+into SwiftPM's download cache, since xcodebuild's own download sat on a keychain prompt for
+github.com (Deny is fine: the repo is public).
 
 - **Meta app** (1108143348953147): iOS platform added 25 Nov 2026 with bundle id
   `com.jvea.eggescape` and App Store id 6819941762 (iPhone and iPad). No shared secret.
@@ -129,7 +134,7 @@ compiled**, so the first Mac build is also the first test.
   `tetrisphere/meta_app_id` and `meta_client_token` are set. 17.4.0 on purpose: 18.1.0 to
   19.0.1 ship an arm64e slice that can fail to launch on iOS 17/18 (changelog "Unreleased").
 - **Info.plist** (same plugin): FacebookAppID, FacebookClientToken, display name,
-  `fb1108143348953147` URL scheme, Meta's two SKAdNetwork ids, and auto-logging and
+  `fb1108143348953147` URL scheme (Meta's two SKAdNetwork ids are already in AdMob's list, so no second key), and auto-logging and
   advertiser-ID collection both **false**. Check the exported plist has no duplicate keys.
 - **Plugin**: `ios_plugins/egganalytics` gained `setMeta(on)` and `attAuthorized()`. Every
   Meta class and selector is looked up by name and guarded, so a mismatch means "Meta
