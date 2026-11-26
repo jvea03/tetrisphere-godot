@@ -28,6 +28,7 @@ func _ready() -> void:
 	_test_parked_ball()
 	_test_clock()
 	_test_soon()
+	_test_meta_events()
 	_test_ad_rewards()
 	print("")
 	print("ALL PASSED" if _failures == 0 else "%d FAILED" % _failures)
@@ -712,3 +713,14 @@ func _test_soon() -> void:
 	_check("the season board ends when the Battle Pass season does (Dec 1), not on the 1st of a month",
 		late_s1 == "S1" and early_s2 == "S2" and absi(left - 12 * 3600) < 120 and left == pass_left)
 	_check("its first season counts from the leaderboards' opening (Nov 11 to Dec 1: 20 days)", length == 20)
+
+
+func _test_meta_events() -> void:
+	var t := TSAnalytics.meta_event_for("tutorial_complete", {})
+	_check("meta: the first lesson is Meta's tutorial completion", t.size() == 2 and t[0] == "fb_mobile_tutorial_completion")
+	for lv in [5, 10, 20]:
+		var m := TSAnalytics.meta_event_for("level_%d_won" % lv, {})
+		_check("meta: level %d is a level achieved with its number" % lv, m.size() == 2 and m[0] == "fb_mobile_level_achieved" and m[1]["fb_level"] == lv)
+	var v := TSAnalytics.meta_event_for("valuable_player", {"why": "level_10"})
+	_check("meta: valuable_player goes with only its reason", v.size() == 2 and v[0] == "valuable_player" and v[1] == {"why": "level_10"})
+	_check("meta: nothing else (ads, level starts, GameAnalytics-only events) goes to Meta", TSAnalytics.meta_event_for("level_start", {"level": "3"}).is_empty() and TSAnalytics.meta_event_for("ad_rewarded_earned", {"count": "1"}).is_empty() and TSAnalytics.meta_event_for("level_end", {}).is_empty())

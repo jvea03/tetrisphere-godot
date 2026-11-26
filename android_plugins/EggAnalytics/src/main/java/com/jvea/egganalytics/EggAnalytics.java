@@ -84,8 +84,36 @@ public class EggAnalytics extends GodotPlugin {
         }
     }
 
+    /**
+     * A game event for Meta (scripts/meta/analytics.gd meta_event_for): the
+     * first lesson, levels 5/10/20 and valuable_player, with Meta's standard
+     * names where there is one. Only called while Meta is on (setMeta(true)).
+     * Quietly does nothing in a build without the Meta SDK.
+     */
+    @UsedByGodot
+    public void logMetaEvent(String name, Dictionary params) {
+        Activity a = getActivity();
+        if (a == null) return;
+        try {
+            Bundle b = new Bundle();
+            for (Map.Entry<String, Object> e : params.entrySet()) {
+                Object v = e.getValue();
+                if (v instanceof Integer || v instanceof Long) b.putLong(e.getKey(), ((Number) v).longValue());
+                else if (v instanceof Number) b.putDouble(e.getKey(), ((Number) v).doubleValue());
+                else b.putString(e.getKey(), String.valueOf(v));
+            }
+            Meta.log(a.getApplicationContext(), name, b);
+        } catch (Throwable t) {
+            // no Meta SDK in this build
+        }
+    }
+
     /** Own class, so a build without the Meta SDK never loads it. */
     private static final class Meta {
+        static void log(Context c, String name, Bundle b) {
+            com.facebook.appevents.AppEventsLogger.newLogger(c).logEvent(name, b);
+        }
+
         static void set(boolean on) {
             com.facebook.FacebookSdk.setAutoLogAppEventsEnabled(on);
             com.facebook.FacebookSdk.setAdvertiserIDCollectionEnabled(on);

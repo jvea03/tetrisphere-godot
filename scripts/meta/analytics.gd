@@ -61,6 +61,32 @@ static func sync_meta() -> void:
 		_plugin.setMeta(want)
 
 
+## The few events that also go to Meta (Android and iOS, while the Meta SDK is
+## on: same consent rule as Firebase), so Meta's install campaign can learn
+## which installs become players and later optimize for them. Meta's standard
+## names where there is one: the first lesson done is fb_mobile_tutorial_completion,
+## levels 5/10/20 are fb_mobile_level_achieved (fb_level), and valuable_player
+## (level 10 or 3 rewarded ads, once per player) is a custom event. Only the
+## level number or the reason goes with them. Returns [name, params] or [].
+static func meta_event_for(name: String, params: Dictionary) -> Array:
+	match name:
+		"tutorial_complete":
+			return ["fb_mobile_tutorial_completion", {"fb_success": 1}]
+		"level_5_won", "level_10_won", "level_20_won":
+			return ["fb_mobile_level_achieved", {"fb_level": int(name.split("_")[1])}]
+		"valuable_player":
+			return ["valuable_player", {"why": str(params.get("why", ""))}]
+	return []
+
+
+static func _to_meta(name: String, params: Dictionary) -> void:
+	if _plugin == null or not _meta_on or not _plugin.has_method("logMetaEvent"):
+		return
+	var m := meta_event_for(name, params)
+	if not m.is_empty():
+		_plugin.logMetaEvent(m[0], m[1])
+
+
 ## Starts Firebase as the game opens, so its first_open counts every install.
 static func start() -> void:
 	_ready_plugin()
@@ -74,6 +100,7 @@ static func event(name: String, params := {}) -> void:
 	sync_meta()
 	if p != null and _allowed():
 		p.logEvent(name, params)
+	_to_meta(name, params)
 	_to_ga(name, params)
 
 

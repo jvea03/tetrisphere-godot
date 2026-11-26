@@ -27,6 +27,7 @@ public:
 	void logEvent(String name, Dictionary params);
 	void setUserProperty(String name, String value);
 	void setMeta(bool on);
+	void logMetaEvent(String name, Dictionary params);
 	bool attAuthorized();
 
 	EggAnalytics();

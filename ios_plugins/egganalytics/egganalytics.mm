@@ -155,11 +155,45 @@ void EggAnalytics::setMeta(bool on) {
 	}
 }
 
+// A game event for Meta (scripts/meta/analytics.gd meta_event_for): the first
+// lesson, levels 5/10/20 and valuable_player. Only after setMeta(true) started
+// the SDK; guarded like the rest, so a missing method means "nothing sent".
+void EggAnalytics::logMetaEvent(String name, Dictionary params) {
+	if (!meta_started) {
+		return;
+	}
+	Class events_class = NSClassFromString(@"FBSDKAppEvents");
+	id events = meta_shared(events_class, @selector(sharedInstance), @selector(shared));
+	SEL log_sel = @selector(logEvent:parameters:);
+	if (events == nil || ![events respondsToSelector:log_sel]) {
+		return;
+	}
+	NSMutableDictionary *dict = [NSMutableDictionary dictionary];
+	Array keys = params.keys();
+	for (int i = 0; i < keys.size(); i++) {
+		Variant v = params[keys[i]];
+		NSString *key = to_ns(String(keys[i]));
+		switch (v.get_type()) {
+			case Variant::INT:
+				dict[key] = [NSNumber numberWithLongLong:(int64_t)v];
+				break;
+			case Variant::FLOAT:
+				dict[key] = [NSNumber numberWithDouble:(double)v];
+				break;
+			default:
+				dict[key] = to_ns(String(v));
+				break;
+		}
+	}
+	((void (*)(id, SEL, id, id))objc_msgSend)(events, log_sel, to_ns(name), dict);
+}
+
 void EggAnalytics::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("start", "api_key", "app_id", "project_id", "sender_id"), &EggAnalytics::start);
 	ClassDB::bind_method(D_METHOD("logEvent", "name", "params"), &EggAnalytics::logEvent);
 	ClassDB::bind_method(D_METHOD("setUserProperty", "name", "value"), &EggAnalytics::setUserProperty);
 	ClassDB::bind_method(D_METHOD("setMeta", "on"), &EggAnalytics::setMeta);
+	ClassDB::bind_method(D_METHOD("logMetaEvent", "name", "params"), &EggAnalytics::logMetaEvent);
 	ClassDB::bind_method(D_METHOD("attAuthorized"), &EggAnalytics::attAuthorized);
 }
 
