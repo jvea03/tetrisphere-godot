@@ -171,11 +171,11 @@ Release name: `1.3.2 (10) – Faster start`
     Thanks for playing!
     </en-US>
 
-## Release notes for version code 15 (1.3.7)
+## Release notes for version code 16 (1.3.7)
 
 What's new since 1.3.6. Short, because most of it is behind the scenes. The App Store's What's New can use the same text.
 
-Release name: `1.3.7 (15) – Fresh start fix`
+Release name: `1.3.7 (16) – Fresh start fix`
 
     <en-US>
     • New players now start on the current season's planet
