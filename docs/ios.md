@@ -152,5 +152,5 @@ that nothing arrives before Allow in a UK locale and that the Settings switch st
 App Privacy in App Store Connect: done 25 Nov 2026 (Coarse Location, Device ID, Product Interaction and
 Advertising Data were already Third-Party Advertising, linked and tracking for AdMob; Purchase History
 gained Analytics, Third-Party Advertising and tracking, since Meta auto-logs in-app purchases)
-and `store/privacy.html` (it says the iPhone and iPad version has no Meta SDK; publish
+and `store/privacy.html` (done and published 26 Nov 2026: Meta on iPhone and iPad "from version 1.3.8";
 the change only when the iOS build goes live); then the Meta campaign.
