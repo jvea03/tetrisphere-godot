@@ -99,6 +99,8 @@ func build() -> void:
 	TSInbox.fetch(self, func() -> void:
 		_refresh_inbox()
 		TSProfile.verify_name()   # the file may rule a name out
+		if TSProfile.must_name() and not tutorial.visible:
+			_start_naming()   # asked on this visit, not the next
 		_check_update())
 	_check_update.call_deferred()
 	# The leaderboards: finished boards placed (prizes). Stickers wait for the
