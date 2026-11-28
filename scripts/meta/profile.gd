@@ -25,6 +25,8 @@ const SAVE_VERSION := 1
 ## in the binary -- but it stops casual coin editing.
 const SAVE_KEY := "tetrisphere-profile-v1-2c9e"
 const DEFAULT_NAME := "Hatchling"
+const NAME_MAX_LENGTH := 18
+const NAME_MIN_LENGTH := 2
 
 ## False for tests, so they never touch the player's real save.
 static var persist: bool = true
@@ -39,6 +41,8 @@ static func use_test_profile(level := 1) -> void:
 	intro_seen = true
 	ship_story_seen = true
 	review_done = true
+	name_required = false   # no name card unless a test asks for one
+	name_offer_seen = true
 	notify_asked = true
 	challenge_done_through = 1 << 30   # no challenge levels unless a test asks for one
 	challenge_intro_seen = true
@@ -359,6 +363,11 @@ static var club_intro_seen: bool = false
 static var collection_tutorial_seen: bool = false
 static var daily_callout_seen: bool = false
 static var name_callout_seen: bool = false   # Home's nudge to pick a name for the leaderboards, once
+## A player who reaches the leaderboards from here on must pick a name as they
+## unlock (must_name). False for a save already past the unlock, which is only
+## offered one the first time Ranks opens (name_offer_seen), and once named.
+static var name_required: bool = false
+static var name_offer_seen: bool = false
 static var ship_story_seen: bool = false   # the first Home visit's "we have to rebuild the camp and ship", once
 static var camp_callout_seen: bool = false   # Home's one-time pointer to the camp's build nodes
 
@@ -2139,6 +2148,34 @@ static func is_daily_completed_today() -> bool:
 	return daily_completed_date == TSClock.date_string()
 
 
+# -- the leaderboard name -------------------------------------------------------------
+
+## Still under the name every player starts with.
+static func needs_name() -> bool:
+	return player_name.strip_edges().to_lower() == DEFAULT_NAME.to_lower()
+
+
+## The leaderboards are theirs now, and they must name themselves first.
+static func must_name() -> bool:
+	return name_required and needs_name() and TSNav.leaderboards_open() and stars_open()
+
+
+## Takes `raw` as the player name, or says why not ("" once it is taken).
+static func choose_name(raw: String) -> String:
+	var wanted := raw.strip_edges()
+	if wanted.length() < NAME_MIN_LENGTH:
+		return "Type a name of at least %d letters" % NAME_MIN_LENGTH
+	if wanted.to_lower() == DEFAULT_NAME.to_lower():
+		return "Pick a name of your own"
+	if not TSFilter.is_clean(wanted):
+		return "That name isn't allowed -- please choose another"
+	player_name = wanted.left(NAME_MAX_LENGTH)
+	name_required = false
+	save()
+	push_boards()   # the boards show the new name
+	return ""
+
+
 # -- leaderboards ("stars") ---------------------------------------------------------
 # A local placeholder, not a real cross-player board: rivals are fictional,
 # their scores seeded from the date, so they are the same for everyone on a
@@ -3276,6 +3313,7 @@ static func ensure_loaded() -> void:
 	var cfg := _read_save() if persist else null
 	if cfg == null:
 		planet_theme = season_theme()   # a new player starts on this season's planet
+		name_required = true
 		return
 	var g := func(key: String, default: Variant) -> Variant: return cfg.get_value("profile", key, default)
 	player_name = str(g.call("name", DEFAULT_NAME))
@@ -3332,6 +3370,8 @@ static func ensure_loaded() -> void:
 	collection_tutorial_seen = bool(g.call("collection_tutorial_seen", false))
 	daily_callout_seen = bool(g.call("daily_callout_seen", false))
 	name_callout_seen = bool(g.call("name_callout_seen", false))
+	name_required = bool(g.call("name_required", last_level < TSNav.FEATURES_UNLOCK_LEVEL))
+	name_offer_seen = bool(g.call("name_offer_seen", false))
 	camp_callout_seen = bool(g.call("camp_callout_seen", false))
 	# A save from before the story existed: anyone past level 1 has started without it.
 	ship_story_seen = bool(g.call("ship_story_seen", last_level > 1))
@@ -3508,6 +3548,8 @@ static func save() -> void:
 	s.call("collection_tutorial_seen", collection_tutorial_seen)
 	s.call("daily_callout_seen", daily_callout_seen)
 	s.call("name_callout_seen", name_callout_seen)
+	s.call("name_required", name_required)
+	s.call("name_offer_seen", name_offer_seen)
 	s.call("camp_callout_seen", camp_callout_seen)
 	s.call("ship_story_seen", ship_story_seen)
 	s.call("review_next_level", review_next_level)

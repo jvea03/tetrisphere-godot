@@ -92,7 +92,8 @@ func build() -> void:
 	_fetch()
 	Online.check_stickers(true)
 	Online.stickers_arrived.connect(_on_stickers)
-	TSStickerCards.show_received(self)
+	if not _ask_name():
+		TSStickerCards.show_received(self)
 
 
 ## Asks Online for every board at once (a minute fresh at most), so switching
@@ -365,10 +366,32 @@ func _input(e: InputEvent) -> void:
 		_press_scroll = _scroll.scroll_vertical if is_instance_valid(_scroll) else 0
 
 
+## The name card, if this player is still unnamed: forced if they must name
+## themselves, offered (with Later) the first time Ranks opens otherwise.
+## True if it opened; stickers wait until it closes.
+func _ask_name() -> bool:
+	var forced := TSProfile.must_name()
+	var offer := not forced and not TSProfile.name_offer_seen and TSProfile.needs_name() \
+		and TSNav.leaderboards_open() and TSProfile.stars_open()
+	if not forced and not offer:
+		return false
+	if offer:
+		TSProfile.name_offer_seen = true
+		TSProfile.save()
+	TSNameCard.open(self, forced, func() -> void:
+		_refresh()
+		_on_stickers.call_deferred())
+	return true
+
+
+func on_back_requested() -> bool:
+	return TSNameCard.close_offered(self)
+
+
 ## Stickers show only here, while the leaderboard is open; any that arrive
 ## after the player has left wait in Online.received for their next visit.
 func _on_stickers() -> void:
-	if is_inside_tree() and is_visible_in_tree():
+	if is_inside_tree() and is_visible_in_tree() and not TSNameCard.is_open(self):
 		TSStickerCards.show_received(self)
 
 

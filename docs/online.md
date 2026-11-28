@@ -110,3 +110,16 @@ computer players (`scripts/meta/bots.gd`, `TSBots`).
 - **Not on** the Snowball Fight boards or Clubs.
 - Builds before this one don't show bots and still need 10 real players for a prize.
 - The store description and the in-game text no longer say every rival is a real player.
+
+## Naming (27 Nov 2026)
+
+- **Forced at the unlock:** a player who reaches the leaderboards (level 7) from this
+  build on must pick a name. `TSNameCard` (Save only) opens on Home after the ship
+  story and before the chest and Battle Pass walkthrough, and on Ranks if they get
+  there first (`TSProfile.must_name`, saved as `name_required`).
+- **Players already past the unlock** and still "Hatchling" are offered the same card
+  with **Later**, once, the first time they open Ranks (`name_offer_seen`). The older
+  Home nudge at the profile picture still runs for them.
+- A name is 2 to 18 characters, not "Hatchling", and passes `TSFilter`
+  (`TSProfile.choose_name`). Names needn't be unique. Saving the profile with the name
+  box empty now keeps the current name.

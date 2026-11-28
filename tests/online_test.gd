@@ -76,6 +76,7 @@ func _ready() -> void:
 	_check("a board played online pays its place (1st)", TSProfile.pending_board_prizes.size() == 1 and int(TSProfile.pending_board_prizes[0]["place"]) == 1)
 	Online.force_fake = false
 	_test_bots()
+	_test_naming()
 	print("")
 	print("ALL PASSED" if _failures == 0 else "%d FAILED" % _failures)
 	get_tree().quit(0 if _failures == 0 else 1)
@@ -111,3 +112,18 @@ func _test_bots() -> void:
 		_check("a blocked bot is left off", TSProfile.standings_for("daily").size() == rows.size() - 1)
 		TSProfile.blocked_players = []
 	_check("a finished board counts the bots above a score", TSBots.beating("daily_2026-11-27", 20, 0) == 20 and TSBots.beating("daily_2026-11-27", 20, TSBots.TOP_DAILY) == 0)
+
+
+func _test_naming() -> void:
+	TSProfile.use_test_profile(7)
+	TSProfile.player_name = TSProfile.DEFAULT_NAME
+	_check("a test profile is never asked unless it says so", not TSProfile.must_name())
+	TSProfile.name_required = true
+	_check("an unnamed player at the unlock must pick a name", TSProfile.must_name())
+	TSProfile.last_level = 6
+	_check("not before the leaderboards unlock", not TSProfile.must_name())
+	TSProfile.last_level = 7
+	for bad in ["", "   ", "a", "hatchling", " Hatchling ", "shit"]:
+		_check("'%s' is not taken, with a reason" % bad, TSProfile.choose_name(bad) != "" and TSProfile.player_name == TSProfile.DEFAULT_NAME and TSProfile.must_name())
+	_check("a name is taken, trimmed", TSProfile.choose_name("  Eggbert  ") == "" and TSProfile.player_name == "Eggbert")
+	_check("and nothing more is asked", not TSProfile.must_name() and not TSProfile.needs_name() and not TSProfile.name_required)

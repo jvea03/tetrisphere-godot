@@ -1947,7 +1947,7 @@ func _build_profile() -> void:
 	_profile["trophies"] = trophies
 	box.add_child(TSUI.label("NAME", 20, TSUI.MUTED))
 	_name_edit = LineEdit.new()
-	_name_edit.max_length = 18
+	_name_edit.max_length = TSProfile.NAME_MAX_LENGTH
 	_name_edit.custom_minimum_size = Vector2(0, 64)
 	_name_edit.add_theme_font_override("font", TSToon.hand_font())
 	_name_edit.add_theme_font_size_override("font_size", 28)
@@ -2034,7 +2034,10 @@ func _on_profile_save() -> void:
 	if not TSFilter.is_clean(new_name):
 		TSUI.note(self, _name_edit, "That name isn't allowed -- please choose another")
 		return
-	TSProfile.player_name = new_name if new_name != "" else TSProfile.DEFAULT_NAME
+	if new_name != "":   # left blank, the name stays as it was
+		TSProfile.player_name = new_name
+		if not TSProfile.needs_name():
+			TSProfile.name_required = false
 	TSProfile.avatar_index = _avatar_choice
 	TSProfile.save()
 	TSProfile.push_boards()   # the boards show the new name and critter
@@ -2089,6 +2092,10 @@ func _tutorial_chest_slot() -> int:
 func _start_walkthrough() -> bool:
 	if not TSProfile.ship_story_seen:
 		_start_ship_story()
+	elif TSNameCard.is_open(self):
+		return true
+	elif TSProfile.must_name():
+		_start_naming()
 	elif TSNav.features_unlocked() and not TSProfile.home_tutorial_seen:
 		_start_home_tutorial()
 	elif daily_btn.visible and not TSProfile.daily_callout_seen:
@@ -2100,6 +2107,17 @@ func _start_walkthrough() -> bool:
 	else:
 		return false
 	return true
+
+
+## The leaderboards have just unlocked: a name first (the card only has Save),
+## then on to whatever else is new here.
+func _start_naming() -> void:
+	await _settled()
+	if not is_inside_tree() or not TSProfile.must_name() or TSNameCard.is_open(self):
+		return
+	TSNameCard.open(self, true, func() -> void:
+		_refresh_avatar()
+		_start_walkthrough.call_deferred())
 
 
 ## The name nudge: the player is on the leaderboards (a star earned while
