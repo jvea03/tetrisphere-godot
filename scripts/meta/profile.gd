@@ -2673,6 +2673,11 @@ const BATTLE_PASS_FIRST_KEY := "BP740"
 const BATTLE_PASS_TIER_COUNT := 30
 const BATTLE_PASS_TIER_BASE := 30
 const BATTLE_PASS_TIER_STEP := 1
+## Each tier asks this share of BASE + STEP a tier, to the nearest star: 120
+## since 28 Nov 2026 (about 1,530 stars for all 30 tiers, from 1,276). The
+## save records the share its stars were banked under ("battle_pass_cost"), so
+## a change here moves nobody's tier (_rescaled_pass_xp).
+const BATTLE_PASS_STAR_PERCENT := 120
 const BATTLE_PASS_PRICE_LABEL := "$4.99"
 const TIER_BUY_COINS_PER_STAR := 250
 
@@ -2691,17 +2696,33 @@ const BONUS_CHEST_MATERIALS := 150
 const BONUS_CHEST_PREMIUM_TIMES := 2   # the premium track doubles each chest
 
 
-static func battle_pass_tier_cost(tier: int) -> int:
+static func battle_pass_tier_cost(tier: int, percent := BATTLE_PASS_STAR_PERCENT) -> int:
 	if tier <= 1:
 		return 0
-	return BATTLE_PASS_TIER_BASE + (tier - 2) * BATTLE_PASS_TIER_STEP
+	return roundi((BATTLE_PASS_TIER_BASE + (tier - 2) * BATTLE_PASS_TIER_STEP) * percent / 100.0)
 
 
-static func battle_pass_stars_for_tier(tier: int) -> int:
+static func battle_pass_stars_for_tier(tier: int, percent := BATTLE_PASS_STAR_PERCENT) -> int:
 	var total := 0
 	for t in range(1, tier + 1):
-		total += battle_pass_tier_cost(t)
+		total += battle_pass_tier_cost(t, percent)
 	return total
+
+
+## Stars banked when the tiers asked `from` percent, as today's: the same tier
+## reached and the same share of the way to the next; past the last tier, the
+## same stars over it (so the Bonus Chests stay as they were).
+static func _rescaled_pass_xp(xp: int, from: int) -> int:
+	if from == BATTLE_PASS_STAR_PERCENT or xp <= 0:
+		return xp
+	var tier := 0
+	while tier < BATTLE_PASS_TIER_COUNT and xp >= battle_pass_stars_for_tier(tier + 1, from):
+		tier += 1
+	var over := xp - battle_pass_stars_for_tier(tier, from)
+	if tier >= BATTLE_PASS_TIER_COUNT:
+		return battle_pass_stars_for_tier(tier) + over
+	("integer_division")
+	return battle_pass_stars_for_tier(tier) + over * battle_pass_tier_cost(tier + 1) / battle_pass_tier_cost(tier + 1, from)
 
 
 static func _battle_pass_key() -> String:
@@ -3553,7 +3574,7 @@ static func ensure_loaded() -> void:
 			if b.ends_with(TSClock.utc_date_string()) or b.begins_with("weekly") or b.begins_with("season"):
 				board_seen[b] = seen[b]
 	battle_pass_key = str(g.call("battle_pass_key", ""))
-	battle_pass_xp = int(g.call("battle_pass_xp", 0))
+	battle_pass_xp = _rescaled_pass_xp(int(g.call("battle_pass_xp", 0)), int(g.call("battle_pass_cost", 100)))
 	battle_pass_purchased = bool(g.call("battle_pass_purchased", false))
 	battle_pass_free_claimed = g.call("battle_pass_free_claimed", [])
 	battle_pass_paid_claimed = g.call("battle_pass_paid_claimed", [])
@@ -3694,6 +3715,7 @@ static func save() -> void:
 	s.call("blocked_players", blocked_players)
 	s.call("battle_pass_key", battle_pass_key)
 	s.call("battle_pass_xp", battle_pass_xp)
+	s.call("battle_pass_cost", BATTLE_PASS_STAR_PERCENT)
 	s.call("battle_pass_purchased", battle_pass_purchased)
 	s.call("battle_pass_free_claimed", battle_pass_free_claimed)
 	s.call("battle_pass_paid_claimed", battle_pass_paid_claimed)

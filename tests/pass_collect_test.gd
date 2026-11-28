@@ -15,6 +15,28 @@ func _check(label: String, cond: bool) -> void:
 		_failures += 1
 
 
+## The tiers ask 20% more stars than they did; stars banked before that keep
+## their tier and their share of the next one.
+func _test_dearer_tiers() -> void:
+	var top := TSProfile.BATTLE_PASS_TIER_COUNT
+	var now := TSProfile.battle_pass_stars_for_tier(top)
+	var was := TSProfile.battle_pass_stars_for_tier(top, 100)
+	_check("all %d tiers: %d stars, 20%% over %d" % [top, now, was], was == 1276 and absi(now - roundi(was * 1.2)) <= 3 and TSProfile.battle_pass_tier_cost(2) == 36)
+	var kept := true
+	var order := true
+	var last := 0
+	for xp in range(1, was + 120):
+		var moved := TSProfile._rescaled_pass_xp(xp, 100)
+		var old_tier := range(1, top + 1).filter(func(t: int) -> bool: return xp >= TSProfile.battle_pass_stars_for_tier(t, 100)).size()
+		var new_tier := range(1, top + 1).filter(func(t: int) -> bool: return moved >= TSProfile.battle_pass_stars_for_tier(t)).size()
+		kept = kept and new_tier == old_tier
+		order = order and moved >= last
+		last = moved
+	_check("stars banked before keep their tier, and more never count for less", kept and order)
+	_check("past the last tier the stars over it stay (the Bonus Chests)", TSProfile._rescaled_pass_xp(was + 75, 100) == now + 75)
+	_check("stars banked at today's cost are left alone", TSProfile._rescaled_pass_xp(500, TSProfile.BATTLE_PASS_STAR_PERCENT) == 500)
+
+
 func _ready() -> void:
 	TSProfile.use_test_profile(20)
 	TSProfile.no_ads = false
@@ -56,6 +78,7 @@ func _ready() -> void:
 	coins = TSProfile.coin_count
 	TSProfile.battle_pass_tier()
 	_check("not bought: only the free track (+%d)" % (TSProfile.coin_count - coins), TSProfile.coin_count - coins == free_only)
+	_test_dearer_tiers()
 	print("")
 	print("ALL PASSED" if _failures == 0 else "%d FAILED" % _failures)
 	get_tree().quit(0 if _failures == 0 else 1)
