@@ -1354,7 +1354,7 @@ func _has_piece_limit() -> bool:
 ## The pieces this egg starts with: a challenge's TSLevels.CHALLENGE_PIECES, else
 ## the level's own budget (0: no counter).
 func _piece_budget() -> int:
-	return TSLevels.CHALLENGE_PIECES if is_challenge else TSLevels.piece_budget(current_level)
+	return TSLevels.CHALLENGE_PIECES if is_challenge else TSLevels.piece_budget(current_level, is_daily)
 
 
 ## Out of pieces with the egg still shut: a heart buys one more piece, dealt

@@ -40,9 +40,12 @@ func _run() -> void:
 	_check("every later level has a budget of at least %d" % TSLevels.MIN_PIECE_BUDGET, range(TSLevels.UNLIMITED_PIECES_THROUGH + 1, 800).all(func(l): return TSLevels.piece_budget(l) >= TSLevels.MIN_PIECE_BUDGET))
 	var table: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(TSLevels.PIECE_BUDGETS))
 	var raw := func(l: int) -> int: return maxi(TSLevels.MIN_PIECE_BUDGET, int(table[str(l)]))
-	_check("levels 6-%d get %d pieces more, later ones none" % [TSLevels.EARLY_PIECES_THROUGH, TSLevels.EARLY_PIECES],
+	_check("levels 6-%d get %d pieces more, those after up to %d none" % [TSLevels.EARLY_PIECES_THROUGH, TSLevels.EARLY_PIECES, TSLevels.LATE_CUT_AFTER],
 		range(TSLevels.UNLIMITED_PIECES_THROUGH + 1, TSLevels.EARLY_PIECES_THROUGH + 1).all(func(l): return TSLevels.piece_budget(l) == raw.call(l) + TSLevels.EARLY_PIECES)
-		and range(TSLevels.EARLY_PIECES_THROUGH + 1, 200).all(func(l): return TSLevels.piece_budget(l) == raw.call(l)))
+		and range(TSLevels.EARLY_PIECES_THROUGH + 1, TSLevels.LATE_CUT_AFTER + 1).all(func(l): return TSLevels.piece_budget(l) == raw.call(l)))
+	var cut := func(l: int) -> int: return maxi(TSLevels.MIN_PIECE_BUDGET, roundi(int(table[str(l)]) * 0.9))
+	_check("past level %d, 10%% fewer, to the nearest piece (the Daily Egg keeps them all)" % TSLevels.LATE_CUT_AFTER,
+		range(TSLevels.LATE_CUT_AFTER + 1, TSLevels.PIECE_BUDGET_LAST + 1).all(func(l): return TSLevels.piece_budget(l) == cut.call(l) and TSLevels.piece_budget(l, true) == raw.call(l)))
 
 	_start_level(3)
 	_refresh_hud()
@@ -137,7 +140,7 @@ func _run() -> void:
 	_start_level(50)
 	_check("level 50 and below: no cut, just the streak's +%d" % TSProfile.WIN_STREAK_PIECES, pieces_left == TSLevels.piece_budget(50) + TSProfile.WIN_STREAK_PIECES)
 	_start_daily()
-	_check("the Daily Egg: no cut", pieces_left == TSLevels.piece_budget(current_level))
+	_check("the Daily Egg: no cut", pieces_left == TSLevels.piece_budget(current_level, true))
 	TSProfile.win_streak = 0
 
 	TSProfile.pieces_intro_seen = false

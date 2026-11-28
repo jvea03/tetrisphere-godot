@@ -476,13 +476,17 @@ static func _with_terrain(rules: Dictionary, terrain: String, tier: int, step :=
 ## MIN_PIECE_BUDGET. Rerun the sim and rewrite the file after retuning a
 ## level. Levels 1 to UNLIMITED_PIECES_THROUGH have no counter, the next
 ## ones to EARLY_PIECES_THROUGH get EARLY_PIECES more while it is new, and
-## challenges have CHALLENGE_PIECES (see below).
+## challenges have CHALLENGE_PIECES (see below). Journey levels past
+## LATE_CUT_AFTER deal LATE_PIECES_PERCENT of their budget; the Daily Egg,
+## which isn't one, keeps all of it.
 const PIECE_BUDGETS := "res://levels/piece_budgets.json"
 const PIECE_BUDGET_LAST := 660
 const MIN_PIECE_BUDGET := 10
 const UNLIMITED_PIECES_THROUGH := 5   # levels 1-5 have no counter (a budget of 0), while the basics sink in
 const EARLY_PIECES_THROUGH := 30   # levels 6-30 get EARLY_PIECES on top of their budget, as the counter is new
 const EARLY_PIECES := 2
+const LATE_CUT_AFTER := 50
+const LATE_PIECES_PERCENT := 90   # to the nearest whole piece
 ## Past STREAK_CUT_AFTER, a player on a long win streak gets fewer pieces: one
 ## less from a 5-win streak, two from 7, three from 9, four from 11
 ## (STREAK_CUTS: streak -> pieces off, the longest that applies). Only levels that count toward the streak;
@@ -492,7 +496,7 @@ const STREAK_CUTS := [[11, 4], [9, 3], [7, 2], [5, 1]]
 static var _budgets: Dictionary = {}
 
 
-static func piece_budget(level: int) -> int:
+static func piece_budget(level: int, daily := false) -> int:
 	if level <= UNLIMITED_PIECES_THROUGH:
 		return 0
 	if _budgets.is_empty():
@@ -505,7 +509,10 @@ static func piece_budget(level: int) -> int:
 	if at > PIECE_BUDGET_LAST:
 		at = PIECE_BUDGET_LAST - 59 + posmod(level - (PIECE_BUDGET_LAST - 59), 60)
 	var early := EARLY_PIECES if level <= EARLY_PIECES_THROUGH else 0
-	return maxi(MIN_PIECE_BUDGET, int(_budgets.get(str(at), 25))) + early + TSTunables.get_int("piece_budget_extra")
+	var budget := int(_budgets.get(str(at), 25))
+	if level > LATE_CUT_AFTER and not daily:
+		budget = roundi(budget * LATE_PIECES_PERCENT / 100.0)
+	return maxi(MIN_PIECE_BUDGET, budget) + early + TSTunables.get_int("piece_budget_extra")
 
 
 ## The pieces taken off a level's budget for a win streak of `streak` (STREAK_CUTS).
