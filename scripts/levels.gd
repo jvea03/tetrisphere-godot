@@ -486,7 +486,7 @@ const UNLIMITED_PIECES_THROUGH := 5   # levels 1-5 have no counter (a budget of 
 const EARLY_PIECES_THROUGH := 30   # levels 6-30 get EARLY_PIECES on top of their budget, as the counter is new
 const EARLY_PIECES := 2
 const LATE_CUT_AFTER := 50
-const LATE_PIECES_PERCENT := 90   # to the nearest whole piece
+const LATE_PIECES_PERCENT := 85   # to the nearest whole piece
 ## Past STREAK_CUT_AFTER, a player on a long win streak gets fewer pieces: one
 ## less from a 5-win streak, two from 7, three from 9, four from 11
 ## (STREAK_CUTS: streak -> pieces off, the longest that applies). Only levels that count toward the streak;

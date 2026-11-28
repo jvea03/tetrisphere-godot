@@ -43,8 +43,8 @@ func _run() -> void:
 	_check("levels 6-%d get %d pieces more, those after up to %d none" % [TSLevels.EARLY_PIECES_THROUGH, TSLevels.EARLY_PIECES, TSLevels.LATE_CUT_AFTER],
 		range(TSLevels.UNLIMITED_PIECES_THROUGH + 1, TSLevels.EARLY_PIECES_THROUGH + 1).all(func(l): return TSLevels.piece_budget(l) == raw.call(l) + TSLevels.EARLY_PIECES)
 		and range(TSLevels.EARLY_PIECES_THROUGH + 1, TSLevels.LATE_CUT_AFTER + 1).all(func(l): return TSLevels.piece_budget(l) == raw.call(l)))
-	var cut := func(l: int) -> int: return maxi(TSLevels.MIN_PIECE_BUDGET, roundi(int(table[str(l)]) * 0.9))
-	_check("past level %d, 10%% fewer, to the nearest piece (the Daily Egg keeps them all)" % TSLevels.LATE_CUT_AFTER,
+	var cut := func(l: int) -> int: return maxi(TSLevels.MIN_PIECE_BUDGET, roundi(int(table[str(l)]) * 0.85))
+	_check("past level %d, 15%% fewer, to the nearest piece (the Daily Egg keeps them all)" % TSLevels.LATE_CUT_AFTER,
 		range(TSLevels.LATE_CUT_AFTER + 1, TSLevels.PIECE_BUDGET_LAST + 1).all(func(l): return TSLevels.piece_budget(l) == cut.call(l) and TSLevels.piece_budget(l, true) == raw.call(l)))
 
 	_start_level(3)
