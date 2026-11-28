@@ -73,6 +73,16 @@ func _ready() -> void:
 	await get_tree().process_frame
 	labels = home.find_children("*", "Label", true, false).map(func(l: Label) -> String: return l.text)
 	_check("the profile shows the trophies", labels.count("Christmas Village") >= 2)
+	# Before the first trophy the card says how to win one, across the card (it
+	# once stood a letter to a line and pushed Save off the screen).
+	TSProfile.season_trophies = []
+	home._open_profile()
+	for _i in 4:
+		await get_tree().process_frame
+	var hint: Label = home._profile["trophies"].get_child(home._profile["trophies"].get_child_count() - 1)
+	var tall: float = (home._profile["panel"] as Control).size.y
+	_check("no trophy yet: the hint runs across the card (%d wide, %d lines)" % [hint.size.x, hint.get_line_count()], hint.text.begins_with("Build every site") and hint.size.x >= 400 and hint.get_line_count() <= 3)
+	_check("and the whole card fits the screen (%d of %d)" % [tall, home.size.y], tall <= (home as Control).size.y)
 	print("")
 	print("ALL PASSED" if _failures == 0 else "%d FAILED" % _failures)
 	get_tree().quit(0 if _failures == 0 else 1)

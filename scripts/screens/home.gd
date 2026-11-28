@@ -1601,6 +1601,11 @@ func _open_season_complete() -> void:
 	TSHaptics.medium()
 
 
+## The trophy hint's width, the Profile card's inside. A flow gives a wrapping
+## label no width of its own: without one it stands a letter to a line.
+const TROPHY_HINT_WIDTH := 500.0
+
+
 ## The profile's trophies: one plate a season completed, or how to win one.
 func _fill_trophies() -> void:
 	var flow: HFlowContainer = _profile.get("trophies")
@@ -1609,7 +1614,7 @@ func _fill_trophies() -> void:
 	for c in flow.get_children():
 		c.queue_free()
 	if TSProfile.season_trophies.is_empty():
-		flow.add_child(TSUI.wrap(TSUI.label("Build every site and the whole ship on a season's planet to win its trophy, a critter, and +%d%% coins and materials for good." % TSProfile.SEASON_TROPHY_BONUS_PERCENT, 18, TSUI.MUTED)))
+		flow.add_child(TSUI.wrap(TSUI.label("Build every site and the whole ship on a season's planet to win its trophy, a critter, and +%d%% coins and materials for good." % TSProfile.SEASON_TROPHY_BONUS_PERCENT, 18, TSUI.MUTED), TROPHY_HINT_WIDTH))
 		return
 	for t in TSProfile.season_trophies:
 		var theme := str((t as Dictionary).get("theme", "autumn"))
