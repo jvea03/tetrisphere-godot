@@ -20,15 +20,19 @@ func _go_to(date: String) -> void:
 	TSClock.preview_shift = Time.get_unix_time_from_datetime_string(date + "T12:00:00") - (TSClock.now() - TSClock.preview_shift)
 
 
-## From the New Year season the tiers ask 20% more stars than before it; stars
+## From the Christmas season the tiers ask 20% more stars than before it; stars
 ## banked in it at the old cost keep their tier and their share of the next one.
 func _test_dearer_tiers() -> void:
 	var top := TSProfile.BATTLE_PASS_TIER_COUNT
 	var now := TSProfile.battle_pass_stars_for_tier(top, 120)
 	var was := TSProfile.battle_pass_stars_for_tier(top, 100)
+	_go_to("2026-11-28")
+	_check("the autumn pass asks what it did (%d stars)" % TSProfile.battle_pass_stars_for_tier(top),
+		TSProfile.battle_pass_season_number() == 1 and TSProfile.battle_pass_stars_for_tier(top) == was and TSProfile.battle_pass_tier_cost(2) == 30)
 	_go_to("2026-12-10")
-	_check("the Christmas pass asks what it did (%d stars)" % TSProfile.battle_pass_stars_for_tier(top),
-		TSProfile.battle_pass_season_number() == 2 and TSProfile.battle_pass_stars_for_tier(top) == was and TSProfile.battle_pass_tier_cost(2) == 30)
+	_check("all %d tiers from Christmas: %d stars, 20%% over %d" % [top, now, was],
+		TSProfile.battle_pass_season_number() == 2 and TSProfile.battle_pass_stars_for_tier(top) == now
+		and was == 1276 and absi(now - roundi(was * 1.2)) <= 3 and TSProfile.battle_pass_tier_cost(2) == 36)
 	TSProfile._roll_battle_pass()
 	TSProfile.battle_pass_xp = TSProfile.battle_pass_stars_for_tier(16)
 	TSProfile.battle_pass_purchased = false
@@ -41,12 +45,10 @@ func _test_dearer_tiers() -> void:
 	_go_to("2027-01-05")
 	TSProfile._roll_battle_pass()
 	_check("it is collected at its own cost, up to tier 16 (+%d of %d)" % [TSProfile.coin_count - coins, owed], TSProfile.coin_count - coins == owed)
-	_check("all %d tiers from New Year: %d stars, 20%% over %d" % [top, now, was],
-		TSProfile.battle_pass_season_number() == 3 and TSProfile.battle_pass_stars_for_tier(top) == now
-		and was == 1276 and absi(now - roundi(was * 1.2)) <= 3 and TSProfile.battle_pass_tier_cost(2) == 36)
+	var season_3 := TSProfile.battle_pass_season_number()
 	TSClock.preview_shift = 0.0
-	_check("and every season after", TSProfile.battle_pass_star_percent(1) == 100 and TSProfile.battle_pass_star_percent(2) == 100
-		and range(3, 12).all(func(n: int) -> bool: return TSProfile.battle_pass_star_percent(n) == 120))
+	_check("and every season after", season_3 == 3 and TSProfile.battle_pass_star_percent(1) == 100
+		and range(2, 12).all(func(n: int) -> bool: return TSProfile.battle_pass_star_percent(n) == 120))
 	var kept := true
 	var order := true
 	var last := 0

@@ -2673,15 +2673,15 @@ const BATTLE_PASS_FIRST_KEY := "BP740"
 const BATTLE_PASS_TIER_COUNT := 30
 const BATTLE_PASS_TIER_BASE := 30
 const BATTLE_PASS_TIER_STEP := 1
-## From season BATTLE_PASS_DEARER_SEASON on (New Year, 29 Dec 2026) each tier
+## From season BATTLE_PASS_DEARER_SEASON on (Christmas, 1 Dec 2026) each tier
 ## asks BATTLE_PASS_STAR_PERCENT of BASE + STEP a tier, to the nearest star:
-## 1,531 stars for all 30 tiers, up from the earlier seasons' 1,276
+## 1,531 stars for all 30 tiers, up from the autumn season's 1,276
 ## (battle_pass_star_percent). The save records the percent its stars were
 ## banked under ("battle_pass_cost"): a build without the change records none,
 ## so a player who updates partway through a dearer season keeps their tier
 ## (_rescaled_pass_xp).
 const BATTLE_PASS_STAR_PERCENT := 120
-const BATTLE_PASS_DEARER_SEASON := 3
+const BATTLE_PASS_DEARER_SEASON := 2
 const BATTLE_PASS_PRICE_LABEL := "$4.99"
 const TIER_BUY_COINS_PER_STAR := 250
 
