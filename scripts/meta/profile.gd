@@ -2721,7 +2721,7 @@ static func _rescaled_pass_xp(xp: int, from: int) -> int:
 	var over := xp - battle_pass_stars_for_tier(tier, from)
 	if tier >= BATTLE_PASS_TIER_COUNT:
 		return battle_pass_stars_for_tier(tier) + over
-	("integer_division")
+	@warning_ignore("integer_division")
 	return battle_pass_stars_for_tier(tier) + over * battle_pass_tier_cost(tier + 1) / battle_pass_tier_cost(tier + 1, from)
 
 
@@ -3111,7 +3111,7 @@ static func can_claim_battle_pass_paid(tier: int) -> bool:
 ## the next one, how many wait to be opened, what one holds, and opening one.
 static func _bonus_chests_for(xp: int) -> int:
 	var over := xp - battle_pass_stars_for_tier(BATTLE_PASS_TIER_COUNT)
-	("integer_division")
+	@warning_ignore("integer_division")
 	return maxi(over, 0) / BONUS_CHEST_STARS
 
 
