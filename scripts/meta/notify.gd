@@ -41,18 +41,36 @@ func request_permission() -> void:
 
 
 func _notification(what: int) -> void:
+	match what:
+		# The only safe time to touch the plugin. Home, and Back on Home
+		# (moveTaskToBack), both pause the activity, and Godot runs this on
+		# the GL thread from that onPause, while the singleton is still alive.
+		NOTIFICATION_APPLICATION_PAUSED:
+			_arm_reminders()
+		NOTIFICATION_APPLICATION_RESUMED:
+			if _plugin != null:
+				_plugin.cancelAll()
+		NOTIFICATION_EXIT_TREE:
+			# _terminate() frees plugin singletons before the tree emits
+			# EXIT_TREE (java_godot_lib_jni.cpp: unregister_plugins_singletons,
+			# then main_loop_end). A release export does not check the freed
+			# object, so cancelAll/schedule here is a use-after-free on the
+			# same teardown as the Android mutex abort. Reminders were armed
+			# on pause: Back on Home calls moveTaskToBack, which pauses, so
+			# it still arms them. Drop the reference so nothing else calls
+			# the singleton on the way out.
+			_plugin = null
+
+
+## cancelAll + the reminders that should fire while we are away. No-op without
+## the plugin (editor, desktop, iOS, or after shutdown has dropped it).
+func _arm_reminders() -> void:
 	if _plugin == null:
 		return
-	match what:
-		# Into the background, or quitting (Back on Home quits without always
-		# pausing first): set the reminders.
-		NOTIFICATION_APPLICATION_PAUSED, NOTIFICATION_WM_CLOSE_REQUEST, NOTIFICATION_EXIT_TREE:
-			_plugin.cancelAll()
-			if TSProfile.notifications_enabled and has_permission():
-				for r in reminders():
-					_plugin.schedule(int(r["id"]), str(r["title"]), str(r["body"]), int(r["seconds"]))
-		NOTIFICATION_APPLICATION_RESUMED:
-			_plugin.cancelAll()
+	_plugin.cancelAll()
+	if TSProfile.notifications_enabled and has_permission():
+		for r in reminders():
+			_plugin.schedule(int(r["id"]), str(r["title"]), str(r["body"]), int(r["seconds"]))
 
 
 ## What would be scheduled now: [{id, title, body, seconds}].

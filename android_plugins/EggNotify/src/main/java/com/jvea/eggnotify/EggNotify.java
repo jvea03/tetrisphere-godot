@@ -11,6 +11,8 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Build;
+import android.os.Process;
+import android.util.Log;
 
 import org.godotengine.godot.Godot;
 import org.godotengine.godot.plugin.GodotPlugin;
@@ -37,6 +39,43 @@ public class EggNotify extends GodotPlugin {
     @Override
     public String getPluginName() {
         return "EggNotify";
+    }
+
+    /**
+     * End the process before Godot 4.7.2 runs its native teardown.
+     *
+     * Swiping the task away, or a relaunch that drops the previous activity,
+     * calls Activity.onDestroy. Godot.onDestroy invokes every plugin's
+     * onMainDestroy and only then blockingExitRenderer, which runs
+     * GodotLib.ondestroy on the GL thread. That enters _terminate
+     * (platform/android/java_godot_lib_jni.cpp): plugin singletons are freed,
+     * the scene tree is finalized, then Main::cleanup. On 4.7.2 that cleanup
+     * SIGABRTs the GL thread: FORTIFY "pthread_mutex_lock called on a
+     * destroyed mutex" inside std::recursive_mutex::lock, reached from
+     * onRenderThreadExiting and from GodotLib.step when the main loop quits.
+     * godotengine/godot#125384 is open and unfixed in 4.7.2.
+     *
+     * This is SIGKILL, which Play vitals does not count as a crash. Godot
+     * already kills the process the same way if teardown exceeds 1.5s
+     * (ProcessPhoenix.forceQuit). It is not get_tree().quit(): that enters
+     * _terminate, which is the abort Back avoids by moving the task back.
+     *
+     * Progress is already on disk. onPause is delivered and returns before
+     * onDestroy. From onPause Godot queues NOTIFICATION_APPLICATION_FOCUS_OUT
+     * and NOTIFICATION_APPLICATION_PAUSED on the GL thread, and that thread
+     * drains its queue before it pauses. SceneFlow saves the profile there,
+     * the game writes the parked ball, and analytics writes its queue. Home
+     * by itself only pauses, so this method does not run and the process
+     * stays up.
+     *
+     * killProcess returns. exit() stops onDestroy from falling through into
+     * blockingExitRenderer while the signal is still in flight.
+     */
+    @Override
+    public void onMainDestroy() {
+        Log.w("EggNotify", "Activity is being destroyed; ending the process before Godot's native teardown");
+        Process.killProcess(Process.myPid());
+        Runtime.getRuntime().exit(0);
     }
 
     static void ensureChannel(Context ctx) {
