@@ -157,6 +157,16 @@ func _test_naming() -> void:
 	TSProfile.player_name = "Pip"
 	TSProfile.verify_name()
 	_check("a computer player's name must be changed too", TSProfile.name_taken)
+	_check("and a ruled-out name, even one already held", not TSProfile.name_blocked("Captain"))
+	_named("Captain")
+	TSInbox.take('{"blocked_names": ["captain", 5], "messages": []}')
+	_check("the file rules names out, capitals and spaces aside", TSProfile.name_blocked("Cap Tain") and not TSProfile.name_blocked("Captain Crumble"))
+	TSProfile.verify_name()
+	_check("a player under one must choose another", TSProfile.name_taken and TSProfile.must_name())
+	_check("and can't pick it again", _named("CAPTAIN") != "" and TSProfile.must_name())
+	_check("another name clears it", _named("Skipper") == "" and not TSProfile.must_name())
+	TSInbox.take('{"messages": []}')
+	_check("taken off the list, it is allowed again", not TSProfile.name_blocked("Captain"))
 	Online.name_answer = Callable()
 
 

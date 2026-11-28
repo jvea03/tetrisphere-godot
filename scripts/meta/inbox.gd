@@ -146,6 +146,10 @@ static func fetch(host: Node, done: Callable) -> void:
 ## 1.3.4 can't read it, nor iOS builds up to 1.3.4.
 static var min_version_android := ""
 static var min_version_ios := ""
+## Leaderboard names nobody may use, from the file's "blocked_names": a player
+## under one is asked to choose another (TSProfile.verify_name). Moderation
+## without a build; capitals and spaces don't count.
+static var blocked_names: Array = []
 
 
 ## Whether this build must be updated before playing: on Android or iOS,
@@ -181,6 +185,8 @@ static func take(text: String) -> bool:
 	TSTunables.apply_remote(data.get("settings"), name)
 	min_version_android = str(data.get("min_version_android", "")) if data.get("min_version_android") is String else ""
 	min_version_ios = str(data.get("min_version_ios", "")) if data.get("min_version_ios") is String else ""
+	var blocked: Variant = data.get("blocked_names", [])
+	blocked_names = (blocked as Array).filter(func(n: Variant) -> bool: return n is String) if blocked is Array else []
 	TSAnalytics.user_property("remote_settings", name if name != "" else "default")
 	return true
 

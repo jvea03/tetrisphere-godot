@@ -28,6 +28,8 @@ static func open(screen: Control, done := Callable()) -> Dictionary:
 	var why := "This is how other players see you on the leaderboards. No two players share a name."
 	if TSProfile.name_taken:
 		why = "Somebody else already has \"%s\". Choose another name for the leaderboards." % TSProfile.player_name
+		if TSProfile.name_blocked(TSProfile.player_name):
+			why = "\"%s\" can't be used on the leaderboards. Choose another name." % TSProfile.player_name
 	box.add_child(TSUI.wrap(TSUI.label(why, 22, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER), 500))
 	var edit := LineEdit.new()
 	edit.max_length = TSProfile.NAME_MAX_LENGTH

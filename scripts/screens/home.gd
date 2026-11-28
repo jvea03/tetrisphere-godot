@@ -98,6 +98,7 @@ func build() -> void:
 	_refresh_side()
 	TSInbox.fetch(self, func() -> void:
 		_refresh_inbox()
+		TSProfile.verify_name()   # the file may rule a name out
 		_check_update())
 	_check_update.call_deferred()
 	# The leaderboards: finished boards placed (prizes). Stickers wait for the

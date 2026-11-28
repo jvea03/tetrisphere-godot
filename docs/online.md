@@ -132,3 +132,8 @@ computer players (`scripts/meta/bots.gd`, `TSBots`).
   or a name somebody else holds. Builds before it still can.
 - Reinstalling makes a new player id, so the old name stays held by the old one.
 - Saving the profile with the name box empty keeps the current name.
+- **Ruling a name out (moderation):** add it to `"blocked_names"` in
+  `store/inbox.json` and push. Games with naming (this build on) ask anyone under it
+  for another name the next time they read the file, and nobody can pick it. Capitals
+  and spaces don't count; it matches the whole name only ("captain" doesn't block
+  "Captain Crumble"). Older builds can't be asked. `captain` added 27 Nov 2026.

@@ -2166,6 +2166,13 @@ static func must_name() -> bool:
 	return not naming_off and not name_later and needs_name() and TSNav.leaderboards_open() and stars_open()
 
 
+## A name the studio has ruled out (store/inbox.json "blocked_names").
+static func name_blocked(name: String) -> bool:
+	TSInbox.load_cache()
+	var key := Online.name_key(name)
+	return TSInbox.blocked_names.any(func(n: String) -> bool: return Online.name_key(n) == key)
+
+
 ## The computer players' names are spoken for.
 static func _bot_name(name: String) -> bool:
 	var key := Online.name_key(name)
@@ -2179,7 +2186,7 @@ static func name_problem(raw: String) -> String:
 		return "Type a name of at least %d letters" % NAME_MIN_LENGTH
 	if Online.name_key(wanted) == Online.name_key(DEFAULT_NAME):
 		return "Pick a name of your own"
-	if not TSFilter.is_clean(wanted):
+	if not TSFilter.is_clean(wanted) or name_blocked(wanted):
 		return "That name isn't allowed -- please choose another"
 	if _bot_name(wanted):
 		return NAME_TAKEN
@@ -2224,9 +2231,9 @@ static func verify_name() -> void:
 		return
 	var mine := player_name
 	var key := Online.name_key(mine)
-	if key == name_claim:
+	if not name_blocked(mine) and key == name_claim:
 		return
-	if _bot_name(mine):
+	if name_blocked(mine) or _bot_name(mine):
 		name_taken = true
 		save()
 		return
