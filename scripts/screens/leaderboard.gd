@@ -366,26 +366,15 @@ func _input(e: InputEvent) -> void:
 		_press_scroll = _scroll.scroll_vertical if is_instance_valid(_scroll) else 0
 
 
-## The name card, if this player is still unnamed: forced if they must name
-## themselves, offered (with Later) the first time Ranks opens otherwise.
-## True if it opened; stickers wait until it closes.
+## The name card, if this player is on the leaderboards without a name. True
+## if it opened; stickers wait until it closes.
 func _ask_name() -> bool:
-	var forced := TSProfile.must_name()
-	var offer := not forced and not TSProfile.name_offer_seen and TSProfile.needs_name() \
-		and TSNav.leaderboards_open() and TSProfile.stars_open()
-	if not forced and not offer:
+	if not TSProfile.must_name():
 		return false
-	if offer:
-		TSProfile.name_offer_seen = true
-		TSProfile.save()
-	TSNameCard.open(self, forced, func() -> void:
+	TSNameCard.open(self, func() -> void:
 		_refresh()
 		_on_stickers.call_deferred())
 	return true
-
-
-func on_back_requested() -> bool:
-	return TSNameCard.close_offered(self)
 
 
 ## Stickers show only here, while the leaderboard is open; any that arrive

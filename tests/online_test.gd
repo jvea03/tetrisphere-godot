@@ -118,12 +118,50 @@ func _test_naming() -> void:
 	TSProfile.use_test_profile(7)
 	TSProfile.player_name = TSProfile.DEFAULT_NAME
 	_check("a test profile is never asked unless it says so", not TSProfile.must_name())
-	TSProfile.name_required = true
-	_check("an unnamed player at the unlock must pick a name", TSProfile.must_name())
+	TSProfile.naming_off = false
+	_check("any unnamed player on the leaderboards must pick a name", TSProfile.must_name())
+	TSProfile.last_level = 90
+	_check("long past the unlock too", TSProfile.must_name())
 	TSProfile.last_level = 6
 	_check("not before the leaderboards unlock", not TSProfile.must_name())
 	TSProfile.last_level = 7
-	for bad in ["", "   ", "a", "hatchling", " Hatchling ", "shit"]:
-		_check("'%s' is not taken, with a reason" % bad, TSProfile.choose_name(bad) != "" and TSProfile.player_name == TSProfile.DEFAULT_NAME and TSProfile.must_name())
-	_check("a name is taken, trimmed", TSProfile.choose_name("  Eggbert  ") == "" and TSProfile.player_name == "Eggbert")
-	_check("and nothing more is asked", not TSProfile.must_name() and not TSProfile.needs_name() and not TSProfile.name_required)
+	# The server, played by the test: "Sam" is somebody else's, and it can go offline.
+	var asked: Array = []
+	var offline := [false]
+	Online.name_answer = func(name: String, done: Callable) -> void:
+		asked.append(name)
+		done.call("unavailable" if offline[0] else ("taken" if Online.name_key(name) == Online.name_key("Sam") else "ok"))
+	for bad in ["", "   ", "a", "hatchling", " Hatch ling ", "shit", "sunny", "Marsh Mallow"]:
+		_check("'%s' is refused on the phone, with a reason" % bad, _named(bad) != "" and TSProfile.player_name == TSProfile.DEFAULT_NAME and TSProfile.must_name())
+	_check("none of those asked the server", asked.is_empty())
+	_check("capitals and spaces make no new name", Online.name_key("Egg Bert") == Online.name_key("eggbert") and Online.name_key("Egg") != Online.name_key("Eggs"))
+	_check("somebody else's name is refused", _named("S a m") == TSProfile.NAME_TAKEN and TSProfile.must_name())
+	offline[0] = true
+	_check("offline, a name can't be checked", _named("Eggbert") == TSProfile.NAME_OFFLINE and TSProfile.player_name == TSProfile.DEFAULT_NAME)
+	TSProfile.name_later = true
+	_check("Not now stops the asking for this run", not TSProfile.must_name() and TSProfile.needs_name())
+	TSProfile.name_later = false
+	offline[0] = false
+	_check("a free name is taken, trimmed", _named("  Eggbert  ") == "" and TSProfile.player_name == "Eggbert" and TSProfile.name_claim == Online.name_key("eggbert"))
+	_check("and nothing more is asked", not TSProfile.must_name() and not TSProfile.needs_name())
+	asked.clear()
+	_check("new capitals on one's own name need no asking", _named("EggBert") == "" and asked.is_empty() and TSProfile.player_name == "EggBert")
+	# Names from before they were unique are claimed, or asked for again.
+	TSProfile.player_name = "Pat"
+	TSProfile.verify_name()
+	_check("an old name nobody has is claimed", TSProfile.name_claim == Online.name_key("Pat") and not TSProfile.must_name())
+	TSProfile.player_name = "Sam"
+	TSProfile.verify_name()
+	_check("an old name somebody has must be changed", TSProfile.name_taken and TSProfile.must_name())
+	_check("and a new one clears that", _named("Samwise") == "" and not TSProfile.name_taken and not TSProfile.must_name())
+	TSProfile.player_name = "Pip"
+	TSProfile.verify_name()
+	_check("a computer player's name must be changed too", TSProfile.name_taken)
+	Online.name_answer = Callable()
+
+
+## choose_name's answer (the stand-in server replies at once).
+func _named(raw: String) -> String:
+	var out := ["(no answer)"]
+	TSProfile.choose_name(raw, func(problem: String) -> void: out[0] = problem)
+	return out[0]

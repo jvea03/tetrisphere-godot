@@ -113,13 +113,22 @@ computer players (`scripts/meta/bots.gd`, `TSBots`).
 
 ## Naming (27 Nov 2026)
 
-- **Forced at the unlock:** a player who reaches the leaderboards (level 7) from this
-  build on must pick a name. `TSNameCard` (Save only) opens on Home after the ship
-  story and before the chest and Battle Pass walkthrough, and on Ranks if they get
-  there first (`TSProfile.must_name`, saved as `name_required`).
-- **Players already past the unlock** and still "Hatchling" are offered the same card
-  with **Later**, once, the first time they open Ranks (`name_offer_seen`). The older
-  Home nudge at the profile picture still runs for them.
-- A name is 2 to 18 characters, not "Hatchling", and passes `TSFilter`
-  (`TSProfile.choose_name`). Names needn't be unique. Saving the profile with the name
-  box empty now keeps the current name.
+- **Everyone on the leaderboards needs a name of their own.** Any player at level 7 or
+  later who is still "Hatchling" gets `TSNameCard`: new unlocks and players from
+  before alike. It opens on Home after the ship story and before the chest and Battle
+  Pass walkthrough, and on Ranks if they get there first (`TSProfile.must_name`).
+- **Rules for a name** (`TSProfile.choose_name`): 2 to 18 characters, not "Hatchling",
+  past `TSFilter`, not a bot's name, and not another player's. Capitals and spaces
+  don't count ("Egg Bert" is "eggbert").
+- **Unique, on the server:** `names/{sha256 of the name}` holds `uid`, `name`, `t`.
+  The first to create it holds the name; changing names releases the old one.
+  **`firestore.rules` must be published (Firebase console) before a build with this
+  ships**, or no name can be checked.
+- **Offline** a name can't be checked: the card then offers **Not now** (until the next
+  run), so nobody is locked out of playing.
+- **Names from before** are claimed the next time the game goes online; if somebody
+  else claimed it first (or it is a bot's), the card asks for another.
+- **No rows without a name:** this build writes no leaderboard row under "Hatchling"
+  or a name somebody else holds. Builds before it still can.
+- Reinstalling makes a new player id, so the old name stays held by the old one.
+- Saving the profile with the name box empty keeps the current name.

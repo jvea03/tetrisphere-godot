@@ -73,14 +73,22 @@ func _run() -> void:
 	var sent: Variant = await _ask(func(done: Callable) -> void: Online.send_sticker(RECEIVER, "congrats", done))
 	_check("sent a sticker", sent == true)
 
-	# 5. What the rules must refuse.
+	# 5. Names: this player takes one (again is fine), and can't write another's.
+	var mine := "E2E %d" % (randi() % 1000000)
+	var claimed: Variant = await _ask(func(done: Callable) -> void: Online.claim_name(mine, done))
+	var again: Variant = await _ask(func(done: Callable) -> void: Online.claim_name(mine, done))
+	_check("claimed a name, and it stays this player's (%s, %s)" % [str(claimed), str(again)], claimed == "ok" and again == "ok")
+	_check("rules: no claiming a name for someone else", not await _raw("POST", "/names?documentId=%s" % Online.name_key(mine + "x"), {"fields": Online.to_fields({"uid": "someone-else", "name": "x2", "t": 1})}))
+	Online.release_name(Online.name_key(mine))
+
+	# 6. What the rules must refuse.
 	_check("rules: no sticker that isn't one of the game's", not await _raw("PATCH", "/stickers/%s/got/{uid}" % RECEIVER, {"fields": Online.to_fields({"name": "E2E Test", "avatar": 8, "sticker": "rude", "t": 1})}))
 	_check("rules: no writing someone else's row", not await _raw("PATCH", "/boards/%s/entries/someone-else" % BOARD, {"fields": Online.to_fields({"name": "Fake", "avatar": 1, "stars": 999, "t": 1})}))
 	_check("rules: no reading someone else's stickers", not await _raw("GET", "/stickers/%s/got" % RECEIVER, null))
 	_check("rules: no impossible star totals", not await _raw("PATCH", "/boards/%s/entries/{uid}" % BOARD, {"fields": Online.to_fields({"name": "E2E Test", "avatar": 8, "stars": 999999, "t": 1})}))
 	_check("rules: no sticker with a 40-letter name", not await _raw("PATCH", "/stickers/%s/got/{uid}" % RECEIVER, {"fields": Online.to_fields({"name": "x".repeat(40), "avatar": 8, "sticker": "sad", "t": 1})}))
 
-	# 6. This player's own stickers: readable (none waiting).
+	# 7. This player's own stickers: readable (none waiting).
 	Online.last_error = ""
 	Online.check_stickers(true)
 	await get_tree().create_timer(4.0).timeout

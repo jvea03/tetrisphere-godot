@@ -1,11 +1,11 @@
 class_name TSNameCard
 extends RefCounted
 
-## "Choose your name", for the leaderboards. Forced as they unlock (Save only:
-## TSProfile.must_name -- Home and Ranks show it until a name is saved); for a
-## player already past the unlock and still under the default name, offered the
-## first time they open Ranks, with "Later". The card sits high on the screen,
-## clear of the phone keyboard.
+## "Choose your name", for the leaderboards: anyone on them without a name of
+## their own gets it, on Home and on Ranks, until one is saved
+## (TSProfile.must_name). Names are unique, checked with the server
+## (choose_name); offline there is "Not now" until the next run. The card sits
+## high on the screen, clear of the phone keyboard.
 
 const META := "name_card"
 
@@ -15,29 +15,20 @@ static func is_open(screen: Control) -> bool:
 	return screen.has_meta(META) and is_instance_valid(screen.get_meta(META))
 
 
-## Closes an offered card (Android back). False if there is none, or it is forced.
-static func close_offered(screen: Control) -> bool:
-	if not is_open(screen):
-		return false
-	var root: Control = screen.get_meta(META)
-	if bool(root.get_meta("forced")):
-		return false
-	(root.get_meta("finish") as Callable).call()
-	return true
-
-
-## Shows the card on `screen`; done() once it closes (a name saved, or Later).
-## Returns its parts (root, edit, save, later -- null when forced, error).
-static func open(screen: Control, forced: bool, done := Callable()) -> Dictionary:
+## Shows the card on `screen`; done() once it closes. Returns its parts (root,
+## edit, save, skip, error).
+static func open(screen: Control, done := Callable()) -> Dictionary:
 	var card := TSUI.dialog(screen, 580)
 	var root: Control = card["root"]
 	screen.set_meta(META, root)
-	root.set_meta("forced", forced)
 	(root.get_child(1) as Control).anchor_bottom = 0.62   # the keyboard covers the foot of the screen
 	var box: VBoxContainer = card["box"]
 	box.add_child(TSUI.title("Choose your name", 40))
 	box.add_child(TSUI.halo(TSIcon.make("critter", 110, TSProfile.avatar()), 160.0, TSUI.BUTTER, false))
-	box.add_child(TSUI.wrap(TSUI.label("This is how other players see you on the leaderboards.", 22, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER), 500))
+	var why := "This is how other players see you on the leaderboards. No two players share a name."
+	if TSProfile.name_taken:
+		why = "Somebody else already has \"%s\". Choose another name for the leaderboards." % TSProfile.player_name
+	box.add_child(TSUI.wrap(TSUI.label(why, 22, TSUI.INK, HORIZONTAL_ALIGNMENT_CENTER), 500))
 	var edit := LineEdit.new()
 	edit.max_length = TSProfile.NAME_MAX_LENGTH
 	edit.placeholder_text = "Your name"
@@ -64,24 +55,36 @@ static func open(screen: Control, forced: bool, done := Callable()) -> Dictionar
 		root.get_tree().create_timer(TSUI.REVEAL_SECONDS + 0.05).timeout.connect(root.queue_free)
 		if done.is_valid():
 			done.call()
-	root.set_meta("finish", finish)
 	var save := TSUI.button("Save", TSUI.GREEN, 30)
+	var skip := TSUI.button("Not now", TSUI.SKY, 24, Vector2(0, 60))
+	skip.visible = false   # only once a name couldn't be checked: nobody is locked out offline
+	skip.pressed.connect(func() -> void:
+		TSProfile.name_later = true
+		finish.call())
 	var submit := func() -> void:
-		var problem := TSProfile.choose_name(edit.text)
-		if problem == "":
-			TSSfx.play("ding")
-			finish.call()
+		if save.disabled:
 			return
-		error.text = problem
+		save.disabled = true
+		error.add_theme_color_override("font_color", TSUI.MUTED)
+		error.text = "Checking..."
 		error.visible = true
+		TSProfile.choose_name(edit.text, func(problem: String) -> void:
+			if not is_instance_valid(root):
+				return
+			save.disabled = false
+			if problem == "":
+				TSSfx.play("ding")
+				finish.call()
+				return
+			error.add_theme_color_override("font_color", Color(0.8, 0.2, 0.25))
+			error.text = problem
+			error.visible = true
+			if problem == TSProfile.NAME_OFFLINE:
+				skip.visible = true)
 	save.pressed.connect(submit)
 	edit.text_submitted.connect(func(_text: String) -> void: submit.call())
 	box.add_child(save)
-	var later: Button = null
-	if not forced:
-		later = TSUI.button("Later", TSUI.SKY, 24, Vector2(0, 60))
-		later.pressed.connect(finish)
-		box.add_child(later)
+	box.add_child(skip)
 	TSUI.juice(root)
 	TSUI.reveal(root, card["panel"])
-	return {"root": root, "edit": edit, "save": save, "later": later, "error": error}
+	return {"root": root, "edit": edit, "save": save, "skip": skip, "error": error}

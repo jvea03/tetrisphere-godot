@@ -41,8 +41,7 @@ static func use_test_profile(level := 1) -> void:
 	intro_seen = true
 	ship_story_seen = true
 	review_done = true
-	name_required = false   # no name card unless a test asks for one
-	name_offer_seen = true
+	naming_off = true   # no name card unless a test asks for it
 	notify_asked = true
 	challenge_done_through = 1 << 30   # no challenge levels unless a test asks for one
 	challenge_intro_seen = true
@@ -362,12 +361,12 @@ static var slide_tutorial_seen: bool = false # the sliding walkthrough, once, at
 static var club_intro_seen: bool = false
 static var collection_tutorial_seen: bool = false
 static var daily_callout_seen: bool = false
-static var name_callout_seen: bool = false   # Home's nudge to pick a name for the leaderboards, once
-## A player who reaches the leaderboards from here on must pick a name as they
-## unlock (must_name). False for a save already past the unlock, which is only
-## offered one the first time Ranks opens (name_offer_seen), and once named.
-static var name_required: bool = false
-static var name_offer_seen: bool = false
+## Test profiles are never asked to name themselves unless a test sets this false.
+static var naming_off: bool = false
+## The key (Online.name_key) of the name the server holds for this player.
+static var name_claim: String = ""
+static var name_taken: bool = false   # somebody else has player_name: choose another
+static var name_later: bool = false    # this run only (not saved)
 static var ship_story_seen: bool = false   # the first Home visit's "we have to rebuild the camp and ship", once
 static var camp_callout_seen: bool = false   # Home's one-time pointer to the camp's build nodes
 
@@ -1959,7 +1958,6 @@ static func replay_tips() -> void:
 	ship_story_seen = false
 	home_tutorial_seen = false
 	daily_callout_seen = false
-	name_callout_seen = false
 	camp_callout_seen = false
 	collection_tutorial_seen = false
 	club_intro_seen = false
@@ -2150,30 +2148,98 @@ static func is_daily_completed_today() -> bool:
 
 # -- the leaderboard name -------------------------------------------------------------
 
-## Still under the name every player starts with.
+const NAME_TAKEN := "That name is taken -- try another"
+const NAME_OFFLINE := "Connect to the internet to check that name"
+
+static var _checking_name := false
+
+
+## Without a name of their own: still the default one, or one that turned out to
+## be somebody else's.
 static func needs_name() -> bool:
-	return player_name.strip_edges().to_lower() == DEFAULT_NAME.to_lower()
+	return name_taken or Online.name_key(player_name) == Online.name_key(DEFAULT_NAME)
 
 
-## The leaderboards are theirs now, and they must name themselves first.
+## The leaderboards are theirs, and they must name themselves first (not again
+## this run once they couldn't be checked and said "Not now").
 static func must_name() -> bool:
-	return name_required and needs_name() and TSNav.leaderboards_open() and stars_open()
+	return not naming_off and not name_later and needs_name() and TSNav.leaderboards_open() and stars_open()
 
 
-## Takes `raw` as the player name, or says why not ("" once it is taken).
-static func choose_name(raw: String) -> String:
+## The computer players' names are spoken for.
+static func _bot_name(name: String) -> bool:
+	var key := Online.name_key(name)
+	return TSBots.NAMES.any(func(n: String) -> bool: return Online.name_key(n) == key)
+
+
+## Why `raw` can't be a name, as far as the phone can tell ("" if it might be).
+static func name_problem(raw: String) -> String:
 	var wanted := raw.strip_edges()
 	if wanted.length() < NAME_MIN_LENGTH:
 		return "Type a name of at least %d letters" % NAME_MIN_LENGTH
-	if wanted.to_lower() == DEFAULT_NAME.to_lower():
+	if Online.name_key(wanted) == Online.name_key(DEFAULT_NAME):
 		return "Pick a name of your own"
 	if not TSFilter.is_clean(wanted):
 		return "That name isn't allowed -- please choose another"
-	player_name = wanted.left(NAME_MAX_LENGTH)
-	name_required = false
+	if _bot_name(wanted):
+		return NAME_TAKEN
+	return ""
+
+
+## Takes `raw` as the player's name if nobody else has it: done("") once it is
+## theirs, or done(why not). Asking needs a connection.
+static func choose_name(raw: String, done: Callable) -> void:
+	var problem := name_problem(raw)
+	if problem != "":
+		done.call(problem)
+		return
+	var wanted := raw.strip_edges().left(NAME_MAX_LENGTH)
+	var key := Online.name_key(wanted)
+	if key == name_claim and not name_taken:   # theirs already (new capitals or spaces)
+		_set_name(wanted, key)
+		done.call("")
+		return
+	Online.claim_name(wanted, func(result: String) -> void:
+		if result == "ok":
+			if name_claim != key:
+				Online.release_name(name_claim)
+			_set_name(wanted, key)
+			done.call("")
+		else:
+			done.call(NAME_TAKEN if result == "taken" else NAME_OFFLINE))
+
+
+static func _set_name(wanted: String, key: String) -> void:
+	player_name = wanted
+	name_claim = key
+	name_taken = false
 	save()
 	push_boards()   # the boards show the new name
-	return ""
+
+
+## A name from before names were unique (or saved while the server couldn't be
+## asked): claims it, and if somebody else has it, asks for a new one.
+static func verify_name() -> void:
+	if _checking_name or needs_name():
+		return
+	var mine := player_name
+	var key := Online.name_key(mine)
+	if key == name_claim:
+		return
+	if _bot_name(mine):
+		name_taken = true
+		save()
+		return
+	_checking_name = true
+	Online.claim_name(mine, func(result: String) -> void:
+		_checking_name = false
+		if player_name != mine or result == "unavailable":
+			return
+		if result == "ok":
+			name_claim = key
+		else:
+			name_taken = true
+		save())
 
 
 # -- leaderboards ("stars") ---------------------------------------------------------
@@ -2460,6 +2526,9 @@ static func my_board_stars(period: String) -> int:
 
 ## Writes this player's row on every board (after a win, a new name or avatar).
 static func push_boards() -> void:
+	verify_name()
+	if needs_name():
+		return   # no row under the default name, or somebody else's
 	for period in ["daily", "weekly", "season"]:
 		Online.push(current_board(period), my_board_stars(period))
 
@@ -3313,12 +3382,13 @@ static func ensure_loaded() -> void:
 	var cfg := _read_save() if persist else null
 	if cfg == null:
 		planet_theme = season_theme()   # a new player starts on this season's planet
-		name_required = true
 		return
 	var g := func(key: String, default: Variant) -> Variant: return cfg.get_value("profile", key, default)
 	player_name = str(g.call("name", DEFAULT_NAME))
 	if not TSFilter.is_clean(player_name):
 		player_name = DEFAULT_NAME
+	name_claim = str(g.call("name_claim", ""))
+	name_taken = bool(g.call("name_taken", false))
 	avatar_index = clampi(int(g.call("avatar_index", 0)), 0, AVATAR_COLORS.size() - 1)
 	avatar_critter = clampi(int(g.call("avatar_critter", 0)), 0, CRITTER_COUNT - 1)
 	last_level = maxi(int(g.call("last_level", 1)), 1)
@@ -3369,9 +3439,6 @@ static func ensure_loaded() -> void:
 	club_intro_seen = bool(g.call("club_intro_seen", false))
 	collection_tutorial_seen = bool(g.call("collection_tutorial_seen", false))
 	daily_callout_seen = bool(g.call("daily_callout_seen", false))
-	name_callout_seen = bool(g.call("name_callout_seen", false))
-	name_required = bool(g.call("name_required", last_level < TSNav.FEATURES_UNLOCK_LEVEL))
-	name_offer_seen = bool(g.call("name_offer_seen", false))
 	camp_callout_seen = bool(g.call("camp_callout_seen", false))
 	# A save from before the story existed: anyone past level 1 has started without it.
 	ship_story_seen = bool(g.call("ship_story_seen", last_level > 1))
@@ -3502,6 +3569,8 @@ static func save() -> void:
 	var cfg := ConfigFile.new()
 	var s := func(key: String, value: Variant) -> void: cfg.set_value("profile", key, value)
 	s.call("name", player_name)
+	s.call("name_claim", name_claim)
+	s.call("name_taken", name_taken)
 	s.call("avatar_index", avatar_index)
 	s.call("avatar_critter", avatar_critter)
 	s.call("last_level", last_level)
@@ -3547,9 +3616,6 @@ static func save() -> void:
 	s.call("club_intro_seen", club_intro_seen)
 	s.call("collection_tutorial_seen", collection_tutorial_seen)
 	s.call("daily_callout_seen", daily_callout_seen)
-	s.call("name_callout_seen", name_callout_seen)
-	s.call("name_required", name_required)
-	s.call("name_offer_seen", name_offer_seen)
 	s.call("camp_callout_seen", camp_callout_seen)
 	s.call("ship_story_seen", ship_story_seen)
 	s.call("review_next_level", review_next_level)

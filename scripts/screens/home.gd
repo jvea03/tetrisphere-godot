@@ -103,6 +103,7 @@ func build() -> void:
 	# The leaderboards: finished boards placed (prizes). Stickers wait for the
 	# player to open Ranks.
 	TSProfile.resolve_board_results()
+	TSProfile.verify_name()   # a name from before they were unique
 	side.minimum_size_changed.connect(_fit_side, CONNECT_DEFERRED)   # a tile shown or hidden
 	tray.item_rect_changed.connect(_fit_side, CONNECT_DEFERRED)
 	_fit_side.call_deferred()
@@ -2019,8 +2020,6 @@ func _fill_stats() -> void:
 
 
 func _open_profile() -> void:
-	if tutorial.on_step("profile"):
-		tutorial.gate_passed()   # the name nudge: done once the profile opens
 	_fill_stats()
 	_name_edit.text = TSProfile.player_name
 	_avatar_choice = TSProfile.avatar_index
@@ -2034,15 +2033,20 @@ func _on_profile_save() -> void:
 	if not TSFilter.is_clean(new_name):
 		TSUI.note(self, _name_edit, "That name isn't allowed -- please choose another")
 		return
-	if new_name != "":   # left blank, the name stays as it was
-		TSProfile.player_name = new_name
-		if not TSProfile.needs_name():
-			TSProfile.name_required = false
 	TSProfile.avatar_index = _avatar_choice
 	TSProfile.save()
-	TSProfile.push_boards()   # the boards show the new name and critter
+	TSProfile.push_boards()   # the boards show the new critter
 	_refresh_avatar()
-	TSUI.conceal(_profile["root"])
+	# Left blank or unchanged, the name stays; a new one is checked (names are unique).
+	if new_name == "" or new_name == TSProfile.player_name:
+		TSUI.conceal(_profile["root"])
+		return
+	TSProfile.choose_name(new_name, func(problem: String) -> void:
+		if problem != "":
+			TSUI.note(self, _name_edit, problem)
+			return
+		_refresh_avatar()
+		TSUI.conceal(_profile["root"]))
 
 
 # -- walkthroughs -----------------------------------------------------------------------
@@ -2102,43 +2106,20 @@ func _start_walkthrough() -> bool:
 		_start_daily_callout()
 	elif _world.nodes_enabled and not TSProfile.camp_callout_seen:
 		_start_camp_callout()
-	elif _wants_name_callout():
-		_start_name_callout()
 	else:
 		return false
 	return true
 
 
-## The leaderboards have just unlocked: a name first (the card only has Save),
+## On the leaderboards without a name: that first (the card only has Save),
 ## then on to whatever else is new here.
 func _start_naming() -> void:
 	await _settled()
 	if not is_inside_tree() or not TSProfile.must_name() or TSNameCard.is_open(self):
 		return
-	TSNameCard.open(self, true, func() -> void:
+	TSNameCard.open(self, func() -> void:
 		_refresh_avatar()
 		_start_walkthrough.call_deferred())
-
-
-## The name nudge: the player is on the leaderboards (a star earned while
-## they're open) still under the default name, and hasn't been shown it.
-func _wants_name_callout() -> bool:
-	return not TSProfile.name_callout_seen and TSNav.leaderboards_open() and TSProfile.stars_open() \
-		and TSProfile.lifetime_of("stars") > 0 and TSProfile.player_name == TSProfile.DEFAULT_NAME \
-		and avatar_btn.is_visible_in_tree()
-
-
-## Spotlights the profile picture: a tap on it opens the profile (name and
-## critter), and that ends the walkthrough (_open_profile).
-func _start_name_callout() -> void:
-	await _settled()
-	if not is_inside_tree():
-		return
-	tutorial.finished.connect(func():
-		TSProfile.name_callout_seen = true
-		TSProfile.save(), CONNECT_ONE_SHOT)
-	tutorial.start([{"rect": func() -> Rect2: return avatar_btn.get_global_rect(), "id": "profile", "gate": true,
-		"text": "You're on the leaderboards as \"%s\"! Tap your picture to choose a name and a critter, so everyone can spot you." % TSProfile.DEFAULT_NAME}])
 
 
 func _start_ship_story() -> void:

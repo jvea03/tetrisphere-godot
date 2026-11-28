@@ -254,6 +254,53 @@ func report(player: String, name: String) -> void:
 	_call("POST", "%s/reports" % DOCS, {"fields": to_fields(fields)}, func(_ok: bool, _d: Variant) -> void: pass)
 
 
+# -- names -------------------------------------------------------------------------
+
+## Tests stand in for the server: called with (name, done) in claim_name.
+var name_answer := Callable()
+
+
+## A name's id in the registry (names/{key}): capitals and spaces don't count,
+## so "Egg Bert" and "eggbert" are the one name.
+static func name_key(name: String) -> String:
+	var n := name.to_lower()
+	for gap in [" ", "\t", " ", "​"]:
+		n = n.replace(gap, "")
+	return n.sha256_text()
+
+
+## Takes `name` for this player, unless somebody else has it. done("ok"),
+## done("taken"), or done("unavailable") if the server couldn't say (offline).
+func claim_name(name: String, done: Callable) -> void:
+	if name_answer.is_valid():
+		name_answer.call(name, done)
+		return
+	if fake():
+		done.call("ok")
+		return
+	if not enabled():
+		done.call("unavailable")
+		return
+	var key := name_key(name)
+	var fields := {"uid": uid_placeholder(), "name": name, "t": int(Time.get_unix_time_from_system())}
+	# Creating the name's document fails if it is there: then see whose it is.
+	_call("POST", "%s/names?documentId=%s" % [DOCS, key], {"fields": to_fields(fields)}, func(ok: bool, _data: Variant) -> void:
+		if ok:
+			done.call("ok")
+			return
+		_call("GET", "%s/names/%s" % [DOCS, key], null, func(got: bool, data: Variant) -> void:
+			if not got or not data is Dictionary or not (data as Dictionary).has("fields"):
+				done.call("unavailable")
+				return
+			done.call("ok" if str(from_fields((data as Dictionary)["fields"]).get("uid", "")) == uid else "taken")))
+
+
+## Gives up a name this player held (by its key), for others to take.
+func release_name(key: String) -> void:
+	if key != "" and enabled() and not fake() and not name_answer.is_valid():
+		_call("DELETE", "%s/names/%s" % [DOCS, key], null, func(_ok: bool, _d: Variant) -> void: pass)
+
+
 # -- Firestore values ----------------------------------------------------------------
 
 static func to_fields(d: Dictionary) -> Dictionary:

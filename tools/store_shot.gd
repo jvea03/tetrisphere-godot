@@ -254,7 +254,6 @@ func _profile(level: int) -> void:
 	TSProfile.camp_callout_seen = true
 	TSProfile.collection_tutorial_seen = true
 	TSProfile.club_intro_seen = true
-	TSProfile.name_callout_seen = true
 	TSProfile.coin_count = 48250
 	TSProfile.bomb_count = 7
 	for i in [1, 2, 4, 8, 11, 15]:

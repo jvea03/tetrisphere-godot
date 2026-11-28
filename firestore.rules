@@ -31,6 +31,19 @@ service cloud.firestore {
         && request.resource.data.t is int;
     }
 
+    // Who has each player name, so no two are the same: the id is a hash of the
+    // name without capitals or spaces. First to create it holds it.
+    match /names/{key} {
+      allow read: if signedIn();
+      allow create: if signedIn() && key.size() == 64
+        && request.resource.data.keys().hasOnly(['uid', 'name', 't'])
+        && request.resource.data.uid == request.auth.uid
+        && okName(request.resource.data.name)
+        && request.resource.data.t is int;
+      allow update: if false;
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+    }
+
     // Name reports, for review in the console. Write-only.
     match /reports/{id} {
       allow create: if signedIn() && request.resource.data.by == request.auth.uid

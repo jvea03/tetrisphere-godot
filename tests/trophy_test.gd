@@ -64,7 +64,6 @@ func _ready() -> void:
 	TSProfile.home_tutorial_seen = true
 	TSProfile.daily_callout_seen = true
 	TSProfile.camp_callout_seen = true
-	TSProfile.name_callout_seen = true
 	var home: Node = (load("res://scenes/home.tscn") as PackedScene).instantiate()
 	add_child(home)
 	await get_tree().create_timer(0.6).timeout
