@@ -89,3 +89,24 @@ few seconds later. A sticker from one of them also arrives once per run as you
 open Ranks, to try the received card. Only the three basic stickers are there,
 unless you earn more. Release builds, the test suite (throwaway profiles) and
 `tools/online_check` never use it. Screenshots: `menu_capture -- leaderboard fake`.
+
+## Bots (27 Nov 2026)
+
+A Daily, Weekly or Season board with fewer than 20 real players is topped up with
+computer players (`scripts/meta/bots.gd`, `TSBots`).
+
+- **Count:** `bots_fill_to` (20) minus the real players on the board, so each real
+  player takes one bot's place. The remote setting `bots_fill_to: 0` turns them off.
+- **Nothing is stored online.** Each phone works the bots out from the board id, so
+  everyone sees the same names, critters and scores. Offline (board not fetched), none.
+- **Scores** grow as the day, week or season passes and end at up to 30 (daily),
+  140 (weekly) and 14 per season day, so an active player can beat them. A bot with
+  no star yet isn't shown.
+- **Prizes:** bots stand in the finished board. A player's place counts the bots with
+  more stars, and bots count toward the 10 players a prize needs
+  (`TSProfile.resolve_board_results`). More players win coins than before bots.
+- **Stickers** to a bot show as sent and go nowhere (no reply); Report Name on one
+  sends nothing; Block hides it like anyone.
+- **Not on** the Snowball Fight boards or Clubs.
+- Builds before this one don't show bots and still need 10 real players for a prize.
+- The store description and the in-game text no longer say every rival is a real player.

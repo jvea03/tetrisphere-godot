@@ -26,6 +26,7 @@ const DEFAULTS := {
 	"ad_build_per_day": 3, # 30 minutes off a camp or ship build
 	"analytics_enabled": true, # kill switch for GameAnalytics (and Firebase on Android): false sends nothing
 	"social_enabled": false, # Leaderboards + Clubs are simulated on the device: "Coming soon" until they are real (the editor still shows them)
+	"bots_fill_to": 20, # computer players top a Daily, Weekly or Season board up to this many (TSBots); 0 = none
 	"piece_budget_extra": 0, # pieces added to every level's counter (TSLevels.piece_budget)
 }
 ## The most a file can set a number to (anything above is cut to this), so a

@@ -2221,8 +2221,8 @@ static func _resolve_leaderboard_day(date_str: String, player_total: int) -> voi
 	pending_board_results.append({"period": "daily", "board": Online.board_id("daily", date_str), "stars": player_total})
 
 
-## Places each finished board online, as the real players finished it; a top-3
-## place queues its coins (Home's results card pays them). Boards it can't
+## Places each finished board online, as its players (and bots) finished it; a
+## top-3 place queues its coins (Home's results card pays them). Boards it can't
 ## ask about yet wait for the next try. done() runs after each one placed.
 static func resolve_board_results(done := Callable()) -> void:
 	if pending_board_results.is_empty() or not Online.enabled():
@@ -2240,7 +2240,10 @@ static func resolve_board_results(done := Callable()) -> void:
 				Online.board_size(str(r["board"]), func(n: int) -> void:
 					if n < 0 or not pending_board_results.has(r):
 						return
-					_settle_board_result(r, place if n >= BOARD_MIN_FOR_PRIZES else 0)
+					# The bots that topped the board up count too, as the player saw it.
+					var bots := TSBots.fill_count(str(r["board"]), n)
+					var final_place := place + TSBots.beating(str(r["board"]), bots, int(r["stars"]))
+					_settle_board_result(r, final_place if n + bots >= BOARD_MIN_FOR_PRIZES else 0)
 					if done.is_valid():
 						done.call())
 				return
@@ -2424,11 +2427,17 @@ static func push_boards() -> void:
 		Online.push(current_board(period), my_board_stars(period))
 
 
-## A board's rows as last fetched from Online (none from blocked players),
-## with this player's own row, as it stands on the phone, in its place.
+## A board's rows as last fetched from Online, topped up with bots while there
+## are few players (TSBots), none from blocked players, with this player's own
+## row, as it stands on the phone, in its place.
 static func standings_for(period: String) -> Array:
 	var board := current_board(period)
-	var entries: Array = Online.entries(board).filter(func(e: Dictionary) -> bool: return not e.get("is_player", false) and not blocked_players.has(e.get("uid", "")))
+	var others: Array = Online.entries(board).filter(func(e: Dictionary) -> bool: return not e.get("is_player", false))
+	var entries: Array = others.duplicate()
+	if Online.boards.has(board):   # only once the board has been fetched: nothing made up offline
+		var real := others.size() + (1 if my_board_stars(period) > 0 else 0)
+		entries.append_array(TSBots.rows(board, TSBots.fill_count(board, real), TSBots.progress(board)))
+	entries = entries.filter(func(e: Dictionary) -> bool: return not blocked_players.has(e.get("uid", "")))
 	entries.append({"uid": Online.uid, "name": player_name, "avatar": avatar(), "stars": my_board_stars(period), "is_player": true})
 	entries.sort_custom(func(a, b): return int(a["stars"]) > int(b["stars"]) or (int(a["stars"]) == int(b["stars"]) and a.get("is_player", false) and not b.get("is_player", false)))
 	return entries

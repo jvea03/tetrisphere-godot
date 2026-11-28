@@ -18,6 +18,7 @@ func _check(label: String, cond: bool) -> void:
 func _ready() -> void:
 	TSProfile.use_test_profile(20)
 	TSProfile.player_name = "Tester"
+	TSTunables.apply({"bots_fill_to": 0})   # real rows only, until the bots below
 	_check("a throwaway profile stays offline", not Online.enabled())
 
 	var f := Online.to_fields({"name": "Pip", "stars": 12, "ok": true})
@@ -74,6 +75,39 @@ func _ready() -> void:
 	_check("a board never played online pays nothing", TSProfile.pending_board_results.is_empty() and TSProfile.pending_board_prizes.size() == 1)
 	_check("a board played online pays its place (1st)", TSProfile.pending_board_prizes.size() == 1 and int(TSProfile.pending_board_prizes[0]["place"]) == 1)
 	Online.force_fake = false
+	_test_bots()
 	print("")
 	print("ALL PASSED" if _failures == 0 else "%d FAILED" % _failures)
 	get_tree().quit(0 if _failures == 0 else 1)
+
+
+func _test_bots() -> void:
+	TSTunables.apply({"bots_fill_to": 20})
+	_check("bots top up daily, weekly and season boards only", TSBots.fill_count("daily_2026-11-27", 0) == 20 and TSBots.fill_count("weekly_W2970", 5) == 15 and TSBots.fill_count("season_S1", 25) == 0 and TSBots.fill_count("snowball_W2970_red", 0) == 0)
+	var a := TSBots.rows("daily_2026-11-27", 20, 1.0)
+	_check("a finished board has all its bots, each with a star", a.size() == 20 and a.all(func(e: Dictionary) -> bool: return int(e["stars"]) > 0 and int(e["stars"]) <= TSBots.TOP_DAILY and TSBots.is_bot(e["uid"])))
+	_check("the same board gives the same bots, another day different ones", a == TSBots.rows("daily_2026-11-27", 20, 1.0) and a != TSBots.rows("daily_2026-11-28", 20, 1.0))
+	var names := {}
+	for e: Dictionary in a:
+		names[e["name"]] = true
+	_check("no two bots share a name", names.size() == 20)
+	_check("fewer bots are the first of the same list", TSBots.rows("daily_2026-11-27", 5, 1.0) == a.slice(0, 5))
+	var half := {}
+	for e: Dictionary in TSBots.rows("daily_2026-11-27", 20, 0.4):
+		half[e["uid"]] = int(e["stars"])
+	_check("stars only grow as the board goes by", a.all(func(e: Dictionary) -> bool: return int(half.get(e["uid"], 0)) <= int(e["stars"])) and TSBots.rows("daily_2026-11-27", 20, 0.0).size() <= half.size())
+
+	var board := TSProfile.current_board("daily")
+	TSProfile.daily_star_total = 7
+	Online.boards.erase(board)
+	_check("nothing made up before the board is fetched", TSProfile.standings_for("daily").size() == 1)
+	Online.boards[board] = {"at": Time.get_unix_time_from_system(), "entries": [{"uid": "a", "name": "Ann", "avatar": 3, "stars": 200, "is_player": false}]}
+	var rows: Array = TSProfile.standings_for("daily")
+	var bots := rows.filter(func(e: Dictionary) -> bool: return TSBots.is_bot(str(e.get("uid", ""))))
+	var expected := TSBots.rows(board, 18, TSBots.progress(board)).size()
+	_check("one real player and this one leave room for 18 bots (%d showing)" % bots.size(), bots.size() == expected and rows[0]["name"] == "Ann")
+	if not bots.is_empty():
+		TSProfile.blocked_players = [bots[0]["uid"]]
+		_check("a blocked bot is left off", TSProfile.standings_for("daily").size() == rows.size() - 1)
+		TSProfile.blocked_players = []
+	_check("a finished board counts the bots above a score", TSBots.beating("daily_2026-11-27", 20, 0) == 20 and TSBots.beating("daily_2026-11-27", 20, TSBots.TOP_DAILY) == 0)

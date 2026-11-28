@@ -1,7 +1,8 @@
 extends TSScreen
 
 ## The leaderboards (Duckdoku's LeaderboardScreen): Daily, Weekly and Season,
-## scored in stars, against real players (Online: Firebase). Top 3 win coins,
+## scored in stars: real players (Online: Firebase), topped up with bots while
+## there are few (TSBots). Top 3 win coins,
 ## paid once a board resets and its place is known (the prize waits on Home).
 ## Tapping another player opens their card: send a sticker, block, report.
 ## The player's own row stays pinned at the bottom while it is scrolled out of
@@ -71,7 +72,7 @@ func build() -> void:
 	_info = TSUI.dialog(self, 580)
 	var ibox: VBoxContainer = _info["box"]
 	ibox.add_child(TSUI.title("Climb the Leaderboards", 38))
-	for line in ["Win levels to earn stars.", "Climb the daily, weekly and season boards against players everywhere.", "Finish top 3 on a board of 10 or more players to win coins -- collect them on Home when it resets.", "Tap a player to send them a sticker."]:
+	for line in ["Win levels to earn stars.", "Climb the daily, weekly and season boards.", "Finish top 3 on a board of 10 or more players to win coins -- collect them on Home when it resets.", "Tap a player to send them a sticker."]:
 		var row := TSUI.hbox(10)
 		row.add_child(TSIcon.make("star", 36))
 		row.add_child(TSUI.wrap(TSUI.label(line, 22), 440))
@@ -130,7 +131,7 @@ func _refresh() -> void:
 		c.queue_free()
 	_player_row = null
 	var entries: Array = TSProfile.standings_for(_tab)
-	var fetched := not Online.entries(TSProfile.current_board(_tab)).is_empty()
+	var fetched := Online.boards.has(TSProfile.current_board(_tab))
 	if entries.size() > 1:
 		_status.text = ""
 	elif fetched:

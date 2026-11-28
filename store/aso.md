@@ -51,7 +51,7 @@ works, but "block puzzle" is the bigger search.
     • Every season, fly to a new themed planet: autumn, Christmas, New Year and Valentine's
 
     🏆 CLIMB THE LEADERBOARDS
-    • Climb daily, weekly and season leaderboards against real players
+    • Climb the daily, weekly and season leaderboards
     • Cheer on rivals (or tease them!) with fun stickers
     • Top 3 on each board win coins
 

@@ -199,6 +199,9 @@ func send_sticker(to_uid: String, sticker: String, done: Callable) -> void:
 		get_tree().create_timer(0.4).timeout.connect(func() -> void: done.call(true))
 		_fake_reply(to_uid)
 		return
+	if TSBots.is_bot(to_uid):
+		get_tree().create_timer(0.4).timeout.connect(func() -> void: done.call(true))   # nobody to deliver to
+		return
 	var fields := {"name": TSProfile.player_name, "avatar": TSProfile.avatar(), "sticker": sticker, "t": int(Time.get_unix_time_from_system())}
 	_call("PATCH", "%s/stickers/%s/got/%s" % [DOCS, to_uid, uid_placeholder()], {"fields": to_fields(fields)}, func(ok: bool, _data: Variant) -> void:
 		done.call(ok))
@@ -245,7 +248,7 @@ func take_received() -> Array:
 
 ## Reports a player's name (for review in the Firebase console).
 func report(player: String, name: String) -> void:
-	if not enabled() or fake():
+	if not enabled() or fake() or TSBots.is_bot(player):
 		return
 	var fields := {"uid": player, "name": name, "by": uid_placeholder(), "t": int(Time.get_unix_time_from_system())}
 	_call("POST", "%s/reports" % DOCS, {"fields": to_fields(fields)}, func(_ok: bool, _d: Variant) -> void: pass)
