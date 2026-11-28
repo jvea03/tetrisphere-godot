@@ -122,8 +122,7 @@ computer players (`scripts/meta/bots.gd`, `TSBots`).
   don't count ("Egg Bert" is "eggbert").
 - **Unique, on the server:** `names/{sha256 of the name}` holds `uid`, `name`, `t`.
   The first to create it holds the name; changing names releases the old one.
-  **`firestore.rules` must be published (Firebase console) before a build with this
-  ships**, or no name can be checked.
+  `firestore.rules` with this was published 27 Nov 2026, 8:48 PM.
 - **Offline** a name can't be checked: the card then offers **Not now** (until the next
   run), so nobody is locked out of playing.
 - **Names from before** are claimed the next time the game goes online; if somebody
